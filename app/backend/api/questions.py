@@ -158,11 +158,18 @@ def _fts_phrase(value):
 @bp.route("/simulado/usp")
 def simulado_usp():
     db = get_db()
-    areas = ["Cirurgia", "Clínica Médica", "Pediatria", "Ginecologia e Obstetrícia", "Medicina Preventiva e Social"]
+    area_groups = [
+        ("Cirurgia",),
+        ("Clínica Médica",),
+        ("Pediatria",),
+        ("Ginecologia e Obstetrícia",),
+        ("Medicina Preventiva", "Medicina Preventiva e Social"),
+    ]
     all_ids = []
-    for area in areas:
-        where = "q.institution_code IN ('USP-SP', 'USP-RP') AND q.area = ? AND q.missing_alts = 0"
-        ids = _sample_ids(db, where, (area,), 24)
+    for area_aliases in area_groups:
+        ph = ",".join("?" * len(area_aliases))
+        where = f"q.institution_code IN ('USP-SP', 'USP-RP') AND q.area IN ({ph}) AND q.missing_alts = 0"
+        ids = _sample_ids(db, where, area_aliases, 24)
         all_ids.extend(ids)
 
     if not all_ids:
@@ -198,7 +205,13 @@ def simulado_custom():
     years = [value[:4] for value in data.years]
     q_per_area = data.questions_per_area
     
-    areas = ["Cirurgia", "Clínica Médica", "Pediatria", "Ginecologia e Obstetrícia", "Medicina Preventiva e Social"]
+    area_groups = [
+        ("Cirurgia",),
+        ("Clínica Médica",),
+        ("Pediatria",),
+        ("Ginecologia e Obstetrícia",),
+        ("Medicina Preventiva", "Medicina Preventiva e Social"),
+    ]
     all_ids = []
     
     # Montar restrições
@@ -215,9 +228,10 @@ def simulado_custom():
         base_clauses.append(f"q.year IN ({placeholders})")
         base_params.extend(years)
         
-    for area in areas:
-        clauses = base_clauses + ["q.area = ?"]
-        params = base_params + [area]
+    for area_aliases in area_groups:
+        ph = ",".join("?" * len(area_aliases))
+        clauses = base_clauses + [f"q.area IN ({ph})"]
+        params = base_params + list(area_aliases)
         where = " AND ".join(clauses)
         ids = _sample_ids(db, where, tuple(params), q_per_area)
         all_ids.extend(ids)
@@ -478,8 +492,12 @@ def search_questions():
         extra_filters.append("q.institution_code = ?")
         extra_params.append(institution)
     if area:
-        extra_filters.append("q.area = ?")
-        extra_params.append(area)
+        if area in ("Medicina Preventiva", "Medicina Preventiva e Social"):
+            extra_filters.append("q.area IN (?, ?)")
+            extra_params.extend(["Medicina Preventiva", "Medicina Preventiva e Social"])
+        else:
+            extra_filters.append("q.area = ?")
+            extra_params.append(area)
     if year:
         try:
             extra_filters.append("q.year = ?")

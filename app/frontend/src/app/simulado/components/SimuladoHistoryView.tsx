@@ -11,6 +11,7 @@ export const SimuladoHistoryView: React.FC = () => {
   const [sessions, setSessions] = useState<SimuladoSessionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchSessions = async () => {
     setIsLoading(true);
@@ -41,13 +42,13 @@ export const SimuladoHistoryView: React.FC = () => {
     };
   }, []);
 
-  const handleDeleteSession = async (clientSessionId: string, e: React.MouseEvent) => {
+  const handleConfirmDeleteSession = async (clientSessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Deseja realmente remover este simulado do seu histórico?")) return;
     setDeletingId(clientSessionId);
     try {
       await api.questions.deleteSimuladoSession(clientSessionId);
       setSessions((prev) => prev.filter((s) => s.client_session_id !== clientSessionId));
+      setConfirmDeleteId(null);
       toast.success("Registro de simulado removido.");
     } catch {
       toast.error("Erro ao remover simulado.");
@@ -81,10 +82,10 @@ export const SimuladoHistoryView: React.FC = () => {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Histórico de Simulados Realizados</h2>
+          <h2 className="text-lg font-bold text-foreground">Histórico de Simulados Realizados</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Acompanhe o seu desempenho, tempo gasto e consistência ao longo do tempo.
           </p>
@@ -93,7 +94,7 @@ export const SimuladoHistoryView: React.FC = () => {
           type="button"
           onClick={fetchSessions}
           disabled={isLoading}
-          className="self-start sm:self-auto px-3.5 py-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          className="self-start sm:self-auto px-3.5 py-2 rounded-md border border-line-subtle bg-surface hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <RotateCcw size={14} className={clsx(isLoading && "animate-spin")} />
           Atualizar
@@ -101,15 +102,15 @@ export const SimuladoHistoryView: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 rounded-2xl bg-muted/30 border border-border animate-pulse" />
+            <div key={i} className="h-28 rounded-lg bg-surface border border-line-subtle animate-pulse" />
           ))}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="bg-card border border-border rounded-3xl p-12 text-center flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-muted/50 text-muted-foreground flex items-center justify-center">
-            <History size={32} />
+        <div className="bg-surface border border-line-subtle rounded-lg p-10 text-center flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-md bg-muted text-muted-foreground flex items-center justify-center">
+            <History size={24} />
           </div>
           <div className="space-y-1 max-w-md">
             <h3 className="text-base font-bold text-foreground">Nenhum simulado finalizado ainda</h3>
@@ -119,11 +120,12 @@ export const SimuladoHistoryView: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {sessions.map((session) => {
             const acc = session.accuracy_percent || 0;
             const isExcellent = acc >= 80;
             const isGood = acc >= 70;
+            const isConfirming = confirmDeleteId === session.client_session_id;
 
             const instLabel = Array.isArray(session.filters?.institutions) && session.filters.institutions.length > 0
               ? session.filters.institutions.join(", ")
@@ -136,30 +138,28 @@ export const SimuladoHistoryView: React.FC = () => {
             return (
               <div
                 key={session.client_session_id}
-                className="bg-card border border-border hover:border-primary/40 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-all flex flex-col gap-4"
+                className="bg-surface border border-line-subtle hover:border-accent/40 rounded-lg p-4 sm:p-5 transition-colors flex flex-col gap-3.5"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div
                       className={clsx(
-                        "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+                        "w-12 h-12 rounded-md flex items-center justify-center font-bold text-sm shrink-0 font-mono-lab tabular-nums border",
                         isExcellent
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                           : isGood
-                          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30"
-                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
                       )}
                     >
                       {acc.toFixed(0)}%
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-base font-bold text-foreground">
-                          {instLabel} {yearLabel && `· ${yearLabel}`}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
+                      <h4 className="text-sm sm:text-base font-bold text-foreground">
+                        {instLabel} {yearLabel && `· ${yearLabel}`}
+                      </h4>
+                      <p className="text-xs text-muted-foreground font-mono-lab tabular-nums">
                         {formatDate(session.completed_at)} · {session.total_questions} questões
                       </p>
                     </div>
@@ -167,28 +167,53 @@ export const SimuladoHistoryView: React.FC = () => {
 
                   <div className="flex items-center gap-3 self-end sm:self-auto">
                     <div className="text-right">
-                      <p className="text-xs font-bold text-foreground">
+                      <p className="text-xs font-bold text-foreground font-mono-lab tabular-nums">
                         {session.correct_count} de {session.total_questions} acertos
                       </p>
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end">
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end font-mono-lab tabular-nums">
                         <Clock size={12} /> {formatSeconds(session.elapsed_seconds)}
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      title="Excluir este simulado do histórico"
-                      onClick={(e) => handleDeleteSession(session.client_session_id, e)}
-                      disabled={deletingId === session.client_session_id}
-                      className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {isConfirming ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleConfirmDeleteSession(session.client_session_id, e)}
+                          disabled={deletingId === session.client_session_id}
+                          className="px-2.5 py-1 rounded-md bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 cursor-pointer disabled:opacity-50"
+                        >
+                          {deletingId === session.client_session_id ? "Removendo..." : "Confirmar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(null);
+                          }}
+                          className="px-2 py-1 rounded-md border border-line-subtle bg-canvas text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        title="Excluir este simulado do histórico"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteId(session.client_session_id);
+                        }}
+                        className="p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Accuracy progress bar */}
-                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-muted h-1.5 rounded-xs overflow-hidden">
                   <div
                     className={clsx(
                       "h-full transition-all duration-500",
@@ -198,17 +223,14 @@ export const SimuladoHistoryView: React.FC = () => {
                   />
                 </div>
 
-                {/* Area Breakdown Pills */}
+                {/* Area Breakdown */}
                 {session.area_results && session.area_results.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-border/60">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-line-subtle text-[11px] text-muted-foreground font-mono-lab tabular-nums">
                     {session.area_results.map((areaItem, idx) => {
                       const areaAcc = areaItem.total > 0 ? (areaItem.correct / areaItem.total) * 100 : 0;
                       return (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/40 border border-border/60 text-[11px] font-medium text-muted-foreground"
-                        >
-                          <span className="font-semibold text-foreground">{areaItem.area}:</span>
+                        <span key={idx}>
+                          <span className="font-semibold text-foreground">{areaItem.area}:</span>{" "}
                           <span
                             className={clsx(
                               "font-bold",

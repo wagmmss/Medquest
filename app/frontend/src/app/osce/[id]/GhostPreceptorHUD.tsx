@@ -51,7 +51,7 @@ export function GhostPreceptorHUD({ feedback, mode }: GhostPreceptorHUDProps) {
   // Se ainda não carregou o feedback
   if (!feedback) {
     return (
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-2 text-xs text-primary animate-pulse">
+      <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center gap-2 text-xs text-accent">
         <Sparkles className="w-4 h-4" />
         <span>Conectando ao Preceptor Fantasma...</span>
       </div>
@@ -72,23 +72,23 @@ export function GhostPreceptorHUD({ feedback, mode }: GhostPreceptorHUDProps) {
   const percentage = Math.min(100, Math.max(0, feedback.percentage || 0));
 
   return (
-    <div className="w-full rounded-2xl border-2 border-primary/30 bg-card/95 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300">
+    <div className="w-full rounded-lg border border-accent/30 bg-surface overflow-hidden">
       {/* Topo do Widget / Barra Principal */}
-      <div className="p-3 md:p-3.5 bg-gradient-to-r from-primary/15 via-primary/5 to-secondary/15 flex items-center justify-between border-b border-border/80">
+      <div className="p-3 md:p-3.5 bg-canvas flex items-center justify-between border-b border-line-subtle">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-primary text-primary-foreground shadow-sm flex items-center justify-center">
-            <span className="text-sm">👻</span>
+          <div className="p-1.5 rounded-md bg-accent text-white flex items-center justify-center">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-foreground text-xs md:text-sm tracking-tight flex items-center gap-1.5">
+              <span className="font-bold text-foreground text-xs md:text-sm tracking-tight flex items-center gap-1.5">
                 Preceptor Fantasma
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase tracking-wider">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-accent/15 text-accent uppercase tracking-wider">
                   Treino Guiado
                 </span>
               </span>
               {scoreAnimation && (
-                <span className="text-xs font-black text-emerald-500 animate-bounce bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-emerald-500 bg-emerald-500/15 px-2 py-0.5 rounded-md font-mono-lab tabular-nums">
                   {scoreAnimation}
                 </span>
               )}
@@ -138,7 +138,7 @@ export function GhostPreceptorHUD({ feedback, mode }: GhostPreceptorHUDProps) {
           {feedback.proactive_hints && feedback.proactive_hints.length > 0 && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1.5 shadow-sm">
               <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 text-xs">
-                <Lightbulb className="w-4 h-4 shrink-0 animate-pulse" />
+                <Lightbulb className="w-4 h-4 shrink-0" />
                 <span>Orientações Proativas do Preceptor Beira-Leito:</span>
               </div>
               <ul className="space-y-1 pl-5 list-disc text-foreground/90 font-medium text-[11px] leading-relaxed">

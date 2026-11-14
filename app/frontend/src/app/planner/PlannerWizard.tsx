@@ -265,7 +265,7 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
             </label>
             <span className="text-xs text-muted-foreground">
               {isAllSelected 
-                ? "✨ Todas as bancas selecionadas" 
+                ? "Todas as bancas selecionadas" 
                 : `${selectedInsts.length} banca${selectedInsts.length > 1 ? "s" : ""} selecionada${selectedInsts.length > 1 ? "s" : ""}`}
             </span>
           </div>

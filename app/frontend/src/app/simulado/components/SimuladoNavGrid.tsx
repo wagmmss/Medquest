@@ -51,22 +51,22 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
   }, [queue, sidebarFilter, answers, flagged]);
 
   return (
-    <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 order-1 lg:order-1 h-auto lg:h-full lg:sticky lg:top-4 z-10 bg-background/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none p-2 lg:p-0 rounded-xl shadow-sm lg:shadow-none mb-4 lg:mb-0 border lg:border-0 border-border">
+    <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 order-1 lg:order-1 h-auto lg:h-full lg:sticky lg:top-4 z-10 bg-surface lg:bg-transparent p-2 lg:p-0 rounded-lg mb-4 lg:mb-0 border lg:border-0 border-line-subtle">
       {/* Timer Box */}
-      <div className="bg-card border border-border shadow-1 rounded-xl p-4 lg:p-5 flex flex-row lg:flex-col items-center justify-between lg:justify-center gap-2">
+      <div className="bg-surface border border-line-subtle rounded-lg p-4 lg:p-5 flex flex-row lg:flex-col items-center justify-between lg:justify-center gap-2">
         {isReview ? (
           <>
-            <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Nota Final</span>
-            <div className="text-2xl lg:text-4xl font-black text-foreground">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nota Final</span>
+            <div className="text-2xl lg:text-4xl font-bold text-foreground font-mono-lab tabular-nums">
               {Object.values(resultsMap).filter(r => r.is_correct).length} <span className="text-sm lg:text-lg text-muted-foreground">/ {queue.length}</span>
             </div>
-            <div className="text-sm font-medium text-primary mt-1">
+            <div className="text-sm font-medium text-accent mt-1 font-mono-lab tabular-nums">
               {Math.round((Object.values(resultsMap).filter(r => r.is_correct).length / queue.length) * 100)}% de Acerto
             </div>
             {showResultsSummary && (
               <button
                 onClick={onHideResultsSummary}
-                className="mt-3 bg-primary text-primary-foreground font-bold px-4 py-2 rounded-lg text-sm w-full transition-colors hover:bg-primary/90 cursor-pointer"
+                className="mt-3 bg-accent text-white font-semibold px-4 py-2 rounded-md text-sm w-full transition-colors hover:bg-accent/90 cursor-pointer"
               >
                 Revisar Questões
               </button>
@@ -74,8 +74,8 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
           </>
         ) : (
           <>
-            <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Clock size={16} /> Tempo
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Clock size={15} /> Tempo
             </span>
             <SessionTimer
               deadlineAt={deadlineAt}
@@ -90,12 +90,12 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
       </div>
 
       {/* Grid Box */}
-      <div className="bg-card border border-border shadow-1 rounded-xl flex flex-col h-[200px] lg:h-auto lg:flex-1 overflow-hidden">
-        <div className="p-3 lg:p-4 border-b border-border bg-muted/30">
+      <div className="bg-surface border border-line-subtle rounded-lg flex flex-col h-[200px] lg:h-auto lg:flex-1 overflow-hidden">
+        <div className="p-3 lg:p-4 border-b border-line-subtle bg-canvas/50">
           <h3 className="font-bold text-foreground text-sm">Cartão Resposta</h3>
           {!isReview && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {Object.keys(answers).length} respondidas, {queue.length - Object.keys(answers).length} em branco.
+            <p className="text-xs text-muted-foreground mt-1 font-mono-lab tabular-nums">
+              {Object.keys(answers).length} respondidas · {queue.length - Object.keys(answers).length} em branco
               {Object.values(flagged).filter(Boolean).length > 0 && (
                 <span className="text-warning ml-1">
                   · {Object.values(flagged).filter(Boolean).length} marcada(s)
@@ -106,24 +106,43 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
           {/* Filter buttons */}
           {!isReview && (
             <div className="flex gap-1.5 mt-2">
-              {([
-                { key: 'all' as const, label: 'Todas' },
-                { key: 'unanswered' as const, label: 'Em branco' },
-                { key: 'flagged' as const, label: '🚩' },
-              ] as const).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setSidebarFilter(f.key)}
-                  className={clsx(
-                    "text-[10px] font-semibold px-2 py-1 rounded transition-colors cursor-pointer",
-                    sidebarFilter === f.key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setSidebarFilter('all')}
+                className={clsx(
+                  "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+                  sidebarFilter === 'all'
+                    ? "bg-accent text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                Todas
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarFilter('unanswered')}
+                className={clsx(
+                  "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+                  sidebarFilter === 'unanswered'
+                    ? "bg-accent text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                Em branco
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarFilter('flagged')}
+                aria-label="Filtrar marcadas para revisão"
+                className={clsx(
+                  "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer inline-flex items-center gap-1",
+                  sidebarFilter === 'flagged'
+                    ? "bg-accent text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Flag size={11} /> Marcadas
+              </button>
             </div>
           )}
         </div>

@@ -224,8 +224,7 @@ export const syncManager = {
         };
 
         const syncAbortController = new AbortController();
-        const syncTimeoutTimer = setTimeout(() => syncAbortController.abort(),
-          /\/flashcards\/generate/.test(item.endpoint) ? 125000 : 15000);
+        const syncTimeoutTimer = setTimeout(() => syncAbortController.abort(), 15000);
 
         let response: Response;
         try {

@@ -171,6 +171,14 @@ export function SimuladoClient({
   const syncResolutionRef = useRef<"idle" | "pending" | "confirmed_results" | "removed_no_results" | "terminal_failed">("idle");
   const hasAutoSubmittedRef = useRef(false);
   const inFlightPracticeRef = useRef<Map<number, Promise<void>>>(new Map());
+  const activeConfigRef = useRef(customConfig);
+  const questionShownAtRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (state === "PLAYING") {
+      questionShownAtRef.current = Date.now();
+    }
+  }, [state, currentIndex]);
 
   const { isAnyOffline: isOffline } = useOfflineStatus();
   useWakeLock(state === "PLAYING");
@@ -343,23 +351,24 @@ export function SimuladoClient({
     }
   }, [storageReady, state, queue, answers, currentIndex, resultsMap, flagged, force4Options, queueId, sessionId, plannedDurationSeconds, eliminatedMap, feedbackMode]);
 
-  const handleDownloadOfflineSimulado = async () => {
+  const handleDownloadOfflineSimulado = async (overrideConfig?: typeof customConfig) => {
     if (isDownloadingPackage || isOffline) return;
+    const activeConfig = overrideConfig ?? customConfig;
     setIsDownloadingPackage(true);
     setDownloadProgress(0);
     setDownloadStatus("Iniciando download do pacote...");
 
     try {
-      const questionsPerArea = customConfig.questions_per_area || 20;
+      const questionsPerArea = activeConfig.questions_per_area || 20;
       const totalQ = questionsPerArea * 5;
       const pkg = await downloadSimuladoPackage(
         {
           name: `Simulado Offline (${totalQ} Qs)`,
-          institutions: customConfig.institutions,
-          years: customConfig.years,
+          institutions: activeConfig.institutions,
+          years: activeConfig.years,
           questions_per_area: questionsPerArea,
-          duration_minutes: customConfig.duration_minutes,
-          force_4_options: customConfig.force_4_options,
+          duration_minutes: activeConfig.duration_minutes,
+          force_4_options: activeConfig.force_4_options,
         },
         (p: { progress: number; message: string }) => {
           setDownloadProgress(p.progress);
@@ -382,9 +391,11 @@ export function SimuladoClient({
   };
 
   // Load Simulado
-  const startSimulado = async () => {
+  const startSimulado = async (overrideConfig?: typeof customConfig) => {
     if (startLockRef.current) return;
     startLockRef.current = true;
+    const activeConfig = overrideConfig ?? customConfig;
+    activeConfigRef.current = activeConfig;
     if (hasSavedState) {
       removeLearningSession("simulado");
       setHasSavedState(false);
@@ -458,7 +469,7 @@ export function SimuladoClient({
       }
 
       let qList: QuestionListItem[];
-      const isForce4Options = hasCustomFilters ? false : customConfig.force_4_options;
+      const isForce4Options = hasCustomFilters ? false : activeConfig.force_4_options;
       let durationHours = 6;
 
       if (hasCustomFilters) {
@@ -466,8 +477,8 @@ export function SimuladoClient({
         qList = await api.questions.getList({ ...initialFilters, limit });
         durationHours = (qList.length / 120) * 6;
       } else {
-        qList = await api.questions.getCustomSimulado(customConfig);
-        durationHours = customConfig.duration_minutes / 60;
+        qList = await api.questions.getCustomSimulado(activeConfig);
+        durationHours = activeConfig.duration_minutes / 60;
       }
 
       if (qList.length === 0) {
@@ -594,7 +605,7 @@ export function SimuladoClient({
 
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
-        toast("Respostas do simulado salvas no dispositivo; serão sincronizadas quando a conexão voltar.", { icon: "💾" });
+        toast("Respostas do simulado salvas no dispositivo; serão sincronizadas quando a conexão voltar.");
         syncResolutionRef.current = "pending";
         setQueueId(err.localId);
         setState("OFFLINE_SUBMITTED");
@@ -650,7 +661,7 @@ export function SimuladoClient({
       toast.success("Sincronização solicitada.");
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
-        toast("Ainda sem conexão com a internet. Suas respostas permanecem salvas com segurança.", { icon: "💾" });
+        toast("Ainda sem conexão com a internet. Suas respostas permanecem salvas com segurança.");
       } else {
         toast.error("Erro ao sincronizar. Verifique sua conexão e tente novamente.");
       }
@@ -810,7 +821,8 @@ export function SimuladoClient({
 
     // No modo Treino/Aprendizado (Feedback imediato), valida e revela a questão na hora
     if (feedbackMode === "practice" && !resultsMap[qid] && !inFlightPracticeRef.current.has(qid)) {
-      const p = api.questions.submitAttempt(qid, letter, 5000, "duvida").then(res => {
+      const elapsedMs = questionShownAtRef.current > 0 ? Math.max(500, Date.now() - questionShownAtRef.current) : 5000;
+      const p = api.questions.submitAttempt(qid, letter, elapsedMs, "duvida").then(res => {
         setResultsMap(prev => ({
           ...prev,
           [qid]: {
@@ -823,7 +835,12 @@ export function SimuladoClient({
           }
         }));
       }).catch(err => {
+        if (err instanceof OfflineQueuedError) {
+          toast("Sem conexão: resposta salva localmente e enfileirada para correção.");
+          return;
+        }
         console.error("Erro ao validar feedback imediato em modo treino:", err);
+        toast.error("Não foi possível validar o feedback imediato agora. Sua resposta foi mantida.");
       }).finally(() => {
         inFlightPracticeRef.current.delete(qid);
       });
@@ -836,6 +853,14 @@ export function SimuladoClient({
     const currentQ = queue[currentIndex];
     setFlagged(prev => ({ ...prev, [currentQ.id]: !prev[currentQ.id] }));
   }, [state, queue, currentIndex]);
+
+  const navigateTo = useCallback((index: number) => {
+    if (index >= 0 && index < queue.length) {
+      setCurrentIndex(index);
+      loadDetail(queue[index].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -854,10 +879,10 @@ export function SimuladoClient({
       // Navigate
       if (key === 'arrowleft') {
         e.preventDefault();
-        setCurrentIndex(prev => Math.max(0, prev - 1));
+        navigateTo(Math.max(0, currentIndex - 1));
       } else if (key === 'arrowright') {
         e.preventDefault();
-        setCurrentIndex(prev => Math.min(queue.length - 1, prev + 1));
+        navigateTo(Math.min(queue.length - 1, currentIndex + 1));
       }
 
       if (state === "PLAYING") {
@@ -896,7 +921,7 @@ export function SimuladoClient({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, currentIndex, queue, detailsCache, handleSelect, toggleEliminate, toggleFlag, showAreaSummary]);
+  }, [state, currentIndex, queue, detailsCache, handleSelect, toggleEliminate, toggleFlag, showAreaSummary, navigateTo]);
 
 
 
@@ -926,21 +951,14 @@ export function SimuladoClient({
       total_questions: queue.length,
       answered_count: Object.keys(answers).length,
       correct_count: correctCount,
-      filters: hasCustomFilters ? initialFilters : customConfig,
+      filters: hasCustomFilters ? initialFilters : activeConfigRef.current,
       area_results: areaSummary.map(row => ({ ...row, correct: queue.filter(question => question.area === row.area && resultsMap[question.id]?.is_correct).length })),
     }).catch(error => {
       if (error instanceof OfflineQueuedError) return;
       summarySavedRef.current.delete(sessionId);
       toast.error("Não foi possível salvar o resumo do simulado. Reabra o resultado para tentar novamente.");
     });
-  }, [state, sessionId, queue, resultsMap, answers, plannedDurationSeconds, hasCustomFilters, initialFilters, customConfig, areaSummary]);
-
-  const navigateTo = (index: number) => {
-    if (index >= 0 && index < queue.length) {
-      setCurrentIndex(index);
-      loadDetail(queue[index].id);
-    }
-  };
+  }, [state, sessionId, queue, resultsMap, answers, plannedDurationSeconds, hasCustomFilters, initialFilters, areaSummary]);
 
   const finishSimulado = () => {
     if (state !== "PLAYING") return;
@@ -991,14 +1009,14 @@ export function SimuladoClient({
 
   if (state === "OFFLINE_SUBMITTED") {
     return (
-      <div className="max-w-2xl mx-auto py-16 px-6 text-center flex flex-col items-center gap-6 bg-card border border-border rounded-2xl shadow-1 mt-8 animate-in zoom-in-95 duration-200">
-        <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-          <CloudOff size={32} />
+      <div className="max-w-2xl mx-auto py-12 px-6 text-center flex flex-col items-center gap-5 bg-surface border border-line-subtle rounded-lg mt-8">
+        <div className="w-12 h-12 rounded-md bg-accent/10 text-accent border border-accent/20 flex items-center justify-center">
+          <CloudOff size={24} />
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <h2 className="text-2xl font-bold text-foreground">Simulado Salvo Offline</h2>
           <p className="text-muted-foreground text-base">
-            Todas as suas {Object.keys(answers).length} respostas foram salvas com segurança neste dispositivo.
+            Todas as suas <span className="font-mono-lab tabular-nums font-bold text-foreground">{Object.keys(answers).length}</span> respostas foram salvas com segurança neste dispositivo.
           </p>
           <p className="text-sm text-muted-foreground leading-relaxed">
             A correção oficial, gabarito e atualização do seu algoritmo de repetição espaçada (FSRS) serão processados automaticamente assim que sua conexão com a internet for restabelecida.
@@ -1008,16 +1026,16 @@ export function SimuladoClient({
           <button
             onClick={handleManualSyncSimulado}
             disabled={isSyncingOffline}
-            className="flex-1 bg-primary text-primary-foreground font-bold px-6 py-3.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-md text-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 bg-accent text-white font-semibold px-5 py-3 rounded-md hover:bg-accent/90 disabled:opacity-50 transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
           >
             {isSyncingOffline ? (
               <>
-                <RotateCcw className="animate-spin" size={18} />
+                <RotateCcw className="animate-spin" size={16} />
                 Sincronizando...
               </>
             ) : (
               <>
-                <RotateCcw size={18} />
+                <RotateCcw size={16} />
                 Sincronizar e Ver Gabarito
               </>
             )}
@@ -1028,7 +1046,7 @@ export function SimuladoClient({
               setHasSavedState(false);
               setState("START");
             }}
-            className="flex-1 bg-muted hover:bg-muted/80 text-foreground font-semibold px-6 py-3.5 rounded-xl transition-colors text-sm cursor-pointer"
+            className="flex-1 bg-muted hover:bg-muted/80 text-foreground font-semibold px-5 py-3 rounded-md transition-colors text-sm cursor-pointer"
           >
             Concluir e Voltar ao Início
           </button>

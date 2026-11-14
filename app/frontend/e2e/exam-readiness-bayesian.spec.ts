@@ -154,9 +154,6 @@ test.describe('Prontidão de Prova Bayesiana por Edital', () => {
       if (url.pathname.endsWith('/api/stats/distractors')) {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
       }
-      if (url.pathname.endsWith('/api/stats/predictive-score')) {
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ projected_score: 68, target_score: 80, areas: [] }) });
-      }
       if (url.pathname.endsWith('/api/stats/at-risk')) {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
       }
@@ -197,7 +194,7 @@ test.describe('Prontidão de Prova Bayesiana por Edital', () => {
     page.on('pageerror', err => console.log('PAGE ERROR:', err.message, err.stack));
     page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
-    await page.goto('/analise');
+    await page.goto('/analise?tab=prontidao');
 
 
     // 1. Confirma renderização do cabeçalho da seção

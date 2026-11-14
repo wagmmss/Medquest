@@ -73,17 +73,15 @@ const SPRINTS = [
 
 export const SimuladoQuickSprints: React.FC<SimuladoQuickSprintsProps> = ({ onStartSprint }) => {
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Modos de Treino Rápido & Sprints</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Inicie um bloco de treino cronometrado sem precisar configurar filtros manuais.
-          </p>
-        </div>
+    <div className="w-full space-y-3">
+      <div>
+        <h2 className="text-base font-bold text-foreground">Sprints Rápidos (1 Clique)</h2>
+        <p className="text-xs text-muted-foreground">
+          Blocos pré-configurados nas 5 grandes bancas de SP, ou personalize todos os parâmetros abaixo.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {SPRINTS.map((sprint) => {
           const IconComponent = sprint.icon;
           const hours = Math.floor(sprint.durationMinutes / 60);
@@ -93,49 +91,32 @@ export const SimuladoQuickSprints: React.FC<SimuladoQuickSprintsProps> = ({ onSt
           return (
             <div
               key={sprint.id}
-              className={clsx(
-                "group relative bg-card border rounded-3xl p-6 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-6",
-                sprint.borderClass
-              )}
+              className="group bg-surface border border-line-subtle hover:border-accent/50 rounded-lg p-4 transition-colors flex flex-col justify-between gap-3"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center bg-muted/50", sprint.textClass)}>
-                      <IconComponent size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                        {sprint.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-semibold">
-                        {sprint.questionsTotal} questões · {timeLabel}
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className={clsx("w-8 h-8 rounded-md flex items-center justify-center bg-canvas border border-line-subtle", sprint.textClass)}>
+                    <IconComponent size={16} />
                   </div>
-
-                  <span className={clsx("text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border", sprint.badgeClass)}>
-                    {sprint.badge}
+                  <span className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
+                    {sprint.questionsTotal} Qs · {timeLabel}
                   </span>
                 </div>
-
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <h3 className="text-sm font-bold text-foreground group-hover:text-accent transition-colors">
+                  {sprint.name}
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                   {sprint.desc}
                 </p>
-
-                <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Estrutura Curricular:</span>
-                  <span className="font-bold text-foreground">{sprint.questionsPerArea} Qs por Especialidade</span>
-                </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => onStartSprint(sprint.questionsPerArea, sprint.durationMinutes, sprint.name)}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs hover:shadow-sm cursor-pointer"
+                className="w-full bg-canvas hover:bg-accent hover:text-white text-foreground border border-line-subtle font-semibold text-xs py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>Iniciar {sprint.name}</span>
-                <ArrowRight size={16} />
+                <span>Iniciar</span>
+                <ArrowRight size={13} />
               </button>
             </div>
           );

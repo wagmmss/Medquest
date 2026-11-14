@@ -110,7 +110,7 @@ export default function TopNav() {
             className={clsx(
               "flex items-center gap-1 px-2 py-1 rounded-xs text-xs font-mono-lab font-semibold transition-colors cursor-pointer shrink-0 border",
               isOffline || forcedOffline
-                ? "bg-warning/20 border-warning/40 text-warning animate-pulse"
+                ? "bg-warning/20 border-warning/40 text-warning"
                 : "border-line-subtle text-ink-secondary hover:bg-elevated hover:text-ink-primary"
             )}
             title={forcedOffline ? "Modo Plantão Forçado Ativo" : isOffline ? "Você está no Modo Plantão (Offline)" : "Abrir Modo Plantão (Offline)"}

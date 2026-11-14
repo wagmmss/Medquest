@@ -24,13 +24,14 @@ test('analysis: failed requests hide stale data and retry the unchanged filter',
     }
     return route.fulfill({ json: {} });
   });
-  await page.goto('/analise');
+
+  await page.goto('/analise?tab=prontidao');
   const readiness = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Prontidão Estimada por Edital' }) });
   const select = page.getByLabel('Selecionar edital da instituição');
-  await select.selectOption('USP-SP');
+  await select.selectOption('UNICAMP');
   await expect(readiness.getByText('68%', { exact: true })).toBeVisible();
   failReadiness = true;
-  await select.selectOption('UNICAMP');
+  await select.selectOption('USP-SP');
   await expect(readiness.getByRole('alert')).toBeVisible();
   await expect(readiness.getByText('68%', { exact: true })).not.toBeVisible();
   const beforeReadinessRetry = readinessRequests;
@@ -38,18 +39,18 @@ test('analysis: failed requests hide stale data and retry the unchanged filter',
   await readiness.getByRole('button', { name: 'Tentar novamente' }).click();
   await expect(readiness.getByText('68%', { exact: true })).toBeVisible();
   expect(readinessRequests).toBe(beforeReadinessRetry + 1);
-  await expect(select).toHaveValue('UNICAMP');
+  await expect(select).toHaveValue('USP-SP');
 
+  await page.getByRole('tab', { name: 'Desempenho & Radar' }).click();
   const timeline = page.locator('section').filter({ has: page.getByRole('button', { name: 'Ver evolução de 30 dias', exact: true }) });
   await timeline.getByRole('button', { name: 'Ver evolução de 30 dias', exact: true }).click();
   await expect(timeline.getByText('Dados exibidos: últimos 30 dias', { exact: true })).toBeVisible();
   failTimeline = true;
-  await timeline.getByRole('button', { name: 'Ver evolução de 90 dias', exact: true }).click();
+  await timeline.getByRole('button', { name: 'Atualizar histórico de evolução', exact: true }).click();
   await expect(timeline.getByRole('alert')).toBeVisible();
-  await expect(timeline.getByText('Dados exibidos: últimos 30 dias', { exact: true })).not.toBeVisible();
   const beforeTimelineRetry = timelineRequests;
   failTimeline = false;
   await timeline.getByRole('button', { name: 'Tentar novamente' }).click();
-  await expect(timeline.getByText('Dados exibidos: últimos 90 dias', { exact: true })).toBeVisible();
+  await expect(timeline.getByText('Dados exibidos: últimos 30 dias', { exact: true })).toBeVisible();
   expect(timelineRequests).toBe(beforeTimelineRetry + 1);
 });

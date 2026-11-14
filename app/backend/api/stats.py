@@ -131,17 +131,13 @@ def _fetch_attempt_rollup(db, user_id: str, now_utc: datetime):
             COUNT(DISTINCT CASE WHEN is_correct = 0 THEN question_id END) AS ever_wrong_count,
             COUNT(DISTINCT CASE WHEN rn = 1 AND is_correct = 0 THEN question_id END) AS currently_unresolved_count,
             (SELECT COUNT(*) FROM spaced_repetition
-             WHERE next_review_date <= ? AND user_id = ?) AS srs_due_count,
-            (SELECT COUNT(*) FROM flashcards
-             WHERE next_review_date <= ? AND user_id = ?
-               AND (report_status IS NULL OR TRIM(report_status) = '')) AS flashcards_due_count
+             WHERE next_review_date <= ? AND user_id = ?) AS srs_due_count
         FROM user_attempts
     """, (
         user_id,
         last7_start, last7_start,
         prev7_start, last7_start,
         prev7_start, last7_start,
-        now_value, user_id,
         now_value, user_id,
     )).fetchone()
 
@@ -159,7 +155,6 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> d
     coverage_pct = (distinct_answered / total_q) if total_q else None
 
     srs_due_count = overview["srs_due_count"]
-    flashcards_due_count = overview["flashcards_due_count"]
     accuracy_last7 = (overview["last7_correct"] / overview["last7_total"]) if overview["last7_total"] else None
     accuracy_prev7 = (overview["prev7_correct"] / overview["prev7_total"]) if overview["prev7_total"] else None
 
@@ -171,7 +166,6 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> d
         "accuracy_latest_attempt": accuracy_latest,
         "coverage_pct": coverage_pct,
         "srs_due_count": srs_due_count,
-        "flashcards_due_count": flashcards_due_count,
         "accuracy_last7": accuracy_last7,
         "accuracy_prev7": accuracy_prev7,
     }
@@ -338,6 +332,27 @@ def breakdown():
     return jsonify(_breakdown(db, col, label_col))
 
 
+def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
+    if days is not None:
+        rows = db.execute("""
+            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
+            FROM attempts
+            WHERE user_id = ? AND answered_at >= date('now', ?)
+            GROUP BY day ORDER BY day
+        """, (user_id, f'-{days} days')).fetchall()
+    else:
+        rows = db.execute("""
+            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
+            FROM attempts WHERE user_id = ? GROUP BY day ORDER BY day
+        """, (user_id,)).fetchall()
+
+    return [
+        {"day": r["day"], "attempts": r["attempts"], "correct": r["correct"],
+         "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0}
+        for r in rows
+    ]
+
+
 @bp.route("/stats/timeline")
 def timeline():
     db = get_db()
@@ -346,25 +361,24 @@ def timeline():
         days = int(days_param) if days_param else None
     except ValueError:
         days = None
+    return jsonify(_get_timeline_data(db, g.user_id, days=days))
 
-    if days is not None:
-        rows = db.execute("""
-            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
-            FROM attempts
-            WHERE user_id = ? AND answered_at >= date('now', ?)
-            GROUP BY day ORDER BY day
-        """, (g.user_id, f'-{days} days')).fetchall()
-    else:
-        rows = db.execute("""
-            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
-            FROM attempts WHERE user_id = ? GROUP BY day ORDER BY day
-        """, (g.user_id,)).fetchall()
 
-    return jsonify([
-        {"day": r["day"], "attempts": r["attempts"], "correct": r["correct"],
+def _get_weak_topics_data(db, user_id: str, min_attempts: int = 5) -> list[dict]:
+    min_attempts = max(5, min(min_attempts, 1000))
+    rows = db.execute("""
+        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
+               COUNT(a.id) AS attempts, SUM(a.is_correct) AS correct
+        FROM attempts a JOIN questions q ON q.id = a.question_id
+        WHERE a.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+        GROUP BY topic HAVING attempts >= ?
+        ORDER BY (CAST(correct AS FLOAT) / attempts) ASC LIMIT 15
+    """, (user_id, min_attempts)).fetchall()
+    return [
+        {"topic": r["topic"], "attempts": r["attempts"], "correct": r["correct"],
          "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0}
         for r in rows
-    ])
+    ]
 
 
 @bp.route("/stats/weak-topics")
@@ -374,20 +388,7 @@ def weak_topics():
         min_attempts = int(request.args.get("min_attempts", 5))
     except (TypeError, ValueError):
         min_attempts = 3
-    min_attempts = max(5, min(min_attempts, 1000))
-    rows = db.execute("""
-        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
-               COUNT(a.id) AS attempts, SUM(a.is_correct) AS correct
-        FROM attempts a JOIN questions q ON q.id = a.question_id
-        WHERE a.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-        GROUP BY topic HAVING attempts >= ?
-        ORDER BY (CAST(correct AS FLOAT) / attempts) ASC LIMIT 15
-    """, (g.user_id, min_attempts)).fetchall()
-    return jsonify([
-        {"topic": r["topic"], "attempts": r["attempts"], "correct": r["correct"],
-         "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0}
-        for r in rows
-    ])
+    return jsonify(_get_weak_topics_data(db, g.user_id, min_attempts=min_attempts))
 
 
 def _get_srs_due_recommendation(db, user_id):
@@ -884,11 +885,8 @@ def _fetch_area_records(db, user_id: str, institution_code: str | None = None) -
     return records
 
 
-@bp.route("/stats/exam-readiness")
-def exam_readiness():
-    """Prontidão estimada por instituição/edital com modelo bayesiano Beta-Binomial."""
-    db = get_db()
-    raw_institution = request.args.get("institution", "").strip()[:64]
+def _get_exam_readiness_data(db, user_id: str, raw_institution: str = "", emit_event: bool = True) -> dict:
+    raw_institution = (raw_institution or "").strip()[:64]
     canonical = get_canonical_institution(raw_institution)
     if canonical:
         institution = canonical
@@ -897,19 +895,18 @@ def exam_readiness():
     else:
         institution = "USP-SP"
 
-    area_records = _fetch_area_records(db, g.user_id, institution)
+    area_records = _fetch_area_records(db, user_id, institution)
     profile = get_edital_profile(institution)
     bayesian_calc = calculate_bayesian_readiness(area_records, profile, institution_code=institution)
 
-    # Coleta tentativas do usuário nas questões dessa banca para calcular a camada de discriminação de itens e faixas de dificuldade
     aliases = resolve_institution_codes(institution) if institution else []
     if aliases:
         placeholders = ",".join("?" * len(aliases))
         clause = f"AND q.institution_code IN ({placeholders})"
-        params = [g.user_id] + list(aliases)
+        params = [user_id] + list(aliases)
     else:
         clause = ""
-        params = [g.user_id]
+        params = [user_id]
 
     attempts_rows = db.execute(f"""
         SELECT a.question_id, a.is_correct
@@ -925,13 +922,14 @@ def exam_readiness():
     total_available = sum(item["available"] for item in areas)
     total_answered = sum(item["answered"] for item in areas)
 
-    emit(
-        "exam_readiness_viewed",
-        profile_status=profile.status,
-        evidence_status=bayesian_calc["evidence_status"],
-    )
+    if emit_event:
+        emit(
+            "exam_readiness_viewed",
+            profile_status=profile.status,
+            evidence_status=bayesian_calc["evidence_status"],
+        )
 
-    return jsonify({
+    return {
         "institution": institution,
         "institution_label": profile.institution_label,
         "coverage": round(total_answered / total_available, 4) if total_available else 0,
@@ -949,7 +947,15 @@ def exam_readiness():
         "key_factors": bayesian_calc["key_factors"],
         "limitations": bayesian_calc["limitations"],
         "disclaimer": "Prontidão estimada calculada via modelo Empirical Bayes ponderado por edital e calibrado na concorrência da banca.",
-    })
+    }
+
+
+@bp.route("/stats/exam-readiness")
+def exam_readiness():
+    """Prontidão estimada por instituição/edital com modelo bayesiano Beta-Binomial."""
+    db = get_db()
+    raw_institution = request.args.get("institution", "")
+    return jsonify(_get_exam_readiness_data(db, g.user_id, raw_institution=raw_institution))
 
 
 
@@ -1010,27 +1016,20 @@ def predictive_score():
         "minimum_attempts_per_area": 20,
     })
 
-@bp.route("/stats/at-risk")
-def at_risk():
-    db = get_db()
-
-    # Buscar cards de FSRS (questões) do usuário que têm fsrs_card e próxima revisão em breve
-    # Como não temos uma tabela explícita unificada, pegamos das questões
-    # Avalia todos os cartões do usuário antes de selecionar os dez tópicos
-    # de maior risco; limitar antes da análise poderia esconder esquecimentos
-    # mais graves apenas porque a próxima revisão era posterior.
+def _get_at_risk_data(db, user_id: str) -> list[dict]:
     rows = db.execute("""
         SELECT q.subtema, sr.fsrs_card, sr.next_review_date
         FROM spaced_repetition sr
         JOIN questions q ON sr.question_id = q.id
         WHERE sr.user_id = ? AND sr.fsrs_card IS NOT NULL
         ORDER BY sr.next_review_date ASC
-    """, (g.user_id,)).fetchall()
+    """, (user_id,)).fetchall()
 
     topics_risk = {}
     for r in rows:
         subtema = r["subtema"]
-        if not subtema: continue
+        if not subtema:
+            continue
         metrics = fsrs_metrics(r["fsrs_card"])
         retrievability = metrics["retrievability"]
         if retrievability is None:
@@ -1055,7 +1054,13 @@ def at_risk():
             })
 
     at_risk_list.sort(key=lambda x: (x["retrievability"], x["subtema"]))
-    return jsonify(at_risk_list[:10])
+    return at_risk_list[:10]
+
+
+@bp.route("/stats/at-risk")
+def at_risk():
+    db = get_db()
+    return jsonify(_get_at_risk_data(db, g.user_id))
 
 
 @bp.route("/stats/reset", methods=["DELETE"])
@@ -1065,7 +1070,6 @@ def reset_stats():
         with db_transaction(db, immediate=True):
             db.execute("DELETE FROM attempts WHERE user_id = ?", (g.user_id,))
             db.execute("DELETE FROM spaced_repetition WHERE user_id = ?", (g.user_id,))
-            db.execute("DELETE FROM flashcards WHERE user_id = ?", (g.user_id,))
             db.execute("DELETE FROM planner_progress WHERE user_id = ?", (g.user_id,))
             db.execute("DELETE FROM planner_topic_progress WHERE user_id = ?", (g.user_id,))
             db.execute("DELETE FROM theme_progress WHERE user_id = ?", (g.user_id,))
@@ -1235,48 +1239,47 @@ def _get_user_coverage_stats(db, user_id):
     return u_map
 
 
+def _get_coverage_data(db, user_id: str, area_filter: str = "", summary_only: bool = False) -> dict:
+    planner_meta, kat_subs = _get_planner_metadata()
+    q_map = _get_cached_q_totals_map(db)
+    u_map = _get_user_coverage_stats(db, user_id)
+    areas_dict = _build_coverage_structure(planner_meta, kat_subs, q_map, u_map, summary_only)
+    out, summary_out = _format_coverage_response(areas_dict, area_filter, summary_only)
+    if summary_only:
+        return {"areas": summary_out, "summary": True}
+    return {"areas": out}
+
+
 @bp.route("/coverage")
 def coverage():
     db = get_db()
     area_filter = request.args.get("area", "").strip()
     summary_only = request.args.get("summary_only", "false").lower() == "true"
-    planner_meta, kat_subs = _get_planner_metadata()
-
-    # 1. Total de questões por área e subtema (em memória/cache)
-    q_map = _get_cached_q_totals_map(db)
-
-    # 2. Resoluções do usuário
-    u_map = _get_user_coverage_stats(db, g.user_id)
-
-    # 3. Monta estrutura baseada no catálogo canônico
-    areas_dict = _build_coverage_structure(planner_meta, kat_subs, q_map, u_map, summary_only)
-
-    out, summary_out = _format_coverage_response(areas_dict, area_filter, summary_only)
-
-    if summary_only:
-        return jsonify({"areas": summary_out, "summary": True})
-
-    return jsonify({"areas": out})
+    return jsonify(_get_coverage_data(db, g.user_id, area_filter=area_filter, summary_only=summary_only))
 
 
-@bp.route("/stats/distractors")
-def distractors():
-    """NOVO: análise de distratores — qual alternativa errada você mais escolhe por subtema."""
-    db = get_db()
+def _get_distractors_data(db, user_id: str) -> list[dict]:
     rows = db.execute("""
         SELECT q.subtema AS subtema, a.selected_letter AS letter, COUNT(*) AS n
         FROM attempts a JOIN questions q ON q.id = a.question_id
         WHERE a.user_id = ? AND a.is_correct = 0 AND q.subtema IS NOT NULL AND q.subtema != ''
         GROUP BY q.subtema, a.selected_letter
         ORDER BY q.subtema, n DESC
-    """, (g.user_id,)).fetchall()
+    """, (user_id,)).fetchall()
     by_sub = {}
     for r in rows:
         by_sub.setdefault(r["subtema"], []).append({"letter": r["letter"], "count": r["n"]})
     out = [{"subtema": s, "wrong_choices": v, "total_wrong": sum(x["count"] for x in v)}
            for s, v in by_sub.items()]
     out.sort(key=lambda x: x["total_wrong"], reverse=True)
-    return jsonify(out[:20])
+    return out[:20]
+
+
+@bp.route("/stats/distractors")
+def distractors():
+    """NOVO: análise de distratores — qual alternativa errada você mais escolhe por subtema."""
+    db = get_db()
+    return jsonify(_get_distractors_data(db, g.user_id))
 
 
 def _get_benchmark_data(
@@ -1892,12 +1895,9 @@ def _build_institution_stats(db, user_id: str, institution_code: str | None = No
     }
 
 
-@bp.route("/stats/institution-radar")
-def institution_radar():
-    """Radar Comparativo de Bancas por Grande Área e Incerteza Estatística."""
-    db = get_db()
-    raw_inst = request.args.get("institution", "").strip()[:64]
-    raw_compare = request.args.get("compare_institution", "").strip()[:64]
+def _get_institution_radar_data(db, user_id: str, raw_inst: str = "", raw_compare: str = "", emit_event: bool = True) -> dict:
+    raw_inst = (raw_inst or "").strip()[:64]
+    raw_compare = (raw_compare or "").strip()[:64]
 
     if raw_inst in ("Todas as Bancas", "TODAS") or "," in raw_inst:
         raw_inst = raw_inst.split(",")[0].strip() if "," in raw_inst else ""
@@ -1924,11 +1924,11 @@ def institution_radar():
             GROUP BY q.institution_code
             ORDER BY n DESC
             LIMIT 1
-        """, [g.user_id] + allowed_aliases).fetchone()
+        """, [user_id] + allowed_aliases).fetchone()
         if top_inst_row:
             institution = get_canonical_institution(top_inst_row["institution_code"]) or top_inst_row["institution_code"]
         else:
-            cfg_row = db.execute("SELECT target_institution FROM planner_config WHERE user_id = ?", (g.user_id,)).fetchone()
+            cfg_row = db.execute("SELECT target_institution FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
             if cfg_row and cfg_row["target_institution"]:
                 planner_inst = cfg_row["target_institution"].strip().split(",")[0].strip()
                 canonical_planner = get_canonical_institution(planner_inst)
@@ -1939,7 +1939,7 @@ def institution_radar():
             else:
                 institution = "USP-SP"
 
-    primary_data = _build_institution_stats(db, g.user_id, institution, include_priority=True)
+    primary_data = _build_institution_stats(db, user_id, institution, include_priority=True)
 
     # Comparison data (não precisa de priority_topics, economizando queries de banco)
     if raw_compare.upper() in ("CANDIDATES", "CONCORRENCIA", "BENCHMARK"):
@@ -1991,13 +1991,13 @@ def institution_radar():
             "areas": cand_areas,
         }
     elif compare_institution and compare_institution.upper() != institution.upper():
-        comp_stats = _build_institution_stats(db, g.user_id, compare_institution, include_priority=False)
+        comp_stats = _build_institution_stats(db, user_id, compare_institution, include_priority=False)
         comparison_data = {
             "type": "institution",
             **comp_stats,
         }
     else:
-        comp_stats = _build_institution_stats(db, g.user_id, None, include_priority=False)
+        comp_stats = _build_institution_stats(db, user_id, None, include_priority=False)
         comparison_data = {
             "type": "global",
             **comp_stats,
@@ -2007,14 +2007,14 @@ def institution_radar():
         raw_compare.upper() in ("CANDIDATES", "CONCORRENCIA", "BENCHMARK")
         or (compare_institution and compare_institution.upper() != institution.upper())
     )
-    emit(
-        "institution_radar_viewed",
-        has_comparator=has_comparator,
-        sample_status=primary_data["sample_status"],
-    )
+    if emit_event:
+        emit(
+            "institution_radar_viewed",
+            has_comparator=has_comparator,
+            sample_status=primary_data["sample_status"],
+        )
 
-
-    return jsonify({
+    return {
         "institution": primary_data,
         "comparison": comparison_data,
         "disclaimer": "As métricas refletem exclusivamente o histórico resolvido no MedQuest. Menos de 20 tentativas por área indicam amostra limitada e incerteza elevada.",
@@ -2023,7 +2023,63 @@ def institution_radar():
             "forming": "20 a 49 tentativas",
             "reliable": "≥ 50 tentativas"
         }
-    })
+    }
+
+
+@bp.route("/stats/institution-radar")
+def institution_radar():
+    """Radar Comparativo de Bancas por Grande Área e Incerteza Estatística."""
+    db = get_db()
+    raw_inst = request.args.get("institution", "")
+    raw_compare = request.args.get("compare_institution", "")
+    return jsonify(_get_institution_radar_data(db, g.user_id, raw_inst=raw_inst, raw_compare=raw_compare))
+
+
+@bp.route("/stats/analysis-summary")
+def analysis_summary():
+    """Consolida todas as métricas de Análise, Radar, Pontos Cegos, Cobertura e Prontidão em um único round-trip."""
+    db = get_db()
+    user_id = g.user_id
+    raw_inst = request.args.get("institution", "").strip()[:64]
+    raw_compare = request.args.get("compare_institution", "").strip()[:64]
+    try:
+        tz_offset = int(request.args.get("tz_offset", -180))
+    except (ValueError, TypeError):
+        tz_offset = -180
+
+    cache_key = (user_id, "analysis_summary", raw_inst, raw_compare, tz_offset)
+    cached = overview_cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+
+    now_utc = datetime.now(timezone.utc)
+    rollup = _fetch_attempt_rollup(db, user_id, now_utc)
+    overview = {
+        **_get_overview_metrics(db, user_id, now_utc, rollup=rollup),
+        **_get_streak_and_target_info(db, user_id, now_utc, tz_offset),
+    }
+
+    radar_data = _get_institution_radar_data(
+        db, user_id, raw_inst=raw_inst, raw_compare=raw_compare, emit_event=False
+    )
+    resolved_inst = raw_inst or radar_data["institution"]["code"]
+
+    payload = {
+        "overview": overview,
+        "learning_profile": build_learning_profile(db, user_id),
+        "exam_readiness": _get_exam_readiness_data(
+            db, user_id, raw_institution=resolved_inst, emit_event=False
+        ),
+        "institution_radar": radar_data,
+        "blindspots": calculate_blindspots(db, user_id, limit=6),
+        "weak_topics": _get_weak_topics_data(db, user_id, min_attempts=5),
+        "distractors": _get_distractors_data(db, user_id),
+        "at_risk": _get_at_risk_data(db, user_id),
+        "timeline_180": _get_timeline_data(db, user_id, days=180),
+        "coverage": _get_coverage_data(db, user_id, area_filter="", summary_only=False),
+    }
+    overview_cache.set(cache_key, payload)
+    return jsonify(payload)
 
 
 ALLOWED_RADAR_ACTIONS = {"study", "simulado", "review"}

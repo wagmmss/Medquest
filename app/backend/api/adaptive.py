@@ -420,7 +420,7 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
     daily_goal = int(config["questions_per_day"] if config and config["questions_per_day"] else 30)
     hours_per_day = int(config["hours_per_day"] if config and config["hours_per_day"] else 4)
     
-    # Orçamento de tempo: 1 questão = 3 min (resolução + leitura + flashcard) -> 20 q/h
+    # Orçamento de tempo: 1 questão = 3 min (resolução + leitura comentada) -> 20 q/h
     max_capacity = hours_per_day * 20
     reviews_to_do_today = min(due_total, max_capacity)
     backlog_pending = max(0, due_total - max_capacity)

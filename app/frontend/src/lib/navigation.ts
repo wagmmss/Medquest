@@ -12,8 +12,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/estudar", label: "Estudar", icon: "menu_book" },
   { href: "/osce", label: "OSCE (2ª Fase)", bottomLabel: "OSCE", icon: "stethoscope" },
   { href: "/simulado", label: "Simulados", icon: "description" },
-  { href: "/cobertura", label: "Cobertura", icon: "my_location" },
-  { href: "/analise", label: "Análise", icon: "analytics" },
+  { href: "/analise", label: "Análise & Cobertura", bottomLabel: "Análise", icon: "analytics" },
   { href: "/planner", label: "Planner", icon: "calendar_month" },
 ];
 

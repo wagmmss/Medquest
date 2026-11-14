@@ -66,9 +66,9 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
   const styling = INSTITUTION_STYLING[selectedInst] || INSTITUTION_STYLING["USP-SP"];
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-5">
       {/* Institution Tabs Selector */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-muted/40 border border-border rounded-2xl">
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-canvas border border-line-subtle rounded-lg">
         {exams.map((exam) => {
           const isSelected = exam.institution_code === selectedInst;
           const style = INSTITUTION_STYLING[exam.institution_code] || INSTITUTION_STYLING["USP-SP"];
@@ -80,16 +80,16 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
               type="button"
               onClick={() => setSelectedInst(exam.institution_code)}
               className={clsx(
-                "flex-1 min-w-[130px] sm:min-w-[150px] py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer",
+                "flex-1 min-w-[130px] sm:min-w-[150px] py-2 px-3 rounded-md font-semibold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer",
                 isSelected
-                  ? "bg-background text-foreground shadow-xs border border-border/80"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-surface text-foreground border border-line-subtle"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface/60"
               )}
             >
-              <Building2 size={16} className={isSelected ? style.text : "text-muted-foreground"} />
+              <Building2 size={15} className={isSelected ? style.text : "text-muted-foreground"} />
               <span>{exam.name}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-mono font-medium">
-                {editionsCount}
+              <span className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
+                ({editionsCount})
               </span>
             </button>
           );
@@ -98,26 +98,21 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
 
       {/* Selected Institution Banner */}
       {currentExam && (
-        <div
-          className={clsx(
-            "p-5 md:p-6 rounded-2xl border bg-linear-to-r flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300",
-            styling.border,
-            styling.bg
-          )}
-        >
+        <div className="p-5 rounded-lg border border-line-subtle bg-surface flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={clsx("text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border", styling.badge)}>
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className={clsx("uppercase tracking-wider", styling.text)}>
                 Prova Canônica
               </span>
-              <span className="text-xs text-muted-foreground font-semibold">{currentExam.editions.length} edições catalogadas</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground font-mono-lab tabular-nums">{currentExam.editions.length} edições catalogadas</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground">{currentExam.full_name}</h2>
+            <h2 className="text-xl font-bold text-foreground">{currentExam.full_name}</h2>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">{styling.desc}</p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-xl border border-border">
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 bg-canvas px-3 py-1.5 rounded-md border border-line-subtle font-mono-lab tabular-nums">
               <Clock size={14} className={styling.text} />
               Tempo Padrão: {Math.floor((currentExam.editions[0]?.duration_minutes || 240) / 60)}h
             </span>
@@ -129,7 +124,7 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-44 rounded-2xl bg-muted/30 border border-border animate-pulse" />
+            <div key={i} className="h-44 rounded-lg bg-surface border border-line-subtle animate-pulse" />
           ))}
         </div>
       ) : currentExam && currentExam.editions.length > 0 ? (
@@ -142,14 +137,14 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
             return (
               <div
                 key={edition.year}
-                className="group relative bg-card border border-border hover:border-primary/50 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-5"
+                className="group bg-surface border border-line-subtle hover:border-accent/50 rounded-lg p-5 transition-colors flex flex-col justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-2xl font-black text-foreground tracking-tight group-hover:text-primary transition-colors">
+                    <span className="text-2xl font-bold text-foreground tracking-tight group-hover:text-accent transition-colors font-mono-lab tabular-nums">
                       {edition.year}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-accent/10 text-accent border border-accent/20">
                       <Sparkles size={11} /> Prova Oficial
                     </span>
                   </div>
@@ -157,26 +152,26 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
                   <div className="space-y-1.5 text-xs text-muted-foreground">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <BookOpen size={13} className="text-primary" /> Questões no Caderno:
+                        <BookOpen size={13} className="text-accent" /> Questões no Caderno:
                       </span>
-                      <span className="font-bold text-foreground">{edition.recommended_questions} questões</span>
+                      <span className="font-bold text-foreground font-mono-lab tabular-nums">{edition.recommended_questions} Qs</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <Clock size={13} className="text-primary" /> Duração Sugerida:
+                        <Clock size={13} className="text-accent" /> Duração Sugerida:
                       </span>
-                      <span className="font-bold text-foreground">{formattedTime}</span>
+                      <span className="font-bold text-foreground font-mono-lab tabular-nums">{formattedTime}</span>
                     </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                    <div className="flex items-center justify-between pt-1 border-t border-line-subtle">
                       <span className="flex items-center gap-1.5">
                         <Layers size={13} /> Acervo Completo:
                       </span>
-                      <span className="font-semibold text-muted-foreground">{edition.total_available} Qs</span>
+                      <span className="font-semibold text-muted-foreground font-mono-lab tabular-nums">{edition.total_available} Qs</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                <div className="flex items-center gap-2 pt-2 border-t border-line-subtle">
                   <button
                     type="button"
                     onClick={() =>
@@ -187,9 +182,9 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
                         edition.recommended_questions
                       )
                     }
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs sm:text-sm py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm cursor-pointer"
+                    className="flex-1 bg-accent hover:bg-accent/90 text-white font-semibold text-xs sm:text-sm py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Play size={15} fill="currentColor" /> Iniciar Prova Real
+                    <Play size={14} fill="currentColor" /> Iniciar Prova Real
                   </button>
 
                   {!isOffline && onDownloadExam && (
@@ -205,7 +200,7 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
                         )
                       }
                       disabled={isDownloading}
-                      className="p-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+                      className="p-2 rounded-md border border-line-subtle bg-canvas hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <Download size={16} />
                     </button>
@@ -216,8 +211,8 @@ export const SimuladoOfficialExams: React.FC<SimuladoOfficialExamsProps> = ({
           })}
         </div>
       ) : (
-        <div className="bg-muted/20 border border-border rounded-2xl p-10 text-center text-muted-foreground">
-          <BookOpen className="mx-auto w-10 h-10 mb-2 opacity-50" />
+        <div className="bg-surface border border-line-subtle rounded-lg p-10 text-center text-muted-foreground">
+          <BookOpen className="mx-auto w-9 h-9 mb-2 opacity-50" />
           <p className="font-medium text-sm">Nenhuma edição disponível no banco para esta banca no momento.</p>
         </div>
       )}

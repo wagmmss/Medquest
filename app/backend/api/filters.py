@@ -37,8 +37,16 @@ def question_filter_clauses(args):
         clauses.append(f"q.source_file IN ({','.join('?' * len(sources))})")
         params.extend(sources)
 
-    areas = args.getlist("area")
-    if areas:
+    raw_areas = args.getlist("area")
+    if raw_areas:
+        areas = []
+        for a in raw_areas:
+            areas.append(a)
+            if a == "Medicina Preventiva":
+                areas.append("Medicina Preventiva e Social")
+            elif a == "Medicina Preventiva e Social":
+                areas.append("Medicina Preventiva")
+        areas = list(dict.fromkeys(areas))
         clauses.append(f"q.area IN ({','.join('?' * len(areas))})")
         params.extend(areas)
 

@@ -7,7 +7,7 @@ import {
   Stethoscope, Clock, FileText,
   Volume2, VolumeX,
   ChevronLeft, Award, Sparkles, AlertTriangle, ShieldCheck,
-  Radio, Headphones, Zap, Eye, CheckCircle2, Printer
+  Radio, Headphones, Zap, Eye, CheckCircle2, Printer, Lightbulb
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback } from "@/types/api";
@@ -292,8 +292,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       180: () => playExamBell("warning"),
       60: () => {
         playExamBell("warning");
-        toast("⚠️ Atenção: Falta 1 minuto para o término da estação! Conclua suas condutas e prescrição.", {
-          icon: "⏱️",
+        toast("Atenção: Falta 1 minuto para o término da estação! Conclua suas condutas e prescrição.", {
           duration: 6000
         });
         if (voiceEnabled) {
@@ -605,8 +604,8 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           </div>
 
           {/* Cartaz Colado na Porta */}
-          <div className="w-full text-left rounded-2xl border-2 border-border bg-card p-6 md:p-8 shadow-sm space-y-4">
-            <div className="text-xs font-bold uppercase text-muted-foreground tracking-wider pb-2 border-b border-border">
+          <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-6 md:p-8 space-y-4">
+            <div className="text-xs font-bold uppercase text-muted-foreground tracking-wider pb-2 border-b border-line-subtle">
               Instruções Fixadas na Porta da Sala
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line text-sm text-foreground/90">
@@ -615,7 +614,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           </div>
 
           {/* Seletor de Modo de Avaliação: Treino Guiado vs Prova Cega */}
-          <div className="w-full text-left rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm space-y-3">
+          <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-4 md:p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Escolha o Modo de Simulação
@@ -630,20 +629,20 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
               <button
                 type="button"
                 onClick={() => setSelectedMode("guided")}
-                className={`p-4 rounded-xl border-2 text-left transition-all relative flex flex-col justify-between ${
+                className={`p-4 rounded-lg border text-left transition-colors relative flex flex-col justify-between ${
                   selectedMode === "guided"
-                    ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
-                    : "border-border bg-background hover:bg-muted/50"
+                    ? "border-accent bg-accent/10"
+                    : "border-line-subtle bg-canvas hover:bg-muted/50"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">👻</span>
+                    <Sparkles className="w-5 h-5 text-accent" />
                     <div>
                       <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
                         Treinamento Guiado
                       </div>
-                      <div className="text-[10px] font-bold text-primary uppercase">
+                      <div className="text-[10px] font-bold text-accent uppercase">
                         Preceptor Fantasma Ativo
                       </div>
                     </div>
@@ -774,40 +773,36 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           <GhostPreceptorHUD feedback={liveFeedback} mode={sessionMode} />
 
           {/* Banner de Sala Real Hands-Free (Viva-Voz Beira-Leito) */}
-          <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-background to-secondary/10 p-3.5 md:p-4 shadow-sm space-y-2.5">
+          <div className="rounded-lg border border-line-subtle bg-surface p-3.5 md:p-4 space-y-2.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
                   onClick={toggleHandsFreeMode}
-                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors ${
                     handsFreeMode
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"
+                      ? "bg-accent text-white"
+                      : "bg-canvas text-muted-foreground hover:bg-muted border border-line-subtle"
                   }`}
                 >
                   <Radio className="w-3.5 h-3.5" />
-                  <span>{handsFreeMode ? "🎙️ Modo Hands-Free ATIVADO" : "Modo Hands-Free Desligado"}</span>
+                  <span>{handsFreeMode ? "Modo Hands-Free ATIVADO" : "Modo Hands-Free Desligado"}</span>
                 </button>
 
                 {/* Status Dinâmico de Fala / Escuta */}
                 <div className="flex items-center gap-2 text-xs">
                   {activeSpeaker ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold">
                       <Volume2 className="w-3.5 h-3.5" />
                       <span>{activeSpeaker === "examinador" ? "Examinador da Banca Falando..." : `${station.patient_persona.name || "Paciente"} Falando...`}</span>
                       <span className="text-[10px] opacity-75 font-normal ml-1">(Esc para interromper)</span>
                     </span>
                   ) : isListening ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold">
-                      <span className="flex gap-0.5 items-end h-3">
-                        <span className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                        <span className="w-1 h-3 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                        <span className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce"></span>
-                      </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                      <Radio className="w-3.5 h-3.5" />
                       <span>Ouvindo sua voz em tempo real...</span>
                     </span>
                   ) : isLoading ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/20 text-primary font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent/15 text-accent font-bold">
                       <Zap className="w-3.5 h-3.5" />
                       <span>Processando comando clínico...</span>
                     </span>
@@ -821,24 +816,24 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
               {/* Dica de Teclado */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                <Headphones className="w-3.5 h-3.5 text-primary hidden sm:inline" />
+                <Headphones className="w-3.5 h-3.5 text-accent hidden sm:inline" />
                 <span className="text-[11px] hidden sm:inline">Use fones •</span>
-                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Espaço</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-line-subtle text-[10px] font-mono">Espaço</kbd>
                 <span className="text-[11px]">ligar mic •</span>
-                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Alt+1..4</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-line-subtle text-[10px] font-mono">Alt+1..4</kbd>
                 <span className="text-[11px] hidden sm:inline">trocar abas •</span>
-                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Alt+M</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-line-subtle text-[10px] font-mono">Alt+M</kbd>
                 <span className="text-[11px] hidden sm:inline">viva-voz •</span>
-                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Esc</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-line-subtle text-[10px] font-mono">Esc</kbd>
                 <span className="text-[11px] hidden md:inline">corta fala</span>
               </div>
             </div>
 
             {/* Alerta de Diagnóstico ou Orientação de Microfone */}
             {micPermission === "unsupported" && micErrorMsg && (
-              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300 animate-in fade-in">
+              <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300">
                 <div className="flex items-start sm:items-center gap-2">
-                  <span className="text-base shrink-0">💡</span>
+                  <Lightbulb className="w-4 h-4 shrink-0" />
                   <span className="leading-relaxed">{micErrorMsg}</span>
                 </div>
               </div>
@@ -1247,10 +1242,10 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                 <button
                   onClick={handleOpenCircuitSummary}
                   disabled={isLoadingCircuit}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-black text-xs font-black shadow-lg transition-transform active:scale-95 flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2 rounded-md bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>{isLoadingCircuit ? "Calculando Parecer Global..." : "Parecer Final do Circuito (0 a 50 pts) 🏆"}</span>
+                  <span>{isLoadingCircuit ? "Calculando Parecer Global..." : "Parecer Final do Circuito (0 a 50 pts)"}</span>
                 </button>
               )
             )}
@@ -1260,8 +1255,8 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
       {/* Modal / Espelho Consolidado de 2ª Fase (0 a 50 pontos) */}
       {showCircuitModal && circuitSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-card border-2 border-primary/30 rounded-3xl max-w-2xl w-full p-6 md:p-8 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <div className="bg-surface border border-line-subtle rounded-lg max-w-2xl w-full p-6 md:p-8 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold uppercase tracking-wider">
                 <Award className="w-4 h-4" />

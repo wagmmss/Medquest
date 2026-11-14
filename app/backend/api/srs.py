@@ -35,13 +35,6 @@ _question_scheduler = Scheduler(
     enable_fuzzing=False,
 )
 
-# Scheduler para flashcards atômicos (sem passos intradia de minutos; mínimo D+1 no erro)
-_flashcard_scheduler = Scheduler(
-    learning_steps=(),
-    relearning_steps=(),
-    enable_fuzzing=False,
-)
-
 _CONFIDENCE_MAP = {
     "chutei": Rating.Hard,
     "duvida": Rating.Good,
@@ -73,16 +66,15 @@ def _safe_load_card(card_json: str | None) -> Card:
     return Card()
 
 
-def review(card_json, is_correct, confidence=None, is_flashcard=False, now=None):
+def review(card_json, is_correct, confidence=None, now=None):
     """Recebe o estado do card (JSON ou None) e devolve (novo_json, próxima_revisão_iso).
     
     Aplica clamp defensivo garantindo que qualquer agendamento respeite D+1 (>= 24 horas),
     blindando contra passos intradia acidentais, drift de relógio ou estados degenerados.
     """
-    scheduler = _flashcard_scheduler if is_flashcard else _question_scheduler
     card = _safe_load_card(card_json)
     now_utc = (now if now is not None else datetime.now(timezone.utc)).astimezone(timezone.utc)
-    card, _log = scheduler.review_card(card, _rating(is_correct, confidence), review_datetime=now_utc)
+    card, _log = _question_scheduler.review_card(card, _rating(is_correct, confidence), review_datetime=now_utc)
 
     # Clamp defensivo: garantia incondicional de D+1 (>= 24 horas)
     min_due = now_utc + timedelta(days=1)

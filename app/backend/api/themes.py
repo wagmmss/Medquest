@@ -14,21 +14,11 @@ def _theme_state(db, subtema):
         "SELECT theory_completed, study_path, updated_at FROM theme_progress WHERE user_id=? AND subtema=?",
         (g.user_id, subtema),
     ).fetchone()
-    cards = db.execute(
-        """SELECT COUNT(*) AS total,
-                  COALESCE(SUM(CASE WHEN f.next_review_date <= ? THEN 1 ELSE 0 END), 0) AS due
-           FROM flashcards f JOIN questions q ON q.id=f.question_id
-           WHERE f.user_id=? AND q.subtema=?
-             AND (f.report_status IS NULL OR TRIM(f.report_status)='')""",
-        (datetime.now(timezone.utc).isoformat(), g.user_id, subtema),
-    ).fetchone()
     return {
         "subtema": subtema,
         "theory_completed": bool(row["theory_completed"]) if row else False,
         "study_path": row["study_path"] if row else "essential",
         "updated_at": row["updated_at"] if row else None,
-        "flashcards_total": cards["total"],
-        "flashcards_due": cards["due"],
     }
 
 

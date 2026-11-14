@@ -6,10 +6,10 @@ import { api, OfflineQueuedError } from "@/lib/api";
 import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
 import { isLocalIdentityReady } from "@/lib/db";
 import { prefetchQuestionsByIds } from "@/lib/syncQueue";
 import { useAppUser } from "@/lib/auth-client";
+import { areFiltersEquivalent } from "@/lib/quizFilterMatch";
 
 import dynamic from "next/dynamic";
 import { ImageViewer } from "@/components/ImageViewer";
@@ -85,44 +85,6 @@ function isSavedQuizState(value: unknown): value is SavedQuizState {
     typeof saved.sessionAnswers === "object" && saved.sessionAnswers !== null;
 }
 
-function areFiltersEquivalent(
-  initial: Record<string, string | string[]>,
-  saved: Record<string, string | string[]>
-): boolean {
-  const normalize = (f: Record<string, string | string[]>) => {
-    const res: Record<string, string> = {};
-    for (const [k, v] of Object.entries(f)) {
-      if (k === "resume") continue;
-      if (Array.isArray(v)) {
-        if (v.length > 0) {
-          res[k] = [...v].sort().join(",");
-        }
-      } else if (v !== undefined && v !== "") {
-        res[k] = String(v);
-      }
-    }
-    return res;
-  };
-
-  const normInitial = normalize(initial);
-  const normSaved = normalize(saved);
-
-  // Compare core topic/scope discriminators
-  const coreKeys = ["subtema", "area", "topic", "institution", "mode", "status", "year", "specialty"];
-  for (const k of coreKeys) {
-    if (normInitial[k] && normSaved[k] && normInitial[k] !== normSaved[k]) {
-      return false;
-    }
-  }
-
-  // If a specific limit was requested in initialFilters, compare it only if both specify limit
-  if (normInitial.limit && normSaved.limit && normInitial.limit !== normSaved.limit) {
-    return false;
-  }
-
-  return true;
-}
-
 const DEFAULT_META: QuestionMeta = {
   total_questions: 0,
   answered_questions: 0,
@@ -141,7 +103,6 @@ export function QuizClient({
   meta?: QuestionMeta;
   initialFilters?: Record<string, string | string[]>;
 }) {
-  const router = useRouter();
   const { isLoaded: authLoaded } = useAppUser();
   const { isCurator } = useCurator();
   const [isClassificationModalOpen, setIsClassificationModalOpen] = useState(false);
@@ -158,7 +119,6 @@ export function QuizClient({
   const [hasSavedState, setHasSavedState] = useState(false);
   const [savedSessionData, setSavedSessionData] = useState<SavedQuizState | null>(null);
 
-  const [studyMode, setStudyMode] = useState<"TUTOR" | "SIMULADO">("TUTOR");
   const [showTopic, setShowTopic] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("medquest_show_topic");
@@ -504,7 +464,7 @@ export function QuizClient({
     }
     setHasSavedState(false);
     setSavedSessionData(null);
-    toast("Sessão anterior descartada.", { icon: "🗑️" });
+    toast("Sessão anterior descartada.");
   }, []);
 
   const currentDetailRef = useRef(currentDetail);
@@ -581,7 +541,7 @@ export function QuizClient({
       : answeredInSession;
 
     if (effectiveAnswered === 0) {
-      toast("Você ainda não respondeu nenhuma questão. Use '← Voltar' para retornar aos filtros.", { icon: "ℹ️" });
+      toast("Você ainda não respondeu nenhuma questão. Use 'Filtros' para retornar.");
       return;
     }
 
@@ -793,8 +753,7 @@ export function QuizClient({
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Sanitize limit before submitting
+
     let finalLimit = "50";
     if (typeof filters.limit === "string" && filters.limit.trim() !== "") {
       const parsed = parseInt(filters.limit, 10);
@@ -805,26 +764,12 @@ export function QuizClient({
       }
     }
     const finalFilters = { ...filters, limit: finalLimit };
-
-    if (studyMode === "SIMULADO") {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(finalFilters)) {
-        if (Array.isArray(value)) {
-          value.forEach(v => params.append(key, v));
-        } else if (value !== undefined && value !== "") {
-          params.append(key, value as string);
-        }
-      }
-      router.push(`/simulado?${params.toString()}`);
-    } else {
-      updateUrlWithFilters(finalFilters);
-      loadQueue(finalFilters);
-    }
+    updateUrlWithFilters(finalFilters);
+    loadQueue(finalFilters);
   };
 
   const startRecommendedSession = useCallback((kind: "adaptive" | "review" | "wrong", focus?: "coverage" | "balanced" | "retention") => {
     const limit = kind === "review" || kind === "wrong" ? "20" : "30";
-    setStudyMode("TUTOR");
     const activeFilters = {
       limit,
       ...(kind === "adaptive"
@@ -866,7 +811,7 @@ export function QuizClient({
 
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
-        toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.", { icon: "💾" });
+        toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
         setIsOfflineSaved(true);
         setSessionAnswers(prev => ({
           ...prev,
@@ -910,7 +855,7 @@ export function QuizClient({
           ...prev,
           [currentDetail.id]: { letter: "A", isOffline: true, writtenAnswer: userWrittenAnswer, isDiscursive: true }
         }));
-        toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.", { icon: "💾" });
+        toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
       } else {
         toast.error("Erro ao enviar resposta.");
       }
@@ -1122,8 +1067,6 @@ export function QuizClient({
         setShowCustomSession={setShowCustomSession}
         startRecommendedSession={startRecommendedSession}
         handleFilterSubmit={handleFilterSubmit}
-        studyMode={studyMode}
-        setStudyMode={setStudyMode}
         filters={filters}
         setFilters={setFilters}
         localLimit={localLimit}
@@ -1140,8 +1083,8 @@ export function QuizClient({
   if (state === "LOADING_QUEUE") {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <p className="text-muted-foreground font-medium">Montando seu simulado...</p>
+        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
+        <p className="text-ink-secondary text-sm font-medium">Montando sua sessão...</p>
       </div>
     );
   }
@@ -1156,7 +1099,6 @@ export function QuizClient({
 
     return (
       <QuizSessionReportModal
-        studyMode={studyMode}
         totalAnswered={totalAnswered}
         correctCount={correctCount}
         accuracy={accuracy}
@@ -1209,7 +1151,7 @@ export function QuizClient({
         <div className="bg-critical/5 border border-critical/25 text-ink rounded-sm px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 rounded-xs bg-critical/15 text-critical font-bold font-mono-lab uppercase text-[10px]">
-              🎯 Treino de Recuperação Ativa
+              Treino de Recuperação Ativa
             </span>
             <span className="text-ink-muted">
               Focando na retificação das questões erradas e conceitos vulneráveis.
@@ -1240,10 +1182,10 @@ export function QuizClient({
           </button>
         </div>
       ) : loadingDetail || !q ? (
-        <div className="flex flex-col gap-4 animate-pulse">
-          <div className="bg-surface border border-line-subtle rounded-sm p-6 h-36" />
+        <div className="flex flex-col gap-4">
+          <div className="bg-surface border border-line-subtle rounded-md p-6 h-36" />
           <div className="flex flex-col gap-2.5">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-surface border border-line-subtle rounded-sm" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-surface border border-line-subtle rounded-md" />)}
           </div>
         </div>
       ) : (
@@ -1255,7 +1197,7 @@ export function QuizClient({
         )}>
           {q.clinical_case && (
             <div className={clsx(
-              "bg-surface border border-line-subtle border-l-4 border-l-accent shadow-xs rounded-sm p-5 md:p-6 flex flex-col gap-4",
+              "bg-surface border border-accent/35 shadow-2xs rounded-md p-5 md:p-6 flex flex-col gap-4",
               !zenMode && "lg:col-span-6 lg:sticky lg:top-20 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto"
             )}>
               <h4 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-2 font-mono-lab">
@@ -1535,7 +1477,7 @@ export function QuizClient({
                   type="button"
                   onClick={async () => {
                     if (!navigator.onLine) {
-                      toast("Ainda sem conexão com a internet. Sua resposta segue gravada localmente.", { icon: "💾" });
+                      toast("Ainda sem conexão com a internet. Sua resposta segue gravada localmente.");
                       return;
                     }
                     try {
@@ -1543,7 +1485,7 @@ export function QuizClient({
                       await syncManager.sync(true);
                     } catch (e) {
                       if (e instanceof OfflineQueuedError) {
-                        toast("Sem conexão com a internet no momento.", { icon: "💾" });
+                        toast("Sem conexão com a internet no momento.");
                       } else {
                         toast.error("Erro ao sincronizar.");
                       }
@@ -1735,7 +1677,7 @@ export function QuizClient({
                             onClick={() => handleReviewFSRS("chutei")}
                             className="bg-warning/10 hover:bg-warning/20 text-ink border border-warning/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
                           >
-                            <span className="flex items-center gap-1 font-semibold">🎲 Chutei</span>
+                            <span className="flex items-center gap-1 font-semibold">Chutei</span>
                             <span className="text-[10px] text-ink-muted font-normal">+15 dias • [1]</span>
                           </button>
                           <button
@@ -1743,7 +1685,7 @@ export function QuizClient({
                             onClick={() => handleReviewFSRS("duvida")}
                             className="bg-accent/10 hover:bg-accent/20 text-ink border border-accent/40 shadow-xs font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab ring-1 ring-accent/20"
                           >
-                            <span className="flex items-center gap-1 font-semibold">👍 Com Esforço</span>
+                            <span className="flex items-center gap-1 font-semibold">Com Esforço</span>
                             <span className="text-[10px] text-accent font-normal">+34 dias • [2]</span>
                           </button>
                           <button
@@ -1751,7 +1693,7 @@ export function QuizClient({
                             onClick={() => handleReviewFSRS("certeza")}
                             className="bg-normal/10 hover:bg-normal/20 text-ink border border-normal/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
                           >
-                            <span className="flex items-center gap-1 font-semibold">🎯 Domino</span>
+                            <span className="flex items-center gap-1 font-semibold">Domino</span>
                             <span className="text-[10px] text-normal font-normal">+76 dias • [3]</span>
                           </button>
                         </div>
@@ -1828,40 +1770,40 @@ export function QuizClient({
           aria-labelledby="finish-modal-title"
         >
           <div 
-            className="bg-card border border-border shadow-2xl rounded-2xl p-6 max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200"
+            className="bg-surface border border-line-subtle shadow-2xl rounded-lg p-6 max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <CheckCircle2 size={22} />
+              <div className="w-9 h-9 rounded-md bg-accent/10 border border-accent/25 text-accent flex items-center justify-center shrink-0">
+                <CheckCircle2 size={18} />
               </div>
               <div>
-                <h3 id="finish-modal-title" className="text-lg font-bold text-foreground">Finalizar Sessão de Estudos?</h3>
-                <p className="text-xs text-muted-foreground">Você pode encerrar a sessão a qualquer momento.</p>
+                <h3 id="finish-modal-title" className="text-base font-bold text-ink-primary">Finalizar Sessão de Estudos?</h3>
+                <p className="text-xs text-ink-secondary">Você pode encerrar a sessão a qualquer momento.</p>
               </div>
             </div>
 
-            <div className="bg-muted/40 rounded-xl p-3.5 border border-border/60 text-sm text-foreground/90 leading-relaxed">
-              Você respondeu <strong className="text-foreground">{completedCount}</strong> de <strong className="text-foreground">{queue.length}</strong> questões. Restam {queue.length - completedCount} não respondidas.
-              <p className="mt-2 text-xs text-muted-foreground">
+            <div className="bg-elevated/40 rounded-md p-3.5 border border-line-subtle text-xs sm:text-sm text-ink-primary leading-relaxed">
+              Você respondeu <strong className="font-mono-lab tabular-nums">{completedCount}</strong> de <strong className="font-mono-lab tabular-nums">{queue.length}</strong> questões. Restam <span className="font-mono-lab tabular-nums">{queue.length - completedCount}</span> não respondidas.
+              <p className="mt-2 text-xs text-ink-secondary">
                 Todas as questões já respondidas terão suas revisões (FSRS) preservadas. Ao finalizar, você verá seu relatório de acertos e o diagnóstico da sessão.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => setShowFinishModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-md text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
               >
                 Continuar Respondendo
               </button>
               <button
                 type="button"
                 onClick={confirmFinish}
-                className="px-4 py-2 rounded-xl text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                className="px-4 py-2 rounded-md text-xs font-semibold bg-accent hover:bg-accent/90 text-white shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                <CheckCircle2 size={16} />
+                <CheckCircle2 size={15} />
                 Sim, Finalizar
               </button>
             </div>

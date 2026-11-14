@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
-import { Stethoscope, Sparkles, BookOpen, Send, RotateCcw, Zap, AlertTriangle, Layers, Target, TrendingUp, Clock } from "lucide-react";
+import { Stethoscope, Sparkles, BookOpen, Send, RotateCcw, Zap, AlertTriangle, Layers, Target, TrendingUp, Clock, FileText } from "lucide-react";
 import { FormattedContent } from "@/components/FormattedContent";
 
 export interface GroundingSource {
@@ -87,16 +87,16 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
   };
 
   return (
-    <div className="mt-8 bg-blue-500/5 border border-blue-500/20 rounded-2xl p-5 md:p-6 transition-all">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-blue-700 dark:text-blue-400 font-bold flex items-center gap-2 uppercase tracking-wider text-sm">
-          <Stethoscope size={18} /> Discussão Clínica & Preceptor IA
+    <div className="mt-6 bg-elevated/30 border border-line-subtle rounded-lg p-5 transition-all">
+      <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-line-subtle">
+        <h4 className="text-accent font-mono-lab font-bold flex items-center gap-2 uppercase tracking-wider text-xs">
+          <Stethoscope size={16} /> Discussão Clínica & Preceptor IA
         </h4>
         {messages.length > 0 && (
           <button
             onClick={onClearChat}
             disabled={askingPreceptor}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="text-xs text-ink-muted hover:text-ink-primary flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             title="Reiniciar discussão clínica"
           >
             <RotateCcw size={13} />
@@ -107,12 +107,11 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
 
       {messages.length === 0 ? (
         <div className="flex flex-col gap-3">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-secondary">
             Tire dúvidas conceituais, discuta diagnósticos diferenciais ou use comandos socráticos rápidos:
           </p>
 
-          {/* Quick Prompts Bar */}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
@@ -121,10 +120,10 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                   type="button"
                   onClick={() => onSendMessage(action.prompt)}
                   disabled={askingPreceptor}
-                  className="text-xs font-semibold bg-background hover:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:border-blue-500/60 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                  className="font-mono-lab text-xs font-semibold bg-surface hover:bg-accent/10 text-ink-primary hover:text-accent border border-line-subtle hover:border-accent/30 px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                   title={action.desc}
                 >
-                  <Icon size={14} className="text-blue-600 dark:text-blue-400" />
+                  <Icon size={13} className="text-accent" />
                   <span>{action.label}</span>
                 </button>
               );
@@ -132,7 +131,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
           </div>
 
           <textarea
-            className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[85px] mt-1"
+            className="w-full bg-canvas border border-line-subtle rounded-md p-3 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none min-h-[85px] mt-1"
             placeholder="Qual conduta você tem dúvida? Ex: 'Por que a alternativa D está errada?' ou aperte Enter..."
             value={preceptorInput}
             onChange={(e) => onChangeInput(e.target.value)}
@@ -142,12 +141,12 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
             <button
               onClick={() => onSendMessage()}
               disabled={askingPreceptor || !preceptorInput.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm cursor-pointer disabled:cursor-not-allowed"
+              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md shadow-2xs transition-colors flex items-center gap-2 text-xs cursor-pointer disabled:cursor-not-allowed"
             >
               {askingPreceptor ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <Sparkles size={16} />
+                <Sparkles size={14} />
               )}
               {askingPreceptor ? "Consultando Preceptor..." : "Enviar Pergunta"}
             </button>
@@ -155,8 +154,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Messages Feed */}
-          <div className="space-y-3.5 max-h-[550px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -165,44 +163,42 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                 }`}
               >
                 <div
-                  className={`rounded-2xl p-4 max-w-[94%] md:max-w-[88%] text-sm ${
+                  className={`rounded-lg p-4 max-w-[94%] md:max-w-[88%] text-sm ${
                     msg.role === "user"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-background border border-border text-foreground shadow-xs"
+                      ? "bg-accent text-white shadow-2xs"
+                      : "bg-surface border border-line-subtle text-ink-primary shadow-2xs"
                   }`}
                 >
-                  {/* Grounding Badges (if assistant response has official sources) */}
                   {msg.role === "assistant" && msg.grounding_sources && msg.grounding_sources.length > 0 && (
-                    <div className="mb-3.5 pb-2.5 border-b border-border/60">
-                      <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 mb-1.5">
+                    <div className="mb-3 pb-2.5 border-b border-line-subtle">
+                      <div className="text-[11px] font-mono-lab font-semibold text-normal flex items-center gap-1.5 mb-1.5">
                         <BookOpen size={13} />
-                        <span>Diretrizes e Fichas Consultadas (Grounding):</span>
+                        <span>Diretrizes e Fichas Consultadas:</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {msg.grounding_sources.map((src, i) => (
                           <span
                             key={i}
-                            className="text-[11px] bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1"
+                            className="text-[11px] bg-normal-bg text-normal border border-normal/25 px-2 py-0.5 rounded-xs flex items-center gap-1"
                             title={src.title || src.source_file}
                           >
-                            <span className="opacity-70">📄</span>
+                            <FileText size={11} className="shrink-0" />
                             <span className="font-medium">{src.source_file.replace(/\.(pdf|txt)$/i, "")}</span>
-                            {src.topic && <span className="opacity-60 text-[10px]">({src.topic})</span>}
+                            {src.topic && <span className="opacity-70 text-[10px]">({src.topic})</span>}
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Tool Calling Diagnostic Card */}
                   {msg.role === "assistant" && msg.tool_call?.name === "get_student_weak_topics" && msg.tool_call.data && (
-                    <div className="mb-4 p-3.5 bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/25 rounded-xl">
-                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-blue-500/15">
-                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                    <div className="mb-3.5 p-3.5 bg-elevated/40 border border-line-subtle rounded-md">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-line-subtle">
+                        <span className="text-xs font-bold text-accent flex items-center gap-1.5">
                           <Target size={14} /> Diagnóstico Adaptativo do Aluno
                         </span>
                         {msg.tool_call.data.has_data && (
-                          <span className="text-[11px] text-muted-foreground font-medium">
+                          <span className="font-mono-lab tabular-nums text-[11px] text-ink-muted font-medium">
                             {msg.tool_call.data.total_attempts} questões resolvidas
                           </span>
                         )}
@@ -210,13 +206,15 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
 
                       {msg.tool_call.data.has_data ? (
                         <div className="space-y-2.5">
-                          <div className="flex items-center gap-4 text-xs">
+                          <div className="flex flex-wrap items-center gap-4 text-xs">
                             <div className="flex items-center gap-1.5">
-                              <TrendingUp size={13} className="text-blue-600 dark:text-blue-400" />
-                              <span>Acurácia Global: <strong>{msg.tool_call.data.overall_accuracy_pct}%</strong></span>
+                              <TrendingUp size={13} className="text-accent" />
+                              <span>
+                                Acurácia Global: <strong className="font-mono-lab tabular-nums">{msg.tool_call.data.overall_accuracy_pct}%</strong>
+                              </span>
                             </div>
                             {(msg.tool_call.data.srs_due_count ?? 0) > 0 && (
-                              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-semibold">
+                              <div className="flex items-center gap-1.5 text-warning font-semibold font-mono-lab tabular-nums">
                                 <Clock size={13} />
                                 <span>{msg.tool_call.data.srs_due_count} revisões FSRS pendentes</span>
                               </div>
@@ -225,17 +223,21 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
 
                           {msg.tool_call.data.weak_topics && msg.tool_call.data.weak_topics.length > 0 && (
                             <div className="mt-2 space-y-1.5">
-                              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                              <span className="font-mono-lab text-[10px] font-semibold text-ink-muted uppercase tracking-wider block">
                                 Subtemas com Maior Risco de Erro:
                               </span>
                               {msg.tool_call.data.weak_topics.map((wt, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-xs bg-background/80 p-1.5 rounded-lg border border-border/50">
-                                  <span className="font-medium truncate max-w-[60%]">{wt.topic} <span className="opacity-60 text-[10px]">({wt.area})</span></span>
-                                  <span className={`font-bold px-1.5 py-0.5 rounded text-[11px] ${
-                                    wt.accuracy_pct < 50
-                                      ? "bg-red-500/15 text-red-700 dark:text-red-400"
-                                      : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                                  }`}>
+                                <div key={idx} className="flex items-center justify-between text-xs bg-surface p-1.5 rounded-xs border border-line-subtle">
+                                  <span className="font-medium truncate max-w-[60%]">
+                                    {wt.topic} <span className="text-ink-muted text-[10px]">({wt.area})</span>
+                                  </span>
+                                  <span
+                                    className={`font-mono-lab tabular-nums font-bold px-1.5 py-0.5 rounded-xs text-[11px] ${
+                                      wt.accuracy_pct < 50
+                                        ? "bg-critical-bg text-critical"
+                                        : "bg-warning/15 text-warning"
+                                    }`}
+                                  >
                                     {wt.accuracy_pct}% ({wt.wrong} erros)
                                   </span>
                                 </div>
@@ -244,7 +246,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-ink-secondary">
                           Nenhum dado registrado ainda. Resolva questões no quiz para calibrar seu diagnóstico adaptativo!
                         </p>
                       )}
@@ -259,7 +261,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                         const Icon = action.icon;
                         return (
                           <div className="flex items-center gap-2 font-medium">
-                            <span className="p-1 rounded-md bg-white/20">
+                            <span className="p-1 rounded-xs bg-white/20">
                               <Icon size={14} className="text-white" />
                             </span>
                             <span>{action.label}</span>
@@ -276,8 +278,8 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                   )}
 
                   {msg.role === "assistant" && msg.model && (
-                    <div className="mt-2.5 pt-2 border-t border-border/40 text-[10px] text-muted-foreground font-mono flex items-center justify-between">
-                      <span>Preceptor FMRP-USP ({msg.model})</span>
+                    <div className="mt-2.5 pt-2 border-t border-line-subtle text-[10px] text-ink-muted font-mono-lab flex items-center justify-between">
+                      <span>Preceptor IA ({msg.model})</span>
                     </div>
                   )}
                 </div>
@@ -286,8 +288,8 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
 
             {askingPreceptor && (
               <div className="flex items-start">
-                <div className="bg-background border border-border rounded-2xl p-4 flex items-center gap-3 text-muted-foreground text-sm">
-                  <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                <div className="bg-surface border border-line-subtle rounded-lg p-3.5 flex items-center gap-3 text-ink-secondary text-xs">
+                  <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                   <span>Preceptor analisando condutas e diretrizes...</span>
                 </div>
               </div>
@@ -295,8 +297,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
             <div ref={chatEndRef} />
           </div>
 
-          {/* Quick Actions (Mini) when conversation is ongoing */}
-          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/40">
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-line-subtle">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
@@ -305,20 +306,19 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                   type="button"
                   onClick={() => onSendMessage(action.prompt)}
                   disabled={askingPreceptor}
-                  className="text-[11px] font-medium bg-background/80 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 px-2 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                  className="font-mono-lab text-[11px] font-medium bg-surface hover:bg-accent/10 text-ink-primary hover:text-accent border border-line-subtle hover:border-accent/30 px-2 py-1 rounded-xs flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                   title={action.desc}
                 >
-                  <Icon size={12} className="text-blue-600 dark:text-blue-400" />
+                  <Icon size={12} className="text-accent" />
                   <span>{action.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Multi-turn Input Box */}
           <div className="flex gap-2">
             <textarea
-              className="flex-1 bg-background border border-border rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[44px] max-h-[120px]"
+              className="flex-1 bg-canvas border border-line-subtle rounded-md p-2.5 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none min-h-[44px] max-h-[120px]"
               placeholder={(() => {
                 const lastMsg = messages[messages.length - 1];
                 if (lastMsg && lastMsg.role === "assistant") {
@@ -340,10 +340,10 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
             <button
               onClick={() => onSendMessage()}
               disabled={askingPreceptor || !preceptorInput.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-3.5 rounded-xl shadow-sm transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
+              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold px-3.5 rounded-md shadow-2xs transition-colors flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
               title="Enviar réplica"
             >
-              <Send size={16} />
+              <Send size={15} />
             </button>
           </div>
         </div>

@@ -23,6 +23,8 @@ BASELINE_MIGRATIONS = {
     "004_fts5.sql",
     "005_performance_observability.sql",
     "007_institution_index.sql",
+    "009_flashcards_allow_unlinked.sql",
+    "010_anki_review_sync.sql",
 }
 MIGRATION_NAME = re.compile(r"^\d{3}_[a-z0-9_]+\.sql$")
 

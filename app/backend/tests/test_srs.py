@@ -96,21 +96,6 @@ def test_review_question_intervals(monkeypatch):
     assert 76 <= easy_days <= 80
 
 
-def test_review_flashcard_intervals(monkeypatch):
-    import api.srs as srs_mod
-    monkeypatch.setattr(srs_mod._flashcard_scheduler, "enable_fuzzing", False)
-
-    # Erro em flashcard -> 1 dia (mínimo D+1, sem passos em minutos)
-    _, due_err = review(None, False, "errei", is_flashcard=True)
-    err_days = round((datetime.fromisoformat(due_err) - datetime.now(timezone.utc)).total_seconds() / 86400)
-    assert err_days == 1
-
-    # Acerto fácil em flashcard -> ~7 dias
-    _, due_easy = review(None, True, "certeza", is_flashcard=True)
-    easy_days = round((datetime.fromisoformat(due_easy) - datetime.now(timezone.utc)).total_seconds() / 86400)
-    assert 6 <= easy_days <= 8
-
-
 class TestFSRSValidation:
     """Suíte de testes de estresse e validação de invariantes do motor FSRS v6.
 
@@ -124,16 +109,14 @@ class TestFSRSValidation:
     """
 
     def test_scheduler_calibration_and_invariants(self):
-        from api.srs import _QUESTION_PARAMS, _flashcard_scheduler, _question_scheduler
+        from api.srs import _QUESTION_PARAMS, _question_scheduler
 
         # 1. Retenção alvo calibrada para questões médicas
         assert _question_scheduler.desired_retention == 0.85
 
-        # 2. Ausência estrita de passos intradia em ambos os agendadores
+        # 2. Ausência estrita de passos intradia
         assert _question_scheduler.learning_steps == ()
         assert _question_scheduler.relearning_steps == ()
-        assert _flashcard_scheduler.learning_steps == ()
-        assert _flashcard_scheduler.relearning_steps == ()
 
         # 3. Parâmetros iniciais calibrados para questões longas (Opção 2: mínimo 7 dias no erro)
         assert _QUESTION_PARAMS[0] == 3.5  # S0(Again) ~7d
@@ -147,7 +130,7 @@ class TestFSRSValidation:
         now = datetime.now(timezone.utc)
 
         for i in range(25):
-            card_json, due_iso = review(card_json, False, None, is_flashcard=False)
+            card_json, due_iso = review(card_json, False, None)
             assert card_json is not None
             assert due_iso is not None
 
@@ -172,28 +155,6 @@ class TestFSRSValidation:
             if i == 0:
                 diff_days = diff_seconds / 86400
                 assert 6.5 <= diff_days <= 7.5, f"Intervalo inicial de erro inesperado: {diff_days:.2f} dias"
-
-    def test_stress_consecutive_failures_flashcards(self):
-        """Simula 25 falhas consecutivas em flashcard garantindo piso mínimo D+1 (>= 24h)."""
-        card_json = None
-        now = datetime.now(timezone.utc)
-
-        for i in range(25):
-            card_json, due_iso = review(card_json, False, "errei", is_flashcard=True)
-            assert card_json is not None
-            assert due_iso is not None
-
-            due = datetime.fromisoformat(due_iso)
-            diff_seconds = (due - now).total_seconds()
-
-            # Invariante: Intervalo positivo e sem passos intradia
-            assert diff_seconds > 0, f"Intervalo negativo detectado no flashcard {i + 1}: {diff_seconds}s"
-            assert diff_seconds >= 86400 - 60, (
-                f"Passo intradia (< 24h) detectado no flashcard {i + 1}: {diff_seconds / 3600:.2f}h"
-            )
-
-            card_dict = json.loads(card_json)
-            assert card_dict["stability"] > 0
 
     def test_stress_simulated_timeline_mixed_trajectory(self):
         """Simula linha do tempo de 64 revisões alternadas com passagem real de tempo."""
@@ -234,13 +195,13 @@ class TestFSRSValidation:
 
         # 1. Constrói alta estabilidade com acertos consecutivos fáceis
         for _ in range(5):
-            card_json, _ = review(card_json, True, "certeza", is_flashcard=False)
+            card_json, _ = review(card_json, True, "certeza")
 
         card_dict = json.loads(card_json)
         assert card_dict["stability"] > 50
 
         # 2. Simula lapso crítico (erro na revisão)
-        card_json_lapse, due_lapse_iso = review(card_json, False, None, is_flashcard=False)
+        card_json_lapse, due_lapse_iso = review(card_json, False, None)
         due_lapse = datetime.fromisoformat(due_lapse_iso)
         now = datetime.now(timezone.utc)
         diff_seconds = (due_lapse - now).total_seconds()
@@ -249,7 +210,7 @@ class TestFSRSValidation:
         assert diff_seconds >= 86400 - 60, f"Lapso gerou agendamento intradia: {diff_seconds / 3600:.2f}h"
 
         # 3. Simula recuperação pós-lapso (relearning)
-        card_json_rec, due_rec_iso = review(card_json_lapse, True, "duvida", is_flashcard=False)
+        card_json_rec, due_rec_iso = review(card_json_lapse, True, "duvida")
         due_rec = datetime.fromisoformat(due_rec_iso)
         diff_rec_seconds = (due_rec - now).total_seconds()
 
@@ -261,27 +222,25 @@ class TestFSRSValidation:
         confidences = [None, "chutei", "duvida", "certeza", "desconhecido"]
         now = datetime.now(timezone.utc)
 
-        for is_flashcard in (False, True):
-            for is_correct in (True, False):
-                for conf in confidences:
-                    card_json, due_iso = review(None, is_correct, conf, is_flashcard=is_flashcard)
-                    due = datetime.fromisoformat(due_iso)
-                    diff_seconds = (due - now).total_seconds()
+        for is_correct in (True, False):
+            for conf in confidences:
+                card_json, due_iso = review(None, is_correct, conf)
+                due = datetime.fromisoformat(due_iso)
+                diff_seconds = (due - now).total_seconds()
 
-                    assert diff_seconds > 0, (
-                        f"Combinação (correct={is_correct}, conf={conf}, flashcard={is_flashcard}) "
-                        f"gerou intervalo negativo: {diff_seconds}s"
-                    )
-                    assert diff_seconds >= 86400 - 60, (
-                        f"Combinação (correct={is_correct}, conf={conf}, flashcard={is_flashcard}) "
-                        f"gerou agendamento intradia: {diff_seconds / 3600:.2f}h"
-                    )
+                assert diff_seconds > 0, (
+                    f"Combinação (correct={is_correct}, conf={conf}) "
+                    f"gerou intervalo negativo: {diff_seconds}s"
+                )
+                assert diff_seconds >= 86400 - 60, (
+                    f"Combinação (correct={is_correct}, conf={conf}) "
+                    f"gerou agendamento intradia: {diff_seconds / 3600:.2f}h"
+                )
 
     def test_defensive_clamp_forces_minimum_d_plus_one(self, monkeypatch):
         """Assegura que qualquer agendamento menor que 24h ou no passado é clampado para D+1."""
         from datetime import timedelta
         import api.srs as srs_mod
-        from fsrs import Card
 
         fixed_now = datetime(2026, 10, 11, 10, 0, 0, tzinfo=timezone.utc)
         expected_min_due = fixed_now + timedelta(days=1)
@@ -294,7 +253,7 @@ class TestFSRSValidation:
 
         monkeypatch.setattr(srs_mod, "_question_scheduler", MockSchedulerIntraday())
 
-        card_json, due_iso = review(None, False, None, is_flashcard=False, now=fixed_now)
+        card_json, due_iso = review(None, False, None, now=fixed_now)
         due_dt = datetime.fromisoformat(due_iso)
 
         assert due_dt == expected_min_due, (
@@ -310,9 +269,9 @@ class TestFSRSValidation:
                 card.due = (review_datetime or fixed_now) - timedelta(days=10)
                 return card, None
 
-        monkeypatch.setattr(srs_mod, "_flashcard_scheduler", MockSchedulerPast())
+        monkeypatch.setattr(srs_mod, "_question_scheduler", MockSchedulerPast())
 
-        card_json_past, due_iso_past = review(None, False, "errei", is_flashcard=True, now=fixed_now)
+        card_json_past, due_iso_past = review(None, False, None, now=fixed_now)
         due_dt_past = datetime.fromisoformat(due_iso_past)
 
         assert due_dt_past == expected_min_due
@@ -321,23 +280,16 @@ class TestFSRSValidation:
 
     def test_defensive_clamp_preserves_longer_intervals(self):
         """Assegura que intervalos legítimos (> 24h) são preservados sem corte indevido."""
-        from datetime import timedelta
-
         fixed_now = datetime(2026, 10, 11, 12, 0, 0, tzinfo=timezone.utc)
 
         # Questão com erro: ~7 dias (> 1 dia)
-        _, due_err = review(None, False, None, is_flashcard=False, now=fixed_now)
+        _, due_err = review(None, False, None, now=fixed_now)
         diff_err_days = (datetime.fromisoformat(due_err) - fixed_now).total_seconds() / 86400
         assert 6.5 <= diff_err_days <= 7.5
 
         # Questão com certeza: ~78 dias (> 1 dia)
-        _, due_easy = review(None, True, "certeza", is_flashcard=False, now=fixed_now)
+        _, due_easy = review(None, True, "certeza", now=fixed_now)
         diff_easy_days = (datetime.fromisoformat(due_easy) - fixed_now).total_seconds() / 86400
         assert 76 <= diff_easy_days <= 80
-
-        # Flashcard com certeza: ~7-8 dias (> 1 dia)
-        _, due_fc_easy = review(None, True, "certeza", is_flashcard=True, now=fixed_now)
-        diff_fc_days = (datetime.fromisoformat(due_fc_easy) - fixed_now).total_seconds() / 86400
-        assert 6.0 <= diff_fc_days <= 8.5
 
 

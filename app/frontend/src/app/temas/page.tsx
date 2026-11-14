@@ -1,21 +1,17 @@
-import { notFound } from "next/navigation";
-import { plannerData } from "@/lib/plannerData";
-import { serverApi } from "@/lib/server-api";
-import { ThemeClient } from "./ThemeClient";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function TemaPage({ searchParams }: {
+export default async function TemaRedirectPage({
+  searchParams,
+}: {
   searchParams: Promise<{ subtema?: string | string[] }>;
 }) {
-  const { subtema } = await searchParams;
-  if (typeof subtema !== "string") notFound();
-  const group = plannerData.find(area => area.macroThemes.some(theme => theme.dbSubtemas.includes(subtema)));
-  const theme = group?.macroThemes.find(item => item.dbSubtemas.includes(subtema));
-  if (!group || !theme) notFound();
-  const [profile, progress] = await Promise.all([
-    serverApi.stats.getLearningProfile(subtema), serverApi.themes.getProgress(subtema),
-  ]);
-  const topic = profile.topics.find(item => item.topic === subtema);
-  return <ThemeClient key={subtema} subtema={subtema} group={{ area: group.area }} theme={{ highYield: theme.highYield, details: theme.details }} topic={topic} initialProgress={progress} />;
+  const params = await searchParams;
+  const subtema = typeof params?.subtema === "string" ? params.subtema : null;
+  const target = new URLSearchParams({ tab: "cobertura" });
+  if (subtema) {
+    target.set("subtema", subtema);
+  }
+  redirect(`/analise?${target.toString()}`);
 }

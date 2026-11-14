@@ -101,14 +101,14 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
     switch (status) {
       case "HIGH_PROBABILITY":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 size={13} className="shrink-0" />
             Alta Probabilidade
           </span>
         );
       case "COMPETITIVE":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
             <AlertCircle size={13} className="shrink-0" />
             Zona de Corte
           </span>
@@ -116,7 +116,7 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
       case "NEEDS_IMPROVEMENT":
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
             <Minus size={13} className="shrink-0" />
             Abaixo do Corte
           </span>
@@ -127,7 +127,7 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
   const getDiffBadge = (diff: number) => {
     if (diff > 0) {
       return (
-        <span className="inline-flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400">
+        <span className="inline-flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono-lab tabular-nums">
           <ArrowUpRight size={14} />+{diff.toFixed(1)} pts
         </span>
       );
@@ -140,25 +140,25 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
       );
     }
     return (
-      <span className="inline-flex items-center text-xs font-bold text-rose-600 dark:text-rose-400">
+      <span className="inline-flex items-center text-xs font-bold text-rose-600 dark:text-rose-400 font-mono-lab tabular-nums">
         <ArrowDownRight size={14} />{diff.toFixed(1)} pts
       </span>
     );
   };
 
   return (
-    <div className="w-full max-w-3xl bg-card border border-border shadow-sm rounded-2xl p-6 sm:p-7 mb-8 text-left transition-all">
+    <div className="w-full max-w-3xl bg-surface border border-line-subtle rounded-lg p-5 sm:p-6 mb-6 text-left">
       {/* Header com Seletor de Banca */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border/70">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line-subtle">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <TrendingUp size={24} />
+          <div className="w-10 h-10 rounded-md bg-accent/10 text-accent flex items-center justify-center shrink-0">
+            <TrendingUp size={20} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-black text-foreground">Scorecard TRI & Ranking Preditivo</h3>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/15 text-primary uppercase tracking-wider">
-                3PL Psychometrics
+              <h3 className="text-lg font-bold text-foreground">Scorecard TRI &amp; Ranking Preditivo</h3>
+              <span className="text-[11px] font-semibold text-accent uppercase tracking-wider">
+                · 3PL
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -174,7 +174,7 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
             value={selectedInst}
             onChange={(e) => handleInstitutionChange(e.target.value)}
             disabled={loading}
-            className="text-xs sm:text-sm font-semibold bg-muted/60 hover:bg-muted text-foreground border border-border rounded-lg px-3 py-1.5 outline-none transition-colors cursor-pointer"
+            className="text-xs sm:text-sm font-semibold bg-canvas hover:bg-muted text-foreground border border-line-subtle rounded-md px-3 py-1.5 outline-none transition-colors cursor-pointer"
           >
             {AVAILABLE_INSTITUTIONS.map((inst) => (
               <option key={inst.code} value={inst.code}>
@@ -186,9 +186,9 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
       </div>
 
       {loading ? (
-        <div className="py-12 flex flex-col items-center justify-center gap-3">
-          <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-muted-foreground font-medium animate-pulse">
+        <div className="py-10 flex flex-col items-center justify-center gap-3">
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-muted-foreground font-medium">
             Calibrando parâmetros 3PL e estimando proficiência a posteriori...
           </p>
         </div>
@@ -197,60 +197,59 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
           {fetchError}
         </div>
       ) : triData ? (
-        <div className="pt-6 space-y-6">
+        <div className="pt-5 space-y-5">
           {/* Grid de Métricas Principais */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             {/* 1. Nota TRI Projetada */}
-            <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col justify-between">
+            <div className="bg-canvas border border-line-subtle rounded-md p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Nota TRI Projetada</span>
-                <Award size={16} className="text-primary" />
+                <Award size={15} className="text-accent" />
               </div>
-              <div className="my-2">
-                <span className="text-3xl font-black text-foreground">
+              <div className="my-2 font-mono-lab tabular-nums">
+                <span className="text-2xl font-bold text-foreground">
                   {triData.projected_score.toFixed(1)}
                 </span>
                 <span className="text-xs text-muted-foreground ml-1.5 font-semibold">/ 100</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
-                Acerto bruto de <strong className="text-foreground">{triData.raw_score_pct}%</strong> ({queue.filter(q => resultsMap[q.id]?.is_correct).length}/{queue.length})
+              <div className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
+                Acerto bruto: <strong className="text-foreground">{triData.raw_score_pct}%</strong> ({queue.filter(q => resultsMap[q.id]?.is_correct).length}/{queue.length})
               </div>
             </div>
 
             {/* 2. Percentil Nacional */}
-            <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col justify-between">
+            <div className="bg-canvas border border-line-subtle rounded-md p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Percentil Nacional</span>
-                <Compass size={16} className="text-emerald-500" />
+                <Compass size={15} className="text-emerald-500" />
               </div>
-              <div className="my-2">
-                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+              <div className="my-2 font-mono-lab tabular-nums">
+                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {triData.national_percentile >= 50
                     ? `Top ${(100 - triData.national_percentile).toFixed(1)}%`
                     : `${triData.national_percentile.toFixed(1)}º Perc.`}
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
-                Acima de <strong className="text-foreground">{triData.national_percentile}%</strong> dos concorrentes simulados.
+              <div className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
+                Acima de <strong className="text-foreground">{triData.national_percentile}%</strong> dos concorrentes.
               </div>
             </div>
 
             {/* 3. Coerência Pedagógica */}
-            <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col justify-between">
+            <div className="bg-canvas border border-line-subtle rounded-md p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Coerência Pedagógica</span>
-                <ShieldCheck size={16} className="text-blue-500" />
+                <ShieldCheck size={15} className="text-blue-500" />
               </div>
               <div className="my-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-foreground">
+                <div className="flex items-baseline gap-1 font-mono-lab tabular-nums">
+                  <span className="text-2xl font-bold text-foreground">
                     {triData.pedagogical_coherence_pct.toFixed(0)}%
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground">índice</span>
                 </div>
               </div>
-              {/* Barra de progresso de coerência */}
-              <div className="w-full bg-border h-1.5 rounded-full overflow-hidden mb-1">
+              <div className="w-full bg-border h-1.5 rounded-xs overflow-hidden mb-1">
                 <div
                   className={clsx(
                     "h-full rounded-full transition-all duration-500",

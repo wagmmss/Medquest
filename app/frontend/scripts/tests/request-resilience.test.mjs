@@ -12,7 +12,6 @@ function loadModule(name, dependencies, globals = {}) {
     isForcedOffline: () => false,
   };
   dependencies = {
-    './flashcardCache': { cacheCreatedFlashcards: async () => {} },
     './crossTab': { broadcastCrossTab() {}, listenCrossTab() { return () => {}; } },
     './db': defaultDb,
     ...dependencies,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from "react";
 import clsx from "clsx";
-import { Filter, RotateCcw, Play, RefreshCw, Brain, SlidersHorizontal, BookOpenCheck, FileSignature, X, Search, Sparkles } from "lucide-react";
+import { Filter, RotateCcw, Play, RefreshCw, Brain, SlidersHorizontal, X, Search, Sparkles } from "lucide-react";
 import { QuestionMeta } from "@/types/api";
 import { SubjectTreeSelector } from "@/components/SubjectTreeSelector";
 import { SavedQuizState } from "../QuizClient";
@@ -12,15 +12,15 @@ interface SubtemaChipProps {
 
 const SubtemaChip = React.memo(function SubtemaChip({ subtema, onRemove }: SubtemaChipProps) {
   return (
-    <span className="bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5 animate-in zoom-in-95 duration-200">
+    <span className="bg-accent/10 text-accent border border-accent/25 px-2.5 py-1 rounded-xs text-xs font-medium flex items-center gap-1.5">
       <span className="max-w-[200px] truncate">{subtema}</span>
       <button
         type="button"
         onClick={() => onRemove(subtema)}
-        className="hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-none"
+        className="hover:text-destructive hover:bg-destructive/10 rounded-xs p-0.5 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-none"
         aria-label={`Remover subtema ${subtema}`}
       >
-        <X size={14} aria-hidden="true" />
+        <X size={13} aria-hidden="true" />
       </button>
     </span>
   );
@@ -43,10 +43,10 @@ const SubtemaDropdownItem = React.memo(function SubtemaDropdownItem({
       role="option"
       aria-selected="false"
       onClick={() => onSelect(subtema)}
-      className="w-full text-left flex items-center justify-between px-4 py-2.5 hover:bg-muted text-sm border-b border-border/50 last:border-0 cursor-pointer focus-visible:bg-muted focus-visible:outline-none"
+      className="w-full text-left flex items-center justify-between px-3.5 py-2 hover:bg-elevated text-xs border-b border-line-subtle last:border-0 cursor-pointer focus-visible:bg-elevated focus-visible:outline-none"
     >
-      <span className="truncate pr-4 text-foreground">{subtema}</span>
-      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
+      <span className="truncate pr-4 text-ink-primary">{subtema}</span>
+      <span className="font-mono-lab tabular-nums text-[11px] font-medium text-ink-muted bg-elevated px-2 py-0.5 rounded-xs shrink-0">
         {count}
       </span>
     </button>
@@ -62,8 +62,6 @@ export interface QuizFiltersProps {
   setShowCustomSession: (val: boolean) => void;
   startRecommendedSession: (kind: "adaptive" | "review" | "wrong", focus?: "coverage" | "balanced" | "retention") => void;
   handleFilterSubmit: (e: React.FormEvent) => void;
-  studyMode: "TUTOR" | "SIMULADO";
-  setStudyMode: (mode: "TUTOR" | "SIMULADO") => void;
   filters: Record<string, string | string[]>;
   setFilters: React.Dispatch<React.SetStateAction<Record<string, string | string[]>>>;
   localLimit: string;
@@ -85,8 +83,6 @@ export function QuizFilters({
   setShowCustomSession,
   startRecommendedSession,
   handleFilterSubmit,
-  studyMode,
-  setStudyMode,
   filters,
   setFilters,
   localLimit,
@@ -140,7 +136,6 @@ export function QuizFilters({
     return "";
   }, [filters.institution, groupedInstitutions]);
 
-  // Subtemas selecionados normalizados em array e Set para busca O(1)
   const selectedSubtemas = useMemo(() => {
     if (Array.isArray(filters.subtema)) return filters.subtema;
     if (typeof filters.subtema === "string" && filters.subtema.trim().length > 0) return [filters.subtema];
@@ -149,7 +144,6 @@ export function QuizFilters({
 
   const selectedSubtemasSet = useMemo(() => new Set(selectedSubtemas), [selectedSubtemas]);
 
-  // Lista memoizada de subtemas filtrados pela busca textual (elimina duplo filter/slice inline no render)
   const filteredSearchSubtemas = useMemo(() => {
     const query = subtemaSearch.trim().toLowerCase();
     if (!query || !dynamicMeta?.subtemas) return [];
@@ -158,7 +152,6 @@ export function QuizFilters({
       .slice(0, 50);
   }, [dynamicMeta, subtemaSearch, selectedSubtemasSet]);
 
-  // Callbacks memoizados para manipulação de subtemas
   const handleRemoveSubtema = useCallback((subtemaToRemove: string) => {
     setFilters((prev) => {
       const current = Array.isArray(prev.subtema)
@@ -205,406 +198,383 @@ export function QuizFilters({
     }
   }, [filteredSearchSubtemas, handleAddSubtema]);
 
-return (
-  <div className="bg-card border border-border shadow-1 rounded-xl p-8 max-w-2xl mx-auto w-full">
-    <div className="flex items-center gap-4 mb-6">
-      <div className="w-12 h-12 bg-primary/20 text-primary rounded-xl flex items-center justify-center shrink-0">
-        <Filter size={24} />
-      </div>
-      <div>
-        <h2 className="text-h2 font-bold text-foreground">Filtros de Estudo</h2>
-        <p className="text-muted-foreground text-sm">Monte sua sessão de estudos escolhendo os filtros.</p>
-      </div>
-    </div>
-
-    {hasSavedState && savedSessionData && (
-      <div className="bg-primary/10 border border-primary/30 rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
-            <RotateCcw size={20} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Sessão de Estudos em Andamento</h3>
-            <p className="text-xs text-muted-foreground">
-              Você tem uma sessão salva com {savedSessionData.queue.length} questões (Questão {savedSessionData.currentIndex + 1} de {savedSessionData.queue.length}).
-            </p>
-          </div>
+  return (
+    <div className="bg-surface border border-line-subtle shadow-2xs rounded-lg p-6 sm:p-8 max-w-2xl mx-auto w-full">
+      <div className="flex items-center gap-3.5 mb-6">
+        <div className="w-10 h-10 bg-accent/10 border border-accent/25 text-accent rounded-md flex items-center justify-center shrink-0">
+          <Filter size={20} />
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={discardSavedQuiz}
-            className="flex-1 sm:flex-initial px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors cursor-pointer"
-          >
-            Descartar
-          </button>
-          <button
-            type="button"
-            onClick={resumeSavedQuiz}
-            className="flex-1 sm:flex-initial px-4 py-2 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.02]"
-          >
-            <Play size={14} fill="currentColor" />
-            Continuar Sessão
-          </button>
-        </div>
-      </div>
-    )}
-
-    {!showCustomSession && (
-      <div className="space-y-4">
         <div>
-          <h3 className="text-base font-bold text-foreground">O que você quer fazer agora?</h3>
-          <p className="text-sm text-muted-foreground mt-1">Comece pela próxima ação útil; você pode personalizar uma sessão quando precisar.</p>
+          <h2 className="text-lg font-bold text-ink-primary tracking-tight">Filtros de Estudo</h2>
+          <p className="text-ink-secondary text-xs">Monte sua sessão de estudo tutorado escolhendo os filtros.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => startRecommendedSession("review")}
-            className="text-left rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer flex flex-col justify-between"
-          >
+      </div>
+
+      {hasSavedState && savedSessionData && (
+        <div className="bg-accent/10 border border-accent/30 rounded-lg p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-accent text-white flex items-center justify-center shrink-0">
+              <RotateCcw size={18} />
+            </div>
             <div>
-              <div className="flex items-center gap-2 text-primary font-bold text-sm sm:text-base"><RefreshCw size={18} /> Revisar o que venceu</div>
-              <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">Até 20 questões com repetição pendente no motor FSRS. Prioridade máxima para fixação.</p>
-            </div>
-            <span className="mt-3 text-xs font-bold text-primary flex items-center gap-1">Iniciar revisão →</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => startRecommendedSession("wrong")}
-            className="text-left rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 sm:p-5 transition-colors hover:bg-rose-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm sm:text-base"><RotateCcw size={18} /> Caderno de Erros</div>
-              <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">Até 20 questões com erro em aberto. Retifique e zere suas vulnerabilidades.</p>
-            </div>
-            <span className="mt-3 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">Retificar erros →</span>
-          </button>
-        </div>
-
-        <div
-          className="text-left rounded-xl border border-border bg-muted/30 p-5 transition-colors hover:bg-muted/60 focus-within:ring-2 focus-within:ring-primary flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-foreground font-bold text-base">
-                <Brain size={18} className="text-primary" /> Sessão Adaptativa Inteligente
-              </div>
-              <button
-                type="button"
-                onClick={() => startRecommendedSession("adaptive", adaptiveFocus)}
-                className="px-3.5 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Play size={12} fill="currentColor" /> Iniciar 30 Questões
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              30 questões balanceadas com <span className="text-purple-600 dark:text-purple-400 font-semibold inline-flex items-center gap-0.5"><Sparkles size={11} /> Questões Gêmeas</span> para testar raciocínio clínico sem decoreba.
-            </p>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Foco da Sessão</span>
-              <span className="text-[11px] text-primary font-medium">
-                {adaptiveFocus === "coverage" ? "70% Inéditas · 30% Revisão" :
-                 adaptiveFocus === "retention" ? "80% Revisão & Erros · 20% Inéditas" :
-                 "50% Inéditas · 50% Revisão"}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-lg border border-border">
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("coverage"); }}
-                className={clsx(
-                  "py-1 px-1.5 text-xs font-semibold rounded-md transition-all text-center cursor-pointer",
-                  adaptiveFocus === "coverage" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                )}
-                title="Foco em cobrir o edital com novas questões"
-              >
-                Cobertura
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("balanced"); }}
-                className={clsx(
-                  "py-1 px-1.5 text-xs font-semibold rounded-md transition-all text-center cursor-pointer",
-                  adaptiveFocus === "balanced" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                )}
-                title="Equilíbrio entre questões inéditas e revisões"
-              >
-                Equilibrado
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("retention"); }}
-                className={clsx(
-                  "py-1 px-1.5 text-xs font-semibold rounded-md transition-all text-center cursor-pointer",
-                  adaptiveFocus === "retention" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                )}
-                title="Foco em fixação, Questões Gêmeas e correção de erros"
-              >
-                Fixação
-              </button>
+              <h3 className="text-sm font-bold text-ink-primary">Sessão de Estudos em Andamento</h3>
+              <p className="text-xs text-ink-secondary font-mono-lab tabular-nums">
+                {savedSessionData.queue.length} questões (Questão {savedSessionData.currentIndex + 1} de {savedSessionData.queue.length})
+              </p>
             </div>
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowCustomSession(true)}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-border py-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <SlidersHorizontal size={16} /> Montar sessão personalizada
-        </button>
-      </div>
-    )}
-
-    {showCustomSession && <form onSubmit={handleFilterSubmit} className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-foreground">Sessão personalizada</h3>
-          <p className="text-sm text-muted-foreground">Use filtros apenas quando houver um objetivo específico.</p>
-        </div>
-        <button type="button" onClick={() => setShowCustomSession(false)} className="text-sm font-semibold text-primary hover:underline">Voltar</button>
-      </div>
-      <div className="bg-muted/30 border border-border p-4 rounded-lg flex flex-col sm:flex-row gap-4">
-        <button 
-          type="button"
-          onClick={() => setStudyMode("TUTOR")}
-          className={clsx(
-            "flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-md border transition-all",
-            studyMode === "TUTOR" ? "bg-primary/10 border-primary text-primary shadow-sm" : "bg-card border-border text-muted-foreground hover:bg-muted/50"
-          )}
-        >
-          <BookOpenCheck size={24} />
-          <span className="font-bold">Modo Tutor</span>
-          <span className="text-xs text-center">Feedback imediato após cada resposta. Ideal para aprender.</span>
-        </button>
-        <button 
-          type="button"
-          onClick={() => setStudyMode("SIMULADO")}
-          className={clsx(
-            "flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-md border transition-all",
-            studyMode === "SIMULADO" ? "bg-primary/10 border-primary text-primary shadow-sm" : "bg-card border-border text-muted-foreground hover:bg-muted/50"
-          )}
-        >
-          <FileSignature size={24} />
-          <span className="font-bold">Modo Simulado</span>
-          <span className="text-xs text-center">Foco e resistência. Feedback e correção apenas no final.</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Status</label>
-          <select 
-            className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            value={filters.status || (filters.unanswered_only === "true" ? "unanswered" : "")}
-            onChange={(e) => {
-              const val = e.target.value;
-              const next: Record<string, string | string[]> = { ...filters, status: val };
-              if (val === "unanswered") {
-                next.unanswered_only = "true";
-              } else if (val === "") {
-                delete next.unanswered_only;
-              }
-              setFilters(next);
-            }}
-          >
-            <option className="bg-background text-foreground" value="unanswered">Não respondidas (Padrão)</option>
-            <option className="bg-background text-foreground" value="">Todas (inclui já respondidas)</option>
-            <option className="bg-background text-foreground" value="srs_due">Para Revisão (Repetição Espaçada)</option>
-            <option className="bg-background text-foreground" value="wrong">Errei anteriormente</option>
-          </select>
-        </div>
-        
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Quantidade de Questões</label>
-          <input 
-            type="number"
-            min="1"
-            max="200"
-            className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            value={localLimit}
-            onChange={(e) => {
-              const val = e.target.value;
-              setLocalLimit(val);
-              setFilters((prev) => ({ ...prev, limit: val }));
-            }}
-          />
-          <p className="text-xs text-muted-foreground">Máximo de 200 questões por sessão.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground flex items-center justify-between">
-            <span>Área</span>
-            {isUpdatingMeta && <span className="text-xs text-muted-foreground animate-pulse">Atualizando...</span>}
-          </label>
-          <select 
-            className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            value={filters.area || ""}
-            onChange={(e) => setFilters({ ...filters, area: e.target.value })}
-          >
-            <option className="bg-background text-foreground" value="">Todas as Áreas</option>
-            {(dynamicMeta.areas || []).map(a => (
-              <option className="bg-background text-foreground" key={a.area} value={a.area}>{a.area} ({a.n})</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground flex items-center justify-between">
-            <span>Ano</span>
-            {isUpdatingMeta && <span className="text-xs text-muted-foreground animate-pulse">Atualizando...</span>}
-          </label>
-          <select 
-            className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            value={filters.year || ""}
-            onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-          >
-            <option className="bg-background text-foreground" value="">Todos os Anos</option>
-            {(dynamicMeta.years || []).map(y => (
-              <option className="bg-background text-foreground" key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="space-y-3 mt-6">
-        <label className="text-sm font-medium text-foreground flex items-center justify-between">
-          <span className="flex items-center gap-1.5 flex-wrap">
-            <span>Instituição / Banca</span>
-            {hasTargetConfigured && !filters.institution && (
-              <span className="text-[11px] font-normal text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                🎯 Priorizando suas bancas-alvo (~40%)
-              </span>
-            )}
-          </span>
-          {isUpdatingMeta && <span className="text-xs text-muted-foreground animate-pulse">Atualizando...</span>}
-        </label>
-
-        <select 
-          className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          value={selectedInstValue}
-          onChange={(e) => {
-             const val = e.target.value;
-             if (val === "") {
-                 const newFilters = { ...filters };
-                 delete newFilters.institution;
-                 setFilters(newFilters);
-             } else {
-                 const group = groupedInstitutions.find(g => g.base === val);
-                 if (group) {
-                     setFilters({ ...filters, institution: group.codes });
-                 } else {
-                     setFilters({ ...filters, institution: val });
-                 }
-             }
-          }}
-        >
-          <option className="bg-background text-foreground" value="">
-            {hasTargetConfigured
-              ? `Todas as Instituições (${dynamicMeta?.total_questions ?? 0}) • Foco nas suas bancas-alvo 🎯`
-              : `Todas as Instituições (${dynamicMeta?.total_questions ?? 0})`}
-          </option>
-          {groupedInstitutions.map(g => {
-            const isTarget = g.codes.some(c => targetInstSet.has(c.toUpperCase())) || targetInstSet.has(g.base.toUpperCase());
-            return (
-              <option className="bg-background text-foreground" key={g.base} value={g.base}>
-                {isTarget ? `🎯 ${g.base} (${g.n}) — Alvo` : `${g.base} (${g.n})`}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-        
-        <div className="space-y-2 md:col-span-2 relative">
-          <label className="text-sm font-medium text-foreground flex items-center justify-between">
-            <span>Subtemas (Múltipla Escolha)</span>
-            {isUpdatingMeta && <span className="text-xs text-muted-foreground animate-pulse">Atualizando...</span>}
-          </label>
-          
-          {/* Chips of selected subtemas */}
-          {selectedSubtemas.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {selectedSubtemas.map((sub) => (
-                <SubtemaChip key={sub} subtema={sub} onRemove={handleRemoveSubtema} />
-              ))}
-              <button 
-                type="button" 
-                onClick={handleClearAllSubtemas}
-                className="text-xs text-muted-foreground hover:text-foreground underline px-2 py-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-              >
-                Limpar todos
-              </button>
-            </div>
-          )}
-          
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar subtema para adicionar... (Enter para selecionar)"
-              value={subtemaSearch}
-              onChange={(e) => setSubtemaSearch(e.target.value)}
-              onKeyDown={handleSubtemaInputKeyDown}
-              className="w-full bg-input border border-border rounded-md py-2.5 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary pl-9"
-              aria-label="Buscar subtema para adicionar"
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <Search size={16} aria-hidden="true" />
-            </div>
-          </div>
-          
-          {subtemaSearch.trim().length > 0 && (
-            <div
-              role="listbox"
-              aria-label="Sugestões de subtemas"
-              className="absolute z-50 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-60 overflow-y-auto"
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={discardSavedQuiz}
+              className="flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold text-ink-secondary hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
             >
-              {filteredSearchSubtemas.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-muted-foreground italic">
-                  Nenhum subtema disponível encontrado.
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={resumeSavedQuiz}
+              className="flex-1 sm:flex-initial px-3.5 py-1.5 text-xs font-semibold bg-accent hover:bg-accent/90 text-white rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Play size={13} fill="currentColor" />
+              Continuar Sessão
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showCustomSession && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-ink-primary">O que você quer fazer agora?</h3>
+            <p className="text-xs text-ink-secondary mt-1">Comece pela próxima ação útil ou personalize os filtros.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => startRecommendedSession("review")}
+              className="text-left rounded-lg border border-accent/30 bg-accent/5 p-4 transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2 text-accent font-bold text-sm"><RefreshCw size={16} /> Revisar o que venceu</div>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">Até 20 questões com repetição pendente no motor FSRS.</p>
+              </div>
+              <span className="mt-3 text-xs font-semibold text-accent">Iniciar revisão →</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => startRecommendedSession("wrong")}
+              className="text-left rounded-lg border border-critical/30 bg-critical-bg p-4 transition-colors hover:bg-critical/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-critical cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2 text-critical font-bold text-sm"><RotateCcw size={16} /> Caderno de Erros</div>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">Até 20 questões com erro em aberto para retificação.</p>
+              </div>
+              <span className="mt-3 text-xs font-semibold text-critical">Retificar erros →</span>
+            </button>
+          </div>
+
+          <div className="text-left rounded-lg border border-line-subtle bg-elevated/30 p-4 sm:p-5 flex flex-col justify-between">
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-ink-primary font-bold text-sm">
+                  <Brain size={16} className="text-accent" /> Sessão Adaptativa Inteligente
                 </div>
-              ) : (
-                filteredSearchSubtemas.map((s) => (
-                  <SubtemaDropdownItem
-                    key={s.subtema}
-                    subtema={s.subtema}
-                    count={s.n}
-                    onSelect={handleAddSubtema}
+                <button
+                  type="button"
+                  onClick={() => startRecommendedSession("adaptive", adaptiveFocus)}
+                  className="px-3 py-1.5 bg-accent text-white text-xs font-semibold rounded-md hover:bg-accent/90 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Play size={12} fill="currentColor" /> Iniciar 30 Questões
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-ink-secondary leading-relaxed">
+                30 questões balanceadas com <span className="text-accent font-semibold inline-flex items-center gap-0.5"><Sparkles size={11} /> Questões Gêmeas</span> para testar raciocínio clínico.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-line-subtle">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono-lab text-[10px] font-bold text-ink-muted uppercase tracking-wider">Foco da Sessão</span>
+                <span className="font-mono-lab text-[11px] text-accent font-medium">
+                  {adaptiveFocus === "coverage" ? "70% Inéditas · 30% Revisão" :
+                   adaptiveFocus === "retention" ? "80% Revisão & Erros · 20% Inéditas" :
+                   "50% Inéditas · 50% Revisão"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 bg-canvas p-1 rounded-md border border-line-subtle">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("coverage"); }}
+                  className={clsx(
+                    "py-1 px-1.5 text-xs font-semibold rounded-xs transition-colors text-center cursor-pointer",
+                    adaptiveFocus === "coverage" ? "bg-accent text-white" : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Cobertura
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("balanced"); }}
+                  className={clsx(
+                    "py-1 px-1.5 text-xs font-semibold rounded-xs transition-colors text-center cursor-pointer",
+                    adaptiveFocus === "balanced" ? "bg-accent text-white" : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Equilibrado
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setAdaptiveFocus("retention"); }}
+                  className={clsx(
+                    "py-1 px-1.5 text-xs font-semibold rounded-xs transition-colors text-center cursor-pointer",
+                    adaptiveFocus === "retention" ? "bg-accent text-white" : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Fixação
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCustomSession(true)}
+            className="w-full flex items-center justify-center gap-2 rounded-md border border-line-subtle py-2.5 text-xs font-semibold text-ink-secondary hover:bg-elevated hover:text-ink-primary transition-colors cursor-pointer"
+          >
+            <SlidersHorizontal size={15} /> Montar sessão personalizada
+          </button>
+        </div>
+      )}
+
+      {showCustomSession && (
+        <form onSubmit={handleFilterSubmit} className="flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-ink-primary">Sessão personalizada (Modo Tutor)</h3>
+              <p className="text-xs text-ink-secondary">Para provas cronometradas sem feedback imediato, utilize a aba Simulados.</p>
+            </div>
+            <button type="button" onClick={() => setShowCustomSession(false)} className="text-xs font-semibold text-accent hover:underline cursor-pointer">
+              Voltar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ink-primary">Status</label>
+              <select
+                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                value={filters.status || (filters.unanswered_only === "true" ? "unanswered" : "")}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const next: Record<string, string | string[]> = { ...filters, status: val };
+                  if (val === "unanswered") {
+                    next.unanswered_only = "true";
+                  } else if (val === "") {
+                    delete next.unanswered_only;
+                  }
+                  setFilters(next);
+                }}
+              >
+                <option value="unanswered">Não respondidas (Padrão)</option>
+                <option value="">Todas (inclui já respondidas)</option>
+                <option value="srs_due">Para Revisão (Repetição Espaçada)</option>
+                <option value="wrong">Errei anteriormente</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ink-primary">Quantidade de Questões</label>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs font-mono-lab tabular-nums text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                value={localLimit}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocalLimit(val);
+                  setFilters((prev) => ({ ...prev, limit: val }));
+                }}
+              />
+              <p className="text-[11px] text-ink-muted">Máximo de 200 questões por sessão.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ink-primary flex items-center justify-between">
+                <span>Área</span>
+                {isUpdatingMeta && <span className="text-[11px] text-ink-muted">Atualizando...</span>}
+              </label>
+              <select
+                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                value={filters.area || ""}
+                onChange={(e) => setFilters({ ...filters, area: e.target.value })}
+              >
+                <option value="">Todas as Áreas</option>
+                {(dynamicMeta.areas || []).map(a => (
+                  <option key={a.area} value={a.area}>{a.area} ({a.n})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ink-primary flex items-center justify-between">
+                <span>Ano</span>
+                {isUpdatingMeta && <span className="text-[11px] text-ink-muted">Atualizando...</span>}
+              </label>
+              <select
+                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                value={filters.year || ""}
+                onChange={(e) => setFilters({ ...filters, year: e.target.value })}
+              >
+                <option value="">Todos os Anos</option>
+                {(dynamicMeta.years || []).map(y => (
+                  <option key={y} value={String(y)}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-ink-primary flex items-center justify-between">
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span>Instituição / Banca</span>
+                {hasTargetConfigured && !filters.institution && (
+                  <span className="font-mono-lab text-[10px] font-semibold text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-xs">
+                    Priorizando bancas-alvo (~40%)
+                  </span>
+                )}
+              </span>
+              {isUpdatingMeta && <span className="text-[11px] text-ink-muted">Atualizando...</span>}
+            </label>
+
+            <select
+              className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              value={selectedInstValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  const newFilters = { ...filters };
+                  delete newFilters.institution;
+                  setFilters(newFilters);
+                } else {
+                  const group = groupedInstitutions.find(g => g.base === val);
+                  if (group) {
+                    setFilters({ ...filters, institution: group.codes });
+                  } else {
+                    setFilters({ ...filters, institution: val });
+                  }
+                }
+              }}
+            >
+              <option value="">
+                {hasTargetConfigured
+                  ? `Todas as Instituições (${dynamicMeta?.total_questions ?? 0}) • Foco nas bancas-alvo`
+                  : `Todas as Instituições (${dynamicMeta?.total_questions ?? 0})`}
+              </option>
+              {groupedInstitutions.map(g => {
+                const isTarget = g.codes.some(c => targetInstSet.has(c.toUpperCase())) || targetInstSet.has(g.base.toUpperCase());
+                return (
+                  <option key={g.base} value={g.base}>
+                    {isTarget ? `${g.base} (${g.n}) — Alvo` : `${g.base} (${g.n})`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="space-y-2 relative">
+            <label className="text-xs font-semibold text-ink-primary flex items-center justify-between">
+              <span>Subtemas (Múltipla Escolha)</span>
+              {isUpdatingMeta && <span className="text-[11px] text-ink-muted">Atualizando...</span>}
+            </label>
+
+            {selectedSubtemas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedSubtemas.map((sub) => (
+                  <SubtemaChip key={sub} subtema={sub} onRemove={handleRemoveSubtema} />
+                ))}
+                <button
+                  type="button"
+                  onClick={handleClearAllSubtemas}
+                  className="text-xs text-ink-muted hover:text-ink-primary underline px-2 py-1 cursor-pointer rounded"
+                >
+                  Limpar todos
+                </button>
+              </div>
+            )}
+
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar subtema para adicionar... (Enter para selecionar)"
+                value={subtemaSearch}
+                onChange={(e) => setSubtemaSearch(e.target.value)}
+                onKeyDown={handleSubtemaInputKeyDown}
+                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent pl-8"
+                aria-label="Buscar subtema para adicionar"
+              />
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
+                <Search size={14} aria-hidden="true" />
+              </div>
+            </div>
+
+            {subtemaSearch.trim().length > 0 && (
+              <div
+                role="listbox"
+                aria-label="Sugestões de subtemas"
+                className="absolute z-50 w-full mt-1 bg-surface border border-line-subtle rounded-md shadow-lg max-h-60 overflow-y-auto"
+              >
+                {filteredSearchSubtemas.length === 0 ? (
+                  <div className="px-4 py-3 text-xs text-ink-muted italic">
+                    Nenhum subtema disponível encontrado.
+                  </div>
+                ) : (
+                  filteredSearchSubtemas.map((s) => (
+                    <SubtemaDropdownItem
+                      key={s.subtema}
+                      subtema={s.subtema}
+                      count={s.n}
+                      onSelect={handleAddSubtema}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-line-subtle">
+              <button type="button" onClick={() => setShowTopicTree(value => !value)} className="text-xs font-semibold text-accent hover:underline cursor-pointer">
+                {showTopicTree ? "Ocultar árvore de temas" : "Abrir árvore de temas"}
+              </button>
+              {showTopicTree && (
+                <div className="mt-3">
+                  <SubjectTreeSelector
+                    selectedSubtemas={Array.isArray(filters.subtema) ? filters.subtema : (filters.subtema ? [filters.subtema] : [])}
+                    onChange={(newSelection) => {
+                      const newFilters = { ...filters };
+                      if (newSelection.length > 0) newFilters.subtema = newSelection;
+                      else delete newFilters.subtema;
+                      setFilters(newFilters);
+                    }}
+                    availableSubtemas={dynamicMeta.subtemas || []}
                   />
-                ))
+                </div>
               )}
             </div>
-          )}
-          
-          <div className="mt-5 pt-4 border-t border-border">
-            <button type="button" onClick={() => setShowTopicTree(value => !value)} className="text-sm font-semibold text-primary hover:underline">
-              {showTopicTree ? "Ocultar árvore de temas" : "Abrir árvore de temas"}
-            </button>
-            {showTopicTree && <div className="mt-3"><SubjectTreeSelector
-              selectedSubtemas={Array.isArray(filters.subtema) ? filters.subtema : (filters.subtema ? [filters.subtema] : [])}
-              onChange={(newSelection) => {
-                const newFilters = { ...filters };
-                if (newSelection.length > 0) newFilters.subtema = newSelection;
-                else delete newFilters.subtema;
-                setFilters(newFilters);
-              }}
-              availableSubtemas={dynamicMeta.subtemas || []}
-            /></div>}
           </div>
-        </div>
 
-      <button 
-        type="submit"
-        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-md transition-colors flex items-center justify-center gap-2 w-full mt-2 shadow-sm"
-      >
-        <Play size={18} fill="currentColor" />
-        {studyMode === "TUTOR" ? "Iniciar Sessão de Estudos" : "Iniciar Simulado Personalizado"}
-      </button>
-    </form>}
-  </div>
-);
+          <button
+            type="submit"
+            className="bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 rounded-md transition-colors flex items-center justify-center gap-2 w-full mt-1 shadow-2xs text-xs cursor-pointer"
+          >
+            <Play size={15} fill="currentColor" />
+            Iniciar Sessão de Estudos
+          </button>
+        </form>
+      )}
+    </div>
+  );
 }

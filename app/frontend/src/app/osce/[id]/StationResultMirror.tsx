@@ -188,7 +188,7 @@ export function StationResultMirror({
     },
     "ELIMINADO POR IATROGENIA": {
       bg: "bg-rose-500/15 border-rose-500/60 text-rose-300",
-      badge: "bg-rose-600 text-white animate-pulse",
+      badge: "bg-rose-600 text-white",
       border: "border-rose-500/50",
     },
   };
@@ -294,14 +294,14 @@ export function StationResultMirror({
       {feedback.red_flags_triggered && feedback.red_flags_triggered.length > 0 && (
         <div className="p-5 rounded-2xl border-2 border-rose-500/50 bg-rose-950/20 space-y-3 shadow-xl">
           <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm tracking-wide">
-            <ShieldAlert className="w-5 h-5 animate-bounce" />
+            <ShieldAlert className="w-5 h-5" />
             <span>FALTAS GRAVES / IATROGENIAS IDENTIFICADAS PELA BANCA:</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             {feedback.red_flags_triggered.map((rf, idx) => (
               <div
                 key={idx}
-                className="bg-slate-900/90 border border-rose-500/40 rounded-xl p-3.5 space-y-1.5"
+                className="bg-slate-900/90 border border-rose-500/40 rounded-lg p-3.5 space-y-1.5"
               >
                 <div className="flex items-center justify-between text-xs font-bold text-rose-300">
                   <span>{rf.title}</span>
@@ -311,7 +311,7 @@ export function StationResultMirror({
                   {rf.description}
                 </p>
                 <div className="text-[11px] font-mono text-rose-400/90 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
-                  ⛔ Consequência: {rf.clinical_consequence}
+                  Consequência: {rf.clinical_consequence}
                 </div>
               </div>
             ))}
@@ -394,9 +394,9 @@ export function StationResultMirror({
           </div>
 
           {/* CONDUTA CANÔNICA PADRÃO-OURO */}
-          <div className="bg-slate-950 border border-indigo-500/30 rounded-xl p-4 space-y-1.5">
+          <div className="bg-slate-950 border border-indigo-500/30 rounded-lg p-4 space-y-1.5">
             <div className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-              <span>🎯 Conduta Canônica Padrão-Ouro (Gabarito da Estação)</span>
+              <span>Conduta Canônica Padrão-Ouro (Gabarito da Estação)</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-line bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
               {feedback.chief_preceptor_review?.gold_standard_canonical_conduct ||
@@ -486,17 +486,15 @@ export function StationResultMirror({
       {/* ========================================================================= */}
       {/* 5. FOOTER: PRESCRIÇÃO DE REMEDIAÇÃO NO MEDQUEST & RE-TREINO */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
+      <div className="bg-slate-900 border border-indigo-500/30 rounded-lg p-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="space-y-1">
           <div className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
             <BookOpen className="w-4 h-4" /> Prescrição de Estudo Dirigido no MedQuest
           </div>
           <p className="text-sm text-slate-300">
-            Recomendamos revisar os baralhos de flashcards e questões comentadas de{" "}
+            Recomendamos revisar a teoria e as questões comentadas de{" "}
             <span className="font-semibold text-white">
-              {(feedback.medquest_remediation?.recommended_flashcard_decks || [
-                `${area} (${subtema || "Protocolos Beira-Leito"})`,
-              ]).join(", ")}
+              {area} ({subtema || "Protocolos Beira-Leito"})
             </span>.
           </p>
         </div>

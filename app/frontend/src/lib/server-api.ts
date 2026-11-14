@@ -3,9 +3,9 @@ import { getGuestSession } from "./session";
 import { 
   ThemeProgress, OverviewStats, CoverageResponse, QuestionMeta, PlannerConfig,
   TimelineStat, WeakTopic, Recommendation, BreakdownStat, DistractorStat,
-  PlannerPlanResponse, PlannerProgressMap, PlannerTopicProgressMap, PredictiveScore, AtRiskTopic, LearningProfile, ExamReadiness,
+  PlannerPlanResponse, PlannerProgressMap, PlannerTopicProgressMap, AtRiskTopic, LearningProfile, ExamReadiness,
   BenchmarkStat, BottleneckTopic, DomainSummaryResponse, ErrorNotebookSummary, InstitutionRadarResponse,
-  DashboardSummaryResponse
+  DashboardSummaryResponse, AnalysisSummaryResponse
 } from "@/types/api";
 
 export type { QuestionMeta };
@@ -95,12 +95,18 @@ export const serverApi = {
   stats: {
     getOverview: () => serverFetch<OverviewStats>("/api/stats/overview", { cache: "no-store" }),
     getDashboardSummary: () => serverFetch<DashboardSummaryResponse>("/api/dashboard/summary", { cache: "no-store" }),
+    getAnalysisSummary: (institution?: string, compareInstitution?: string) => {
+      const params = new URLSearchParams();
+      if (institution) params.append("institution", institution);
+      if (compareInstitution) params.append("compare_institution", compareInstitution);
+      const qs = params.toString();
+      return serverFetch<AnalysisSummaryResponse>(`/api/stats/analysis-summary${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+    },
     getCoverage: () => serverFetch<CoverageResponse>("/api/coverage", { cache: "no-store" }),
     getTimeline: (days: number = 14) => serverFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}`, { next: { tags: ['stats'] } }),
     getWeakTopics: () => serverFetch<WeakTopic[]>("/api/stats/weak-topics", { next: { tags: ['stats'] } }),
     getRecommendations: () => serverFetch<Recommendation[]>("/api/stats/recommendations", { next: { tags: ['stats'] } }),
     getDistractors: () => serverFetch<DistractorStat[]>("/api/stats/distractors", { next: { tags: ['stats'] } }),
-    getPredictiveScore: () => serverFetch<PredictiveScore>("/api/stats/predictive-score", { next: { tags: ['stats'] } }),
     getAtRiskTopics: () => serverFetch<AtRiskTopic[]>("/api/stats/at-risk", { next: { tags: ['stats'] } }),
     getLearningProfile: (subtema?: string) => serverFetch<LearningProfile>(`/api/stats/learning-profile${subtema ? `?subtema=${encodeURIComponent(subtema)}` : ""}`, { cache: "no-store" }),
     getExamReadiness: (institution?: string) => serverFetch<ExamReadiness>(`/api/stats/exam-readiness${institution ? `?institution=${encodeURIComponent(institution)}` : ""}`, { next: { tags: ['stats'] } }),
@@ -203,11 +209,6 @@ export const serverApi = {
       cache: "no-store",
     }),
     getLiveFeedback: (sessionId: string, elapsedSeconds: number) => serverFetch<import("@/types/api").OsceLiveFeedback>(`/api/osce/sessions/${sessionId}/live_feedback?elapsed_seconds=${elapsedSeconds}`, { cache: "no-store" }),
-    generateStation: (payload?: import("@/types/api").OsceGenerateStationPayload) => serverFetch<import("@/types/api").OsceGenerateStationResponse>("/api/osce/stations/generate", {
-      method: "POST",
-      body: JSON.stringify(payload || {}),
-      cache: "no-store",
-    }),
     getCircuitPlan: (institution?: string) => {
       const qs = institution ? `?institution=${encodeURIComponent(institution)}` : "";
       return serverFetch<import("@/types/api").OsceCircuitPlanResponse>(`/api/osce/circuits/plan${qs}`, { cache: "no-store" });

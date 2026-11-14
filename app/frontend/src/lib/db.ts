@@ -1,5 +1,5 @@
 import Dexie, { Table } from "dexie";
-import { QuestionDetail, Flashcard } from "@/types/api";
+import { QuestionDetail } from "@/types/api";
 
 declare global {
   interface Window {
@@ -161,7 +161,6 @@ export function isQuotaExceededError(err: unknown): boolean {
 
 export class MedQuestDB extends Dexie {
   questions!: Table<QuestionDetail & { _owner_id: string }, [number, string]>;
-  flashcards!: Table<Flashcard & { _owner_id: string }, [number, string]>;
   syncQueue!: Table<SyncItem, string>;
   simuladoPackages!: Table<SimuladoPackage, string>;
 
@@ -318,6 +317,14 @@ export class MedQuestDB extends Dexie {
       .stores({
         questions: "[id+_owner_id], id, _owner_id, institution_code, year, area, subtema",
         flashcards: "[id+_owner_id], id, _owner_id, question_id, next_review_date",
+        syncQueue: "id, owner_id, status, next_retry_at, created_at",
+        simuladoPackages: "id, owner_id, status, expires_at, created_at",
+      });
+
+    this.version(5)
+      .stores({
+        questions: "[id+_owner_id], id, _owner_id, institution_code, year, area, subtema",
+        flashcards: null,
         syncQueue: "id, owner_id, status, next_retry_at, created_at",
         simuladoPackages: "id, owner_id, status, expires_at, created_at",
       });

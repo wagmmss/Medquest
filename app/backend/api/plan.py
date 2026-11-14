@@ -509,6 +509,7 @@ def _build_consolidation_event(ics_lines, w_num, week_start_dt, w_date_str, now_
     start_str = week_start_dt.strftime("%Y%m%dT080000")
     end_str = (week_start_dt + timedelta(hours=3)).strftime("%Y%m%dT110000")
     uid = f"medquest-week-consolidation-{w_num}-{user_id}-{w_date_str}@medquest"
+    footer_link = f"\\n\\n🔗 {base_url}/planner" if base_url else ""
     ics_lines.extend([
         "BEGIN:VEVENT",
         f"UID:{uid}",
@@ -516,7 +517,7 @@ def _build_consolidation_event(ics_lines, w_num, week_start_dt, w_date_str, now_
         f"DTSTART:{start_str}",
         f"DTEND:{end_str}",
         f"SUMMARY:[MedQuest] Semana {w_num}: Revisão Geral & Consolidação",
-        f"DESCRIPTION:Semana reservada para consolidação de metas e simulados.{f'\\n\\n🔗 {base_url}/planner' if base_url else ''}",
+        f"DESCRIPTION:Semana reservada para consolidação de metas e simulados.{footer_link}",
         "STATUS:CONFIRMED",
         "END:VEVENT",
     ])
@@ -613,21 +614,3 @@ def calendar_feed():
             "Content-Disposition": "inline; filename=medquest_feed.ics"
         }
     )
-
-
-
-
-@bp.route("/planner/sync-calendar", methods=["POST"])
-def planner_sync_calendar():
-    from .services.calendar_sync import sync_calendar_engine
-    
-    # Executa a engine com o caminho correto do banco e do token.
-    # Como é um backend Flask, podemos pegar o db via get_db(), mas 
-    # o calendário usa sqlite3 direto no nosso mockup.
-    # Vamos adaptar aqui no futuro para usar a conexão g.db
-    
-    success = sync_calendar_engine("medquest.db")
-    if success:
-        record_domain_event("planner_sync_google_calendar", {"user_id": g.user_id})
-        return jsonify({"success": True, "message": "Agenda sincronizada com sucesso usando Regra de União e Efeito Cascata."})
-    return jsonify({"success": False, "message": "Falha na sincronização."}), 500

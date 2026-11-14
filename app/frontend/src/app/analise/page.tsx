@@ -1,134 +1,191 @@
-import { serverApi } from "@/lib/server-api";
+import { isDynamicServerUsageError, serverApi } from "@/lib/server-api";
+import type { AnalysisSummaryResponse } from "@/types/api";
 import dynamic from "next/dynamic";
-
+import type { AnalysisTabKey } from "./AnalysisClient";
 
 const AnalysisClient = dynamic(
-  () => import("./AnalysisClient").then(mod => mod.AnalysisClient),
+  () => import("./AnalysisClient").then((mod) => mod.AnalysisClient),
   {
     loading: () => (
-      <div className="flex flex-col gap-6 animate-pulse p-4">
-        <div className="h-64 bg-muted/40 rounded-2xl w-full" />
+      <div className="flex flex-col gap-6">
+        <div className="h-12 bg-surface-subtle border border-line-subtle rounded-lg w-80" />
+        <div className="h-64 bg-surface-subtle border border-line-subtle rounded-lg w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-48 bg-muted/40 rounded-2xl" />
-          <div className="h-48 bg-muted/40 rounded-2xl" />
+          <div className="h-48 bg-surface-subtle border border-line-subtle rounded-lg" />
+          <div className="h-48 bg-surface-subtle border border-line-subtle rounded-lg" />
         </div>
       </div>
     ),
   }
 );
 
-export default async function AnalisePage() {
-  // Fazemos fetch paralelo de todos os dados do dashboard analítico
-  const ALLOWED_INSTITUTIONS = [
-    { key: "USP-SP", label: "USP - São Paulo" },
-    { key: "USP-RP", label: "USP - Ribeirão Preto" },
-    { key: "UNICAMP", label: "Unicamp" },
-    { key: "UNIFESP", label: "Unifesp / EPM" },
-    { key: "SUS-SP", label: "SUS-SP" },
-  ];
+const ALLOWED_INSTITUTIONS = [
+  { key: "USP-SP", label: "USP - São Paulo" },
+  { key: "USP-RP", label: "USP - Ribeirão Preto" },
+  { key: "UNICAMP", label: "Unicamp" },
+  { key: "UNIFESP", label: "Unifesp / EPM" },
+  { key: "SUS-SP", label: "SUS-SP" },
+];
 
-  const overviewPromise = serverApi.stats.getOverview().catch(() => null);
-  const readinessPromise = overviewPromise.then(overview => {
-    const raw = overview?.primary_institution || overview?.target_institution;
-    const inst = (raw && raw !== "Todas as Bancas" && raw !== "TODAS")
-      ? raw.split(",")[0].trim()
-      : undefined;
-    const targetInst = (inst && ALLOWED_INSTITUTIONS.some(i => i.key === inst)) ? inst : "USP-SP";
-    return serverApi.stats.getExamReadiness(targetInst);
-  });
-  const radarPromise = overviewPromise.then(overview => {
-    const raw = overview?.primary_institution || overview?.target_institution;
-    const inst = (raw && raw !== "Todas as Bancas" && raw !== "TODAS")
-      ? raw.split(",")[0].trim()
-      : "USP-SP";
-    const targetInst = (inst && ALLOWED_INSTITUTIONS.some(i => i.key === inst)) ? inst : "USP-SP";
-    return serverApi.stats.getInstitutionRadar(targetInst);
-  }).catch(() => null);
-  const results = await Promise.allSettled([
-    serverApi.stats.getTimeline(14),
-    serverApi.stats.getWeakTopics(),
-    serverApi.stats.getBreakdown("institution"),
-    serverApi.stats.getDistractors(),
-    serverApi.stats.getPredictiveScore(),
-    serverApi.stats.getAtRiskTopics(),
-    serverApi.stats.getLearningProfile(),
-    readinessPromise,
-    serverApi.stats.getTimeline(180),
-  ]);
-
-  const sectionNames = ["Evolução", "Temas prioritários", "Instituições", "Distratores", "Projeção", "Risco de esquecimento", "Perfil de estudo", "Prontidão", "Histórico de 180 dias"];
-  const failedSections = sectionNames.filter((_, index) => results[index].status === "rejected");
-  const timeline = results[0].status === 'fulfilled' ? results[0].value : [];
-  const weakTopics = results[1].status === 'fulfilled' ? results[1].value : [];
-  const breakdown = results[2].status === 'fulfilled' ? results[2].value : [];
-  const distractors = results[3].status === 'fulfilled' ? results[3].value : [];
-  const predictiveScore = results[4].status === 'fulfilled' ? results[4].value : { projected_score: 0, target_score: null, areas: [] };
-  const atRiskTopics = results[5].status === 'fulfilled' ? results[5].value : [];
-  const learningProfile = results[6].status === 'fulfilled' ? results[6].value : {
-    generated_at: '',
-    goal: { questions_today: 30, configured_daily_questions: 30, reviews_due: 0, reviews_to_do_today: 0, backlog_pending: 0, hours_budget: 4, max_capacity: 80, target_score: null, exam_date: null },
+const EMPTY_SUMMARY: AnalysisSummaryResponse = {
+  overview: {
+    total_questions: 0,
+    distinct_answered: 0,
+    total_attempts: 0,
+    accuracy_all_attempts: null,
+    accuracy_latest_attempt: null,
+    coverage_pct: null,
+    srs_due_count: 0,
+    accuracy_last7: null,
+    accuracy_prev7: null,
+    streak_days: 0,
+  },
+  learning_profile: {
+    generated_at: "",
+    goal: {
+      questions_today: 30,
+      configured_daily_questions: 30,
+      reviews_due: 0,
+      reviews_to_do_today: 0,
+      backlog_pending: 0,
+      hours_budget: 4,
+      max_capacity: 80,
+      target_score: null,
+      exam_date: null,
+    },
     topics: [],
     method: { deterministic: true, signals: [] },
-  };
-  const fallbackReadiness = results[7].status === 'fulfilled' ? results[7].value : {
-    institution: "USP-SP", coverage: 0, answered: 0, available: 0, areas: [],
-    disclaimer: 'Ainda não há dados suficientes para este relatório.',
+  },
+  exam_readiness: {
+    institution: "USP-SP",
+    coverage: 0,
+    answered: 0,
+    available: 0,
+    areas: [],
+    disclaimer: "Ainda não há dados suficientes para este relatório.",
     limitations: [
-      'A prontidão estimada reflete exclusivamente as questões resolvidas no MedQuest sob o perfil de edital configurado.',
-      'Não constitui probabilidade de aprovação, garantia de classificação ou nota de corte oficial.',
+      "A prontidão estimada reflete exclusivamente as questões resolvidas no MedQuest sob o perfil de edital configurado.",
+      "Não constitui probabilidade de aprovação, garantia de classificação ou nota de corte oficial.",
     ],
-  };
-  const timeline180 = results[8].status === 'fulfilled' ? results[8].value : [];
-  const examReadiness = fallbackReadiness;
-  const institutionRadar = await radarPromise;
+  },
+  institution_radar: {
+    institution: {
+      code: "USP-SP",
+      label: "USP - São Paulo",
+      total_available: 0,
+      total_answered: 0,
+      coverage: 0,
+      total_attempts: 0,
+      total_correct: 0,
+      accuracy: null,
+      ci_lower: null,
+      ci_upper: null,
+      sample_status: "insufficient",
+      areas: [],
+    },
+    comparison: {
+      type: "global",
+      code: null,
+      label: "Desempenho Geral",
+      total_available: 0,
+      total_answered: 0,
+      coverage: 0,
+      total_attempts: 0,
+      total_correct: 0,
+      accuracy: null,
+      ci_lower: null,
+      ci_upper: null,
+      sample_status: "insufficient",
+      areas: [],
+    },
+    disclaimer:
+      "Métricas isoladas exclusivamente para sua conta. Intervalos de incerteza calculados via Wilson Score a 95% de confiança estatística.",
+    sample_thresholds: {
+      insufficient: "< 20 tentativas",
+      forming: "20 a 49 tentativas",
+      reliable: "≥ 50 tentativas",
+    },
+  },
+  blindspots: {
+    summary: {
+      total_blindspots: 0,
+      unresolved_errors_count: 0,
+      healed_count: 0,
+      healing_rate_pct: 0,
+      total_unique_answered: 0,
+    },
+    blindspots: [],
+  },
+  weak_topics: [],
+  distractors: [],
+  at_risk: [],
+  timeline_180: [],
+  coverage: { areas: [] },
+};
 
-  const institutionOptions = ALLOWED_INSTITUTIONS;
+export default async function AnalisePage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    tab?: string | string[];
+    subtema?: string | string[];
+    institution?: string | string[];
+    compare_institution?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const rawTab = typeof params?.tab === "string" ? params.tab : undefined;
+  const rawSubtema = typeof params?.subtema === "string" ? params.subtema : null;
+  const rawInst =
+    typeof params?.institution === "string" ? params.institution : undefined;
+  const rawCompare =
+    typeof params?.compare_institution === "string"
+      ? params.compare_institution
+      : undefined;
+
+  const initialTab: AnalysisTabKey =
+    rawTab === "cobertura" || rawSubtema
+      ? "cobertura"
+      : rawTab === "prontidao"
+      ? "prontidao"
+      : "desempenho";
+
+  let summary = EMPTY_SUMMARY;
+  let initialError: string | null = null;
+
+  try {
+    summary = await serverApi.stats.getAnalysisSummary(rawInst, rawCompare);
+  } catch (err: unknown) {
+    if (isDynamicServerUsageError(err)) {
+      throw err;
+    }
+    initialError =
+      "Não foi possível carregar o relatório inicial do servidor. Tentando recuperar via cliente.";
+  }
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-500">
-
-      {/* Header */}
-      <section className="bg-card border border-border shadow-sm rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden isolation-auto">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -z-10" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10" />
-
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-4 border border-secondary/20">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Análise adaptativa
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-3">
-            Análise de Desempenho
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-            Evidências transparentes para decidir o que estudar: cobertura, desempenho, risco de esquecimento e evolução ao longo do tempo.
-          </p>
-        </div>
+    <div className="flex flex-col gap-6">
+      <section className="bg-surface border border-line-subtle rounded-lg p-6 md:p-7">
+        <span className="inline-block text-[11px] font-mono-lab uppercase tracking-wider text-primary font-semibold mb-2">
+          Análise adaptativa
+        </span>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-2">
+          Análise de Desempenho & Cobertura
+        </h1>
+        <p className="text-muted-foreground text-sm md:text-base max-w-2xl leading-relaxed">
+          Evidências transparentes para decidir o que estudar: radar comparativo de
+          bancas, cobertura modular do edital, risco de esquecimento e prontidão
+          bayesiana.
+        </p>
       </section>
 
-      {failedSections.length > 0 && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
-        Falha no carregamento inicial: {failedSections.join(", ")}. Use os controles de nova tentativa ou recarregue o relatório para recuperar as seções indisponíveis.
-        <a href="/analise" className="ml-2 font-semibold underline">Recarregar relatório</a>
-      </div>}
-      {/* Main Content Dashboard */}
       <AnalysisClient
-        initialErrors={failedSections}
-        timeline={timeline}
-        weakTopics={weakTopics}
-        breakdown={breakdown}
-        distractors={distractors}
-        predictiveScore={predictiveScore}
-        atRiskTopics={atRiskTopics}
-        learningProfile={learningProfile}
-        examReadiness={examReadiness}
-        institutionOptions={institutionOptions}
-        timeline180={timeline180}
-        institutionRadar={institutionRadar}
+        initialSummary={summary}
+        institutionOptions={ALLOWED_INSTITUTIONS}
+        initialTab={initialTab}
+        initialSubtema={rawSubtema}
+        initialError={initialError}
       />
-
     </div>
   );
 }

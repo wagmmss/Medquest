@@ -1,4 +1,4 @@
-"""Theme progress and flashcard review must remain scoped to theme and owner."""
+"""Theme progress must remain scoped to theme and owner."""
 import pytest
 
 THEME = 'Hipertensão Arterial Sistêmica e Crises Hipertensivas'
@@ -47,36 +47,6 @@ def test_theme_validation_and_versioned_route(client):
                     {'theory_completed': True, 'study_path': 'complete', 'user_id': 'another'}]:
         response = client.put('/api/themes/progress', query_string={'subtema': THEME}, json=payload)
         assert response.status_code == 400
-
-
-def test_flashcard_theme_filter_scopes_due_upcoming_all_and_counts(client, app):
-    from api.db import get_db, db_transaction
-    with app.app_context():
-        db = get_db()
-        with db_transaction(db):
-            cur1 = db.execute(
-                "INSERT INTO flashcards (question_id, front, back, created_at, next_review_date, user_id) VALUES (1, 'Front 1', 'Back 1', '2026-01-01', '2026-01-01', '1')"
-            )
-            fid = cur1.lastrowid
-            db.execute(
-                "INSERT INTO flashcards (question_id, front, back, created_at, next_review_date, user_id) VALUES (2, 'Front 2', 'Back 2', '2026-01-01', '2026-01-01', '1')"
-            )
-    query = {'subtema': THEME}
-    due = client.get('/api/flashcards/review', query_string=query).get_json()
-    assert [card['id'] for card in due] == [fid]
-    state = client.get('/api/themes/progress', query_string=query).get_json()
-    assert state['flashcards_total'] == state['flashcards_due'] == 1
-    assert client.get('/api/flashcards/review', query_string=query, headers={'X-User-ID': 'another'}).get_json() == []
-    client.post(f'/api/flashcards/{fid}/review', json={'confidence': 'certeza'})
-    assert client.get('/api/flashcards/review', query_string=query).get_json() == []
-    upcoming = client.get('/api/flashcards/review', query_string={**query, 'scope': 'upcoming'}).get_json()
-    assert [card['id'] for card in upcoming] == [fid]
-    all_cards = client.get('/api/flashcards/review', query_string={**query, 'all': 'true'}).get_json()
-    assert [card['id'] for card in all_cards] == [fid]
-    assert client.get('/api/flashcards/review', query_string={**query, 'all': 'true', 'deck': 'nonexistent'}).get_json() == []
-    assert client.get('/api/themes/progress', query_string=query).get_json()['flashcards_due'] == 0
-    client.post(f'/api/flashcards/{fid}/report', json={'reason': 'Conteúdo incorreto'})
-    assert client.get('/api/themes/progress', query_string=query).get_json()['flashcards_total'] == 0
 
 
 def test_reset_clears_theme_progress(client):

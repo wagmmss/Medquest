@@ -75,32 +75,32 @@ export function OnboardingTour() {
         aria-modal="true"
         aria-labelledby="onboarding-title"
         aria-describedby="onboarding-description"
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl"
+        className="w-full sm:max-w-lg rounded-t-lg sm:rounded-lg border border-line-subtle bg-surface p-6 sm:p-8 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
-            <Icon size={26} />
+          <div className="flex h-11 w-11 items-center justify-center rounded-md border border-accent/25 bg-accent/10 text-accent" aria-hidden="true">
+            <Icon size={22} />
           </div>
-          <button onClick={finish} className="min-h-11 min-w-11 rounded-full text-muted-foreground hover:bg-muted" aria-label="Pular apresentação">
-            <X className="mx-auto" size={20} aria-hidden="true" />
+          <button onClick={finish} className="min-h-10 min-w-10 rounded-md text-ink-muted hover:bg-elevated hover:text-ink-primary transition-colors cursor-pointer" aria-label="Pular apresentação">
+            <X className="mx-auto" size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <p className="mt-6 text-sm font-semibold text-primary">Passo {step + 1} de {STEPS.length}</p>
-        <h2 id="onboarding-title" className="mt-2 text-2xl font-bold text-foreground">{current.title}</h2>
-        <p id="onboarding-description" className="mt-3 text-base leading-relaxed text-muted-foreground">{current.description}</p>
+        <p className="mt-5 font-mono-lab text-xs font-semibold uppercase tracking-wider text-accent">Passo {step + 1} de {STEPS.length}</p>
+        <h2 id="onboarding-title" className="mt-1.5 text-xl font-bold text-ink-primary tracking-tight">{current.title}</h2>
+        <p id="onboarding-description" className="mt-2.5 text-sm leading-relaxed text-ink-secondary">{current.description}</p>
 
         <div className="mt-6 flex gap-2" aria-label="Progresso da apresentação">
           {STEPS.map((item, index) => (
-            <span key={item.title} className={`h-2 flex-1 rounded-full ${index <= step ? "bg-primary" : "bg-muted"}`} aria-hidden="true" />
+            <span key={item.title} className={`h-1.5 flex-1 rounded-xs ${index <= step ? "bg-accent" : "bg-elevated"}`} aria-hidden="true" />
           ))}
         </div>
 
         <div className="mt-7 flex items-center justify-between gap-3">
-          <button onClick={finish} className="min-h-11 rounded-xl px-4 font-semibold text-muted-foreground hover:bg-muted">Pular</button>
+          <button onClick={finish} className="min-h-10 rounded-md px-4 text-xs font-semibold text-ink-secondary hover:bg-elevated transition-colors cursor-pointer">Pular</button>
           <button
             onClick={() => step === STEPS.length - 1 ? finish() : setStep((value) => value + 1)}
-            className="min-h-11 rounded-xl bg-primary px-6 font-bold text-primary-foreground hover:bg-primary/90"
+            className="min-h-10 rounded-md bg-accent px-5 text-xs font-semibold text-white hover:bg-accent/90 transition-colors cursor-pointer"
           >
             {step === STEPS.length - 1 ? "Começar" : "Próximo"}
           </button>

@@ -54,6 +54,8 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
   const [questionCount, setQuestionCount] = useState<number>(50);
   const [lastDownloadDate, setLastDownloadDate] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [confirmDeletePkgId, setConfirmDeletePkgId] = useState<string | null>(null);
+  const [confirmClearOffline, setConfirmClearOffline] = useState(false);
   const downloadResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -64,8 +66,8 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
     if (!localDb) return;
     try {
       const uid = getLocalOwnerId();
-      const questions = await localDb.questions.where('_owner_id').equals(uid).count();
-      const queue = await localDb.syncQueue.where('owner_id').equals(uid).filter(i => i.status === "pending").count();
+      const questions = await localDb.questions.where("_owner_id").equals(uid).count();
+      const queue = await localDb.syncQueue.where("owner_id").equals(uid).filter((i) => i.status === "pending").count();
       const failed = await syncManager.getFailedItems();
       const pkgList = await listSimuladoPackages(uid);
       const readyPkg = await getReadySimuladoPackage(uid);
@@ -101,10 +103,8 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    // Initial stats
     const initialStatsTimer = setTimeout(() => void updateStats(), 0);
 
-    // Listen to queue and package updates
     const handleQueueUpdate = () => void updateStats();
     const handlePackageUpdate = () => void updateStats();
     window.addEventListener("sync-queue-updated", handleQueueUpdate);
@@ -124,7 +124,6 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
     setDownloadStatus("Iniciando download do pacote...");
 
     try {
-      // Baixar pacote de simulado
       const questionsPerArea = Math.max(5, Math.round(questionCount / 5));
       await downloadSimuladoPackage(
         {
@@ -158,10 +157,10 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
     }
   };
 
-  const handleDeletePackage = async (packageId: string) => {
-    if (!window.confirm("Deseja remover este pacote offline do dispositivo?")) return;
+  const confirmAndDeletePackage = async (packageId: string) => {
     try {
       await deleteSimuladoPackage(packageId);
+      setConfirmDeletePkgId(null);
       await updateStats();
       toast.success("Pacote offline removido.");
     } catch {
@@ -169,22 +168,18 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
     }
   };
 
-  const handleClearOfflineData = async () => {
+  const confirmAndClearOfflineData = async () => {
     if (!localDb) return;
-    if (!window.confirm("Deseja realmente limpar as questões, flashcards e pacotes salvos neste dispositivo? A fila de envios pendentes não será afetada.")) {
-      return;
-    }
-
     try {
       const uid = getLocalOwnerId();
       await Promise.all([
-        localDb.questions.where('_owner_id').equals(uid).delete(),
-        localDb.flashcards.where('_owner_id').equals(uid).delete(),
-        localDb.simuladoPackages.where('owner_id').equals(uid).delete(),
+        localDb.questions.where("_owner_id").equals(uid).delete(),
+        localDb.simuladoPackages.where("owner_id").equals(uid).delete(),
       ]);
 
       localStorage.removeItem("medquest_last_offline_download");
       setLastDownloadDate(null);
+      setConfirmClearOffline(false);
       await updateStats();
       toast.success("Dados offline limpos deste dispositivo.");
     } catch (err) {
@@ -234,54 +229,60 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
     }
   };
 
-  const formattedLastDate = lastDownloadDate ? new Date(lastDownloadDate).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }) : null;
+  const formattedLastDate = lastDownloadDate
+    ? new Date(lastDownloadDate).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   const pkgValidity = activePackage ? isPackageValid(activePackage) : { valid: false };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col gap-6">
+    <div className="bg-surface border border-line-subtle rounded-lg p-5 flex flex-col gap-5">
       <div>
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-border">
-          <h3 id="offline-modal-title" className="text-xl font-bold text-foreground flex items-center gap-2">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-line-subtle pr-8">
+          <h3 id="offline-modal-title" className="text-lg font-bold text-ink-primary flex items-center gap-2 tracking-tight">
             {isOffline ? (
-              <CloudOff className="text-warning" size={24} aria-hidden="true" />
+              <CloudOff className="text-warning" size={20} aria-hidden="true" />
             ) : (
-              <Database className="text-primary" size={24} aria-hidden="true" />
+              <Database className="text-accent" size={20} aria-hidden="true" />
             )}
             Modo Plantão (Offline)
           </h3>
-          <div className="flex items-center gap-2">
-            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${isOffline ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'}`}>
-              {isOffline ? 'Desconectado' : 'Online'}
-            </div>
-          </div>
+          <span
+            className={`px-2 py-0.5 rounded-xs font-mono-lab text-[10px] font-bold uppercase tracking-wider border ${
+              isOffline
+                ? "bg-warning/15 text-warning border-warning/30"
+                : "bg-success/15 text-success border-success/30"
+            }`}
+          >
+            {isOffline ? "Desconectado" : "Online"}
+          </span>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
-          Baixe pacotes completos de simulado e flashcards para realizar sua prova sem internet. Suas respostas serão gravadas no dispositivo e sincronizadas de forma segura e idempotente ao reconectar.
+        <p className="text-xs text-ink-secondary mb-4 leading-relaxed">
+          Baixe pacotes completos de simulado para realizar sua prova sem internet. Suas respostas serão gravadas no dispositivo e sincronizadas de forma segura ao reconectar.
         </p>
 
         {formattedLastDate && (
-          <p className="text-xs text-muted-foreground mb-4 flex items-center gap-1.5 font-medium">
-            <CheckCircle2 size={14} className="text-success" />
-            Última atualização local: <strong className="text-foreground">{formattedLastDate}</strong>
+          <p className="text-xs text-ink-secondary mb-4 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 size={14} className="text-success shrink-0" />
+            Última atualização local: <strong className="font-mono-lab text-ink-primary">{formattedLastDate}</strong>
           </p>
         )}
 
         {/* Controles de Plantão & Android */}
-        <div className="mb-6 p-4 rounded-xl bg-muted/30 border border-border/80 flex flex-col gap-3.5">
+        <div className="mb-5 p-4 rounded-lg bg-elevated/40 border border-line-subtle flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Zap size={14} className="text-amber-500" />
+            <span className="font-mono-lab text-[11px] font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+              <Zap size={13} className="text-warning" />
               Otimizações para Plantão & Android
             </span>
             {isOffline && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/20 text-warning">
+              <span className="font-mono-lab text-[10px] font-bold px-2 py-0.5 rounded-xs bg-warning/15 text-warning">
                 {forcedOffline ? "Plantão Forçado" : "Sem Conexão"}
               </span>
             )}
@@ -289,14 +290,14 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Switch Forçar Modo Plantão */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+            <div className="flex items-center justify-between p-3 rounded-md bg-surface border border-line-subtle">
               <div className="flex flex-col pr-2">
-                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <CloudOff size={14} className={forcedOffline ? "text-warning" : "text-muted-foreground"} />
+                <span className="text-xs font-semibold text-ink-primary flex items-center gap-1.5">
+                  <CloudOff size={14} className={forcedOffline ? "text-warning" : "text-ink-muted"} />
                   Forçar Modo Plantão
                 </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Ignora Wi-Fi instável e responde instantaneamente local
+                <span className="text-[11px] text-ink-secondary">
+                  Ignora Wi-Fi instável e responde localmente
                 </span>
               </div>
               <button
@@ -305,11 +306,11 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
                 aria-checked={forcedOffline}
                 onClick={handleToggleForcedOffline}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  forcedOffline ? "bg-warning" : "bg-muted"
+                  forcedOffline ? "bg-warning" : "bg-elevated"
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                     forcedOffline ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
@@ -317,15 +318,15 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
             </div>
 
             {/* Switch Tela Acesa (Wake Lock) */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+            <div className="flex items-center justify-between p-3 rounded-md bg-surface border border-line-subtle">
               <div className="flex flex-col pr-2">
-                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Sun size={14} className={isWakeLockActive ? "text-amber-400" : "text-muted-foreground"} />
+                <span className="text-xs font-semibold text-ink-primary flex items-center gap-1.5">
+                  <Sun size={14} className={isWakeLockActive ? "text-warning" : "text-ink-muted"} />
                   Manter Tela Acesa
                 </span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[11px] text-ink-secondary">
                   {isWakeLockSupported
-                    ? "Impede o celular de bloquear durante o plantão"
+                    ? "Impede bloqueio de tela durante estudo"
                     : "Não suportado neste navegador"}
                 </span>
               </div>
@@ -336,11 +337,11 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
                 aria-checked={isWakeLockActive}
                 onClick={() => void toggleWakeLock()}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isWakeLockActive ? "bg-amber-500" : "bg-muted"
+                  isWakeLockActive ? "bg-warning" : "bg-elevated"
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                     isWakeLockActive ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
@@ -348,36 +349,34 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
             </div>
           </div>
 
-          {/* Banner de Instalação PWA no Android */}
           {isInstallable && (
-            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+            <div className="flex items-center justify-between p-3 rounded-md bg-accent/10 border border-accent/20 text-xs">
               <div className="flex items-center gap-2.5">
-                <Smartphone className="text-primary" size={20} />
+                <Smartphone className="text-accent" size={18} />
                 <div>
-                  <p className="font-bold text-foreground">Instalar MedQuest no Android</p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="font-semibold text-ink-primary">Instalar MedQuest no Android</p>
+                  <p className="text-ink-secondary text-[11px]">
                     Acesse tela cheia e atalhos rápidos diretamente da tela inicial
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleInstallClick}
-                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors shrink-0"
+                className="px-3 py-1.5 rounded-md bg-accent text-white font-semibold text-xs hover:bg-accent/90 transition-colors shrink-0 cursor-pointer"
               >
                 Instalar
               </button>
             </div>
           )}
 
-          {/* Quota e Proteção de Armazenamento */}
           {storageInfo && (
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
+            <div className="flex items-center justify-between text-[11px] text-ink-secondary pt-1 border-t border-line-subtle">
               <span className="flex items-center gap-1">
-                <ShieldCheck size={13} className={storageInfo.persisted ? "text-success" : "text-muted-foreground"} />
+                <ShieldCheck size={13} className={storageInfo.persisted ? "text-success" : "text-ink-muted"} />
                 {storageInfo.persisted ? "Armazenamento protegido contra limpeza" : "Armazenamento padrão"}
               </span>
-              <span>
-                {storageInfo.usedMb} MB em uso / {storageInfo.quotaMb > 1024 ? `${(storageInfo.quotaMb / 1024).toFixed(1)} GB` : `${storageInfo.quotaMb} MB`}
+              <span className="font-mono-lab tabular-nums">
+                {storageInfo.usedMb} MB / {storageInfo.quotaMb > 1024 ? `${(storageInfo.quotaMb / 1024).toFixed(1)} GB` : `${storageInfo.quotaMb} MB`}
               </span>
             </div>
           )}
@@ -385,35 +384,41 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
 
         {/* Card do Pacote de Simulado Ativo */}
         {activePackage && (
-          <div className="mb-6 p-4 rounded-xl bg-muted/40 border border-border flex flex-col gap-3">
+          <div className="mb-5 p-4 rounded-lg bg-elevated/40 border border-line-subtle flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${pkgValidity.valid ? 'bg-success' : 'bg-warning'}`} />
-                <h4 className="text-sm font-bold text-foreground">{activePackage.name}</h4>
+                <span className={`w-2 h-2 rounded-xs ${pkgValidity.valid ? "bg-success" : "bg-warning"}`} />
+                <h4 className="text-sm font-bold text-ink-primary">{activePackage.name}</h4>
               </div>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${pkgValidity.valid ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
-                {pkgValidity.valid ? 'Pronto para uso' : activePackage.status}
+              <span
+                className={`font-mono-lab text-[10px] font-bold uppercase px-2 py-0.5 rounded-xs ${
+                  pkgValidity.valid ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+                }`}
+              >
+                {pkgValidity.valid ? "Pronto para uso" : activePackage.status}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-ink-secondary">
               <div>
-                <span className="block font-medium">Questões:</span>
-                <strong className="text-foreground">{activePackage.details_count} / {activePackage.questions_count}</strong>
+                <span className="block text-[11px] text-ink-muted">Questões:</span>
+                <strong className="font-mono-lab tabular-nums text-ink-primary">
+                  {activePackage.details_count} / {activePackage.questions_count}
+                </strong>
               </div>
               <div>
-                <span className="block font-medium">Imagens em Cache:</span>
-                <strong className="text-foreground">{activePackage.images_count}</strong>
+                <span className="block text-[11px] text-ink-muted">Imagens em Cache:</span>
+                <strong className="font-mono-lab tabular-nums text-ink-primary">{activePackage.images_count}</strong>
               </div>
               <div>
-                <span className="block font-medium">Tamanho Est.:</span>
-                <strong className="text-foreground">
+                <span className="block text-[11px] text-ink-muted">Tamanho Est.:</span>
+                <strong className="font-mono-lab tabular-nums text-ink-primary">
                   {(activePackage.estimated_size_bytes / 1024).toFixed(0)} KB
                 </strong>
               </div>
               <div>
-                <span className="block font-medium">Validade:</span>
-                <strong className="text-foreground">
+                <span className="block text-[11px] text-ink-muted">Validade:</span>
+                <strong className="font-mono-lab tabular-nums text-ink-primary">
                   {new Date(activePackage.expires_at).toLocaleDateString("pt-BR")}
                 </strong>
               </div>
@@ -421,35 +426,56 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
 
             {(activePackage.image_failures_count || 0) > 0 && (
               <p className="text-xs text-warning">
-                {activePackage.image_failures_count} imagem(ns) não ficou(aram) disponível(is) offline; as questões continuam utilizáveis.
+                {activePackage.image_failures_count} imagem(ns) indisponível(is) offline; as questões continuam utilizáveis.
               </p>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-              <button
-                onClick={() => handleDeletePackage(activePackage.id)}
-                className="text-xs text-destructive hover:text-destructive/80 flex items-center gap-1 font-medium px-2 py-1 rounded transition-colors"
-              >
-                <Trash2 size={13} /> Remover Pacote
-              </button>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line-subtle">
+              {confirmDeletePkgId === activePackage.id ? (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-ink-secondary">Remover pacote offline?</span>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeletePkgId(null)}
+                    className="px-2 py-1 rounded-xs border border-line-subtle text-ink-secondary hover:bg-elevated cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void confirmAndDeletePackage(activePackage.id)}
+                    className="px-2 py-1 rounded-xs bg-destructive text-white font-semibold hover:bg-destructive/90 cursor-pointer"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeletePkgId(activePackage.id)}
+                  className="text-xs text-destructive hover:text-destructive/80 flex items-center gap-1 font-medium px-2 py-1 rounded-xs transition-colors cursor-pointer"
+                >
+                  <Trash2 size={13} /> Remover Pacote
+                </button>
+              )}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-muted/50 rounded-lg p-3 text-center border border-border">
-            <p className="text-xs text-muted-foreground uppercase font-semibold">Questões</p>
-            <p className="text-2xl font-bold text-foreground">{stats.questions}</p>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="bg-elevated/40 rounded-md p-3 text-center border border-line-subtle">
+            <p className="font-mono-lab text-[10px] text-ink-muted uppercase font-semibold tracking-wider">Questões Locais</p>
+            <p className="font-mono-lab tabular-nums text-2xl font-bold text-ink-primary mt-0.5">{stats.questions}</p>
           </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-center border border-border relative">
-            <p className="text-xs text-muted-foreground uppercase font-semibold">Fila (Envios)</p>
-            <p className="text-2xl font-bold text-foreground">{stats.queue}</p>
+          <div className="bg-elevated/40 rounded-md p-3 text-center border border-line-subtle relative">
+            <p className="font-mono-lab text-[10px] text-ink-muted uppercase font-semibold tracking-wider">Fila de Envio</p>
+            <p className="font-mono-lab tabular-nums text-2xl font-bold text-ink-primary mt-0.5">{stats.queue}</p>
             {stats.queue > 0 && !isOffline && (
               <button
                 onClick={handleManualSync}
                 disabled={isSyncing}
                 title="Sincronizar fila agora"
-                className="absolute top-2 right-2 text-primary hover:text-primary/80 transition-colors p-1 rounded"
+                className="absolute top-2 right-2 text-accent hover:text-accent/80 transition-colors p-1 rounded-xs cursor-pointer"
               >
                 <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
               </button>
@@ -459,86 +485,118 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
 
         {/* Seleção do tamanho do pacote quando online */}
         {!isOffline && !isDownloading && (
-          <div className="flex items-center justify-between gap-4 mb-4 p-3 bg-muted/30 border border-border/60 rounded-lg text-xs">
-            <span className="font-semibold text-muted-foreground">Tamanho do simulado:</span>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-elevated/30 border border-line-subtle rounded-md text-xs">
+            <span className="font-semibold text-ink-secondary">Tamanho do pacote:</span>
+            <div className="flex items-center gap-1.5">
               {[25, 50, 100].map((count) => (
                 <button
                   key={count}
+                  type="button"
                   onClick={() => setQuestionCount(count)}
-                  className={`px-2.5 py-1 rounded font-bold transition-colors ${
+                  className={`px-2.5 py-1 rounded-xs font-mono-lab text-xs font-semibold transition-colors cursor-pointer ${
                     questionCount === count
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
+                      ? "bg-accent text-white"
+                      : "bg-surface border border-line-subtle text-ink-secondary hover:text-ink-primary"
                   }`}
                 >
-                  {count} Questões
+                  {count} Qs
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={handleDownloadPackage}
-            disabled={isDownloading || isOffline}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isDownloading ? (
-              <><RefreshCw className="animate-spin" size={20} /> Baixando Pacote...</>
-            ) : (
-              <><Download size={20} /> Baixar Simulado Offline ({questionCount} Qs)</>
-            )}
-          </button>
-
-          {(stats.questions > 0 || packages.length > 0) && !isDownloading && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={handleClearOfflineData}
-              title="Limpar questões e pacotes salvos neste dispositivo"
-              className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-lg border border-border bg-card hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive text-muted-foreground font-medium text-xs transition-colors"
+              type="button"
+              onClick={handleDownloadPackage}
+              disabled={isDownloading || isOffline}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-accent text-white font-semibold text-xs hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              <Trash2 size={16} /> Limpar
+              {isDownloading ? (
+                <>
+                  <RefreshCw className="animate-spin" size={16} /> Baixando Pacote...
+                </>
+              ) : (
+                <>
+                  <Download size={16} /> Baixar Simulado Offline ({questionCount} Qs)
+                </>
+              )}
             </button>
+
+            {(stats.questions > 0 || packages.length > 0) && !isDownloading && !confirmClearOffline && (
+              <button
+                type="button"
+                onClick={() => setConfirmClearOffline(true)}
+                title="Limpar questões e pacotes salvos neste dispositivo"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md border border-line-subtle bg-surface hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive text-ink-secondary font-medium text-xs transition-colors cursor-pointer"
+              >
+                <Trash2 size={15} /> Limpar
+              </button>
+            )}
+          </div>
+
+          {confirmClearOffline && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-md border border-destructive/30 bg-destructive/5 text-xs">
+              <span className="text-ink-primary font-medium">
+                Remover questões e pacotes salvos neste dispositivo? (A fila pendente não é apagada.)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearOffline(false)}
+                  className="px-2.5 py-1 rounded-xs border border-line-subtle text-ink-secondary hover:bg-elevated cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmAndClearOfflineData()}
+                  className="px-2.5 py-1 rounded-xs bg-destructive text-white font-semibold hover:bg-destructive/90 cursor-pointer"
+                >
+                  Limpar agora
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
         {isDownloading && (
-          <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1.5 font-medium">
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-ink-secondary mb-1.5 font-medium">
               <span>{downloadStatus || "Progresso"}</span>
-              <span>{Math.round(downloadProgress)}%</span>
+              <span className="font-mono-lab tabular-nums">{Math.round(downloadProgress)}%</span>
             </div>
-            <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-elevated h-2 rounded-xs overflow-hidden">
               <div
-                className="bg-primary h-full transition-all duration-300 ease-out"
+                className="bg-accent h-full transition-all duration-300 ease-out"
                 style={{ width: `${downloadProgress}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* Atalhos para estudo quando há conteúdo baixado */}
         {stats.questions > 0 && (
-          <div className="mt-6 pt-5 border-t border-border/80 flex flex-col gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Acesso Rápido ao Conteúdo Local:
+          <div className="mt-5 pt-4 border-t border-line-subtle flex flex-col gap-2.5">
+            <p className="font-mono-lab text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+              Acesso Rápido ao Conteúdo Local
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Link
                 href="/simulado"
                 onClick={() => onClose?.()}
-                className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-muted/40 hover:bg-muted text-foreground border border-border font-medium text-xs transition-colors"
+                className="flex items-center justify-center gap-2 p-2.5 rounded-md bg-elevated/40 hover:bg-elevated text-ink-primary border border-line-subtle font-medium text-xs transition-colors"
               >
-                <Play size={14} className="text-secondary" />
+                <Play size={14} className="text-accent" />
                 Simulado Offline
               </Link>
               <Link
                 href="/estudar"
                 onClick={() => onClose?.()}
-                className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-muted/40 hover:bg-muted text-foreground border border-border font-medium text-xs transition-colors"
+                className="flex items-center justify-center gap-2 p-2.5 rounded-md bg-elevated/40 hover:bg-elevated text-ink-primary border border-line-subtle font-medium text-xs transition-colors"
               >
-                <BookOpen size={14} className="text-primary" />
+                <BookOpen size={14} className="text-accent" />
                 Banco de Questões
               </Link>
             </div>
@@ -546,35 +604,36 @@ export function OfflinePanel({ onClose }: { onClose?: () => void } = {}) {
         )}
       </div>
 
-      {/* Falhas Terminais de Sincronização */}
       {failedItems.length > 0 && (
-        <div className="border-t border-border pt-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-destructive font-bold text-sm">
-            <AlertCircle size={18} />
+        <div className="border-t border-line-subtle pt-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-destructive font-bold text-xs uppercase font-mono-lab">
+            <AlertCircle size={16} />
             <span>Itens com Falha de Sincronização ({failedItems.length})</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-secondary">
             As seguintes operações não puderam ser sincronizadas com o servidor. Você pode tentar novamente ou descartá-las.
           </p>
           <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
             {failedItems.map((item) => (
-              <div key={item.id} className="bg-muted/40 border border-border rounded-lg p-3 flex items-center justify-between gap-3 text-xs">
+              <div key={item.id} className="bg-elevated/40 border border-line-subtle rounded-md p-3 flex items-center justify-between gap-3 text-xs">
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{item.method} {item.endpoint}</p>
+                  <p className="font-mono-lab font-semibold text-ink-primary truncate">{item.method} {item.endpoint}</p>
                   <p className="text-destructive font-medium truncate">{item.last_error || "Erro de sincronização"}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
+                    type="button"
                     onClick={() => handleRetryItem(item.id)}
-                    className="flex items-center gap-1 bg-card hover:bg-muted border border-border px-2.5 py-1.5 rounded text-primary font-bold transition-colors"
+                    className="flex items-center gap-1 bg-surface hover:bg-elevated border border-line-subtle px-2.5 py-1 rounded-xs text-accent font-semibold transition-colors cursor-pointer"
                   >
-                    <RefreshCw size={14} /> Tentar
+                    <RefreshCw size={13} /> Tentar
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDiscardItem(item.id)}
-                    className="flex items-center gap-1 bg-destructive/10 hover:bg-destructive/20 px-2.5 py-1.5 rounded text-destructive font-bold transition-colors"
+                    className="flex items-center gap-1 bg-destructive/10 hover:bg-destructive/20 px-2.5 py-1 rounded-xs text-destructive font-semibold transition-colors cursor-pointer"
                   >
-                    <Trash2 size={14} /> Descartar
+                    <Trash2 size={13} /> Descartar
                   </button>
                 </div>
               </div>

@@ -4,22 +4,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator, field_validator
 
 __all__ = [
-    "AnkiDeleteDeckIn",
-    "AnkiImportBatchIn",
-    "AnkiImportCardItem",
-    "AnkiSchedulingCardItem",
-    "AnkiSyncStateIn",
     "AttemptIn",
     "BatchAttemptIn",
     "BatchAttemptItem",
     "CronDispatchIn",
     "FavoriteIn",
-    "FlashcardBatchIn",
-    "FlashcardGenerateIn",
-    "FlashcardPreviewIn",
-    "FlashcardReportIn",
-    "FlashcardReviewIn",
-    "FlashcardSaveIn",
     "GeneratePlanIn",
     "NotificationConfigIn",
     "PlannerConfigIn",
@@ -160,49 +149,6 @@ class QuestionBatchIn(APIInput):
 
 class FavoriteIn(APIInput):
     is_favorite: bool | None = None
-
-
-class FlashcardReviewIn(APIInput):
-    confidence: Literal["errei", "duvida", "certeza"]
-
-
-class FlashcardReportIn(APIInput):
-    reason: str = Field(min_length=1, max_length=1_000)
-
-
-class AnkiImportCardItem(APIInput):
-    front: str = Field(min_length=1, max_length=10_000_000)
-    back: str = Field(default="", max_length=10_000_000)
-    deck_name: str | None = Field(default="Anki", max_length=200)
-    tags: list[str] = Field(default_factory=list, max_length=50)
-    source_context: str | None = Field(default=None, max_length=500)
-    anki_nid: int | None = None
-    anki_cid: int | None = None
-
-
-class AnkiImportBatchIn(APIInput):
-    cards: list[AnkiImportCardItem] = Field(min_length=1, max_length=1000)
-    deck_name: str | None = Field(default=None, max_length=200)
-
-
-class AnkiSchedulingCardItem(APIInput):
-    """Snapshot de agenda obtido localmente pelo AnkiConnect."""
-
-    anki_cid: int = Field(gt=0)
-    anki_nid: int | None = None
-    interval: float = Field(default=0, ge=-86_400, le=36_500)
-    reps: int = Field(default=0, ge=0)
-    lapses: int = Field(default=0, ge=0)
-
-
-class AnkiSyncStateIn(APIInput):
-    cards: list[AnkiSchedulingCardItem] = Field(min_length=1, max_length=1000)
-
-
-class AnkiDeleteDeckIn(APIInput):
-    deck_name: str = Field(min_length=1, max_length=200)
-
-
 
 
 class NotificationConfigIn(APIInput):

@@ -132,20 +132,6 @@ def seed_benchmark_db(db_path):
         PRIMARY KEY (question_id, user_id)
     );
 
-    CREATE TABLE IF NOT EXISTS flashcards (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        question_id INTEGER NOT NULL,
-        front TEXT NOT NULL,
-        back TEXT,
-        created_at TEXT NOT NULL,
-        next_review_date TEXT,
-        fsrs_card TEXT,
-        user_id TEXT DEFAULT '1',
-        source_context TEXT,
-        is_ai_generated INTEGER DEFAULT 0,
-        report_status TEXT
-    );
-
     CREATE VIRTUAL TABLE IF NOT EXISTS questions_fts USING fts5(
         stem,
         explanation

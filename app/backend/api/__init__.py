@@ -13,7 +13,6 @@ load_dotenv() # Carrega as variáveis de ambiente do arquivo .env
 
 from .config import Config
 from .db import close_db, init_db
-from .flashcards import bp as flashcards_bp
 from .logs import bp as logs_bp
 from .notifications import bp as notifications_bp
 from .observability import configure_logging, emit, finish_request, start_request
@@ -96,7 +95,7 @@ def create_app(testing=False, initialize_db=None):
     from .ai_routes import bp as ai_routes_bp
     from .curation import bp as curation_bp
     from .osce_routes import bp as osce_routes_bp
-    for bp in (questions_bp, stats_bp, plan_bp, flashcards_bp, logs_bp, sessions_bp, notifications_bp, themes_bp, auth_bp, ai_routes_bp, curation_bp, osce_routes_bp):
+    for bp in (questions_bp, stats_bp, plan_bp, logs_bp, sessions_bp, notifications_bp, themes_bp, auth_bp, ai_routes_bp, curation_bp, osce_routes_bp):
         app.register_blueprint(bp, url_prefix="/api")
         app.register_blueprint(bp, url_prefix="/api/v1", name=f"{bp.name}_v1")
 

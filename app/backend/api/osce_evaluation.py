@@ -769,10 +769,6 @@ def build_medquest_remediation(
     subtema = str(station_meta.get("subtema", "Emergências"))
 
     return {
-        "recommended_flashcard_decks": [
-            f"5º Ano - {area} ({subtema})",
-            "R1 USP/UNICAMP - Protocolos de Emergência Beira-Leito"
-        ],
         "recommended_qbank_filters": [
             {"specialty": area, "subtopic": subtema, "difficulty": "Médio / Difícil"}
         ],

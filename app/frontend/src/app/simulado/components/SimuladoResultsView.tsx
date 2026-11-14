@@ -32,31 +32,31 @@ export const SimuladoResultsView: React.FC<SimuladoResultsViewProps> = ({
   const percentage = queue.length > 0 ? Math.round((correctCount / queue.length) * 100) : 0;
 
   return (
-    <div className="bg-card border border-border shadow-1 rounded-xl p-8 flex-1 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 overflow-y-auto">
-      <div className="w-24 h-24 bg-success/20 text-success rounded-full flex items-center justify-center mb-6">
-        <Trophy size={48} className="text-success" />
+    <div className="bg-surface border border-line-subtle rounded-lg p-6 md:p-8 flex-1 flex flex-col items-center justify-center overflow-y-auto">
+      <div className="w-16 h-16 bg-success/15 text-success rounded-lg border border-success/30 flex items-center justify-center mb-5">
+        <Trophy size={32} className="text-success" />
       </div>
-      <h2 className="text-3xl font-black text-foreground mb-2">Simulado Finalizado!</h2>
-      <p className="text-muted-foreground text-lg mb-8 text-center max-w-md">
-        Você acertou <strong className="text-foreground">{correctCount}</strong> de <strong className="text-foreground">{queue.length}</strong> questões.
-        O que representa um desempenho de <strong className="text-primary">{percentage}%</strong>.
+      <h2 className="text-2xl font-bold text-foreground mb-2">Simulado Finalizado</h2>
+      <p className="text-muted-foreground text-base mb-6 text-center max-w-md">
+        Você acertou <strong className="text-foreground font-mono-lab tabular-nums">{correctCount}</strong> de <strong className="text-foreground font-mono-lab tabular-nums">{queue.length}</strong> questões,
+        com aproveitamento de <strong className="text-accent font-mono-lab tabular-nums">{percentage}%</strong>.
       </p>
 
-      <div className="w-full max-w-3xl bg-muted/30 rounded-xl p-6 border border-border mb-8">
-        <h3 className="text-lg font-bold text-foreground mb-4">Desempenho por Área</h3>
-        <div className="flex flex-col gap-4">
+      <div className="w-full max-w-3xl bg-canvas rounded-lg p-5 border border-line-subtle mb-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Desempenho por Área</h3>
+        <div className="flex flex-col gap-3.5">
           {areaSummary.map(row => {
             const rowPct = row.total > 0 ? Math.round((row.correct / row.total) * 100) : 0;
             return (
               <div key={row.area}>
                 <div className="flex justify-between text-sm font-medium mb-1">
                   <span>{row.area}</span>
-                  <span className="text-muted-foreground">{row.correct} / {row.total} ({rowPct}%)</span>
+                  <span className="text-muted-foreground font-mono-lab tabular-nums">{row.correct} / {row.total} ({rowPct}%)</span>
                 </div>
-                <div className="w-full bg-border h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-border h-1.5 rounded-xs overflow-hidden">
                   <div
                     className={clsx(
-                      "h-full rounded-full transition-all duration-500",
+                      "h-full transition-all duration-500",
                       rowPct >= 80 ? "bg-success" : rowPct >= 60 ? "bg-warning" : "bg-destructive"
                     )}
                     style={{ width: `${rowPct}%` }}
@@ -77,9 +77,9 @@ export const SimuladoResultsView: React.FC<SimuladoResultsViewProps> = ({
 
       <button
         onClick={onStartReview}
-        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-8 rounded-lg transition-all shadow-lg hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
+        className="bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 px-6 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
       >
-        <BookOpen size={20} /> Iniciar Revisão Detalhada
+        <BookOpen size={18} /> Iniciar Revisão Detalhada
       </button>
     </div>
   );

@@ -16,7 +16,6 @@ export interface OverviewStats {
     rest_days_available: number;
     policy: "rest_days_preserve_continuity";
   };
-  flashcards_due_count?: number;
   today_answered?: number;
   daily_target?: number;
   days_until_exam?: number | null;
@@ -269,18 +268,6 @@ export interface DistractorStat {
   }[];
 }
 
-export interface PredictiveScore {
-  projected_score: number;
-  target_score: number | null;
-  is_reliable?: boolean;
-  total_attempts?: number;
-  minimum_attempts_per_area?: number;
-  areas: {
-    area: string;
-    accuracy: number;
-    attempts: number;
-  }[];
-}
 
 export interface AtRiskTopic {
   subtema: string;
@@ -522,70 +509,6 @@ export interface SearchResult {
   has_image?: boolean;
 }
 
-export interface Flashcard {
-  id: number;
-  question_id?: number | null;
-  front: string;
-  back: string;
-  next_review_date: string;
-  stem?: string;
-  source_context?: string;
-  is_ai_generated?: boolean;
-  area?: string;
-  subtema?: string;
-  deck_name?: string;
-  tags?: string[];
-  source_type?: string;
-  anki_nid?: number | null;
-  anki_cid?: number | null;
-}
-
-export interface FlashcardDeck {
-  name: string;
-  source_type: string;
-  total_cards: number;
-  due_cards: number;
-}
-
-export interface FlashcardDecksResponse {
-  total_cards: number;
-  due_cards: number;
-  decks: FlashcardDeck[];
-}
-
-export interface AnkiImportResult {
-  success: boolean;
-  total_imported: number;
-  new_cards: number;
-  decks: string[];
-}
-
-export interface NotificationConfig {
-  enabled: boolean;
-  preferred_hour: number;
-  days_of_week: number[];
-  max_daily_reminders: number;
-  updated_at: string | null;
-  has_active_subscription: boolean;
-  vapid_public_key: string | null;
-}
-
-export interface NotificationConfigUpdate {
-  enabled: boolean;
-  preferred_hour: number;
-  days_of_week: number[];
-  max_daily_reminders?: number;
-}
-
-export interface PushSubscriptionPayload {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-  expiration_time?: number | null;
-}
-
 export type SampleStatus = "insufficient" | "forming" | "reliable";
 
 export interface RadarTopicGap {
@@ -652,8 +575,6 @@ export interface ThemeProgress {
   theory_completed: boolean;
   study_path: "essential" | "complete";
   updated_at: string | null;
-  flashcards_total: number;
-  flashcards_due: number;
 }
 
 export interface DashboardSummaryResponse {
@@ -841,15 +762,6 @@ export interface OscePreceptorFeedback {
   institution: string;
   summary: string;
   critical_warnings: string[];
-  shock_cards_count: number;
-}
-
-export interface OsceShockCard {
-  station_code: string;
-  front: string;
-  back: string;
-  category: string;
-  weight: number;
 }
 
 export interface OsceFinishResponse {
@@ -858,7 +770,6 @@ export interface OsceFinishResponse {
   status: string;
   evaluated_items: OsceChecklistItem[];
   preceptor_feedback: OscePreceptorFeedback;
-  shock_cards: OsceShockCard[];
   elapsed_seconds: number;
   timeline_post_mortem?: OsceTimelinePostMortem;
   competency_radar?: OsceCompetencyRadar;
@@ -1025,25 +936,6 @@ export interface OsceCompetencyRadar {
   dimensions: OsceCompetencyDimension[];
 }
 
-export interface OsceGenerateStationPayload {
-  area?: string;
-  subtema?: string;
-  difficulty?: "easy" | "medium" | "hard";
-  adaptative?: boolean;
-}
-
-export interface OsceGenerateStationResponse {
-  success: boolean;
-  station_id: number;
-  code: string;
-  title: string;
-  area: string;
-  subtema: string;
-  institution: string;
-  difficulty: string;
-  message: string;
-}
-
 export interface OsceCircuitStationItem {
   step: number;
   station_id: number;
@@ -1118,6 +1010,19 @@ export interface SimuladoSessionItem {
   area_results: Array<{ area: string; correct: number; total: number }>;
   completed_at: string;
   accuracy_percent: number;
+}
+
+export interface AnalysisSummaryResponse {
+  overview: OverviewStats;
+  learning_profile: LearningProfile;
+  exam_readiness: ExamReadiness;
+  institution_radar: InstitutionRadarResponse;
+  blindspots: BlindspotsResponse;
+  weak_topics: WeakTopic[];
+  distractors: DistractorStat[];
+  at_risk: AtRiskTopic[];
+  timeline_180: TimelineStat[];
+  coverage: CoverageResponse;
 }
 
 

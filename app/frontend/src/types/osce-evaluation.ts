@@ -59,7 +59,6 @@ export interface ChiefPreceptorReview {
 }
 
 export interface MedQuestRemediation {
-  recommended_flashcard_decks: string[];
   recommended_qbank_filters: Array<{
     specialty: string;
     subtopic: string;
@@ -84,5 +83,4 @@ export interface PreceptorFeedback {
   critical_warnings: string[];
   chief_preceptor_review: ChiefPreceptorReview;
   medquest_remediation: MedQuestRemediation;
-  shock_cards_count?: number;
 }

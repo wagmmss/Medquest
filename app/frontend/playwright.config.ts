@@ -1,7 +1,26 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { loadEnvConfig } from '@next/env';
 
-loadEnvConfig(process.cwd());
+for (const envFile of ['.env.local', '.env']) {
+  const fullPath = path.join(process.cwd(), envFile);
+  if (fs.existsSync(fullPath)) {
+    const content = fs.readFileSync(fullPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex > 0) {
+        const key = trimmed.slice(0, eqIndex).trim();
+        const rawVal = trimmed.slice(eqIndex + 1).trim();
+        if (!(key in process.env)) {
+          process.env[key] = rawVal.replace(/^(['"])(.*)\1$/, '$2');
+        }
+      }
+    }
+  }
+}
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3100';
 const testServerPort = new URL(baseURL).port || '3100';
 

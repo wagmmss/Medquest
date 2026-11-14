@@ -3,7 +3,7 @@
 Gerencia o catálogo de estações das bancas oficiais que realizam prova prática
 (UNICAMP, UNIFESP, Einstein, Revalida INEP, SCMSP, USP-RP), o ciclo de vida
 das sessões de beira-leito, a atuação do paciente virtual e do examinador,
-e a auditoria oficial do barema de correção com geração de flashcards de choque.
+e a auditoria oficial do barema de correção.
 """
 from __future__ import annotations
 
@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 
 from .osce_data import (
     CANONICAL_STATIONS,
-    FMRP_USP_TEMPLATES,
     EMERGENCY_DRUGS_CATALOG,
     PROCEDURES_CATALOG,
 )
@@ -337,175 +336,6 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
     return station
 
 
-# =========================================================================
-# VETOR 5: MOTOR DE ESTAÇÕES INÉDITAS INFINITAS (IA DA FMRP-USP)
-# =========================================================================
-
-
-
-
-# =========================================================================
-def generate_osce_station(
-    db,
-    user_id: str,
-    area: Optional[str] = None,
-    subtema: Optional[str] = None,
-    difficulty: str = "hard",
-    adaptative: bool = False
-) -> dict[str, Any]:
-    """
-    Motor de Geração de Estações Inéditas Infinitas com o padrão da FMRP-USP (Ribeirão Preto).
-    - Se adaptative=True ou area=='adaptativo': analisa o histórico do aluno (erros teóricos em attempts ou notas baixas em osce_sessions)
-      para priorizar a fraqueza clínica real.
-    - Constrói cenários de alta complexidade médica nos ambientes reais do complexo FMRP-USP
-      (HC-UE, HC-Criança, Mater, CSE Sumarezinho, UCO).
-    - Persiste a estação na tabela osce_stations com código USP-RP-AI-<hash>.
-    - Retorna os dados completos da estação criada pronta para execução na Arena OSCE.
-    """
-    import random
-    target_area = area
-    target_subtema = subtema
-
-    # 1. Raciocínio Adaptativo: Localiza fraquezas reais do aluno
-    if adaptative or not target_area or target_area.lower() in ["adaptativo", "fraquezas", "auto"]:
-        # Tenta identificar histórico recente de reprovação em OSCE
-        try:
-            low_osce = db.execute("""
-                SELECT st.area, st.subtema, AVG(s.final_score) as avg_score
-                FROM osce_sessions s
-                JOIN osce_stations st ON s.station_id = st.id
-                WHERE s.user_id = ? AND s.status = 'completed'
-                GROUP BY st.area, st.subtema
-                HAVING avg_score < 7.0
-                ORDER BY avg_score ASC
-                LIMIT 1
-            """, (user_id,)).fetchone()
-            if low_osce:
-                target_area = low_osce["area"]
-                target_subtema = low_osce["subtema"]
-        except Exception:
-            pass
-
-        # Se não achou no OSCE, verifica erros na 1ª fase (questões de prova teórica)
-        if not target_area or target_area.lower() in ["adaptativo", "fraquezas", "auto"]:
-            try:
-                worst_topic = db.execute("""
-                    SELECT q.area, q.subtema, COUNT(*) as err_count
-                    FROM attempts a
-                    JOIN questions q ON a.question_id = q.id
-                    WHERE a.is_correct = 0 AND (a.user_id = ? OR a.user_id = 1)
-                    GROUP BY q.area, q.subtema
-                    ORDER BY err_count DESC
-                    LIMIT 1
-                """, (user_id,)).fetchone()
-                if worst_topic:
-                    target_area = worst_topic["area"]
-                    target_subtema = worst_topic["subtema"]
-            except Exception:
-                pass
-
-        # Fallback de seleção aleatória entre as grandes áreas
-        if not target_area or target_area.lower() in ["adaptativo", "fraquezas", "auto"]:
-            areas_catalog = ["Clínica Médica", "Cirurgia Geral", "Pediatria", "Ginecologia e Obstetrícia", "Medicina Preventiva"]
-            target_area = random.choice(areas_catalog)
-
-    # 2. Filtra modelos disponíveis da FMRP-USP
-    matched_templates = [
-        t for t in FMRP_USP_TEMPLATES
-        if _normalize_text(t["area"]) == _normalize_text(target_area)
-    ]
-    if target_subtema:
-        sub_norm = _normalize_text(target_subtema)
-        specific_templates = [t for t in matched_templates if sub_norm in _normalize_text(t["subtema"])]
-        if specific_templates:
-            matched_templates = specific_templates
-
-    if not matched_templates:
-        matched_templates = FMRP_USP_TEMPLATES
-
-    chosen_template = random.choice(matched_templates)
-
-    # 3. Parametrização Dinâmica do Caso (Variações Inéditas de Paciente)
-    patient_name = random.choice(chosen_template["patient_names"])
-    patient_age = random.randint(chosen_template["age_range"][0], chosen_template["age_range"][1])
-    unique_hash = uuid.uuid4().hex[:8].upper()
-    station_code = f"USP-RP-AI-{unique_hash}"
-
-    # Monta cartaz na porta da estação
-    door_md = (
-        f"### ESTAÇÃO: {chosen_template['hospital_unit']}\n\n"
-        f"**Candidato(a)**:\n"
-        f"Você é o médico de plantão no complexo hospitalar da Faculdade de Medicina de Ribeirão Preto (FMRP-USP).\n\n"
-        f"**Cenário de Atendimento**:\n"
-        f"- Paciente: {patient_name}, {patient_age} anos, {chosen_template['gender']}.\n"
-        f"- Queixa de Admissão: \"{chosen_template['chief_complaint']}\"\n\n"
-        f"**Sua Tarefa Obrigatória**:\n"
-        f"1. Conduza o atendimento beira-leito imediato, realize a anamnese direcionada e acolha o paciente.\n"
-        f"2. Solicite e interprete o exame físico segmentar e os exames complementares disponíveis.\n"
-        f"3. Estabeleça o diagnóstico diferencial ou etiológico principal.\n"
-        f"4. Prescreva o plano terapêutico inicial e verbalize a conduta de encerramento da estação.\n\n"
-        f"*Tempo de prova: 8 minutos (Cronômetro Oficial FMRP-USP/FAEPA).*"
-    )
-
-    persona_payload = {
-        "name": patient_name,
-        "age": patient_age,
-        "gender": chosen_template["gender"],
-        "chief_complaint": chosen_template["chief_complaint"],
-        "past_medical_history": chosen_template["history"],
-        "allergies": "Nenhuma alergia conhecida."
-    }
-
-    physical_payload = {
-        "vitals": chosen_template["vitals"],
-        "findings": chosen_template["findings"]
-    }
-
-    labs_payload = chosen_template.get("lab_imaging", {})
-    barema_payload = {
-        "items": chosen_template["barema_items"],
-        "critical_errors": chosen_template.get("critical_errors", [])
-    }
-
-    # 4. Salva a nova estação inédita no banco
-    with db_transaction(db, immediate=True):
-        cursor = db.execute("""
-            INSERT INTO osce_stations (
-                code, title, area, subtema, institution, year,
-                difficulty, duration_seconds, scenario_door_markdown,
-                patient_persona_json, physical_exam_json,
-                lab_imaging_json, checklist_barema_json
-            ) VALUES (?, ?, ?, ?, 'USP-RP', 2026, ?, 480, ?, ?, ?, ?, ?)
-        """, (
-            station_code,
-            chosen_template["title_template"],
-            chosen_template["area"],
-            chosen_template["subtema"],
-            difficulty,
-            door_md,
-            json.dumps(persona_payload, ensure_ascii=False),
-            json.dumps(physical_payload, ensure_ascii=False),
-            json.dumps(labs_payload, ensure_ascii=False),
-            json.dumps(barema_payload, ensure_ascii=False)
-        ))
-        new_station_id = getattr(cursor, "lastrowid", None)
-        if not new_station_id:
-            row_st = db.execute("SELECT id FROM osce_stations WHERE code = ?", (station_code,)).fetchone()
-            new_station_id = row_st["id"] if row_st else None
-
-    return {
-        "success": True,
-        "station_id": new_station_id,
-        "code": station_code,
-        "title": chosen_template["title_template"],
-        "area": chosen_template["area"],
-        "subtema": chosen_template["subtema"],
-        "institution": "USP-RP",
-        "difficulty": difficulty,
-        "message": f"Estação inédita FMRP-USP sintetizada com sucesso para {chosen_template['area']} ({chosen_template['subtema']})."
-    }
-
-
 def evaluate_live_barema_progress(
     checklist_items: list[dict[str, Any]],
     transcript: list[dict[str, Any]],
@@ -661,8 +491,8 @@ def get_osce_live_feedback(db, session_id: str, user_id: str, elapsed_seconds: i
                st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError("Sessão não encontrada.")
@@ -694,8 +524,8 @@ def interact_osce_session(
                st.physical_exam_json, st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError(f"Sessão {session_id} não encontrada.")
@@ -806,8 +636,8 @@ def interact_osce_session(
         db.execute("""
             UPDATE osce_sessions
             SET transcript_json = ?, elapsed_seconds = ?
-            WHERE id = ?
-        """, (json.dumps(transcript, ensure_ascii=False), elapsed_seconds, session_id))
+            WHERE id = ? AND user_id = ?
+        """, (json.dumps(transcript, ensure_ascii=False), elapsed_seconds, session_id, user_id))
 
     res_payload: dict[str, Any] = {
         "reply": reply_text,
@@ -845,8 +675,8 @@ def execute_osce_action(
                st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError("Sessão não encontrada.")
@@ -938,12 +768,13 @@ def execute_osce_action(
         db.execute("""
             UPDATE osce_sessions
             SET actions_taken_json = ?, transcript_json = ?, elapsed_seconds = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
         """, (
             json.dumps(actions, ensure_ascii=False),
             json.dumps(transcript, ensure_ascii=False),
             elapsed_seconds,
-            session_id
+            session_id,
+            user_id
         ))
 
     res_payload: dict[str, Any] = {
@@ -981,8 +812,8 @@ def dispatch_osce_speech(
                st.title, st.area, st.subtema, st.patient_persona_json, st.physical_exam_json, st.lab_imaging_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError(f"Sessão {session_id} não encontrada.")
@@ -1201,8 +1032,8 @@ def dispatch_osce_speech(
         SELECT s.transcript_json, s.actions_taken_json, st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
     current_transcript = json.loads(updated_sess["transcript_json"] or "[]")
     current_actions = json.loads(updated_sess["actions_taken_json"] or "[]")
 
@@ -1237,7 +1068,7 @@ def finish_osce_session(
     - Emissão do Veredito Oficial da Banca (APROVADO COM DISTINÇÃO, LIMITE, REPROVADO, ELIMINADO)
     - Radar de 5 Competências Médicas Fundamentais
     - Parecer do Preceptor Chefe com Conduta Canônica Padrão-Ouro
-    - Prescrição de Remediação no MedQuest e Flashcards de Choque
+    - Prescrição de Remediação no MedQuest
     """
     sess = db.execute("""
         SELECT s.id, s.station_id, s.user_id, s.start_time, s.elapsed_seconds,
@@ -1246,8 +1077,8 @@ def finish_osce_session(
                st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError("Sessão não encontrada.")
@@ -1280,7 +1111,6 @@ def finish_osce_session(
     total_score = 0.0
     max_score = 0.0
     evaluated_items = []
-    shock_cards = []
 
     for item in checklist_items:
         weight = float(item.get("weight", 1.0))
@@ -1320,15 +1150,6 @@ def finish_osce_session(
             "evidence": evidence,
             "evidence_citation": evidence
         })
-
-        if status != "cumprido_total":
-            shock_cards.append({
-                "station_code": sess["subtema"],
-                "front": f"🚨 [OSCE {sess['institution']} - {sess['area']}]\nQual é a conduta obrigatória segundo o barema oficial para:\n👉 **{item.get('title')}**?",
-                "back": f"💡 **Critério de Avaliação da Banca**:\n{item.get('description', '')}\n\n⚠️ **Palavras-chave de aprovação**: {', '.join(item.get('keywords', []))}",
-                "category": item.get("category"),
-                "weight": weight
-            })
 
     raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
@@ -1377,42 +1198,6 @@ def finish_osce_session(
         headline_verdict = "APROVADO NO LIMITE"
     else:
         headline_verdict = "APROVADO COM DISTINÇÃO"
-
-    # Gera Flashcards de Choque específicos para contraindicações graves violadas
-    for warn in critical_warnings:
-        shock_cards.append({
-            "station_code": sess["subtema"],
-            "front": (
-                f"🚨 [ERRO CRÍTICO / CONTRAINDICAÇÃO - {sess['institution']}]\n"
-                f"Qual é a regra de segurança clínica violada em:\n"
-                f"👉 **{sess['title']}**?"
-            ),
-            "back": (
-                f"⛔ **Falta Grave / Conduta de Risco**:\n{warn}\n\n"
-                "⚠️ Em prova prática, esta conduta acarreta perda severa de barema ou eliminação imediata."
-            ),
-            "category": "seguranca_farmacologica",
-            "weight": 2.0
-        })
-
-    # Gera Flashcards de Choque específicos para Red Flags anatômicas / cirúrgicas
-    for rf in red_flags:
-        if rf.get("code") != "RF_CLINICAL_SAFETY":
-            shock_cards.append({
-                "station_code": sess["subtema"],
-                "front": (
-                    f"🚨 [ERRO CRÍTICO / CONTRAINDICAÇÃO - {sess['institution']}]\n"
-                    f"Qual é o risco fatal de:\n"
-                    f"👉 **{rf['title']}**?"
-                ),
-                "back": (
-                    f"⛔ **Consequência Clínica**:\n{rf['clinical_consequence']}\n\n"
-                    f"⚠️ **Descrição da Falha**: {rf['description']}\n\n"
-                    "Em prova de 2ª fase presencial, esta falha acarreta eliminação imediata ou corte severo de nota."
-                ),
-                "category": "seguranca_paciente",
-                "weight": 2.5
-            })
 
     # 4. Computa Timeline Post-Mortem e Radar de Competências em 5D
     timeline_data = generate_timeline_post_mortem(
@@ -1471,7 +1256,6 @@ def finish_osce_session(
         "critical_warnings": [rf["description"] for rf in red_flags],
         "chief_preceptor_review": chief_review,
         "medquest_remediation": medquest_remediation,
-        "shock_cards_count": len(shock_cards),
         "timeline_post_mortem": timeline_data
     }
 
@@ -1485,14 +1269,15 @@ def finish_osce_session(
                 checklist_evaluation_json = ?,
                 preceptor_feedback_json = ?,
                 transcript_json = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
         """, (
             now_iso,
             final_score_normalized,
             json.dumps({"items": evaluated_items, "critical_warnings": [rf["description"] for rf in red_flags], "red_flags": red_flags}, ensure_ascii=False),
             json.dumps(preceptor_feedback, ensure_ascii=False),
             json.dumps(transcript, ensure_ascii=False),
-            session_id
+            session_id,
+            user_id
         ))
 
     return {
@@ -1509,7 +1294,6 @@ def finish_osce_session(
         "chief_preceptor_review": chief_review,
         "competency_radar_5d": radar_5d,
         "medquest_remediation": medquest_remediation,
-        "shock_cards": shock_cards,
         "elapsed_seconds": sess["elapsed_seconds"],
         "timeline_post_mortem": timeline_data,
         "competency_radar": radar_data
@@ -1526,8 +1310,8 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
                st.duration_seconds, st.scenario_door_markdown
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not row:
         return None
@@ -1616,8 +1400,8 @@ def prescribe_osce_drugs(
                st.code, st.title, st.checklist_barema_json, st.scenario_door_markdown
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError("Sessão não encontrada.")
@@ -1699,12 +1483,13 @@ def prescribe_osce_drugs(
         db.execute("""
             UPDATE osce_sessions
             SET actions_taken_json = ?, transcript_json = ?, elapsed_seconds = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
         """, (
             json.dumps(actions, ensure_ascii=False),
             json.dumps(transcript, ensure_ascii=False),
             elapsed_seconds,
-            session_id
+            session_id,
+            user_id
         ))
 
     res_presc: dict[str, Any] = {
@@ -1738,8 +1523,8 @@ def perform_osce_procedure(
                st.code, st.title, st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
-        WHERE s.id = ?
-    """, (session_id,)).fetchone()
+        WHERE s.id = ? AND s.user_id = ?
+    """, (session_id, user_id)).fetchone()
 
     if not sess:
         raise ValueError("Sessão não encontrada.")
@@ -1936,12 +1721,13 @@ def perform_osce_procedure(
         db.execute("""
             UPDATE osce_sessions
             SET actions_taken_json = ?, transcript_json = ?, elapsed_seconds = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
         """, (
             json.dumps(actions, ensure_ascii=False),
             json.dumps(transcript, ensure_ascii=False),
             elapsed_seconds,
-            session_id
+            session_id,
+            user_id
         ))
 
     res_proc: dict[str, Any] = {
@@ -2081,7 +1867,7 @@ def get_circuit_summary(db, circuit_id: str, user_id: str) -> dict[str, Any]:
     else:
         board_feedback = (
             f"Pontuação de {total_score:.1f}/50.0 pontos ({percentage}%) insuficiente para aprovação na 2ª Fase (nota de corte: 35.0/50.0). "
-            f"Identificamos {total_critical_errors} falta(s) crítica(s) de segurança clínica. Revise os flashcards de choque gerados."
+            f"Identificamos {total_critical_errors} falta(s) crítica(s) de segurança clínica. Revise o espelho oficial e pratique novamente."
         )
 
     return {

@@ -35,7 +35,7 @@ export default async function EstudarPage({
   return (
     <div className="animate-in fade-in duration-500 w-full h-full">
       {subtemaStr && getSubtemaDetails(subtemaStr) && (
-        <Link href={`/temas?subtema=${encodeURIComponent(subtemaStr)}`} className="inline-block mb-4 text-sm font-semibold text-primary hover:underline">
+        <Link href={`/analise?tab=cobertura&subtema=${encodeURIComponent(subtemaStr)}`} className="inline-block mb-4 text-xs font-semibold text-accent hover:underline">
           ← Voltar ao tema
         </Link>
       )}

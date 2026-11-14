@@ -21,7 +21,6 @@ const DEFAULT_STATS: OverviewStats = {
   streak_days: 0,
   daily_target: 20,
   today_answered: 0,
-  flashcards_due_count: 0,
 };
 
 export default async function Dashboard() {

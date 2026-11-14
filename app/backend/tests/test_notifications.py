@@ -352,10 +352,10 @@ def test_cron_dispatch_atomic_reservation_and_concurrency(app, monkeypatch):
             )
             db.execute(
                 """
-                INSERT INTO flashcards (question_id, front, back, created_at, next_review_date, user_id)
-                VALUES (10, 'Frente', 'Verso', ?, ?, 'user_race')
+                INSERT INTO spaced_repetition (question_id, efactor, interval, next_review_date, user_id)
+                VALUES (10, 2.5, 1, ?, 'user_race')
                 """,
-                (today_date, today_date),
+                (today_date,),
             )
 
     client1 = app.test_client()
@@ -417,10 +417,10 @@ def test_cron_dispatch_stale_subscription_pruning(app, client, monkeypatch):
             )
             db.execute(
                 """
-                INSERT INTO flashcards (question_id, front, back, created_at, next_review_date, user_id)
-                VALUES (2, 'Frente Stale', 'Verso Stale', ?, ?, 'user_stale')
+                INSERT INTO spaced_repetition (question_id, efactor, interval, next_review_date, user_id)
+                VALUES (2, 2.5, 1, ?, 'user_stale')
                 """,
-                (today_date, today_date),
+                (today_date,),
             )
 
     res = client.post(
@@ -470,10 +470,10 @@ def test_cron_dispatch_vapid_absent_fail_safe(app, client, monkeypatch):
             )
             db.execute(
                 """
-                INSERT INTO flashcards (question_id, front, back, created_at, next_review_date, user_id)
-                VALUES (3, 'Frente', 'Verso', ?, ?, 'user_vapid_test')
+                INSERT INTO spaced_repetition (question_id, efactor, interval, next_review_date, user_id)
+                VALUES (3, 2.5, 1, ?, 'user_vapid_test')
                 """,
-                (today_date, today_date),
+                (today_date,),
             )
 
     # Executar sem mock (testando o fallback de webpush.py diretamente)

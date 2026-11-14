@@ -5,12 +5,10 @@ import { useState, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
 import { PlannerWeek, PlannerProgressMap, PlannerTopic, PlannerConfig, PlannerTopicProgressMap } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
-import { getLocalOwnerId } from "@/lib/db";
-import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, ExternalLink, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight } from "lucide-react";
+import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { PlannerWizard } from "./PlannerWizard";
-import { syncPlanToGoogleCalendar, SyncProgress } from "@/lib/googleCalendar";
 
 const getAreaColorClass = (areaName: string) => {
   const name = areaName.toLowerCase();
@@ -32,9 +30,6 @@ const TopicRow = memo(function TopicRow({
   completed,
   toggleTopic,
   week,
-  weekDate,
-  topicIndex,
-  daysPerWeek,
   isDragging,
   isDragOverBefore,
   onDragStart,
@@ -47,9 +42,6 @@ const TopicRow = memo(function TopicRow({
   completed: boolean;
   toggleTopic: (week: number, subtema: string, completed: boolean) => void;
   week: number;
-  weekDate?: Date;
-  topicIndex?: number;
-  daysPerWeek?: number;
   isDragging?: boolean;
   isDragOverBefore?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
@@ -61,32 +53,10 @@ const TopicRow = memo(function TopicRow({
     const key = `planner-topic-${week}-${t.subtema}`;
   const isChecked = completed;
 
-  // Cálculo de Link 1-Clique para o Google Agenda
-  const gcalUrl = (() => {
-    if (!weekDate) return null;
-    const studyDays = Math.max(1, Math.min(7, daysPerWeek || 6));
-    const dayOffset = (topicIndex || 0) % studyDays;
-    const topicDt = new Date(weekDate.getTime() + dayOffset * 86400000);
-    const dtStart = new Date(topicDt);
-    dtStart.setHours(8, 0, 0, 0);
-    const durationMinutes = Math.max(30, Math.round(t.estimated_hours * 60));
-    const dtEnd = new Date(dtStart.getTime() + durationMinutes * 60000);
-
-    const formatGCalDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const startStr = formatGCalDate(dtStart);
-    const endStr = formatGCalDate(dtEnd);
-
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const title = `[MedQuest] 📖 ${t.subtema} (${t.area})`;
-    const details = `📚 Carga: ${t.estimated_hours}h (Teoria: ${t.estimated_theory_hours}h + Questões: ${t.estimated_practice_hours}h)\nSemana ${weekDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} • ${t.area}${origin ? `\n\n🔗 Questões: ${origin}/estudar?subtema=${encodeURIComponent(t.subtema)}&limit=25` : ""}`;
-
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=MedQuest`;
-  })();
-
   return (
     <div className="relative flex flex-col">
       {isDragOverBefore && (
-        <div className="h-1.5 w-full bg-primary rounded-full mb-1 shadow-sm ring-2 ring-primary/40 animate-pulse transition-all" />
+        <div className="h-1 w-full bg-accent rounded-xs mb-1" />
       )}
       <div 
         draggable={Boolean(onDragStart)}
@@ -167,37 +137,25 @@ const TopicRow = memo(function TopicRow({
           </div>
 
           <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-            <Link href={`/temas?subtema=${encodeURIComponent(t.subtema)}`} className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-lg">
+            <Link href={`/analise?tab=cobertura&subtema=${encodeURIComponent(t.subtema)}`} className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent text-white text-xs font-semibold rounded-md">
               Abrir tema
             </Link>
             <Link 
               href={`/estudar?subtema=${encodeURIComponent(t.subtema)}&limit=25`}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-lg transition-colors border border-primary/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold rounded-md transition-colors border border-accent/20"
             >
-              <Play size={11} className="fill-primary" /> Praticar Questões
+              <Play size={11} className="fill-current" /> Praticar Questões
             </Link>
             {onOpenMoveModal && (
               <button
                 type="button"
                 onClick={onOpenMoveModal}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-medium rounded-lg transition-colors border border-border"
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-medium rounded-md transition-colors border border-line-subtle"
                 title="Mover este tema para outra semana"
               >
-                <ArrowUpDown size={12} className="text-primary" />
+                <ArrowUpDown size={12} className="text-accent" />
                 Mover semana
               </button>
-            )}
-            {gcalUrl && (
-              <a
-                href={gcalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-medium rounded-lg transition-colors border border-border"
-                title="Adicionar esta aula à sua agenda pessoal do Google (100% editável e móvel)"
-              >
-                <CalendarDays size={12} className="text-primary" />
-                + Google Agenda
-              </a>
             )}
           </div>
         </div>
@@ -226,8 +184,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [exportingIcs, setExportingIcs] = useState(false);
-  const [googleSyncing, setGoogleSyncing] = useState(false);
-  const [googleSyncProgress, setGoogleSyncProgress] = useState<SyncProgress | null>(null);
+  const [copiedFeed, setCopiedFeed] = useState(false);
 
   // Estados para Drag & Drop e reordenação entre semanas
   const [draggedTopic, setDraggedTopic] = useState<{ week: number; subtema: string; index: number } | null>(null);
@@ -255,36 +212,16 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
     }
   };
 
-
-  const handleAdvancedSync = async () => {
-    setGoogleSyncing(true);
-    setGoogleSyncProgress({ current: 0, total: 100, status: "Conectando ao Google Agenda..." });
+  const handleCopyFeedUrl = async () => {
     try {
-      const owner = getLocalOwnerId();
-      const res = await syncPlanToGoogleCalendar(currentPlan, {
-        config: config || {}, ownerId: owner, completed: topicProgress,
-        onProgress: setGoogleSyncProgress,
-        onComplete: async (week, subtema) => {
-          if (getLocalOwnerId() !== owner) throw new Error("A conta ativa mudou.");
-          await api.planner.markTopic(week, subtema, true);
-          setTopicProgress(previous => ({ ...previous, [`${week}:${subtema}`]: true }));
-        },
-      });
-      if (res.success) {
-        toast.success("Sincronização com o Google Agenda concluída!");
-      }
-    } catch (err: unknown) {
-      toast.error("Erro na sincronização avançada: " + String(err));
-    } finally {
-      setGoogleSyncing(false);
-      setGoogleSyncProgress(null);
+      const feedUrl = api.planner.getCalendarFeedUrl();
+      await navigator.clipboard.writeText(feedUrl);
+      setCopiedFeed(true);
+      toast.success("URL do feed iCalendar copiada!");
+      setTimeout(() => setCopiedFeed(false), 2000);
+    } catch {
+      toast.error("Não foi possível copiar a URL do feed.");
     }
-  };
-
-  const handleQuickImportFlow = async () => {
-    toast.success("Baixando arquivo e abrindo o importador do Google Agenda...");
-    await handleExportIcs();
-    window.open("https://calendar.google.com/calendar/r/settings/export", "_blank");
   };
 
   useEffect(() => {
@@ -738,9 +675,6 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                       completed={Boolean(topicProgress[`${week.week}:${t.subtema}`]) || Boolean(topicProgress[t.subtema])}
                       toggleTopic={toggleTopic}
                       week={week.week}
-                      weekDate={weekDate}
-                      topicIndex={idx}
-                      daysPerWeek={config?.days_per_week || 6}
                       isDragging={draggedTopic?.subtema === t.subtema}
                       isDragOverBefore={dragOverTopicIndex?.week === week.week && dragOverTopicIndex?.index === idx && draggedTopic?.subtema !== t.subtema}
                       onDragStart={(e) => handleDragStart(week.week, t.subtema, idx, e)}
@@ -862,7 +796,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
         </div>
       )}
 
-      {/* Calendar Sync Modal */}
+      {/* Calendar Export Modal (.ics + iCalendar Feed) */}
       {showCalendarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCalendarModal(false)} />
@@ -870,83 +804,72 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="calendar-modal-title"
-            className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 md:p-8 max-w-lg w-full z-10 animate-in fade-in zoom-in-95 duration-200"
+            className="relative bg-surface border border-line-subtle rounded-lg shadow-2xl p-6 max-w-lg w-full z-10"
           >
             <button 
               onClick={() => setShowCalendarModal(false)} 
-              aria-label="Fechar modal de sincronização"
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+              aria-label="Fechar modal de exportação"
+              className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
             >
               <X size={18} />
             </button>
 
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 bg-primary/15 text-primary rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
-                <CalendarDays size={22} />
+              <div className="w-10 h-10 bg-accent/15 text-accent rounded-md flex items-center justify-center border border-accent/20 shrink-0">
+                <CalendarDays size={20} />
               </div>
               <div>
-                <h3 id="calendar-modal-title" className="text-xl font-bold text-foreground">Sincronizar com Calendário</h3>
-                <p className="text-xs text-muted-foreground">Aulas e revisões separadas com a duração real de estudo.</p>
+                <h3 id="calendar-modal-title" className="text-lg font-bold text-foreground">Exportar Cronograma (.ics)</h3>
+                <p className="text-xs text-muted-foreground">Compatível com Google Agenda, Apple Calendar e Outlook.</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* Opção 1: Agenda 100% Editável no Google Agenda */}
-              <div className="border border-primary/30 bg-primary/5 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs">
-                      G
-                    </div>
-                    <span className="font-bold text-sm text-foreground">Copiar para Minha Agenda do Google (100% Editável)</span>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                    Móvel & Editável
-                  </span>
-                </div>
+              <div className="border border-line-subtle bg-canvas rounded-lg p-4 space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Cria uma cópia direta na sua conta Google. Você poderá <strong>arrastar aulas para outros horários, mudar dias, editar descrições e personalizar livremente</strong>.
+                  Baixe o arquivo padrão <strong className="text-foreground">.ics</strong> com todos os blocos semanais de estudo e importe diretamente no aplicativo de agenda da sua preferência.
                 </p>
 
-                {googleSyncProgress && (
-                  <div className="space-y-1.5 bg-background/80 p-3 rounded-xl border border-border animate-in fade-in duration-200">
-                    <div className="flex justify-between text-xs font-semibold text-foreground">
-                      <span className="truncate pr-2">{googleSyncProgress.status}</span>
-                      <span>{Math.round((googleSyncProgress.current / Math.max(1, googleSyncProgress.total)) * 100)}%</span>
-                    </div>
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{ width: `${(googleSyncProgress.current / Math.max(1, googleSyncProgress.total)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleExportIcs}
+                  disabled={exportingIcs}
+                  className="w-full bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 px-4 rounded-md transition-colors flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {exportingIcs ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  {exportingIcs ? "Gerando arquivo .ics..." : "Baixar Arquivo .ics do Cronograma"}
+                </button>
+              </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <div className="border border-line-subtle bg-canvas rounded-lg p-4 space-y-2.5">
+                <div className="text-xs font-bold text-foreground">Assinatura Automática (Feed iCalendar)</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Copie a URL do feed para assinar seu cronograma por link no Apple Calendar, Outlook ou Google Agenda.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={api.planner.getCalendarFeedUrl()}
+                    className="flex-1 bg-surface border border-line-subtle rounded-md px-2.5 py-1.5 text-[11px] font-mono-lab text-muted-foreground focus:outline-none"
+                  />
                   <button
-                    onClick={handleAdvancedSync}
-                    disabled={googleSyncing || exportingIcs}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs shadow-sm disabled:opacity-50"
+                    type="button"
+                    onClick={handleCopyFeedUrl}
+                    className="px-3 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                   >
-                    {googleSyncing ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                    {googleSyncing ? "Sincronizando..." : "Sincronizar Planner"}
-                  </button>
-                  <button
-                    onClick={handleQuickImportFlow}
-                    disabled={exportingIcs}
-                    className="bg-card hover:bg-muted text-foreground border border-border font-medium py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
-                    title="Baixa o arquivo .ics e abre o importador oficial do Google Agenda"
-                  >
-                    <Download size={14} />
-                    Importar Arquivo (.ics)
+                    {copiedFeed ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                    {copiedFeed ? "Copiado" : "Copiar"}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 text-[11px] text-muted-foreground text-center bg-muted/20 p-2.5 rounded-lg border border-border/50">
-              💡 <strong>Dica:</strong> Você também pode clicar no botão <strong>+ Google Agenda</strong> ao lado de qualquer aula individual no Planner para adicioná-la diretamente à sua agenda pessoal com horário 100% editável.
+            <div className="mt-4 text-[11px] text-muted-foreground flex items-start gap-2 bg-canvas p-3 rounded-md border border-line-subtle">
+              <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
+              <span>
+                Após importar o arquivo <strong>.ics</strong> na sua agenda, os eventos passam a ser 100% editáveis no seu calendário pessoal.
+              </span>
             </div>
           </div>
         </div>

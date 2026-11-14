@@ -73,10 +73,8 @@ def _fetch_due_user_ids(db, today_date: str) -> set[str]:
     """Retorna conjunto de IDs de usuários com revisões pendentes para hoje."""
     due_users_query = """
         SELECT DISTINCT user_id FROM spaced_repetition WHERE next_review_date <= ?
-        UNION
-        SELECT DISTINCT user_id FROM flashcards WHERE next_review_date <= ?
     """
-    due_users_rows = db.execute(due_users_query, (today_date, today_date)).fetchall()
+    due_users_rows = db.execute(due_users_query, (today_date,)).fetchall()
     return {str(row["user_id"] if "user_id" in row else row[0]) for row in due_users_rows}
 
 

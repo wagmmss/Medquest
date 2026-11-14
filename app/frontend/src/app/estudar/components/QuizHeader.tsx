@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
+import { Keyboard } from "lucide-react";
 import { QuizTimer, QuizTimerHandle } from "@/components/QuizTimer";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 
@@ -34,39 +35,97 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
   isFavorite = false,
   onToggleFavorite,
 }) => {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!shortcutsOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setShortcutsOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShortcutsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [shortcutsOpen]);
+
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 bg-surface/90 backdrop-blur-md border border-line-subtle rounded-sm px-4 py-2.5 shadow-xs">
+    <header className="flex flex-wrap items-center justify-between gap-3 bg-surface/90 backdrop-blur-md border border-line-subtle rounded-md px-4 py-2.5 shadow-2xs relative z-20">
       <div className="flex items-center gap-3">
-        <button 
+        <button
           onClick={onBackToFilters}
-          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted hover:text-ink transition-colors cursor-pointer min-h-[36px] px-2.5 -ml-1 rounded-sm hover:bg-elevated/60 border border-transparent hover:border-line-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted hover:text-ink-primary transition-colors cursor-pointer min-h-[36px] px-2.5 -ml-1 rounded-xs hover:bg-elevated/60 border border-transparent hover:border-line-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
         >
           <ClinicalIcon name="arrowLeft" size={14} />
           <span>Filtros</span>
         </button>
         <div className="h-4 w-px bg-line-subtle hidden sm:block" />
-        <div className="text-xs font-semibold text-ink flex items-center gap-2" aria-live="polite">
+        <div className="text-xs font-semibold text-ink-primary flex items-center gap-2" aria-live="polite">
           <span className="text-ink-muted uppercase text-[10px] tracking-wider hidden sm:inline">Progresso:</span>
           <span className="font-mono-lab tabular-nums bg-canvas px-2 py-0.5 rounded-xs border border-line-subtle text-accent font-bold">
             {completedCount} / {totalCount}
           </span>
         </div>
-        <div className="hidden xl:flex items-center gap-2 ml-3 px-2.5 py-1 bg-canvas/70 border border-line-subtle rounded-xs text-[11px] text-ink-muted font-mono-lab">
-          <span className="flex items-center gap-1"><kbd className="bg-surface border border-line-subtle px-1 py-0.2 rounded-xs text-[10px] text-ink">A-E</kbd> Selecionar</span>
-          <span className="w-1 h-1 rounded-full bg-line-subtle" />
-          <span className="flex items-center gap-1"><kbd className="bg-surface border border-line-subtle px-1 py-0.2 rounded-xs text-[10px] text-ink">Shift+A-E</kbd> Riscar</span>
-          <span className="w-1 h-1 rounded-full bg-line-subtle" />
-          <span className="flex items-center gap-1"><kbd className="bg-surface border border-line-subtle px-1 py-0.2 rounded-xs text-[10px] text-ink">Enter</kbd> Confirmar</span>
-          <span className="w-1 h-1 rounded-full bg-line-subtle" />
-          <span className="flex items-center gap-1"><kbd className="bg-surface border border-line-subtle px-1 py-0.2 rounded-xs text-[10px] text-ink">Z</kbd> Modo Zen</span>
+
+        <div className="relative hidden md:block" ref={popoverRef}>
+          <button
+            type="button"
+            onClick={() => setShortcutsOpen((prev) => !prev)}
+            aria-expanded={shortcutsOpen}
+            aria-label="Ver atalhos de teclado"
+            className={clsx(
+              "flex items-center gap-1.5 px-2 py-1 rounded-xs border text-[11px] font-mono-lab transition-colors cursor-pointer",
+              shortcutsOpen
+                ? "bg-accent/10 border-accent/30 text-accent"
+                : "bg-canvas/70 border-line-subtle text-ink-muted hover:text-ink-primary hover:bg-elevated"
+            )}
+          >
+            <Keyboard size={13} />
+            <span>Atalhos</span>
+          </button>
+
+          {shortcutsOpen && (
+            <div className="absolute left-0 top-full mt-1.5 w-64 rounded-md border border-line-subtle bg-surface shadow-xl p-3 z-30 flex flex-col gap-2 text-xs font-mono-lab">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-line-subtle pb-1.5">
+                Atalhos do Estudo
+              </p>
+              <div className="flex items-center justify-between text-ink-secondary">
+                <span>Selecionar alternativa</span>
+                <kbd className="bg-canvas border border-line-subtle px-1.5 py-0.5 rounded-xs text-[10px] text-ink-primary">A-E</kbd>
+              </div>
+              <div className="flex items-center justify-between text-ink-secondary">
+                <span>Riscar alternativa</span>
+                <kbd className="bg-canvas border border-line-subtle px-1.5 py-0.5 rounded-xs text-[10px] text-ink-primary">Shift+A-E</kbd>
+              </div>
+              <div className="flex items-center justify-between text-ink-secondary">
+                <span>Confirmar / Avançar</span>
+                <kbd className="bg-canvas border border-line-subtle px-1.5 py-0.5 rounded-xs text-[10px] text-ink-primary">Enter</kbd>
+              </div>
+              <div className="flex items-center justify-between text-ink-secondary">
+                <span>Navegar questões</span>
+                <kbd className="bg-canvas border border-line-subtle px-1.5 py-0.5 rounded-xs text-[10px] text-ink-primary">← / →</kbd>
+              </div>
+              <div className="flex items-center justify-between text-ink-secondary">
+                <span>Modo Zen</span>
+                <kbd className="bg-canvas border border-line-subtle px-1.5 py-0.5 rounded-xs text-[10px] text-ink-primary">Z</kbd>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
+
       <div className="flex items-center gap-2">
-        <button 
+        <button
           type="button"
           onClick={onRequestFinish}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30 rounded-sm transition-colors text-xs font-bold cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30 rounded-xs transition-colors text-xs font-bold cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           title="Finalizar sessão agora e ver seu desempenho"
         >
           <ClinicalIcon name="checkCircle" size={13} />
@@ -74,9 +133,9 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
           <span className="sm:hidden">Finalizar</span>
         </button>
 
-        <button 
+        <button
           onClick={onToggleZenMode}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink rounded-sm transition-colors border border-line-subtle text-xs font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           title={zenMode ? "Sair do Modo Zen (Tecla Z)" : "Entrar no Modo Zen - Foco Clínico Máximo (Tecla Z)"}
           aria-label={zenMode ? "Sair do Modo Zen" : "Entrar no Modo Zen"}
         >
@@ -91,7 +150,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
           )}
         </button>
         <div className="px-2 py-1 bg-canvas border border-line-subtle rounded-xs">
-          <QuizTimer 
+          <QuizTimer
             ref={quizTimerRef}
             isRunning={isTimerRunning}
             initialTime={initialTime}
@@ -99,22 +158,22 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
           />
         </div>
         {hasQuestion && onToggleFavorite && (
-          <button 
+          <button
             onClick={onToggleFavorite}
             className={clsx(
-              "w-8 h-8 flex items-center justify-center rounded-sm transition-colors border cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent", 
-              isFavorite 
-                ? "bg-critical/10 text-critical border-critical/30" 
-                : "bg-surface text-ink-muted hover:text-ink hover:bg-elevated border-line-subtle"
+              "w-8 h-8 flex items-center justify-center rounded-xs transition-colors border cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+              isFavorite
+                ? "bg-critical/10 text-critical border-critical/30"
+                : "bg-surface text-ink-muted hover:text-ink-primary hover:bg-elevated border-line-subtle"
             )}
             title={isFavorite ? "Remover dos Favoritos" : "Favoritar Questão"}
             aria-label={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
             aria-pressed={isFavorite}
           >
-            <ClinicalIcon 
-              name="bookmark" 
-              size={14} 
-              className={isFavorite ? "fill-critical text-critical" : ""} 
+            <ClinicalIcon
+              name="bookmark"
+              size={14}
+              className={isFavorite ? "fill-critical text-critical" : ""}
             />
           </button>
         )}

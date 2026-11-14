@@ -572,69 +572,46 @@ def test_osce_timeline_post_mortem_and_competency_radar(app, client):
         assert len(rep_data["timeline_post_mortem"]["events"]) == len(timeline["events"])
 
 
-def test_osce_generator_fmrp_usp(app, client):
-    """Testa o Motor de Estações Inéditas Infinitas com padrão FMRP-USP e modo adaptativo."""
+def test_osce_session_ownership_idor_blocked(app, client):
+    """Garante que sessões OSCE de um usuário são estritamente isoladas contra acesso IDOR de outro usuário."""
     with app.app_context():
         db = get_db()
         osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-CAD'").fetchone()
+        assert st is not None
 
-        # 1. Geração com modo Adaptativo
-        resp_adapt = client.post(
-            "/api/osce/stations/generate",
-            json={"adaptative": True, "difficulty": "hard"}
-        )
-        assert resp_adapt.status_code == 201
-        data_adapt = resp_adapt.get_json()
-        assert data_adapt["success"] is True
-        assert data_adapt["institution"] == "USP-RP"
-        assert data_adapt["code"].startswith("USP-RP-AI-")
-        station_id_adapt = data_adapt["station_id"]
-        assert station_id_adapt > 0
-
-        # Verifica se a estação foi persistida corretamente no banco
-        st_row = db.execute("SELECT * FROM osce_stations WHERE id = ?", (station_id_adapt,)).fetchone()
-        assert st_row is not None
-        assert "FMRP-USP" in st_row["scenario_door_markdown"] or "Ribeirão Preto" in st_row["scenario_door_markdown"]
-        assert st_row["checklist_barema_json"] is not None
-
-        # 2. Testa iniciar sessão real na estação inédita gerada pela IA
         start_res = client.post(
             "/api/osce/sessions/start",
-            json={"station_id": station_id_adapt, "mode": "guided"}
+            json={"station_id": st["id"], "mode": "guided"},
+            headers={"X-User-ID": "user-owner"},
         )
         assert start_res.status_code == 201
-        sess_data = start_res.get_json()
-        session_id = sess_data["session_id"]
-        assert sess_data["institution"] == "USP-RP"
+        session_id = start_res.get_json()["session_id"]
 
-        # 3. Interage com a persona gerada dinamicamente
-        interact_res = client.post(
+        attacker_headers = {"X-User-ID": "user-attacker"}
+        assert client.post(
             f"/api/osce/sessions/{session_id}/interact",
-            json={"message": "Olá, sou o médico residente da USP Ribeirão Preto. Como o senhor está se sentindo?", "elapsed_seconds": 15}
-        )
-        assert interact_res.status_code == 200
-        reply = interact_res.get_json()
-        assert reply["sender"] == "paciente"
-        assert len(reply["reply"]) > 5
-
-        # 4. Geração direcionada por Área Clínica e Cirúrgica
-        resp_cir = client.post(
-            "/api/osce/stations/generate",
-            json={"area": "Cirurgia Geral", "difficulty": "hard"}
-        )
-        assert resp_cir.status_code == 201
-        data_cir = resp_cir.get_json()
-        assert data_cir["area"] == "Cirurgia Geral"
-        assert data_cir["code"].startswith("USP-RP-AI-")
-
-        resp_ped = client.post(
-            "/api/osce/stations/generate",
-            json={"area": "Pediatria", "difficulty": "hard"}
-        )
-        assert resp_ped.status_code == 201
-        data_ped = resp_ped.get_json()
-        assert data_ped["area"] == "Pediatria"
-        assert data_ped["code"].startswith("USP-RP-AI-")
+            json={"message": "Olá", "elapsed_seconds": 10},
+            headers=attacker_headers,
+        ).status_code == 404
+        assert client.post(
+            f"/api/osce/sessions/{session_id}/dispatch_speech",
+            json={"message": "Prescrevo soro", "elapsed_seconds": 15},
+            headers=attacker_headers,
+        ).status_code == 404
+        assert client.get(
+            f"/api/osce/sessions/{session_id}/live_feedback?elapsed_seconds=20",
+            headers=attacker_headers,
+        ).status_code == 404
+        assert client.post(
+            f"/api/osce/sessions/{session_id}/finish",
+            json={"conduct_notes": "Tentativa"},
+            headers=attacker_headers,
+        ).status_code == 404
+        assert client.get(
+            f"/api/osce/sessions/{session_id}/report",
+            headers=attacker_headers,
+        ).status_code == 404
 
 
 def test_clinical_safety_guard_critical_violations(app, client):
@@ -664,10 +641,7 @@ def test_clinical_safety_guard_critical_violations(app, client):
         radar = res_fin_cad["competency_radar"]
         dim_farmaco = next(d for d in radar["dimensions"] if d["key"] == "seguranca_farmacologica")
         assert dim_farmaco["percentage"] <= 45.0, "Segurança farmacológica deve ser penalizada por prescrição contraindicada de bicarbonato"
-
-        # Verifica se o flashcard de choque da contraindicação foi gerado
-        shock_cards = res_fin_cad["shock_cards"]
-        assert any("CONTRAINDICAÇÃO" in c["front"] and "bicarbonato" in c["back"].lower() for c in shock_cards)
+        assert "shock_cards" not in res_fin_cad
 
 
 def test_voice_hands_free_prescriptions_and_procedures(app, client):
@@ -719,7 +693,6 @@ def test_osce_data_modular_architecture():
     from api import osce
 
     assert len(osce.CANONICAL_STATIONS) == len(osce_data.CANONICAL_STATIONS) == 16
-    assert len(osce.FMRP_USP_TEMPLATES) == len(osce_data.FMRP_USP_TEMPLATES) == 6
     assert len(osce.EMERGENCY_DRUGS_CATALOG) == len(osce_data.EMERGENCY_DRUGS_CATALOG) == 26
     assert len(osce.PROCEDURES_CATALOG) == len(osce_data.PROCEDURES_CATALOG) == 12
 

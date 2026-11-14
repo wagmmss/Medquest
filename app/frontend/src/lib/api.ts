@@ -2,11 +2,10 @@ import {
   ThemeProgress, OverviewStats, CoverageResponse, TimelineStat, WeakTopic, Recommendation,
   BreakdownStat, DistractorStat, PlannerConfig, PlannerProgressMap, PlannerTopicProgressMap, PlannerPlanResponse,
   QuestionMeta, SubtemaItem, QuestionListItem, QuestionDetail, AttemptResult, SearchResult, SearchFilterOptions,
-  BatchAttemptItem, BatchAttemptResult, BatchDetailResponse, Flashcard,
-  PredictiveScore, AtRiskTopic, LearningProfile, ExamReadiness,
+  BatchAttemptItem, BatchAttemptResult, BatchDetailResponse,
+  AtRiskTopic, LearningProfile, ExamReadiness,
   BenchmarkStat, BottleneckTopic, DomainSummaryResponse, ErrorNotebookSummary,
-  NotificationConfig, NotificationConfigUpdate, PushSubscriptionPayload,
-  InstitutionRadarResponse, FlashcardDecksResponse, AnkiImportResult,
+  InstitutionRadarResponse, AnalysisSummaryResponse,
   AuthMeResponse, DashboardSummaryResponse, PreceptorFocusResponse,
   BlindspotsResponse, TriEvaluationResponse, TriEvaluationPayload,
   OfficialExam, SimuladoSessionItem
@@ -159,6 +158,8 @@ async function apiFetch<T>(endpoint: string, options?: ApiFetchOptions): Promise
  */
 export const api = {
   themes: {
+    getProgress: (subtema: string, signal?: AbortSignal) =>
+      apiFetch<ThemeProgress>(`/api/themes/progress?${new URLSearchParams({ subtema })}`, { cache: "no-store", signal }),
     saveProgress: (subtema: string, progress: Pick<ThemeProgress, "theory_completed" | "study_path">) =>
       apiFetch<ThemeProgress>(`/api/themes/progress?${new URLSearchParams({ subtema })}`, {
         method: "PUT", body: JSON.stringify(progress),
@@ -168,13 +169,26 @@ export const api = {
     getOverview: () => apiFetch<OverviewStats>("/api/stats/overview", { cache: 'no-store' }),
     getDashboardSummary: (signal?: AbortSignal) =>
       apiFetch<DashboardSummaryResponse>("/api/dashboard/summary", { cache: 'no-store', timeoutMs: 45000, signal }),
+    getAnalysisSummary: (institution?: string, compareInstitution?: string, signal?: AbortSignal) => {
+      const params = new URLSearchParams();
+      if (institution) params.append("institution", institution);
+      if (compareInstitution) params.append("compare_institution", compareInstitution);
+      if (typeof window !== "undefined") {
+        params.append("tz_offset", String(-new Date().getTimezoneOffset()));
+      }
+      const qs = params.toString();
+      return apiFetch<AnalysisSummaryResponse>(`/api/stats/analysis-summary${qs ? `?${qs}` : ""}`, {
+        cache: "no-store",
+        timeoutMs: 45000,
+        signal,
+      });
+    },
     getCoverage: () => apiFetch<CoverageResponse>("/api/coverage", { cache: 'no-store' }),
     getTimeline: (days: number = 14, signal?: AbortSignal) =>
       apiFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}`, { cache: 'no-store', signal }),
     getWeakTopics: () => apiFetch<WeakTopic[]>("/api/stats/weak-topics", { cache: 'no-store' }),
     getRecommendations: () => apiFetch<Recommendation[]>("/api/stats/recommendations", { cache: 'no-store' }),
     getDistractors: () => apiFetch<DistractorStat[]>("/api/stats/distractors", { cache: 'no-store' }),
-    getPredictiveScore: () => apiFetch<PredictiveScore>("/api/stats/predictive-score", { cache: 'no-store' }),
     getAtRiskTopics: () => apiFetch<AtRiskTopic[]>("/api/stats/at-risk", { cache: 'no-store' }),
     getLearningProfile: () => apiFetch<LearningProfile>("/api/stats/learning-profile", { cache: 'no-store' }),
     getExamReadiness: (institution?: string, signal?: AbortSignal) => apiFetch<ExamReadiness>(`/api/stats/exam-readiness${institution ? `?institution=${encodeURIComponent(institution)}` : ""}`, { cache: 'no-store', signal }),
@@ -651,207 +665,6 @@ export const api = {
       }
     },
   },
-  flashcards: {
-    delete: (fid: number) =>
-      apiFetch<{ success: boolean; message: string; id: number }>(
-        `/api/flashcards/${fid}`,
-        {
-          method: "DELETE",
-        }
-      ),
-    downloadAll: async (): Promise<Flashcard[]> => {
-      const cards: Flashcard[] = [];
-      let afterId = 0;
-      while (true) {
-        const page = await apiFetch<Flashcard[]>(`/api/flashcards/review?all=true&limit=100&after_id=${afterId}`, { cache: "no-store" });
-        cards.push(...page);
-        if (page.length < 100) return cards;
-        const nextId = page[page.length - 1].id;
-        if (nextId <= afterId) throw new Error("Paginação de flashcards não avançou");
-        afterId = nextId;
-      }
-    },
-    getDecks: () => apiFetch<FlashcardDecksResponse>("/api/flashcards/decks", { cache: "no-store" }),
-    getDue: async (includeAll: boolean = false, signal?: AbortSignal, deck?: string, subtema?: string) => {
-      const getLocalFallback = async () => {
-        if (typeof window !== "undefined" && localDb) {
-          try {
-            const uid = getLocalOwnerId();
-            let cards = await localDb.flashcards.where('_owner_id').equals(uid).toArray();
-            if (subtema !== undefined) cards = cards.filter(card => card.subtema === subtema);
-            if (deck && deck !== "all") {
-              cards = cards.filter(c => (c.deck_name || "Geral").toLowerCase() === deck.toLowerCase());
-            }
-
-            if (includeAll) return cards;
-            const now = Date.now();
-            return cards.filter(card => !card.next_review_date || new Date(card.next_review_date).getTime() <= now);
-          } catch (e) {
-            console.error("Dexie error loading flashcards", e);
-            return [];
-          }
-        }
-        return null;
-      };
-
-      if (isDeviceOffline()) {
-        const local = await getLocalFallback();
-        if (local) return local;
-      }
-
-      try {
-        const params = new URLSearchParams();
-        if (includeAll) params.append("all", "true");
-        if (deck && deck !== "all") params.append("deck", deck);
-        if (subtema !== undefined) params.append("subtema", subtema);
-        const qs = params.toString();
-        return await apiFetch<Flashcard[]>(`/api/flashcards/review${qs ? `?${qs}` : ""}`, { cache: 'no-store', signal });
-      } catch (err) {
-        if (signal?.aborted || err instanceof ApiHttpError) throw err;
-        const local = await getLocalFallback();
-        if (local) return local;
-        throw err;
-      }
-    },
-    getUpcoming: async (signal?: AbortSignal, deck?: string, subtema?: string) => {
-      try {
-        const params = new URLSearchParams();
-        params.append("scope", "upcoming");
-        if (deck && deck !== "all") params.append("deck", deck);
-        if (subtema !== undefined) params.append("subtema", subtema);
-        const qs = params.toString();
-        return await apiFetch<Flashcard[]>(`/api/flashcards/review?${qs}`, { cache: 'no-store', signal });
-      } catch (err) {
-        if (signal?.aborted || err instanceof ApiHttpError) throw err;
-        if (typeof window !== "undefined" && localDb) {
-          try {
-            const uid = getLocalOwnerId();
-            let cards = await localDb.flashcards.where('_owner_id').equals(uid).toArray();
-            if (subtema !== undefined) cards = cards.filter(card => card.subtema === subtema);
-            if (deck && deck !== "all") {
-              cards = cards.filter(c => (c.deck_name || "Geral").toLowerCase() === deck.toLowerCase());
-            }
-            const now = Date.now();
-            return cards.filter(card => card.next_review_date && new Date(card.next_review_date).getTime() > now);
-          } catch {
-            return [];
-          }
-        }
-        return [];
-      }
-    },
-
-    importFile: async (file: File, deckName?: string): Promise<AnkiImportResult> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (deckName) formData.append("deck_name", deckName);
-
-      const url = `${API_BASE}/api/flashcards/import/file`;
-      const token = typeof window !== "undefined" ? (window as unknown as { __medquest_token?: string }).__medquest_token : undefined;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
-
-      if (!res.ok) {
-        let errMsg = "Falha ao importar arquivo";
-        try {
-          const json = await res.json();
-          if (json?.error) errMsg = json.error;
-        } catch {
-          // ignore
-        }
-        throw new Error(errMsg);
-      }
-
-      return await res.json();
-    },
-
-    importBatch: async (
-      cards: Array<{ front: string; back: string; deck_name?: string; tags?: string[]; anki_nid?: number; anki_cid?: number }>,
-      deckName?: string
-    ): Promise<AnkiImportResult> => {
-      return apiFetch<AnkiImportResult>("/api/flashcards/import/batch", {
-        method: "POST",
-        body: JSON.stringify({ cards, deck_name: deckName }),
-      });
-    },
-
-    syncAnkiStates: async (cards: Array<{ anki_cid: number; anki_nid?: number; interval: number; reps: number; lapses: number }>) => {
-      if (!cards.length) return { success: true, updated: 0 };
-      return apiFetch<{ success: boolean; updated: number }>("/api/flashcards/anki/sync-state", {
-        method: "POST",
-        body: JSON.stringify({ cards }),
-      });
-    },
-
-    deleteDeck: async (deckName: string): Promise<{ success: boolean; deck_name: string; deleted_count: number }> => {
-      const owner = getLocalOwnerId();
-      // Pending reviews must settle before deletion, otherwise they target removed cards.
-      await syncManager.sync(true);
-      const queued = [...await syncManager.getQueue(), ...await syncManager.getFailedItems()];
-      if (queued.some(item => /\/flashcards\//.test(item.endpoint))) {
-        throw new Error("Sincronize ou descarte as operações de flashcards pendentes antes de excluir o baralho.");
-      }
-      if (getLocalOwnerId() !== owner) throw new Error("A conta ativa mudou. Tente novamente.");
-      const result = await apiFetch<{ success: boolean; deck_name: string; deleted_count: number }>("/api/flashcards/deck", {
-        method: "DELETE", body: JSON.stringify({ deck_name: deckName }),
-      });
-      if (localDb) {
-        await localDb.flashcards.where('_owner_id').equals(owner)
-          .filter(card => (card.deck_name?.trim() || "Geral") === result.deck_name).delete();
-      }
-      return result;
-    },
-
-    review: (id: number, confidence: string) => apiFetch<{id: number, next_review_date: string}>(`/api/flashcards/${id}/review`, {
-      method: "POST",
-      body: JSON.stringify({ confidence })
-    }),
-    report: (id: number, reason: string) => apiFetch<{success: boolean}>(`/api/flashcards/${id}/report`, {
-      method: "POST",
-      body: JSON.stringify({ reason })
-    }),
-    exportAnki: async (dueOnly: boolean = false) => {
-      const url = `${API_BASE}/api/flashcards/export/anki${dueOnly ? "?due_only=true" : ""}`;
-      const token = typeof window !== "undefined" ? (window as unknown as { __medquest_token?: string }).__medquest_token : undefined;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error("Falha ao exportar flashcards para o Anki");
-      const blob = await res.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `medquest_flashcards_anki_${new Date().toISOString().split("T")[0]}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    },
-  },
-  notifications: {
-    getConfig: () => apiFetch<NotificationConfig>("/api/notifications/config", { cache: "no-store" }),
-    updateConfig: (config: NotificationConfigUpdate) =>
-      apiFetch<NotificationConfigUpdate & { updated_at: string }>("/api/notifications/config", {
-        method: "PUT",
-        body: JSON.stringify(config),
-      }),
-    subscribe: (sub: PushSubscriptionPayload) =>
-      apiFetch<{ success: boolean }>("/api/notifications/subscribe", {
-        method: "POST",
-        body: JSON.stringify(sub),
-      }),
-    unsubscribe: (endpoint?: string) =>
-      apiFetch<{ success: boolean }>("/api/notifications/subscribe", {
-        method: "DELETE",
-        body: JSON.stringify({ endpoint }),
-      }),
-  },
   ai: {
     getPreceptorFocus: (options?: { generateAi?: boolean; forceRefresh?: boolean }) => {
       const generateAi = options?.generateAi !== false;
@@ -940,10 +753,6 @@ export const api = {
       body: JSON.stringify({ procedure_type: procedureType, anatomical_site: anatomicalSite, elapsed_seconds: elapsedSeconds }),
     }),
     getLiveFeedback: (sessionId: string, elapsedSeconds: number) => apiFetch<import("@/types/api").OsceLiveFeedback>(`/api/osce/sessions/${sessionId}/live_feedback?elapsed_seconds=${elapsedSeconds}`, { cache: "no-store" }),
-    generateStation: (payload?: import("@/types/api").OsceGenerateStationPayload) => apiFetch<import("@/types/api").OsceGenerateStationResponse>("/api/osce/stations/generate", {
-      method: "POST",
-      body: JSON.stringify(payload || {}),
-    }),
     getCircuitPlan: (institution?: string) => {
       const qs = institution ? `?institution=${encodeURIComponent(institution)}` : "";
       return apiFetch<import("@/types/api").OsceCircuitPlanResponse>(`/api/osce/circuits/plan${qs}`, { cache: "no-store" });

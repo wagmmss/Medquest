@@ -149,8 +149,6 @@ def delete_question(qid):
             db.execute("DELETE FROM classification_proposals WHERE question_id = ?", (qid,))
         if "reclassification_audit" in tables:
             db.execute("DELETE FROM reclassification_audit WHERE question_id = ?", (qid,))
-        if "flashcards" in tables:
-            db.execute("UPDATE flashcards SET question_id = NULL WHERE question_id = ?", (qid,))
         if "questions_fts" in tables:
             try:
                 db.execute("DELETE FROM questions_fts WHERE rowid = ?", (qid,))

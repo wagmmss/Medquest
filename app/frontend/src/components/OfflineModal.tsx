@@ -49,14 +49,14 @@ export function OfflineModal({ isOpen, onClose }: OfflineModalProps) {
     >
       <div 
         ref={modalRef} 
-        className="relative w-full max-w-2xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-2xl bg-surface border border-line-subtle rounded-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 z-10 p-1.5 rounded-md text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
           aria-label="Fechar modal de modo plantão"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
         <div className="overflow-y-auto p-2 sm:p-4">

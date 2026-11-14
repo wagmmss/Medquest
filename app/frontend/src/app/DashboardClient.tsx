@@ -15,7 +15,7 @@ import { motion, Variants } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { readLearningSession, syncSessionFromCloud } from "@/lib/sessionState";
 import { triggerConfetti } from "@/lib/confetti";
-import { PreceptorFocusCard } from "@/components/PreceptorFocusCard";
+import { PreceptorXrayButton } from "@/components/PreceptorFocusCard";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import clsx from "clsx";
 
@@ -107,11 +107,26 @@ export function DashboardClient({
   const [isUsingCache, setIsUsingCache] = useState<boolean>(false);
 
   useEffect(() => {
-    // Dispara confete se as revisões diárias estiverem zeradas e houver pelo menos 1 questão feita
-    if (stats.srs_due_count === 0 && stats.distinct_answered > 0 && !hasAnimated.current) {
-      hasAnimated.current = true;
-      triggerConfetti();
+    const target = stats.daily_target || 20;
+    const todayDoneCount = stats.today_answered || 0;
+    const isDailyGoalMet =
+      stats.srs_due_count === 0 &&
+      stats.distinct_answered > 0 &&
+      todayDoneCount >= target;
+    if (!isDailyGoalMet || hasAnimated.current) return;
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    try {
+      if (localStorage.getItem("mq_last_confetti") === todayKey) {
+        hasAnimated.current = true;
+        return;
+      }
+      localStorage.setItem("mq_last_confetti", todayKey);
+    } catch {
+      // ignore storage errors
     }
+    hasAnimated.current = true;
+    triggerConfetti();
   }, [stats]);
 
   useEffect(() => {
@@ -169,7 +184,14 @@ export function DashboardClient({
 
   const { isAnyOffline: isOffline } = useOfflineStatus();
 
-  const applySummaryData = useCallback((summaryData: DashboardSummaryResponse) => {
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFetchingDashboardRef = useRef(false);
+
+  useEffect(() => () => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+  }, []);
+
+  const applySummaryData = useCallback(async (summaryData: DashboardSummaryResponse) => {
     if (summaryData.stats) {
       setStats(summaryData.stats);
       setHasOverviewError(false);
@@ -180,60 +202,61 @@ export function DashboardClient({
     if (summaryData.error_notebook !== undefined) setErrorNotebook(summaryData.error_notebook);
     setIsUsingCache(false);
 
+    let resolvedWeek: PlannerWeek | null = null;
+    let resolvedTopic: PlannerTopic | null = null;
+    let resolvedMetas = 0;
+    let resolvedCompleted = false;
+
     const planner = summaryData.planner;
     const config = planner?.config;
     const progressMap = planner?.progress || {};
     const topicProgressMap = planner?.topic_progress || {};
 
     if (config && config.exam_date && config.start_date) {
-      api.planner.generatePlan({
-        start_date: config.start_date,
-        exam_date: config.exam_date,
-        hours_per_week: Math.min(168, (config.days_per_week || 5) * (config.hours_per_day || 4)),
-        intensive: false
-      }).then((planResponse) => {
+      try {
+        const planResponse = await api.planner.generatePlan({
+          start_date: config.start_date,
+          exam_date: config.exam_date,
+          hours_per_week: Math.min(168, (config.days_per_week || 5) * (config.hours_per_day || 4)),
+          intensive: false,
+        });
         if (planResponse.plan && planResponse.plan.length > 0) {
-          let foundWeek = null;
-          let foundTopic = null;
-          let metas = 0;
-          let completed = false;
-
           for (const week of planResponse.plan) {
             if (progressMap[week.week.toString()]?.studied) continue;
             const pending = (week.topics || []).filter(
               (t) => !topicProgressMap[`${week.week}:${t.subtema}`] && !topicProgressMap[t.subtema]
             );
             if (pending.length > 0) {
-              foundWeek = week;
-              foundTopic = pending[0];
-              metas = pending.length;
+              resolvedWeek = week;
+              resolvedTopic = pending[0];
+              resolvedMetas = pending.length;
               break;
             }
           }
 
-          if (!foundTopic && planResponse.plan.length > 0) {
-            completed = true;
-            foundWeek = planResponse.plan[planResponse.plan.length - 1];
+          if (!resolvedTopic && planResponse.plan.length > 0) {
+            resolvedCompleted = true;
+            resolvedWeek = planResponse.plan[planResponse.plan.length - 1];
           }
 
-          setCurrentPlannerWeek(foundWeek);
-          setSuggestedPlannerTopic(foundTopic);
-          setRemainingPlannerMetas(metas);
-          setIsPlanCompleted(completed);
+          setCurrentPlannerWeek(resolvedWeek);
+          setSuggestedPlannerTopic(resolvedTopic);
+          setRemainingPlannerMetas(resolvedMetas);
+          setIsPlanCompleted(resolvedCompleted);
           setHasPlannerError(false);
         }
-      }).catch((planErr) => {
+      } catch (planErr) {
         console.warn("[Dashboard] Erro ao sincronizar planner no cliente:", planErr);
-      });
+      }
     }
 
     try {
       const cachePayload: DashboardCachedData = {
-        stats: summaryData.stats || stats,
-        currentPlannerWeek,
-        suggestedPlannerTopic,
-        remainingPlannerMetas,
-        isPlanCompleted,
+        stats: summaryData.stats || initialStats,
+        currentPlannerWeek: resolvedWeek,
+        suggestedPlannerTopic: resolvedTopic,
+        remainingPlannerMetas: resolvedMetas,
+        isPlanCompleted: resolvedCompleted,
         benchmarkStats: summaryData.benchmark,
         bottlenecks: summaryData.bottlenecks || [],
         domainSummary: summaryData.domain_summary,
@@ -242,19 +265,28 @@ export function DashboardClient({
       };
       localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(cachePayload));
     } catch {}
-  }, [currentPlannerWeek, isPlanCompleted, remainingPlannerMetas, stats, suggestedPlannerTopic]);
+  }, [initialStats]);
 
   const fetchDashboardDataRef = useRef<((retryCount?: number) => Promise<boolean>) | null>(null);
 
   const fetchDashboardData = useCallback(async (retryCount = 0) => {
+    if (retryCount === 0 && isFetchingDashboardRef.current) {
+      return false;
+    }
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    isFetchingDashboardRef.current = true;
     setIsReconnecting(true);
     setReconnectAttempt(retryCount + 1);
     try {
       const data = await api.stats.getDashboardSummary();
       if (data && data.stats) {
-        applySummaryData(data);
+        await applySummaryData(data);
         setIsReconnecting(false);
         setReconnectAttempt(0);
+        isFetchingDashboardRef.current = false;
         return true;
       }
     } catch (err) {
@@ -263,11 +295,12 @@ export function DashboardClient({
 
     if (retryCount < 4) {
       const delay = [2000, 4000, 6000, 10000][retryCount] || 5000;
-      setTimeout(() => {
+      reconnectTimerRef.current = setTimeout(() => {
         void fetchDashboardDataRef.current?.(retryCount + 1);
       }, delay);
     } else {
       setIsReconnecting(false);
+      isFetchingDashboardRef.current = false;
     }
     return false;
   }, [applySummaryData]);
@@ -363,23 +396,15 @@ export function DashboardClient({
     ? suggestedPlannerTopic.subtema 
     : (bottlenecks.length > 0 ? bottlenecks[0].subtema : "Clínica Médica");
 
-  const sugestaoArea = suggestedPlannerTopic
-    ? suggestedPlannerTopic.area
-    : (bottlenecks.length > 0 ? bottlenecks[0].area : "");
-
-  const topBottleneck = bottlenecks.length > 0 ? bottlenecks[0] : null;
-
   const totalAttempts = benchmarkStats?.total_attempts || stats.total_attempts || 0;
-  const rawTarget = stats.target_score || benchmarkStats?.target_score_pct || 76;
-  const targetScorePct = rawTarget <= 1 ? rawTarget * 100 : rawTarget;
   const overallAccPct = stats.accuracy_all_attempts != null ? stats.accuracy_all_attempts * 100 : null;
-  const diffPct = overallAccPct != null ? parseFloat((overallAccPct - targetScorePct).toFixed(1)) : null;
+  const estimatedSrsMinutes = Math.max(5, Math.ceil(pendentesRevisao * 1.5));
 
   // Semanas do planner
   const plannerWeekNum = suggestedPlannerTopic ? (currentPlannerWeek?.week || null) : null;
   const plannerMetasCount = remainingPlannerMetas !== undefined ? remainingPlannerMetas : (currentPlannerWeek?.topics?.length || 0);
 
-  // Subtítulo Contextual Direto
+  // Subtítulo Contextual Direto (sem duplicar contadores do Plano de Hoje)
   const subtitleMessage = (() => {
     if (hasOverviewError) {
       return isReconnecting
@@ -390,17 +415,16 @@ export function DashboardClient({
       return "Defina seu plano e resolva 20 questões para calibrar seu diagnóstico inicial.";
     }
     if (pendentesRevisao > 0) {
-      return `Foco de hoje: ${pendentesRevisao} ${pendentesRevisao === 1 ? 'revisão pendente' : 'revisões pendentes'} para blindar sua curva de esquecimento.`;
+      return "Priorize as revisões vencidas do FSRS antes de avançar para questões inéditas.";
     }
     if (dailyRemaining > 0) {
-      return `Você está a ${dailyRemaining} ${dailyRemaining === 1 ? 'questão' : 'questões'} de bater a meta diária de hoje.`;
+      return "Avance na sua meta diária de questões para manter sua consistência.";
     }
     return "Todas as metas de estudo de hoje concluídas! Excelente consistência.";
   })();
 
-  // Determina a Ação Principal (Hero CTA)
+  // Banner de topo apenas para estados não cobertos pelos cards abaixo (sessão ativa ou dia concluído)
   const renderPrimaryAction = () => {
-    // 1. Retomar sessão ativa
     if (activeSession) {
       return (
         <div className="bg-surface border border-line-strong rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-w-0">
@@ -428,146 +452,29 @@ export function DashboardClient({
       );
     }
 
-    // 2. Revisões vencidas no FSRS
-    if (pendentesRevisao > 0) {
-      const estimatedMinutes = Math.max(5, Math.ceil(pendentesRevisao * 1.5));
-      const srsCount = stats.srs_due_count || 0;
-
+    if (pendentesRevisao === 0 && dailyRemaining === 0) {
       return (
-        <div className="shrink-0 bg-surface border border-line-strong rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-w-0">
+        <div className="shrink-0 bg-surface border border-normal/30 rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 min-w-0">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xs bg-accent/10 border border-accent/30 text-accent flex items-center justify-center shrink-0">
-              <ClinicalIcon name="psychology" className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xs bg-normal-bg border border-normal/30 text-normal flex items-center justify-center shrink-0">
+              <ClinicalIcon name="check_circle" className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="px-1.5 py-0.5 rounded-xs text-[10px] font-mono-lab font-bold uppercase tracking-wider bg-elevated border border-line-subtle text-accent">
-                  Ação Prioritária FSRS
-                </span>
-                <span className="text-xs font-mono-lab text-ink-muted tabular-nums">• ~{estimatedMinutes} min</span>
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-ink-primary break-words">
-                <span className="font-mono-lab tabular-nums text-accent">{pendentesRevisao}</span> {pendentesRevisao === 1 ? "revisão vencida" : "revisões vencidas"} hoje
-              </h3>
-              <p className="text-xs text-ink-secondary break-words">
-                Reforce os conceitos no tempo ideal do FSRS antes de resolver questões inéditas.
-              </p>
+              <h3 className="text-sm sm:text-base font-bold text-ink-primary break-words">Metas de hoje cumpridas com sucesso!</h3>
+              <p className="text-xs text-ink-secondary break-words">Você está mantendo sua consistência em dia. Descanse, limpe erros pendentes ou avance no cronograma.</p>
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto shrink-0">
-            {srsCount > 0 && (
-              <Link 
-                href="/estudar?status=srs_due&limit=100" 
-                className="px-3.5 py-2 bg-ink-primary hover:bg-ink-primary/90 text-surface font-bold rounded-xs text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-              >
-                <ClinicalIcon name="refresh" className="w-3.5 h-3.5" /> Questões (<span className="font-mono-lab tabular-nums">{srsCount}</span>)
-              </Link>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // 3. Meta diária de questões novas pendente
-    if (dailyRemaining > 0) {
-      const practiceUrl = suggestedPlannerTopic
-        ? `/estudar?subtema=${encodeURIComponent(sugestaoTema)}&status=new&limit=${Math.min(20, dailyRemaining)}`
-        : bottlenecks.length > 0
-        ? `/estudar?subtema=${encodeURIComponent(bottlenecks[0].subtema)}&status=new&limit=${Math.min(20, dailyRemaining)}`
-        : `/estudar?status=new&limit=${Math.min(20, dailyRemaining)}`;
-
-      return (
-        <div className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-w-0">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xs bg-elevated border border-line-subtle text-accent flex items-center justify-center shrink-0">
-              <ClinicalIcon name="play_arrow" className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="px-1.5 py-0.5 rounded-xs text-[10px] font-mono-lab font-bold uppercase tracking-wider bg-elevated border border-line-subtle text-accent">
-                  Meta de Hoje
-                </span>
-                <span className="text-xs font-mono-lab text-ink-muted tabular-nums">• {todayDone}/{dailyTarget} concluídas</span>
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-ink-primary break-words">
-                <span className="font-mono-lab tabular-nums text-accent">{dailyRemaining}</span> {dailyRemaining === 1 ? "questão" : "questões"} para bater sua meta de hoje
-              </h3>
-              <p className="text-xs text-ink-secondary break-words">
-                Tópico sugerido: <strong className="text-ink-primary">{sugestaoTema}</strong> {sugestaoArea ? `(${sugestaoArea})` : ""}
-              </p>
-            </div>
-          </div>
-
           <Link 
-            href={practiceUrl}
-            className="w-full sm:w-auto px-4 py-2 font-bold bg-ink-primary text-surface rounded-xs hover:bg-ink-primary/90 transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 text-xs"
+            href="/planner" 
+            className="w-full sm:w-auto px-3.5 py-1.5 bg-elevated hover:bg-line-subtle text-ink-primary font-semibold rounded-xs text-xs transition-colors flex items-center justify-center gap-1.5 shrink-0 border border-line-subtle"
           >
-            Iniciar bateria (<span className="font-mono-lab tabular-nums">{Math.min(20, dailyRemaining)}</span> Qs) <ClinicalIcon name="arrow_forward" className="w-3.5 h-3.5" />
+            Acessar Planner
           </Link>
         </div>
       );
     }
 
-    // 4. Todas as metas do dia concluídas
-    if (errorNotebook && errorNotebook.currently_unresolved_count > 0) {
-      const topErrorSubtema = topBottleneck ? topBottleneck.subtema : null;
-      const targetUrl = topBottleneck ? topBottleneck.practice_url : errorNotebook.practice_url;
-
-      return (
-        <div className="shrink-0 bg-surface border border-critical/30 rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-w-0">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xs bg-critical-bg border border-critical/30 text-critical flex items-center justify-center shrink-0">
-              <ClinicalIcon name="edit" className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="px-1.5 py-0.5 rounded-xs text-[10px] font-mono-lab font-bold uppercase tracking-wider bg-critical-bg text-critical">
-                  Metas Diárias Concluídas 🎉
-                </span>
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-ink-primary break-words">
-                Aproveite para limpar seu Caderno de Erros
-              </h3>
-              <p className="text-xs text-ink-secondary break-words">
-                {topErrorSubtema ? (
-                  <>Foco sugerido: <strong className="text-ink-primary">{topErrorSubtema}</strong> (<span className="font-mono-lab tabular-nums">{topBottleneck?.unresolved_count || errorNotebook.currently_unresolved_count}</span> pendentes)</>
-                ) : (
-                  <>Você possui <strong className="text-ink-primary font-mono-lab tabular-nums">{errorNotebook.currently_unresolved_count} {errorNotebook.currently_unresolved_count === 1 ? "questão" : "questões"}</strong> aguardando retificação.</>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <Link 
-            href={targetUrl}
-            className="w-full sm:w-auto px-4 py-2 font-bold bg-critical text-surface rounded-xs hover:bg-critical/90 transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 text-xs"
-          >
-            Limpar erros <ClinicalIcon name="arrow_forward" className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      );
-    }
-
-    return (
-      <div className="shrink-0 bg-surface border border-normal/30 rounded-sm p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 min-w-0">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-          <div className="w-10 h-10 rounded-xs bg-normal-bg border border-normal/30 text-normal flex items-center justify-center shrink-0">
-            <ClinicalIcon name="check_circle" className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm sm:text-base font-bold text-ink-primary break-words">Metas de hoje cumpridas com sucesso!</h3>
-            <p className="text-xs text-ink-secondary break-words">Você está mantendo sua consistência em dia. Descanse ou avance no cronograma semanal.</p>
-          </div>
-        </div>
-        <Link 
-          href="/planner" 
-          className="w-full sm:w-auto px-3.5 py-1.5 bg-elevated hover:bg-line-subtle text-ink-primary font-semibold rounded-xs text-xs transition-colors flex items-center justify-center gap-1.5 shrink-0 border border-line-subtle"
-        >
-          Acessar Planner
-        </Link>
-      </div>
-    );
+    return null;
   };
 
   return (
@@ -682,7 +589,7 @@ export function DashboardClient({
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
                 <span className="px-1.5 py-0.5 rounded-xs text-[10px] font-mono-lab font-bold uppercase tracking-wider bg-warning/15 text-warning border border-warning/30 flex items-center gap-1.5">
-                  {isReconnecting && <span className="w-1.5 h-1.5 rounded-full bg-warning animate-ping inline-block" />}
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning inline-block" />
                   {isReconnecting ? "Inicializando Servidor" : "Instabilidade Temporária"}
                 </span>
               </div>
@@ -783,42 +690,51 @@ export function DashboardClient({
             </div>
           </div>
         </motion.div>
-      ) : (
+      ) : (() => {
+        const primaryActionBanner = renderPrimaryAction();
+        return (
         <>
-          {/* AÇÃO PRINCIPAL / HERO PRIORITÁRIO */}
-          <motion.section variants={itemVariants}>
-            {renderPrimaryAction()}
-          </motion.section>
+          {/* BANNER DE CONTEXTO (somente sessão em andamento ou metas concluídas) */}
+          {primaryActionBanner && (
+            <motion.section variants={itemVariants}>
+              {primaryActionBanner}
+            </motion.section>
+          )}
 
-          {/* PLANO DE ATAQUE DO PRECEPTOR IA */}
-          <motion.section variants={itemVariants}>
-            <PreceptorFocusCard
-              initialBottlenecks={bottlenecks}
-              srsDueCount={stats.srs_due_count || 0}
-              overallAccuracy={overallAccPct}
-              totalAttempts={totalAttempts}
-            />
-          </motion.section>
-
-          {/* PLANO DE HOJE (Card Integrado em 3 Pilares) */}
+          {/* PLANO DE HOJE UNIFICADO (3 Pilares + Raio-X do Preceptor no cabeçalho) */}
           <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 sm:p-5 shadow-2xs">
-            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-line-subtle">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2 text-ink-primary">
                 <ClinicalIcon name="schedule" className="w-4 h-4 text-accent" />
                 <h3 className="text-sm font-bold tracking-tight">Plano de Hoje</h3>
+                <span className="hidden sm:inline text-[11px] font-mono-lab text-ink-muted">
+                  · Metas personalizadas diárias
+                </span>
               </div>
-              <span className="text-[11px] font-mono-lab text-ink-muted">Metas personalizadas diárias</span>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {totalAttempts > 0 && overallAccPct != null && (
+                  <span className="text-[11px] font-mono-lab text-ink-muted tabular-nums">
+                    {Math.round(overallAccPct)}% acerto ({totalAttempts} Qs)
+                  </span>
+                )}
+                <PreceptorXrayButton initialBottlenecks={bottlenecks} />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-              {/* Pilar 1: Revisões */}
+              {/* Pilar 1: Revisões FSRS */}
               <div className="p-3.5 sm:p-4 rounded-xs bg-elevated/40 border border-line-subtle flex flex-col justify-between gap-3 min-w-0">
                 <div className="min-w-0">
                   <div className="flex items-center justify-between text-xs font-semibold text-accent mb-1">
                     <span className="flex items-center gap-1.5">
                       <ClinicalIcon name="psychology" className="w-3.5 h-3.5" /> Revisão FSRS
                     </span>
-                    {pendentesRevisao === 0 && (
+                    {pendentesRevisao > 0 ? (
+                      <span className="text-[11px] font-mono-lab text-ink-muted tabular-nums">
+                        ~{estimatedSrsMinutes} min
+                      </span>
+                    ) : (
                       <span className="inline-flex items-center gap-0.5 text-normal text-[11px] font-bold">
                         <ClinicalIcon name="check" className="w-3 h-3" /> Em dia
                       </span>
@@ -834,7 +750,7 @@ export function DashboardClient({
                 {pendentesRevisao > 0 ? (
                   <Link 
                     href="/estudar?status=srs_due&limit=100"
-                    className="w-full py-1.5 bg-surface hover:bg-elevated text-accent border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab"
+                    className="w-full py-1.5 bg-ink-primary hover:bg-ink-primary/90 text-surface font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab"
                   >
                     <span>Revisar agora →</span>
                   </Link>
@@ -855,7 +771,7 @@ export function DashboardClient({
                     <span className="text-xs font-bold text-ink-primary font-mono-lab tabular-nums">{todayDone}/{dailyTarget}</span>
                   </div>
                   <p className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight font-mono-lab tabular-nums">
-                    {dailyRemaining > 0 ? `${dailyRemaining} restantes` : "Meta batida! 🎉"}
+                    {dailyRemaining > 0 ? `${dailyRemaining} restantes` : "Meta batida!"}
                   </p>
                   <div 
                     role="progressbar"
@@ -873,53 +789,82 @@ export function DashboardClient({
                 </div>
                 <Link 
                   href={`/estudar?status=new&limit=${Math.min(20, Math.max(5, dailyRemaining))}`}
-                  className="w-full py-1.5 bg-surface hover:bg-elevated text-accent border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab"
+                  className={clsx(
+                    "w-full py-1.5 font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab",
+                    pendentesRevisao === 0 && dailyRemaining > 0
+                      ? "bg-ink-primary hover:bg-ink-primary/90 text-surface"
+                      : "bg-surface hover:bg-elevated text-accent border border-line-subtle"
+                  )}
                 >
                   {dailyRemaining > 0 ? "Praticar questões →" : "Fazer questões extras →"}
                 </Link>
               </div>
 
               {/* Pilar 3: Tema Sugerido */}
-              {hasPlannerError ? <div role="alert" className="p-4 rounded-xs border border-warning/40 text-xs">
-                Não foi possível carregar seu progresso no planner.
-                <button onClick={() => window.location.reload()} className="block mt-2 font-semibold underline">Tentar novamente</button>
-              </div> : <>
-              <div className="p-3.5 sm:p-4 rounded-xs bg-elevated/40 border border-line-subtle flex flex-col justify-between gap-3 min-w-0">
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between text-xs font-semibold text-accent mb-1">
-                    <span className="flex items-center gap-1.5">
-                      <ClinicalIcon name="calendar_month" className="w-3.5 h-3.5" /> Tema Sugerido
-                    </span>
-                    {plannerWeekNum && <span className="text-[11px] font-mono-lab text-ink-muted">Semana {plannerWeekNum}</span>}
-                    {isPlanCompleted && <span className="text-[11px] text-normal font-bold">100% Concluído</span>}
-                  </div>
-                  <p className="text-sm font-bold text-ink-primary line-clamp-2 break-words" title={sugestaoTema}>
-                    {isPlanCompleted ? "Plano 100% Concluído! 🎉" : sugestaoTema}
-                  </p>
-                  <p className="text-xs text-ink-secondary mt-0.5 line-clamp-2 break-words">
-                    {isPlanCompleted
-                      ? "Parabéns! Todas as metas do cronograma foram finalizadas."
-                      : suggestedPlannerTopic
-                      ? `${plannerMetasCount} ${plannerMetasCount === 1 ? "meta restante" : "metas restantes"} no cronograma semanal`
-                      : "Baseado nas prioridades do edital"}
-                  </p>
-                </div>
-                <Link 
-                  href={
-                    isPlanCompleted
-                      ? "/planner"
-                      : suggestedPlannerTopic
-                      ? `/estudar?subtema=${encodeURIComponent(sugestaoTema)}&limit=20`
-                      : bottlenecks.length > 0
-                      ? `/estudar?subtema=${encodeURIComponent(bottlenecks[0].subtema)}&limit=20`
-                      : "/planner"
-                  }
-                  className="w-full py-1.5 bg-surface hover:bg-elevated text-accent border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab"
+              {hasPlannerError ? (
+                <div
+                  role="alert"
+                  className="p-3.5 sm:p-4 rounded-xs bg-elevated/40 border border-warning/40 flex flex-col justify-between gap-3 min-w-0"
                 >
-                  {isPlanCompleted ? "Ver cronograma →" : "Continuar plano →"}
-                </Link>
-              </div>
-              </>}
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between text-xs font-semibold text-warning mb-1">
+                      <span className="flex items-center gap-1.5">
+                        <ClinicalIcon name="calendar_month" className="w-3.5 h-3.5" /> Tema Sugerido
+                      </span>
+                      <span className="text-[10px] font-mono-lab uppercase">Planner</span>
+                    </div>
+                    <p className="text-xs text-ink-secondary leading-relaxed">
+                      Não foi possível carregar seu progresso no planner.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void fetchDashboardData(0);
+                    }}
+                    disabled={isReconnecting}
+                    className="w-full py-1.5 bg-surface hover:bg-elevated text-ink-primary border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab cursor-pointer disabled:opacity-60"
+                  >
+                    {isReconnecting ? "Recarregando..." : "Tentar novamente"}
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3.5 sm:p-4 rounded-xs bg-elevated/40 border border-line-subtle flex flex-col justify-between gap-3 min-w-0">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between text-xs font-semibold text-accent mb-1">
+                      <span className="flex items-center gap-1.5">
+                        <ClinicalIcon name="calendar_month" className="w-3.5 h-3.5" /> Tema Sugerido
+                      </span>
+                      {plannerWeekNum && <span className="text-[11px] font-mono-lab text-ink-muted">Semana {plannerWeekNum}</span>}
+                      {isPlanCompleted && <span className="text-[11px] text-normal font-bold">100% Concluído</span>}
+                    </div>
+                    <p className="text-sm font-bold text-ink-primary line-clamp-2 break-words" title={sugestaoTema}>
+                      {isPlanCompleted ? "Plano 100% Concluído" : sugestaoTema}
+                    </p>
+                    <p className="text-xs text-ink-secondary mt-0.5 line-clamp-2 break-words">
+                      {isPlanCompleted
+                        ? "Parabéns! Todas as metas do cronograma foram finalizadas."
+                        : suggestedPlannerTopic
+                        ? `${plannerMetasCount} ${plannerMetasCount === 1 ? "meta restante" : "metas restantes"} no cronograma semanal`
+                        : "Baseado nas prioridades do edital"}
+                    </p>
+                  </div>
+                  <Link 
+                    href={
+                      isPlanCompleted
+                        ? "/planner"
+                        : suggestedPlannerTopic
+                        ? `/estudar?subtema=${encodeURIComponent(sugestaoTema)}&limit=20`
+                        : bottlenecks.length > 0
+                        ? `/estudar?subtema=${encodeURIComponent(bottlenecks[0].subtema)}&limit=20`
+                        : "/planner"
+                    }
+                    className="w-full py-1.5 bg-surface hover:bg-elevated text-accent border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs font-mono-lab"
+                  >
+                    {isPlanCompleted ? "Ver cronograma →" : "Continuar plano →"}
+                  </Link>
+                </div>
+              )}
             </div>
           </motion.section>
 
@@ -994,7 +939,7 @@ export function DashboardClient({
             ) : (
               <div className="py-6 text-center text-ink-secondary flex flex-col items-center justify-center gap-2">
                 <ClinicalIcon name="check_circle" className="w-6 h-6 text-normal" />
-                <p className="text-sm font-semibold text-ink-primary">Caderno de erros 100% limpo! 🎉</p>
+                <p className="text-sm font-semibold text-ink-primary">Caderno de erros 100% limpo</p>
                 <p className="text-xs max-w-sm">Você não possui questões com erro em aberto. Continue praticando para calibrar sua preparação.</p>
               </div>
             )}
@@ -1041,86 +986,10 @@ export function DashboardClient({
             </motion.section>
           )}
 
-          {/* FAIXA ESTIMADA DE PRONTIDÃO (BENCHMARK PROBABILÍSTICO CONDICIONAL) */}
-          {stats.distinct_answered >= 20 && benchmarkStats && overallAccPct != null && (
-            <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 sm:p-5 shadow-2xs relative overflow-hidden min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 min-w-0">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-7 h-7 rounded-xs bg-ink-primary text-surface flex items-center justify-center shrink-0">
-                    <ClinicalIcon name="analytics" className="w-3.5 h-3.5 text-canvas" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-ink-primary">Faixa Estimada de Prontidão</h3>
-                    <p className="text-xs text-ink-secondary font-mono-lab break-words">
-                      Estimativa preliminar baseada em <span className="tabular-nums">{totalAttempts}</span> tentativas vs. Meta de corte (<span className="tabular-nums">{targetScorePct}%</span>)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Badge Probabilístico */}
-                <div className="shrink-0 self-start sm:self-auto font-mono-lab">
-                  {diffPct != null && diffPct >= 0 ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs bg-normal-bg text-normal border border-normal/30 text-xs font-bold tabular-nums">
-                      <ClinicalIcon name="check_circle" className="w-3.5 h-3.5" />
-                      Faixa Competitiva (+{diffPct}%)
-                    </span>
-                  ) : diffPct != null && diffPct >= -10 ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs bg-elevated text-accent border border-line-subtle text-xs font-bold tabular-nums">
-                      <ClinicalIcon name="my_location" className="w-3.5 h-3.5" />
-                      Faixa de Aproximação ({diffPct}%)
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs bg-warning/15 text-warning border border-warning/30 text-xs font-bold tabular-nums">
-                      <ClinicalIcon name="warning" className="w-3.5 h-3.5" />
-                      Fase de Consolidação ({diffPct}%)
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 p-3 bg-elevated/40 border border-line-subtle rounded-xs min-w-0 font-mono-lab">
-                <div className="flex justify-between text-xs min-w-0">
-                  <span className="text-ink-secondary font-medium truncate">Seu Acerto Geral vs. Meta</span>
-                  <span className="font-bold text-ink-primary shrink-0 ml-2 tabular-nums">
-                    {overallAccPct.toFixed(1)}% <span className="text-ink-muted font-normal text-[11px]">/ Meta: {targetScorePct}%</span>
-                  </span>
-                </div>
-
-                <div 
-                  role="progressbar"
-                  aria-valuenow={Math.round(overallAccPct)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Acurácia geral: ${overallAccPct.toFixed(1)}% vs meta de corte de ${targetScorePct}%`}
-                  className="relative w-full bg-line-subtle rounded-xs h-2 overflow-hidden"
-                >
-                  <div 
-                    className="bg-accent h-2 rounded-xs transition-all duration-700"
-                    style={{ width: `${Math.min(100, Math.max(0, overallAccPct))}%` }}
-                  />
-                  <div 
-                    className="absolute top-0 bottom-0 w-0.5 bg-ink-primary z-20"
-                    style={{ left: `${targetScorePct}%` }}
-                    title={`Meta: ${targetScorePct}%`}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-ink-muted mt-0.5 tabular-nums">
-                  <span>0%</span>
-                  <span className="font-semibold text-ink-primary">Meta de Corte: {targetScorePct}%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-ink-muted mt-2 break-words">
-                * A acurácia por Grande Área e o desempenho em simulados refinam a projeção na aba <Link href="/analise" className="text-accent font-semibold hover:underline">Análise</Link>.
-              </p>
-            </motion.section>
-          )}
-
           {/* RESUMO DISCRETO DE CONTEXTO (BOTTOM STRIP) */}
           <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-3 sm:px-4 sm:py-2.5 shadow-2xs w-full min-w-0">
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs font-mono-lab">
-              <Link href="/cobertura" className="flex items-center gap-1.5 hover:text-accent transition-colors text-ink-secondary p-1 min-w-0 overflow-hidden">
+              <Link href="/analise?tab=cobertura" className="flex items-center gap-1.5 hover:text-accent transition-colors text-ink-secondary p-1 min-w-0 overflow-hidden">
                 <ClinicalIcon name="check_circle" className="w-3.5 h-3.5 text-normal shrink-0" />
                 <span className="truncate">
                   {domainSummary ? "Domínio:" : "Cobertura:"} <strong className="text-ink-primary tabular-nums">
@@ -1157,7 +1026,8 @@ export function DashboardClient({
             </div>
           </motion.section>
         </>
-      )}
+        );
+      })()}
 
       {/* Modal do Modo Plantão (Offline) */}
       <OfflineModal 

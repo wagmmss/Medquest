@@ -122,6 +122,7 @@ def start_session():
 
 
 @bp.route("/osce/sessions/<session_id>/interact", methods=["POST"])
+@require_auth
 def interact_session(session_id: str):
     db = get_db()
     user_id = _resolve_user_id()
@@ -151,6 +152,7 @@ def interact_session(session_id: str):
 
 
 @bp.route("/osce/sessions/<session_id>/dispatch_speech", methods=["POST"])
+@require_auth
 def dispatch_speech(session_id: str):
     """Dispatcher unificado de voz para modo Hands-Free de alta fidelidade."""
     db = get_db()
@@ -178,6 +180,7 @@ def dispatch_speech(session_id: str):
 
 
 @bp.route("/osce/sessions/<session_id>/action", methods=["POST"])
+@require_auth
 def execute_action(session_id: str):
     db = get_db()
     user_id = _resolve_user_id()
@@ -244,6 +247,7 @@ def finish_session(session_id: str):
 
 
 @bp.route("/osce/sessions/<session_id>/report", methods=["GET"])
+@require_auth
 def get_report(session_id: str):
     db = get_db()
     user_id = _resolve_user_id()
@@ -269,6 +273,7 @@ def get_procedures():
 
 
 @bp.route("/osce/sessions/<session_id>/prescribe", methods=["POST"])
+@require_auth
 def prescribe_drugs(session_id: str):
     """Assina e processa uma prescrição médica estruturada na sala de emergência."""
     db = get_db()
@@ -295,6 +300,7 @@ def prescribe_drugs(session_id: str):
 
 
 @bp.route("/osce/sessions/<session_id>/procedure", methods=["POST"])
+@require_auth
 def perform_procedure(session_id: str):
     """Executa um procedimento invasivo ou varredura ultrassonográfica E-FAST no manequim 2D."""
     db = get_db()
@@ -323,6 +329,7 @@ def perform_procedure(session_id: str):
 
 
 @bp.route("/osce/sessions/<session_id>/live_feedback", methods=["GET"])
+@require_auth
 def get_session_live_feedback(session_id: str):
     """Consulta o progresso em tempo real do barema para o Modo Treino com Preceptor Fantasma."""
     db = get_db()
@@ -341,33 +348,6 @@ def get_session_live_feedback(session_id: str):
         return jsonify({"error": str(e)}), 404
 
 
-@bp.route("/osce/stations/generate", methods=["POST"])
-def generate_station():
-    """Gera uma estação inédita infinita no padrão FMRP-USP com parametrização dinâmica e IA adaptativa."""
-    db = get_db()
-    user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
-
-    area = body.get("area")
-    subtema = body.get("subtema")
-    difficulty = body.get("difficulty", "hard")
-    adaptative = bool(body.get("adaptative", False))
-
-    try:
-        result = osce.generate_osce_station(
-            db=db,
-            user_id=user_id,
-            area=area,
-            subtema=subtema,
-            difficulty=difficulty,
-            adaptative=adaptative
-        )
-        return jsonify(result), 201
-    except Exception as e:
-        logger.exception("Erro ao gerar estação inédita FMRP-USP: %s", e)
-        return jsonify({"error": f"Falha ao sintetizar estação inédita: {str(e)}"}), 500
-
-
 @bp.route("/osce/circuits/plan", methods=["GET"])
 def get_circuit_plan():
     """Retorna o plano ordenado de 5 estações do circuito oficial cobrindo as 5 especialidades."""
@@ -379,6 +359,7 @@ def get_circuit_plan():
 
 
 @bp.route("/osce/circuits/<circuit_id>/summary", methods=["GET"])
+@require_auth
 def get_circuit_summary(circuit_id: str):
     """Retorna o espelho consolidado da 2ª fase com nota global de 0 a 50 pontos."""
     db = get_db()

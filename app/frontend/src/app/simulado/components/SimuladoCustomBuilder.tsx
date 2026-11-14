@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sliders, Building2, Calendar, Download, RefreshCw, CheckCircle2, Play } from "lucide-react";
+import { Sliders, Building2, Calendar, Download, RefreshCw, CheckCircle2, Play, Target, Lightbulb } from "lucide-react";
 import clsx from "clsx";
 import { CustomConfig } from "./SimuladoStartScreen";
 
@@ -42,7 +42,6 @@ export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
   const formattedDuration = minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h00`;
 
   const handleSelectAllSP = () => {
-    // Coleta todos os codes das 5 bancas
     const spCodes: string[] = [];
     groupedInstitutions.forEach((group) => {
       if (CANONICAL_SP_INSTITUTIONS.includes(group.base)) {
@@ -69,12 +68,12 @@ export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
   };
 
   return (
-    <div className="w-full bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-xs space-y-8">
+    <div className="w-full bg-surface border border-line-subtle rounded-lg p-5 sm:p-6 space-y-6">
       <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-2">
+        <div className="flex items-center gap-1.5 text-accent text-xs font-semibold uppercase tracking-wider mb-1">
           <Sliders size={13} /> Construtor Avançado
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Monte seu Simulado Sob Medida</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-foreground">Monte seu Simulado Sob Medida</h2>
         <p className="text-xs sm:text-sm text-muted-foreground">
           Filtre as instituições de interesse, anos de prova, ritmo de resolução e formato pedagógico.
         </p>
@@ -83,31 +82,37 @@ export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
       {/* 1. Modo de Feedback e Resolução */}
       <div className="space-y-3">
         <label className="block text-sm font-bold text-foreground">
-          Modo de Resolução & Feedback
+          Modo de Resolução &amp; Feedback
         </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <div
             role="button"
             tabIndex={0}
             onClick={() => setFeedbackMode("exam")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setFeedbackMode("exam");
+              }
+            }}
             className={clsx(
-              "p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left",
+              "p-4 rounded-lg border transition-colors cursor-pointer flex flex-col justify-between gap-2.5 text-left",
               feedbackMode === "exam"
-                ? "bg-primary/10 border-primary ring-1 ring-primary shadow-xs"
-                : "bg-muted/20 border-border hover:bg-muted/40"
+                ? "bg-accent/10 border-accent"
+                : "bg-canvas border-line-subtle hover:bg-muted/40"
             )}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm", feedbackMode === "exam" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
-                  🎯
+                <div className={clsx("w-8 h-8 rounded-md flex items-center justify-center", feedbackMode === "exam" ? "bg-accent text-white" : "bg-muted text-foreground")}>
+                  <Target size={16} />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-foreground">Modo Exame Realista</h4>
                   <p className="text-[11px] text-muted-foreground">Pressão e sigilo de prova oficial</p>
                 </div>
               </div>
-              {feedbackMode === "exam" && <CheckCircle2 size={18} className="text-primary shrink-0" />}
+              {feedbackMode === "exam" && <CheckCircle2 size={18} className="text-accent shrink-0" />}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Cronômetro regressivo contínuo, sem gabarito ou comentários durante a resolução. A nota TRI e o raio-x completo são revelados apenas ao entregar o caderno.
@@ -118,24 +123,30 @@ export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
             role="button"
             tabIndex={0}
             onClick={() => setFeedbackMode("practice")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setFeedbackMode("practice");
+              }
+            }}
             className={clsx(
-              "p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left",
+              "p-4 rounded-lg border transition-colors cursor-pointer flex flex-col justify-between gap-2.5 text-left",
               feedbackMode === "practice"
-                ? "bg-primary/10 border-primary ring-1 ring-primary shadow-xs"
-                : "bg-muted/20 border-border hover:bg-muted/40"
+                ? "bg-accent/10 border-accent"
+                : "bg-canvas border-line-subtle hover:bg-muted/40"
             )}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm", feedbackMode === "practice" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
-                  💡
+                <div className={clsx("w-8 h-8 rounded-md flex items-center justify-center", feedbackMode === "practice" ? "bg-accent text-white" : "bg-muted text-foreground")}>
+                  <Lightbulb size={16} />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-foreground">Modo Treino / Aprendizado</h4>
                   <p className="text-[11px] text-muted-foreground">Feedback pedagógico imediato</p>
                 </div>
               </div>
-              {feedbackMode === "practice" && <CheckCircle2 size={18} className="text-primary shrink-0" />}
+              {feedbackMode === "practice" && <CheckCircle2 size={18} className="text-accent shrink-0" />}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Veja se acertou ou errou logo após responder cada questão. O comentário e a explicação detalhada do professor ficam liberados imediatamente para estudo ativo.
@@ -148,9 +159,9 @@ export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <label className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Building2 size={16} className="text-primary" />
+            <Building2 size={16} className="text-accent" />
             Bancas e Instituições
-            <span className="text-xs font-normal text-muted-foreground">
+            <span className="text-xs font-normal text-muted-foreground font-mono-lab tabular-nums">
               ({customConfig.institutions.length === 0 ? "Todas de SP" : `${customConfig.institutions.length} selecionadas`})
             </span>
           </label>

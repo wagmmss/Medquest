@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CheckCircle2, Sparkles, BookOpen, RotateCcw, ArrowRight } from "lucide-react";
 
 export interface QuizSessionReportModalProps {
-  studyMode: "TUTOR" | "SIMULADO" | "SIMULATED";
   totalAnswered: number;
   correctCount: number;
   accuracy: number;
@@ -15,7 +14,6 @@ export interface QuizSessionReportModalProps {
 }
 
 export const QuizSessionReportModal: React.FC<QuizSessionReportModalProps> = ({
-  studyMode,
   totalAnswered,
   correctCount,
   accuracy,
@@ -24,47 +22,47 @@ export const QuizSessionReportModal: React.FC<QuizSessionReportModalProps> = ({
   onRestartSession,
 }) => {
   return (
-    <div className="bg-card border border-border shadow-1 rounded-2xl p-8 md:p-10 max-w-2xl mx-auto w-full text-center flex flex-col items-center animate-in zoom-in-95 duration-300">
-      <div className="w-20 h-20 bg-success/20 text-success rounded-full flex items-center justify-center mx-auto mb-6">
-        <CheckCircle2 size={40} />
+    <div className="bg-surface border border-line-subtle shadow-2xs rounded-lg p-7 md:p-9 max-w-2xl mx-auto w-full text-center flex flex-col items-center animate-in zoom-in-95 duration-200">
+      <div className="w-16 h-16 bg-normal-bg text-normal border border-normal/25 rounded-lg flex items-center justify-center mx-auto mb-5">
+        <CheckCircle2 size={32} />
       </div>
-      <h2 className="text-2xl md:text-3xl font-black text-foreground mb-3 tracking-tight">
-        {studyMode === "TUTOR" ? "Sessão Concluída!" : "Simulado Concluído!"}
+      <h2 className="text-2xl font-bold text-ink-primary mb-2 tracking-tight">
+        Sessão Concluída
       </h2>
-      <p className="text-muted-foreground text-base md:text-lg mb-6">
-        Você respondeu <strong className="text-foreground">{totalAnswered}</strong> {totalAnswered === 1 ? "questão" : "questões"} com <strong className="text-primary">{accuracy}%</strong> de acerto ({correctCount} acertos).
+      <p className="text-ink-secondary text-sm sm:text-base mb-6">
+        Você respondeu <strong className="font-mono-lab tabular-nums text-ink-primary">{totalAnswered}</strong> {totalAnswered === 1 ? "questão" : "questões"} com <strong className="font-mono-lab tabular-nums text-accent">{accuracy}%</strong> de acerto ({correctCount} acertos).
       </p>
 
       {wrongItems.length > 0 && (
-        <div className="w-full bg-purple-500/10 border border-purple-500/25 rounded-2xl p-6 mb-8 text-left animate-in slide-in-from-bottom-2">
-          <div className="flex items-center gap-2.5 text-purple-700 dark:text-purple-400 font-bold text-base mb-2">
-            <Sparkles size={20} />
+        <div className="w-full bg-accent/5 border border-accent/25 rounded-lg p-5 mb-7 text-left">
+          <div className="flex items-center gap-2 text-accent font-mono-lab font-bold text-xs uppercase tracking-wider mb-2">
+            <Sparkles size={16} />
             Repetição Espaçada de Questões (FSRS)
           </div>
-          <p className="text-sm text-foreground/80 leading-relaxed mb-4">
-            Você errou <strong className="text-foreground">{wrongItems.length}</strong> {wrongItems.length === 1 ? "questão" : "questões"} nesta sessão. Elas foram agendadas automaticamente na sua fila de revisão FSRS para consolidar a retenção de longo prazo.
+          <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed mb-4">
+            Você errou <strong className="font-mono-lab tabular-nums text-ink-primary">{wrongItems.length}</strong> {wrongItems.length === 1 ? "questão" : "questões"} nesta sessão. Elas foram agendadas automaticamente na sua fila de revisão FSRS para consolidar a retenção de longo prazo.
           </p>
           <Link
             href="/estudar?status=wrong&limit=20"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-white font-semibold py-2 px-4 rounded-md text-xs transition-colors shadow-2xs cursor-pointer"
           >
-            Revisar Caderno de Erros <ArrowRight size={16} />
+            Revisar Caderno de Erros <ArrowRight size={14} />
           </Link>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+      <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
         <button
           onClick={onBackToFilters}
-          className="flex-1 max-w-xs flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-3 px-6 rounded-xl hover:bg-primary/90 transition-colors shadow-md cursor-pointer"
+          className="flex-1 max-w-xs flex items-center justify-center gap-2 bg-ink-primary text-surface font-semibold py-2.5 px-5 rounded-md hover:bg-ink-primary/90 transition-colors shadow-2xs cursor-pointer text-xs"
         >
-          <BookOpen size={18} /> Novo Bloco de Questões
+          <BookOpen size={16} /> Novo Bloco de Questões
         </button>
         <button
           onClick={onRestartSession}
-          className="flex items-center justify-center gap-2 bg-secondary text-secondary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-secondary/80 transition-colors cursor-pointer border border-border"
+          className="flex items-center justify-center gap-2 bg-elevated text-ink-primary font-semibold py-2.5 px-5 rounded-md hover:bg-line-subtle transition-colors cursor-pointer border border-line-subtle text-xs"
         >
-          <RotateCcw size={18} /> Reiniciar Esta Sessão
+          <RotateCcw size={16} /> Reiniciar Esta Sessão
         </button>
       </div>
     </div>

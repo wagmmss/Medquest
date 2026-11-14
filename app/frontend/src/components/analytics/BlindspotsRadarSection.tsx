@@ -23,9 +23,12 @@ export interface BlindspotsRadarSectionProps {
 }
 
 export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ initialData }) => {
-  const [data, setData] = useState<BlindspotsResponse | null>(initialData || null);
-  const [loading, setLoading] = useState(!initialData);
+  const [fetchedData, setFetchedData] = useState<BlindspotsResponse | null>(null);
+  const [isFetching, setIsFetching] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+
+  const data = initialData ?? fetchedData;
+  const loading = !initialData && isFetching;
 
   useEffect(() => {
     if (initialData) return;
@@ -33,14 +36,15 @@ export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ 
 
     api.stats.getBlindspots(6, controller.signal)
       .then((res) => {
-        setData(res);
-        setLoading(false);
+        setFetchedData(res);
+        setError(null);
+        setIsFetching(false);
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
           console.error("Erro ao carregar radar de pontos cegos:", err);
           setError("Não foi possível carregar o diagnóstico de pontos cegos.");
-          setLoading(false);
+          setIsFetching(false);
         }
       });
 
@@ -49,33 +53,34 @@ export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ 
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
-        <div className="h-6 w-56 bg-muted rounded-md" />
+      <div className="bg-surface border border-line-subtle rounded-lg p-6 space-y-4">
+        <div className="h-5 w-56 bg-surface-subtle rounded-md" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="h-24 bg-muted/60 rounded-xl" />
-          <div className="h-24 bg-muted/60 rounded-xl" />
-          <div className="h-24 bg-muted/60 rounded-xl" />
+          <div className="h-24 bg-surface-subtle rounded-md" />
+          <div className="h-24 bg-surface-subtle rounded-md" />
+          <div className="h-24 bg-surface-subtle rounded-md" />
         </div>
-        <div className="h-44 bg-muted/40 rounded-xl" />
+        <div className="h-44 bg-surface-subtle rounded-md" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center gap-3">
+      <div className="bg-surface border border-line-subtle rounded-lg p-6 flex flex-col items-center justify-center text-center gap-3">
         <AlertTriangle className="text-warning w-8 h-8" />
         <p className="text-sm font-medium text-foreground">{error || "Dados não disponíveis no momento."}</p>
         <button
+          type="button"
           onClick={() => {
-            setLoading(true);
+            setIsFetching(true);
             setError(null);
             api.stats.getBlindspots(6)
-              .then(setData)
+              .then(setFetchedData)
               .catch(() => setError("Erro ao recarregar dados."))
-              .finally(() => setLoading(false));
+              .finally(() => setIsFetching(false));
           }}
-          className="text-xs bg-muted hover:bg-muted/80 text-foreground px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+          className="text-xs bg-surface-subtle hover:bg-muted text-foreground px-3 py-1.5 rounded-md border border-line-subtle flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           <RotateCcw size={14} /> Tentar novamente
         </button>
@@ -91,19 +96,19 @@ export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ 
     switch (severity) {
       case "CRITICAL":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-xs bg-destructive/10 text-destructive border border-destructive/25">
             <ShieldAlert size={12} /> Crítico
           </span>
         );
       case "HIGH":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-xs bg-warning/10 text-warning border border-warning/25">
             <AlertTriangle size={12} /> Alta Prioridade
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-xs bg-primary/10 text-primary border border-primary/25">
             <Activity size={12} /> Em Atenção
           </span>
         );
@@ -111,15 +116,15 @@ export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ 
   };
 
   return (
-    <div className="bg-card border border-border shadow-sm rounded-2xl p-6 lg:p-7 space-y-6">
+    <div className="bg-surface border border-line-subtle rounded-lg p-6 lg:p-7 space-y-6">
       {/* Header com Ação de Treino */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-line-subtle pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-md bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-center">
               <Target size={18} />
             </div>
-            <h2 className="text-xl font-black text-foreground tracking-tight">
+            <h2 className="text-xl font-bold text-foreground tracking-tight">
               Radar de Pontos Cegos & Caderno de Erros
             </h2>
           </div>
@@ -131,9 +136,9 @@ export const BlindspotsRadarSection: React.FC<BlindspotsRadarSectionProps> = ({ 
         {summary.unresolved_errors_count > 0 && (
           <Link
             href="/estudar?mode=remediation&limit=10"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 via-rose-500 to-primary hover:opacity-95 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.02] text-sm shrink-0"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 py-2.5 rounded-md transition-colors text-sm shrink-0"
           >
-            <Zap size={16} className="fill-white" />
+            <Zap size={16} />
             Iniciar Treino de Recuperação (10 Qs)
           </Link>
         )}
