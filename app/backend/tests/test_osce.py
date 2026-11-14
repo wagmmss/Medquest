@@ -309,6 +309,7 @@ def test_osce_speech_dispatcher(app, client):
         # 4. Rota HTTP POST /api/osce/sessions/<id>/dispatch_speech
         resp_http = client.post(
             f"/api/osce/sessions/{session_id}/dispatch_speech",
+            headers={"X-User-ID": user_id},
             json={"message": "Examinador, sinais vitais imediatos", "elapsed_seconds": 100}
         )
         assert resp_http.status_code == 200
@@ -353,6 +354,7 @@ def test_osce_prescription_and_procedure_engines(app, client):
         # Prescrição de Ácido Tranexâmico 1g IV e Ringer Lactato
         presc_res = client.post(
             f"/api/osce/sessions/{session_id}/prescribe",
+            headers={"X-User-ID": "test_medic_user"},
             json={
                 "prescription": [
                     {
@@ -383,6 +385,7 @@ def test_osce_prescription_and_procedure_engines(app, client):
         # 2. Teste do Manequim Interativo: E-FAST na janela esplenorrenal (recesso de Koller)
         proc_fast = client.post(
             f"/api/osce/sessions/{session_id}/procedure",
+            headers={"X-User-ID": "test_medic_user"},
             json={
                 "procedure_type": "efast",
                 "anatomical_site": "splenorenal",
@@ -399,6 +402,7 @@ def test_osce_prescription_and_procedure_engines(app, client):
         # 3. Teste do Manequim Interativo: Janela Hepatorrenal (Morrison)
         proc_morrison = client.post(
             f"/api/osce/sessions/{session_id}/procedure",
+            headers={"X-User-ID": "test_medic_user"},
             json={
                 "procedure_type": "efast",
                 "anatomical_site": "morrison",
@@ -417,6 +421,7 @@ def test_osce_prescription_and_procedure_engines(app, client):
 
         proc_relief = client.post(
             f"/api/osce/sessions/{sess_pneumo_id}/procedure",
+            headers={"X-User-ID": "test_medic_user"},
             json={
                 "procedure_type": "puncture",
                 "anatomical_site": "thoracocentesis",
