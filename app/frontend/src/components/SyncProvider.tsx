@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { syncManager } from "@/lib/sync";
 import { localDb } from "@/lib/db";
 import { downloadSimuladoPackage, getReadySimuladoPackage, listSimuladoPackages, deleteSimuladoPackage } from "@/lib/simuladoPackage";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/lib/auth-client";
 import { CloudOff } from "lucide-react";
 
 import { initCrossTabListener } from "@/lib/crossTab";
 
 export function SyncProvider({ guestMode = false }: { guestMode?: boolean }) {
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, userId } = useAppAuth();
   const [queueCount, setQueueCount] = useState(0);
 
   useEffect(() => {

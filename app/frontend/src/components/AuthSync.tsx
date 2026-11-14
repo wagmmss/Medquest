@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { Stethoscope } from "lucide-react";
 
@@ -11,7 +11,7 @@ interface AuthSyncProps {
 }
 
 export function AuthSync({ ssrAuthenticated, children }: AuthSyncProps) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppAuth();
   const router = useRouter();
   const hasRefreshedRef = useRef(false);
   const [, setIsSyncing] = useState(false);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 import { isLocalIdentityReady } from "@/lib/db";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { api } from "@/lib/api";
@@ -84,7 +84,7 @@ export function DashboardClient({
   hasOverviewError: initialHasOverviewError = false,
   hasPlannerError: initialHasPlannerError = false,
 }: DashboardClientProps) {
-  const { isLoaded: authLoaded } = useUser();
+  const { isLoaded: authLoaded } = useAppUser();
   const hasAnimated = useRef(false);
   const [activeSession, setActiveSession] = useState<{ kind: "quiz" | "simulado"; url: string } | null>(null);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);

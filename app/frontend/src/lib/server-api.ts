@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuthState } from "./auth-server";
 import { getGuestSession } from "./session";
 import { 
   ThemeProgress, OverviewStats, CoverageResponse, QuestionMeta, PlannerConfig,
@@ -32,7 +32,7 @@ async function serverFetch<T>(endpoint: string, options?: RequestInit): Promise<
   if (!proxySecret) {
     throw new Error("FLASK_API_PROXY_SECRET is not configured on server.");
   }
-  const { getToken } = await auth();
+  const { getToken } = await getServerAuthState();
   const token = await getToken();
   const guestId = await getGuestSession();
   

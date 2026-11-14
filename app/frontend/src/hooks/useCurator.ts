@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { AuthMeResponse } from "@/types/api";
 
@@ -9,7 +9,7 @@ let cachedResult: { userId: string | null; data: AuthMeResponse } | null = null;
 let pendingPromise: Promise<AuthMeResponse> | null = null;
 
 export function useCurator() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useAppUser();
   const currentUserId = user?.id ?? null;
 
   const [data, setData] = useState<{ isCurator: boolean; email: string | null } | null>(() => {

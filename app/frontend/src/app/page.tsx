@@ -3,7 +3,7 @@ import {
   OverviewStats, PlannerWeek, PlannerTopic, PlannerTopicProgressMap, PlannerProgressMap,
   BenchmarkStat, BottleneckTopic, DomainSummaryResponse, ErrorNotebookSummary 
 } from "@/types/api";
-import { currentUser } from '@clerk/nextjs/server';
+import { getServerCurrentUser } from '@/lib/auth-server';
 import { DashboardClient } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ const DEFAULT_STATS: OverviewStats = {
 };
 
 export default async function Dashboard() {
-  const userPromise = currentUser().catch(() => null);
+  const userPromise = getServerCurrentUser().catch(() => null);
 
   let stats: OverviewStats = DEFAULT_STATS;
   let hasOverviewError = false;
@@ -49,7 +49,7 @@ export default async function Dashboard() {
       .catch((err) => {
         console.error("Failed to fetch dashboard summary:", err);
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isDown = /timeout|timed out|econnrefused|502|503|504/i.test(errMsg);
+        const isDown = /timeout|timed out|econnrefused|fetch failed|not configured|502|503|504/i.test(errMsg);
         return { data: null, hasError: true, isDown };
       });
 

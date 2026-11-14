@@ -14,7 +14,7 @@ function loadDashboard(overrides = {}) {
   };
   Object.assign(stats, overrides.stats);
   Object.assign(planner, overrides.planner);
-  const dependencies = { 'react/jsx-runtime': jsxRuntime, '@/lib/server-api': { serverApi: { stats, planner } }, '@clerk/nextjs/server': { currentUser: async () => null }, './DashboardClient': { DashboardClient: () => null } };
+  const dependencies = { 'react/jsx-runtime': jsxRuntime, '@/lib/server-api': { serverApi: { stats, planner } }, '@/lib/auth-server': { getServerCurrentUser: async () => null }, '@clerk/nextjs/server': { currentUser: async () => null }, './DashboardClient': { DashboardClient: () => null } };
   const source = readFileSync(new URL('../../src/app/page.tsx', import.meta.url), 'utf8');
   const exports = {};
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {

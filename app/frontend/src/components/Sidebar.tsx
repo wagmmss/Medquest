@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 import { AccountModal } from "./AccountModal";
 import { OfflineModal } from "./OfflineModal";
 import { ThemeToggle } from "./ThemeToggle";
@@ -16,7 +16,7 @@ import Image from "next/image";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useAppUser();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOfflineOpen, setIsOfflineOpen] = useState(false);
   const { isOffline, forcedOffline } = useOfflineStatus();

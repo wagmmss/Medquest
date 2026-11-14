@@ -1,9 +1,10 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from "next/server";
+import { isClerkServerEnabled } from "@/lib/auth-server";
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export default clerkMiddleware(async (auth, req) => {
+function applyGuestSession(req: NextRequest): NextResponse {
   let guestId = req.cookies.get("medquest_guest_session")?.value;
   let isNew = false;
 
@@ -37,7 +38,23 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   return response;
-});
+}
+
+let cachedClerkHandler: NextMiddleware | null = null;
+
+function getClerkHandler(): NextMiddleware {
+  if (!cachedClerkHandler) {
+    cachedClerkHandler = clerkMiddleware(async (_auth, req) => applyGuestSession(req));
+  }
+  return cachedClerkHandler;
+}
+
+export default async function proxy(req: NextRequest, event: NextFetchEvent) {
+  if (!isClerkServerEnabled()) {
+    return applyGuestSession(req);
+  }
+  return getClerkHandler()(req, event);
+}
 
 export const config = {
   matcher: [

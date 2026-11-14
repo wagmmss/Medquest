@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AccountModal } from "./AccountModal";
@@ -17,7 +17,7 @@ import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 
 export default function TopNav() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useAppUser();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOfflineOpen, setIsOfflineOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

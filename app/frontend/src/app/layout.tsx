@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider, SignIn } from '@clerk/nextjs';
 import { ptBR } from '@clerk/localizations';
-import { auth } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
+import { getServerAuthState, isClerkServerEnabled } from "@/lib/auth-server";
+import { AppAuthProvider } from "@/lib/auth-client";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import TopNav from "@/components/TopNav";
@@ -64,33 +65,34 @@ import { BottomNav } from "@/components/BottomNav";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { userId } = await auth();
+  const clerkEnabled = isClerkServerEnabled();
+  const { userId } = await getServerAuthState();
   const cookieStore = await cookies();
-  const isDemoMode = cookieStore.get("medquest_demo")?.value === "1";
+  const isDemoMode = !clerkEnabled || cookieStore.get("medquest_demo")?.value === "1";
 
-  return (
-    <ClerkProvider localization={ptBR}>
-      <html
-        lang="pt-BR"
-        className="font-sans h-full antialiased"
-        suppressHydrationWarning
-      >
-        <head>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                try {
-                  if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark')
-                  } else {
-                    document.documentElement.classList.remove('dark')
-                  }
-                } catch (_) {}
-              `
-            }}
-          />
-        </head>
-        <body className="h-screen flex overflow-hidden bg-background text-on-background selection:bg-accent/20 selection:text-accent">
+  const documentTree = (
+    <html
+      lang="pt-BR"
+      className="font-sans h-full antialiased"
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark')
+                } else {
+                  document.documentElement.classList.remove('dark')
+                }
+              } catch (_) {}
+            `
+          }}
+        />
+      </head>
+      <body className="h-screen flex overflow-hidden bg-background text-on-background selection:bg-accent/20 selection:text-accent">
+        <AppAuthProvider clerkEnabled={clerkEnabled}>
           <WebVitals />
           <a href="#conteudo-principal" className="skip-link">Pular para o conteúdo principal</a>
           {!userId && !isDemoMode ? (
@@ -127,8 +129,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
           <SyncProvider guestMode={!userId} />
           <Toaster position="top-right" />
-        </body>
-      </html>
+        </AppAuthProvider>
+      </body>
+    </html>
+  );
+
+  if (!clerkEnabled) {
+    return documentTree;
+  }
+
+  return (
+    <ClerkProvider localization={ptBR}>
+      {documentTree}
     </ClerkProvider>
   );
 }

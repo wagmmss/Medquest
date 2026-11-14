@@ -74,6 +74,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  allowedDevOrigins: ["**.run.app", "**.aistudio.google.com"],
   turbopack: {},
   async headers() {
     return [

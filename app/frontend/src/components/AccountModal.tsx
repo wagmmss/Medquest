@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAppClerk, useAppUser } from "@/lib/auth-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { NotificationConfig } from "@/types/api";
@@ -41,8 +41,8 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function AccountModal({ isOpen, onClose }: AccountModalProps) {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { user, isLoaded } = useAppUser();
+  const { signOut, clerkEnabled } = useAppClerk();
   const router = useRouter();
 
   const [step, setStep] = useState<"profile" | "confirm_reset">("profile");
@@ -472,19 +472,21 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                         </div>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          localStorage.removeItem("medquest_last_user_id");
-                          void signOut({ redirectUrl: "/" });
-                        }}
-                        className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-card text-foreground hover:bg-muted/50 border border-border hover:border-border/80 transition-all duration-200 text-left w-full cursor-pointer group shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <LogOut className="text-muted-foreground shrink-0" size={20} />
-                        <div className="flex-1">
-                          <p className="font-bold text-sm">Sair da Conta</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">Fazer logout da sessão atual</p>
-                        </div>
-                      </button>
+                      {clerkEnabled && (
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("medquest_last_user_id");
+                            void signOut({ redirectUrl: "/" });
+                          }}
+                          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-card text-foreground hover:bg-muted/50 border border-border hover:border-border/80 transition-all duration-200 text-left w-full cursor-pointer group shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <LogOut className="text-muted-foreground shrink-0" size={20} />
+                          <div className="flex-1">
+                            <p className="font-bold text-sm">Sair da Conta</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">Fazer logout da sessão atual</p>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 ) : (

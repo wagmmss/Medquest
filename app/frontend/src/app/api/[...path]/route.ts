@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getServerAuthState, getServerCurrentUser } from "@/lib/auth-server";
 import { getGuestSession } from "@/lib/session";
 
 const BACKEND_URL = process.env.FLASK_API_URL || process.env.NEXT_PUBLIC_FLASK_API_URL ||
@@ -47,7 +47,7 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   const { path } = await params;
   const targetUrl = `${BACKEND_URL}/api/${path.join("/")}${req.nextUrl.search}`;
 
-  const { getToken } = await auth();
+  const { getToken } = await getServerAuthState();
   const token = await getToken();
   const guestId = await getGuestSession();
 
@@ -70,7 +70,7 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
     try {
-      const user = await currentUser();
+      const user = await getServerCurrentUser();
       const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
       if (email) {
         headers.set("X-User-Email", email);

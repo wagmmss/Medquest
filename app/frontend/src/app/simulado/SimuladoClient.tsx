@@ -22,7 +22,7 @@ import {
 
 import clsx from "clsx";
 import toast from "react-hot-toast";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 import { useCurator } from "@/hooks/useCurator";
 
 import { LEARNING_SESSION_VERSION, readLearningSession, writeLearningSession, removeLearningSession, deadlineFromNow } from "@/lib/sessionState";
@@ -86,7 +86,7 @@ export function SimuladoClient({
   initialFilters?: Record<string, string | string[]>;
   meta?: QuestionMeta;
 }) {
-  const { isLoaded: authLoaded } = useUser();
+  const { isLoaded: authLoaded } = useAppUser();
   const { isCurator } = useCurator();
   const [isClassificationModalOpen, setIsClassificationModalOpen] = useState(false);
   const [state, setState] = useState<SimuladoState>("START");

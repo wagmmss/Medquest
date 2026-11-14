@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { isLocalIdentityReady } from "@/lib/db";
 import { prefetchQuestionsByIds } from "@/lib/syncQueue";
-import { useUser } from "@clerk/nextjs";
+import { useAppUser } from "@/lib/auth-client";
 
 import dynamic from "next/dynamic";
 import { ImageViewer } from "@/components/ImageViewer";
@@ -142,7 +142,7 @@ export function QuizClient({
   initialFilters?: Record<string, string | string[]>;
 }) {
   const router = useRouter();
-  const { isLoaded: authLoaded } = useUser();
+  const { isLoaded: authLoaded } = useAppUser();
   const { isCurator } = useCurator();
   const [isClassificationModalOpen, setIsClassificationModalOpen] = useState(false);
   const hasExplicitFilters = Object.keys(initialFilters).filter(k => k !== "resume").length > 0;
