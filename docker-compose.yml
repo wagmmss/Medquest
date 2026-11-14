@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   backend:
-    image: ghcr.io/wagmms/medquest-backend:latest
+    image: ghcr.io/wagmmss/medquest-backend:latest
     build: 
       context: ./app/backend
     restart: always
@@ -32,7 +32,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   frontend:
-    image: ghcr.io/wagmms/medquest-frontend:latest
+    image: ghcr.io/wagmmss/medquest-frontend:latest
     build:
       context: ./app/frontend
     restart: always
