@@ -13,3 +13,5 @@ fsrs
 pywebpush
 pytest
 pytest-cov
+rapidfuzz
+tenacity

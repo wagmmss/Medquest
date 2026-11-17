@@ -17,6 +17,8 @@ backups/
 *.log
 .background_output_*.txt
 exports/
+outputs/
+test_out*.json
 
 # ── Artefatos de build / deploy ─────────────────────────────────────
 medquest_deploy.zip
