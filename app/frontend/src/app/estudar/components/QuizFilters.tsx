@@ -8,7 +8,6 @@ import {
   Brain,
   X,
   Search,
-  Sparkles,
   Bookmark,
   Trash2,
   Minus,

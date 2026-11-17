@@ -2,6 +2,12 @@
 
 Histórico completo de ciclos, sprints e melhorias entregues no repositório.
 
+## [2026-11-17] - UI/UX Clinical Calm, Hardening Backend e Recursos Inspirados no AMBOSS
+- **Linguagem Visual Clinical Calm**: Atualizado design system (`globals.css`, `layout.tsx`, `Sidebar.tsx`, `TopNav.tsx`) e páginas principais (`DashboardClient`, `QuizFilters`, `SimuladoCockpitHero`, `AnalysisClient`, `CadernoClient`, `OsceHubClient`, `SearchClient`, `PlannerClient`); removidos arrays `weight` explícitos das variable fonts em `layout.tsx` para compatibilidade com Turbopack.
+- **Refatoração & Hardening Backend**: Extraídos `api/services/psychometrics.py`, `api/services/questions_service.py`, `api/osce_physiology.py` e `api/osce_circuit.py`; adicionado fallback resiliente (`_last_known_profile` / `_build_fallback_profile`) em `api/adaptive.py` com testes em `tests/test_planner.py`.
+- **Análise & Diagnóstico (`/analise`)**: Adicionado botão direto **Treinar prioridade (10q)** em `PerformanceRadarTab.tsx`, toggle `Todas` vs `Última tentativa` com CTE `ROW_NUMBER()` em `_get_timeline_data` (`api/stats.py`) e KPIs de ritmo (`Tempo / Questão` e `Tempo Total`).
+- **Estudo Ativo (`/estudar`)**: Criado `LabValuesModal.tsx` offline-first com busca e categorias, controle `Aa` de tamanho da fonte do enunciado em `QuizHeader.tsx`, e **Dica do Preceptor pré-resposta (Attending Tip)** sem spoiler via modo `/dica` em `api/ai.py` e `QuizClient.tsx`.
+
 ## [2026-11-14] - Sincronização Medquest-aistudio, Hardening de Segurança e Refatoração Arquitetural
 - **Remoção Completa de Flashcards / `/revisao-ativa` no MedQuest**: Removida geração/edição Cloze de flashcards, rota/atalho remanescente `/revisao-ativa` em `app/frontend/public/manifest.json` e chamadas legadas em `OfflinePanel.tsx`, mantendo `api/flashcards.py` isolado conforme arquitetura atual.
 - **Segurança & Diretriz `explanations` Read-Only**: Removidas as rotas e funções `POST /api/questions/<qid>/synthesize_explanation` (`synthesize_question_explanation`), `POST /api/ai/prescribe_study`, `POST /api/ai/analyze-image`, `app/backend/api/medical_vision.py` e `app/backend/api/universal_pool.py`; aplicado `@require_auth` e `get_current_user_id()` em `app/backend/api/ai_routes.py`; adicionada idempotência (`reserve_idempotency` / `complete_idempotency`) nas rotas OSCE `start` e `finish` (`app/backend/api/osce_routes.py`).
