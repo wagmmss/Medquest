@@ -760,6 +760,46 @@ export const api = {
     getCircuitSummary: (circuitId: string) =>
       apiFetch<import("@/types/api").OsceCircuitSummaryResponse>(`/api/osce/circuits/${circuitId}/summary`, { cache: "no-store" }),
   },
+  presets: {
+    list: () =>
+      apiFetch<{ presets: import("@/types/api").StudyPreset[] }>("/api/presets", { cache: "no-store" }),
+    create: (name: string, filters: Record<string, string | string[]>) =>
+      apiFetch<import("@/types/api").StudyPreset>("/api/presets", {
+        method: "POST",
+        body: JSON.stringify({ name, filters }),
+      }),
+    remove: (presetId: number) =>
+      apiFetch<{ deleted: boolean; id: number }>(`/api/presets/${presetId}`, {
+        method: "DELETE",
+      }),
+  },
+  notes: {
+    list: (params?: { area?: string; q?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.area) qs.set("area", params.area);
+      if (params?.q) qs.set("q", params.q);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return apiFetch<{ notes: import("@/types/api").QuestionUserNote[] }>(`/api/notes${suffix}`, {
+        cache: "no-store",
+      });
+    },
+    getByQuestion: (qid: number) =>
+      apiFetch<import("@/types/api").QuestionUserNote>(`/api/questions/${qid}/note`, {
+        cache: "no-store",
+      }),
+    save: (
+      qid: number,
+      payload: { highlights: import("@/types/api").QuestionHighlight[]; note_text: string }
+    ) =>
+      apiFetch<import("@/types/api").QuestionUserNote>(`/api/questions/${qid}/note`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    remove: (qid: number) =>
+      apiFetch<{ deleted: boolean; question_id: number }>(`/api/questions/${qid}/note`, {
+        method: "DELETE",
+      }),
+  },
 };
 
 

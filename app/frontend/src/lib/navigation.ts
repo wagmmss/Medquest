@@ -14,6 +14,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/simulado", label: "Simulados", icon: "description" },
   { href: "/analise", label: "Análise & Cobertura", bottomLabel: "Análise", icon: "analytics" },
   { href: "/planner", label: "Planner", icon: "calendar_month" },
+  { href: "/caderno", label: "Caderno Inteligente", bottomLabel: "Caderno", icon: "edit" },
 ];
 
 const PRIMARY_BOTTOM_HREFS = new Set(["/", "/estudar", "/simulado", "/osce"]);

@@ -1025,6 +1025,34 @@ export interface AnalysisSummaryResponse {
   coverage: CoverageResponse;
 }
 
+export interface StudyPreset {
+  id: number;
+  name: string;
+  filters: Record<string, string | string[]>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type HighlightColor = "yellow" | "green" | "pink" | "blue";
+
+export interface QuestionHighlight {
+  id: string;
+  text: string;
+  color: HighlightColor;
+}
+
+export interface QuestionUserNote {
+  question_id: number;
+  highlights: QuestionHighlight[];
+  note_text: string;
+  updated_at: string | null;
+  area?: string | null;
+  subtema?: string | null;
+  institution_code?: string | null;
+  year?: number | null;
+  stem_preview?: string;
+}
+
 
 
 

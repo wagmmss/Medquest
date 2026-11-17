@@ -34,6 +34,7 @@ import { PreceptorSection, ChatMessage } from "./components/PreceptorSection";
 import { QuizHeader } from "./components/QuizHeader";
 import { QuizLoadingView, QuizSummaryView } from "./components/QuizSummaryView";
 import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
+import { QuestionNotePanel } from "@/components/QuestionNotePanel";
 import { SessionAnswer as _SessionAnswer, QuizState } from "./quizSessionReducer";
 export type SessionAnswer = _SessionAnswer;
 import {
@@ -113,7 +114,7 @@ export function QuizClient({
         return saved === "true";
       }
     }
-    return true;
+    return false;
   });
 
   const toggleTopic = () => {
@@ -1327,6 +1328,7 @@ export function QuizClient({
                 </div>
               )}
             </div>
+            <QuestionNotePanel questionId={q.id} />
           </div>
 
           {/* PAINEL DIREITO: Alternativas e Ações de Resposta */}
