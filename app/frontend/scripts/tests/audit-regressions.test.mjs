@@ -282,3 +282,83 @@ test('areFiltersEquivalent detects changes in q, has_images, and unanswered_only
   assert.equal(areFiltersEquivalent({ area: 'Cirurgia', has_images: 'true' }, { area: 'Cirurgia' }), false);
   assert.equal(areFiltersEquivalent({ subtema: ['A', 'B'] }, { subtema: ['B', 'A'] }), true);
 });
+
+test('HTTP 401/403/422/429/500/503 responses are never masked as OfflineQueuedError even if navigator.onLine drops during fetch', async () => {
+  for (const status of [401, 403, 422, 429, 500, 503]) {
+    let queued = 0;
+    let online = true;
+    const { api, ApiHttpError } = load('api', {
+      './db': {
+        getLocalOwnerId: () => 'alice',
+        isDeviceOffline: () => !online,
+      },
+      './sync': { syncManager: { enqueue: async () => { queued++; return 'q-1'; } } },
+    }, {
+      window: {},
+      navigator: { get onLine() { return online; } },
+      fetch: async () => {
+        online = false; // Browser reports offline right as HTTP error arrives
+        return {
+          ok: false,
+          status,
+          statusText: `HTTP ${status}`,
+          json: async () => ({ error: `Server error ${status}` }),
+        };
+      },
+    });
+
+    await assert.rejects(
+      api.questions.submitAttempt(10, 'C', 2000, 'duvida', undefined, undefined, null, true),
+      (err) => err instanceof ApiHttpError && err.status === status
+    );
+    assert.equal(queued, 0, `Status ${status} must not be queued as OfflineQueuedError`);
+  }
+});
+
+test('api.questions.getBatch and getSimuladoUSP respect Modo Plantão Forçado (isDeviceOffline) without hitting network', async () => {
+  let networkCalls = 0;
+  const mockDb = {
+    questions: {
+      bulkGet: async (keys) => keys.map(([id]) => ({ id, stem: `Offline Q ${id}`, alternatives: [] })),
+      where: () => ({
+        equals: () => ({
+          toArray: async () => [{
+            id: 77,
+            source_file: 'usp.json',
+            source_number: '1',
+            year: 2025,
+            institution_code: 'USP',
+            institution_label: 'USP',
+            topic: 'Cirurgia',
+            area: 'Cirurgia Geral',
+            subtema: 'Trauma',
+          }],
+        }),
+      }),
+    },
+  };
+
+  const { api } = load('api', {
+    './db': {
+      getLocalOwnerId: () => 'alice',
+      isDeviceOffline: () => true, // Modo Plantão Forçado ativo mesmo com navigator.onLine = true
+      localDb: mockDb,
+    },
+    './sync': {},
+  }, {
+    window: {},
+    navigator: { onLine: true },
+    fetch: async () => {
+      networkCalls++;
+      throw new Error('Should not call fetch when Modo Plantão Forçado is active');
+    },
+  });
+
+  const batchRes = await api.questions.getBatch([101, 102]);
+  assert.equal(batchRes.questions.length, 2);
+  const uspRes = await api.questions.getSimuladoUSP();
+  assert.equal(uspRes.length, 1);
+  assert.equal(uspRes[0].id, 77);
+  assert.equal(networkCalls, 0);
+});
+

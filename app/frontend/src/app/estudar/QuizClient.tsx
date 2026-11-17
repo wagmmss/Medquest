@@ -85,6 +85,13 @@ function warmQuestionImages(detail?: QuestionDetail | null): void {
   }
 }
 
+function formatReviewDatePtBr(dateStr?: string | null): string {
+  if (!dateStr) return "Em breve";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "Em breve";
+  return parsed.toLocaleDateString("pt-BR");
+}
+
 export interface SavedQuizState {
   version: number;
   state: "PLAYING" | "FINISHED";
@@ -95,6 +102,8 @@ export interface SavedQuizState {
   sessionAnswers: Record<number, SessionAnswer>;
   selectedLetter: string | null;
   userWrittenAnswer?: string;
+  attendingTip?: string | null;
+  attendingTipsByQid?: Record<number, string>;
   timeSpent: number;
   savedAt: number;
   eliminatedAlternatives?: Record<number, string[]>;
@@ -221,20 +230,75 @@ export function QuizClient({
     });
   }, []);
 
+  const detailsCacheRef = useRef<Record<number, QuestionDetail>>({});
+  const prefetchingRef = useRef<Set<number>>(new Set());
+
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const detailRequestRef = useRef(0);
+  const queueRequestRef = useRef(0);
+  const attemptLockRef = useRef(false);
+  const reviewLockRef = useRef(false);
+  const favoriteLockRef = useRef(false);
+  const reviewedQuestionsRef = useRef<Set<number>>(new Set());
+
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  const sessionAnswersRef = useRef(sessionAnswers);
+  useEffect(() => {
+    sessionAnswersRef.current = sessionAnswers;
+  }, [sessionAnswers]);
+
+  const attendingTipRef = useRef(attendingTip);
+  useEffect(() => {
+    attendingTipRef.current = attendingTip;
+  }, [attendingTip]);
+
+  const attendingTipsByQidRef = useRef<Record<number, string>>({});
+  const chatMessagesByQidRef = useRef<Record<number, ChatMessage[]>>({});
+  const draftWrittenByQidRef = useRef<Record<number, string>>({});
+  const draftSelectedByQidRef = useRef<Record<number, string | null>>({});
+  const timeSpentByQidRef = useRef<Record<number, number>>({});
+
+  const currentDetailRef = useRef(currentDetail);
+  const attemptResultRef = useRef(attemptResult);
+  useEffect(() => {
+    currentDetailRef.current = currentDetail;
+    attemptResultRef.current = attemptResult;
+  }, [currentDetail, attemptResult]);
+
   const handleRequestAttendingTip = useCallback(async () => {
     if (!currentDetail || loadingTip || attendingTip) return;
+    const targetQid = currentDetail.id;
     setLoadingTip(true);
     try {
-      const res = await api.questions.askAI(currentDetail.id, "/dica", "");
+      const res = await api.questions.askAI(targetQid, "/dica", "");
       if (res?.answer) {
-        setAttendingTip(res.answer);
-      } else {
+        attendingTipsByQidRef.current[targetQid] = res.answer;
+        setSessionAnswers((prev) => {
+          const existing = prev[targetQid];
+          if (!existing) return prev;
+          return {
+            ...prev,
+            [targetQid]: { ...existing, assisted: true, attendingTip: res.answer },
+          };
+        });
+        if (currentDetailRef.current?.id === targetQid) {
+          setAttendingTip(res.answer);
+        }
+      } else if (currentDetailRef.current?.id === targetQid) {
         toast.error("Não foi possível gerar a dica agora.");
       }
     } catch {
-      toast.error("Preceptor indisponível no momento.");
+      if (currentDetailRef.current?.id === targetQid) {
+        toast.error("Preceptor indisponível no momento.");
+      }
     } finally {
-      setLoadingTip(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setLoadingTip(false);
+      }
     }
   }, [currentDetail, loadingTip, attendingTip]);
 
@@ -245,34 +309,41 @@ export function QuizClient({
       ? "text-lg md:text-xl"
       : "text-base md:text-lg";
 
-  const detailsCacheRef = useRef<Record<number, QuestionDetail>>({});
-  const prefetchingRef = useRef<Set<number>>(new Set());
-
-  const [togglingFavorite, setTogglingFavorite] = useState(false);
-  const detailRequestRef = useRef(0);
-  const attemptLockRef = useRef(false);
-  const reviewLockRef = useRef(false);
-  const favoriteLockRef = useRef(false);
-  const reviewedQuestionsRef = useRef<Set<number>>(new Set());
-
   const loadQuestionDetail = useCallback(async (id: number) => {
     const requestId = ++detailRequestRef.current;
+    reviewLockRef.current = false;
+    attemptLockRef.current = false;
+
+    const prevDetail = currentDetailRef.current;
+    if (prevDetail && prevDetail.id !== id) {
+      timeSpentByQidRef.current[prevDetail.id] = quizTimerRef.current?.getTime() ?? 0;
+    }
+
+    const savedAns = sessionAnswersRef.current[id];
+    const savedTip = attendingTipsByQidRef.current[id] ?? savedAns?.attendingTip ?? null;
+    const savedChat = chatMessagesByQidRef.current[id] ?? [];
+    const savedWritten = savedAns?.writtenAnswer ?? draftWrittenByQidRef.current[id] ?? "";
+    const savedLetter = savedAns?.letter ?? draftSelectedByQidRef.current[id] ?? null;
+    const targetTime = timeSpentByQidRef.current[id] ?? 0;
+
     setDetailError(null);
-    setAttemptResult(null);
-    setSelectedLetter(null);
-    setUserWrittenAnswer("");
-    setIsOfflineSaved(false);
-    setChatMessages([]);
+    setAttemptResult(savedAns?.result || null);
+    setSelectedLetter(savedLetter);
+    setUserWrittenAnswer(savedWritten);
+    setIsOfflineSaved(Boolean(savedAns?.isOffline));
+    setChatMessages(savedChat);
     setPreceptorInput("");
-    setAttendingTip(null);
+    setAttendingTip(savedTip);
     setLoadingTip(false);
-    setInitialTime(0);
+    setInitialTime(targetTime);
+    quizTimerRef.current?.reset(targetTime);
 
     // 1. Se já estiver no cache em memória, carrega instantaneamente sem tela de loading
     const cached = detailsCacheRef.current[id];
     if (cached) {
       const queueItem = queueRef.current.find(q => q.id === id);
       const mergedCached = queueItem ? { ...queueItem, ...cached } : cached;
+      currentDetailRef.current = mergedCached;
       setCurrentDetail(mergedCached);
       setLoadingDetail(false);
       return;
@@ -286,6 +357,7 @@ export function QuizClient({
       const mergedDexie = queueItem ? { ...queueItem, ...dexieCached } : dexieCached;
       detailsCacheRef.current[id] = mergedDexie;
       if (detailRequestRef.current === requestId) {
+        currentDetailRef.current = mergedDexie;
         setCurrentDetail(mergedDexie);
         setLoadingDetail(false);
       }
@@ -293,6 +365,7 @@ export function QuizClient({
     }
 
     setLoadingDetail(true);
+    currentDetailRef.current = null;
     setCurrentDetail(null);
     try {
       const detail = await api.questions.getDetail(id);
@@ -300,6 +373,7 @@ export function QuizClient({
       const mergedDetail = queueItem ? { ...queueItem, ...detail } : detail;
       detailsCacheRef.current[id] = mergedDetail;
       if (detailRequestRef.current === requestId) {
+        currentDetailRef.current = mergedDetail;
         setCurrentDetail(mergedDetail);
       }
     } catch (err) {
@@ -365,6 +439,7 @@ export function QuizClient({
   }, [state, queue, currentIndex]);
 
   const loadQueue = useCallback(async (activeFilters: Record<string, string | string[]>) => {
+    const reqId = ++queueRequestRef.current;
     removeLearningSession("quiz");
     setHasSavedState(false);
     setSavedSessionData(null);
@@ -376,10 +451,20 @@ export function QuizClient({
     setState("LOADING_QUEUE");
     try {
       const qList = await api.questions.getList(activeFilters);
+      if (queueRequestRef.current !== reqId) return;
       if (qList.length > 0) {
+        reviewedQuestionsRef.current.clear();
+        attendingTipsByQidRef.current = {};
+        chatMessagesByQidRef.current = {};
+        draftWrittenByQidRef.current = {};
+        draftSelectedByQidRef.current = {};
+        timeSpentByQidRef.current = {};
+        sessionAnswersRef.current = {};
         setQueue(qList);
+        currentIndexRef.current = 0;
         setCurrentIndex(0);
         setSessionAnswers({});
+        setEliminatedAlternatives({});
         setSelectedLetter(null);
         setAttemptResult(null);
         setState("PLAYING");
@@ -398,6 +483,7 @@ export function QuizClient({
         setState("FILTERS");
       }
     } catch (e) {
+      if (queueRequestRef.current !== reqId) return;
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("medquest_active_quiz");
       }
@@ -422,9 +508,17 @@ export function QuizClient({
       const ans = sessionAnswers[currentDetail.id];
       const timer = setTimeout(() => {
         setSelectedLetter(ans.letter);
-        setAttemptResult(ans.result || null);
+        const restoredResult = ans.result
+          ? { ...ans.result, assisted: ans.result.assisted ?? ans.assisted }
+          : null;
+        setAttemptResult(restoredResult);
         setIsOfflineSaved(!!ans.isOffline);
         setUserWrittenAnswer(ans.writtenAnswer || "");
+        const restoredTip = ans.attendingTip || attendingTipsByQidRef.current[currentDetail.id] || null;
+        if (restoredTip) {
+          attendingTipsByQidRef.current[currentDetail.id] = restoredTip;
+          setAttendingTip(restoredTip);
+        }
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -441,16 +535,74 @@ export function QuizClient({
       const detail = customEvent.detail;
       if (detail && detail.endpoint.includes("/api/questions/") && detail.endpoint.includes("/attempt")) {
         const attemptRes = detail.data as AttemptResult | null;
-        if (attemptRes && typeof attemptRes.is_correct === "boolean") {
+        if (attemptRes && (typeof attemptRes.is_correct === "boolean" || attemptRes.is_correct === null)) {
           const match = detail.endpoint.match(/\/api\/questions\/(\d+)\/attempt/);
-          if (match && currentDetail && Number(match[1]) === currentDetail.id) {
-            setAttemptResult(attemptRes);
-            setIsOfflineSaved(false);
-            setSessionAnswers(prev => ({
-              ...prev,
-              [currentDetail.id]: { letter: selectedLetter || attemptRes.correct_letter || "", result: attemptRes, writtenAnswer: userWrittenAnswer }
-            }));
-            toast.success("Resposta sincronizada com sucesso!");
+          if (match) {
+            const syncedQid = Number(match[1]);
+            const existingAns = sessionAnswersRef.current[syncedQid];
+            const preservedAssisted = Boolean(
+              attemptRes.assisted ?? existingAns?.assisted ?? attendingTipsByQidRef.current[syncedQid]
+            );
+            const enrichedAttemptRes: AttemptResult = {
+              ...attemptRes,
+              assisted: preservedAssisted,
+            };
+
+            setSessionAnswers((prev) => {
+              const prevEntry = prev[syncedQid];
+              return {
+                ...prev,
+                [syncedQid]: {
+                  letter: prevEntry?.letter || (currentDetailRef.current?.id === syncedQid ? selectedLetter : null) || enrichedAttemptRes.correct_letter || "A",
+                  result: enrichedAttemptRes,
+                  isOffline: false,
+                  writtenAnswer: prevEntry?.writtenAnswer ?? (currentDetailRef.current?.id === syncedQid ? userWrittenAnswer : ""),
+                  isDiscursive: prevEntry?.isDiscursive,
+                  assisted: preservedAssisted,
+                  attendingTip: prevEntry?.attendingTip ?? attendingTipsByQidRef.current[syncedQid] ?? null,
+                },
+              };
+            });
+
+            if (currentDetailRef.current?.id === syncedQid) {
+              setAttemptResult(enrichedAttemptRes);
+              setIsOfflineSaved(false);
+              toast.success("Resposta sincronizada com sucesso!");
+            } else if (
+              !enrichedAttemptRes.next_review_date &&
+              !reviewedQuestionsRef.current.has(syncedQid) &&
+              enrichedAttemptRes.is_correct !== null &&
+              enrichedAttemptRes.is_correct !== undefined
+            ) {
+              // O usuário já avançou de questão enquanto ela estava offline: agenda FSRS automaticamente preservando assisted
+              reviewedQuestionsRef.current.add(syncedQid);
+              const qItem = detailsCacheRef.current[syncedQid] || queueRef.current.find((q) => q.id === syncedQid);
+              api.questions
+                .reviewFSRS(
+                  syncedQid,
+                  "duvida",
+                  enrichedAttemptRes.is_correct,
+                  qItem?.twin_for_question_id,
+                  enrichedAttemptRes.attempt_id,
+                  preservedAssisted
+                )
+                .then((res) => {
+                  setSessionAnswers((prev) => {
+                    const curEntry = prev[syncedQid];
+                    if (!curEntry || !curEntry.result) return prev;
+                    return {
+                      ...prev,
+                      [syncedQid]: {
+                        ...curEntry,
+                        result: { ...curEntry.result, next_review_date: res.next_review_date },
+                      },
+                    };
+                  });
+                })
+                .catch(() => {
+                  reviewedQuestionsRef.current.delete(syncedQid);
+                });
+            }
           }
         }
       }
@@ -484,24 +636,44 @@ export function QuizClient({
     if (saved && shouldAutoResume) {
       setTimeout(() => {
         setQueue(saved.queue);
+        currentIndexRef.current = saved.currentIndex;
         setCurrentIndex(saved.currentIndex);
         setFilters(saved.filters);
+        sessionAnswersRef.current = saved.sessionAnswers;
         setSessionAnswers(saved.sessionAnswers);
+        if (saved.attendingTipsByQid) {
+          attendingTipsByQidRef.current = { ...saved.attendingTipsByQid };
+        }
+        for (const [qidStr, ans] of Object.entries(saved.sessionAnswers)) {
+          if (ans?.attendingTip) {
+            attendingTipsByQidRef.current[Number(qidStr)] = ans.attendingTip;
+          }
+        }
         setSelectedLetter(saved.selectedLetter);
         setUserWrittenAnswer(saved.userWrittenAnswer || "");
         if (saved.eliminatedAlternatives) {
           setEliminatedAlternatives(saved.eliminatedAlternatives);
         }
+        const targetQ = saved.queue[saved.currentIndex];
+        const restoredTip =
+          saved.attendingTip ||
+          (targetQ ? attendingTipsByQidRef.current[targetQ.id] || saved.sessionAnswers[targetQ.id]?.attendingTip : null) ||
+          null;
+        setAttendingTip(restoredTip);
         setInitialTime(saved.timeSpent || 0);
+        if (targetQ) {
+          timeSpentByQidRef.current[targetQ.id] = saved.timeSpent || 0;
+        }
         setState(saved.state);
         if (typeof window !== "undefined") {
           sessionStorage.setItem("medquest_active_quiz", "1");
         }
-        const targetQ = saved.queue[saved.currentIndex];
         if (targetQ && saved.currentDetail && saved.currentDetail.id === targetQ.id) {
+          currentDetailRef.current = saved.currentDetail;
           setCurrentDetail(saved.currentDetail);
           detailsCacheRef.current[saved.currentDetail.id] = saved.currentDetail;
         } else if (targetQ) {
+          currentDetailRef.current = null;
           setCurrentDetail(null);
           loadQuestionDetail(targetQ.id);
         }
@@ -534,24 +706,44 @@ export function QuizClient({
     const saved = savedSessionData || readLearningSession("quiz", isSavedQuizState);
     if (saved) {
       setQueue(saved.queue);
+      currentIndexRef.current = saved.currentIndex;
       setCurrentIndex(saved.currentIndex);
       setFilters(saved.filters);
+      sessionAnswersRef.current = saved.sessionAnswers;
       setSessionAnswers(saved.sessionAnswers);
+      if (saved.attendingTipsByQid) {
+        attendingTipsByQidRef.current = { ...saved.attendingTipsByQid };
+      }
+      for (const [qidStr, ans] of Object.entries(saved.sessionAnswers)) {
+        if (ans?.attendingTip) {
+          attendingTipsByQidRef.current[Number(qidStr)] = ans.attendingTip;
+        }
+      }
       setSelectedLetter(saved.selectedLetter);
       setUserWrittenAnswer(saved.userWrittenAnswer || "");
       if (saved.eliminatedAlternatives) {
         setEliminatedAlternatives(saved.eliminatedAlternatives);
       }
+      const targetQ = saved.queue[saved.currentIndex];
+      const restoredTip =
+        saved.attendingTip ||
+        (targetQ ? attendingTipsByQidRef.current[targetQ.id] || saved.sessionAnswers[targetQ.id]?.attendingTip : null) ||
+        null;
+      setAttendingTip(restoredTip);
       setInitialTime(saved.timeSpent || 0);
+      if (targetQ) {
+        timeSpentByQidRef.current[targetQ.id] = saved.timeSpent || 0;
+      }
       setState(saved.state);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("medquest_active_quiz", "1");
       }
-      const targetQ = saved.queue[saved.currentIndex];
       if (targetQ && saved.currentDetail && saved.currentDetail.id === targetQ.id) {
+        currentDetailRef.current = saved.currentDetail;
         setCurrentDetail(saved.currentDetail);
         detailsCacheRef.current[saved.currentDetail.id] = saved.currentDetail;
       } else if (targetQ) {
+        currentDetailRef.current = null;
         setCurrentDetail(null);
         loadQuestionDetail(targetQ.id);
       }
@@ -570,23 +762,22 @@ export function QuizClient({
     toast("Sessão anterior descartada.");
   }, []);
 
-  const currentDetailRef = useRef(currentDetail);
-  const attemptResultRef = useRef(attemptResult);
-  useEffect(() => {
-    currentDetailRef.current = currentDetail;
-    attemptResultRef.current = attemptResult;
-  }, [currentDetail, attemptResult]);
-
   const ensureCurrentQuestionReviewed = useCallback(() => {
     const cur = currentDetailRef.current;
     const att = attemptResultRef.current;
     if (cur && att && !att.next_review_date && !reviewedQuestionsRef.current.has(cur.id)) {
       const qid = cur.id;
       const explicitCorr = att.is_correct;
+      const isAssisted = Boolean(
+        att.assisted ||
+          sessionAnswersRef.current[qid]?.assisted ||
+          attendingTipsByQidRef.current[qid] ||
+          attendingTipRef.current
+      );
       if (explicitCorr !== null && explicitCorr !== undefined) {
         reviewedQuestionsRef.current.add(qid);
         api.questions
-          .reviewFSRS(qid, "duvida", explicitCorr, cur.twin_for_question_id, att.attempt_id)
+          .reviewFSRS(qid, "duvida", explicitCorr, cur.twin_for_question_id, att.attempt_id, isAssisted)
           .then(res => {
             setSessionAnswers(prev => {
               const current = prev[qid];
@@ -595,7 +786,8 @@ export function QuizClient({
                 ...prev,
                 [qid]: {
                   ...current,
-                  result: current.result ? { ...current.result, next_review_date: res.next_review_date } : undefined
+                  assisted: isAssisted,
+                  result: current.result ? { ...current.result, assisted: isAssisted, next_review_date: res.next_review_date } : undefined
                 }
               };
             });
@@ -620,9 +812,15 @@ export function QuizClient({
         att.is_correct !== null &&
         att.is_correct !== undefined
       ) {
+        const isAssisted = Boolean(
+          att.assisted ||
+            sessionAnswersRef.current[cur.id]?.assisted ||
+            attendingTipsByQidRef.current[cur.id] ||
+            attendingTipRef.current
+        );
         reviewedSet.add(cur.id);
         api.questions
-          .reviewFSRS(cur.id, "duvida", att.is_correct, cur.twin_for_question_id, att.attempt_id)
+          .reviewFSRS(cur.id, "duvida", att.is_correct, cur.twin_for_question_id, att.attempt_id, isAssisted)
           .catch(() => {});
       }
     };
@@ -670,6 +868,10 @@ export function QuizClient({
   }, [showFinishModal]);
 
   const handleBackToFilters = useCallback(() => {
+    queueRequestRef.current++;
+    detailRequestRef.current++;
+    reviewLockRef.current = false;
+    attemptLockRef.current = false;
     setShowFinishModal(false);
     ensureCurrentQuestionReviewed();
     removeLearningSession("quiz");
@@ -677,14 +879,27 @@ export function QuizClient({
       sessionStorage.removeItem("medquest_active_quiz");
       window.history.replaceState(null, "", window.location.pathname);
     }
+    reviewedQuestionsRef.current.clear();
+    attendingTipsByQidRef.current = {};
+    chatMessagesByQidRef.current = {};
+    draftWrittenByQidRef.current = {};
+    draftSelectedByQidRef.current = {};
+    timeSpentByQidRef.current = {};
+    sessionAnswersRef.current = {};
     setQueue([]);
+    currentIndexRef.current = 0;
     setCurrentIndex(0);
+    currentDetailRef.current = null;
     setCurrentDetail(null);
     setSelectedLetter(null);
     setUserWrittenAnswer("");
     setAttemptResult(null);
     setSessionAnswers({});
+    setEliminatedAlternatives({});
+    setAttendingTip(null);
+    setChatMessages([]);
     setInitialTime(0);
+    quizTimerRef.current?.reset(0);
     setFilters({ limit: "50", status: "unanswered", unanswered_only: "true" });
     setLocalLimit("50");
     setHasSavedState(false);
@@ -736,6 +951,7 @@ export function QuizClient({
         sessionAnswers,
         selectedLetter: nextSelectedLetter,
         userWrittenAnswer,
+        attendingTip,
         timeSpent: getCurrentTime(),
         savedAt: Date.now(),
         eliminatedAlternatives,
@@ -743,17 +959,17 @@ export function QuizClient({
     } else if (state === "FILTERS" && !hasSavedState) {
       removeLearningSession("quiz");
     }
-  }, [storageReady, state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, eliminatedAlternatives, hasSavedState, getCurrentTime]);
+  }, [storageReady, state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, hasSavedState, getCurrentTime]);
 
   useEffect(() => {
     persistSession();
   }, [persistSession]);
 
   // Persist session before unmounting to prevent losing progress if user navigates away
-  const stateRef = useRef({ state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, eliminatedAlternatives, storageReady });
+  const stateRef = useRef({ state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady });
   useEffect(() => {
-    stateRef.current = { state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, eliminatedAlternatives, storageReady };
-  }, [state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, eliminatedAlternatives, storageReady]);
+    stateRef.current = { state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady };
+  }, [state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady]);
 
   useEffect(() => {
     return () => {
@@ -769,6 +985,7 @@ export function QuizClient({
           sessionAnswers: s.sessionAnswers,
           selectedLetter: s.selectedLetter,
           userWrittenAnswer: s.userWrittenAnswer,
+          attendingTip: s.attendingTip,
           timeSpent: getCurrentTime(),
           savedAt: Date.now(),
           eliminatedAlternatives: s.eliminatedAlternatives,
@@ -789,6 +1006,7 @@ export function QuizClient({
       return { ...prev, [qid]: nextList };
     });
     if (selectedLetter === letter) {
+      draftSelectedByQidRef.current[qid] = null;
       setSelectedLetter(null);
     }
   }, [currentDetail, attemptResult, submitting, selectedLetter]);
@@ -797,6 +1015,7 @@ export function QuizClient({
     if (attemptResult || submitting) return;
     if (currentDetail) {
       const qid = currentDetail.id;
+      draftSelectedByQidRef.current[qid] = letter;
       setEliminatedAlternatives((prev) => {
         if (!prev[qid]?.includes(letter)) return prev;
         return {
@@ -867,43 +1086,54 @@ export function QuizClient({
     attemptLockRef.current = true;
     
     setSubmitting(true);
-    const isAssistedAttempt = Boolean(attendingTip);
+    const targetQid = currentDetail.id;
+    const targetTwinId = currentDetail.twin_for_question_id;
+    const targetLetter = selectedLetter;
+    const targetWritten = userWrittenAnswer;
+    const targetTip = attendingTip || attendingTipsByQidRef.current[targetQid] || null;
+    const isAssistedAttempt = Boolean(targetTip);
 
     try {
       const res = await api.questions.submitAttempt(
-        currentDetail.id,
-        selectedLetter,
+        targetQid,
+        targetLetter,
         getCurrentTime() * 1000,
         "defer",
         undefined,
         undefined,
-        currentDetail.twin_for_question_id,
+        targetTwinId,
         isAssistedAttempt
       );
       const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
-      setAttemptResult(enrichedRes);
-      setIsOfflineSaved(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setAttemptResult(enrichedRes);
+        setIsOfflineSaved(false);
+      }
       setSessionAnswers(prev => ({
         ...prev,
-        [currentDetail.id]: {
-          letter: selectedLetter,
+        [targetQid]: {
+          letter: targetLetter,
           result: enrichedRes,
-          writtenAnswer: userWrittenAnswer,
+          writtenAnswer: targetWritten,
           assisted: isAssistedAttempt,
+          attendingTip: targetTip,
         }
       }));
 
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
         toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
-        setIsOfflineSaved(true);
+        if (currentDetailRef.current?.id === targetQid) {
+          setIsOfflineSaved(true);
+        }
         setSessionAnswers(prev => ({
           ...prev,
-          [currentDetail.id]: {
-            letter: selectedLetter,
+          [targetQid]: {
+            letter: targetLetter,
             isOffline: true,
-            writtenAnswer: userWrittenAnswer,
+            writtenAnswer: targetWritten,
             assisted: isAssistedAttempt,
+            attendingTip: targetTip,
           }
         }));
       } else {
@@ -911,7 +1141,9 @@ export function QuizClient({
       }
     } finally {
       attemptLockRef.current = false;
-      setSubmitting(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setSubmitting(false);
+      }
     }
   }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime, attendingTip]);
 
@@ -920,43 +1152,53 @@ export function QuizClient({
     attemptLockRef.current = true;
     
     setSubmitting(true);
-    const isAssistedAttempt = Boolean(attendingTip);
+    const targetQid = currentDetail.id;
+    const targetTwinId = currentDetail.twin_for_question_id;
+    const targetWritten = userWrittenAnswer;
+    const targetTip = attendingTip || attendingTipsByQidRef.current[targetQid] || null;
+    const isAssistedAttempt = Boolean(targetTip);
 
     try {
       const res = await api.questions.submitAttempt(
-        currentDetail.id, 
+        targetQid, 
         "A", 
         getCurrentTime() * 1000, 
         "defer", 
         null,
-        userWrittenAnswer,
-        currentDetail.twin_for_question_id,
+        targetWritten,
+        targetTwinId,
         isAssistedAttempt
       );
       const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
-      setAttemptResult(enrichedRes);
-      setIsOfflineSaved(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setAttemptResult(enrichedRes);
+        setIsOfflineSaved(false);
+      }
       setSessionAnswers(prev => ({
         ...prev,
-        [currentDetail.id]: {
+        [targetQid]: {
           letter: "A",
           result: enrichedRes,
-          writtenAnswer: userWrittenAnswer,
+          writtenAnswer: targetWritten,
           isDiscursive: true,
           assisted: isAssistedAttempt,
+          attendingTip: targetTip,
         }
       }));
     } catch (e: unknown) {
       if (e instanceof OfflineQueuedError) {
-        setIsOfflineSaved(true);
+        if (currentDetailRef.current?.id === targetQid) {
+          setIsOfflineSaved(true);
+        }
         setSessionAnswers(prev => ({
           ...prev,
-          [currentDetail.id]: {
+          [targetQid]: {
             letter: "A",
             isOffline: true,
-            writtenAnswer: userWrittenAnswer,
+            writtenAnswer: targetWritten,
             isDiscursive: true,
             assisted: isAssistedAttempt,
+            attendingTip: targetTip,
           }
         }));
         toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
@@ -965,7 +1207,9 @@ export function QuizClient({
       }
     } finally {
       attemptLockRef.current = false;
-      setSubmitting(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setSubmitting(false);
+      }
     }
   }, [attemptResult, isOfflineSaved, submitting, currentDetail, userWrittenAnswer, getCurrentTime, attendingTip]);
 
@@ -974,6 +1218,9 @@ export function QuizClient({
   }, []);
 
   const handleClearChat = useCallback(() => {
+    if (currentDetailRef.current) {
+      delete chatMessagesByQidRef.current[currentDetailRef.current.id];
+    }
     setChatMessages([]);
     setPreceptorInput("");
   }, []);
@@ -983,13 +1230,16 @@ export function QuizClient({
     const textToSend = (overrideText ?? preceptorInput).trim();
     if (!textToSend) return;
 
+    const targetQid = currentDetail.id;
     const userMsg: ChatMessage = {
       id: "u_" + Date.now(),
       role: "user",
       content: textToSend,
     };
 
-    const nextHistory = [...chatMessages, userMsg];
+    const existingChat = chatMessagesByQidRef.current[targetQid] ?? chatMessages;
+    const nextHistory = [...existingChat, userMsg];
+    chatMessagesByQidRef.current[targetQid] = nextHistory;
     setChatMessages(nextHistory);
     setPreceptorInput("");
     setAskingPreceptor(true);
@@ -1001,7 +1251,7 @@ export function QuizClient({
       }));
 
       const res = await api.questions.askAI(
-        currentDetail.id,
+        targetQid,
         textToSend,
         selectedLetter || undefined,
         apiHistory
@@ -1017,24 +1267,35 @@ export function QuizClient({
         tool_call: res.tool_call,
       };
 
-      setChatMessages((prev) => [...prev, assistantMsg]);
+      const updatedChat = [...(chatMessagesByQidRef.current[targetQid] || nextHistory), assistantMsg];
+      chatMessagesByQidRef.current[targetQid] = updatedChat;
+      if (currentDetailRef.current?.id === targetQid) {
+        setChatMessages(updatedChat);
+      }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erro ao consultar o preceptor.";
-      toast.error(msg);
+      if (currentDetailRef.current?.id === targetQid) {
+        const msg = e instanceof Error ? e.message : "Erro ao consultar o preceptor.";
+        toast.error(msg);
+      }
     } finally {
-      setAskingPreceptor(false);
+      if (currentDetailRef.current?.id === targetQid) {
+        setAskingPreceptor(false);
+      }
     }
   }, [currentDetail, preceptorInput, chatMessages, selectedLetter]);
 
   const nextQuestion = useCallback(() => {
     ensureCurrentQuestionReviewed();
-    if (currentIndex + 1 < queue.length) {
-      setCurrentIndex(prev => prev + 1);
-      loadQuestionDetail(queue[currentIndex + 1].id);
+    const idx = currentIndexRef.current;
+    if (idx + 1 < queue.length) {
+      const nextIdx = idx + 1;
+      currentIndexRef.current = nextIdx;
+      setCurrentIndex(nextIdx);
+      loadQuestionDetail(queue[nextIdx].id);
     } else {
       setState("FINISHED");
     }
-  }, [currentIndex, queue, loadQuestionDetail, ensureCurrentQuestionReviewed]);
+  }, [queue, loadQuestionDetail, ensureCurrentQuestionReviewed]);
 
   const handleReviewFSRS = useCallback(async (conf: string, explicitIsCorrect?: boolean) => {
     if (!currentDetail || reviewLockRef.current) return;
@@ -1049,7 +1310,8 @@ export function QuizClient({
     const isDiscursive = Boolean(currentDetail.is_discursive || (currentDetail.alternatives || []).length <= 1);
     const institutionCode = currentDetail.institution_code;
 
-    const isAssisted = Boolean(currentAttemptResult?.assisted || attendingTip);
+    const targetTip = attendingTip || attendingTipsByQidRef.current[questionId] || sessionAnswersRef.current[questionId]?.attendingTip || null;
+    const isAssisted = Boolean(currentAttemptResult?.assisted || sessionAnswersRef.current[questionId]?.assisted || targetTip);
 
     // Optimistic UI updates - Update session answers synchronously before advancing
     const isCorr = explicitIsCorrect !== undefined ? explicitIsCorrect : (currentAttemptResult?.is_correct ?? false);
@@ -1078,15 +1340,21 @@ export function QuizClient({
         writtenAnswer: currentWrittenAnswer,
         isDiscursive: isDiscursive,
         assisted: isAssisted,
+        attendingTip: targetTip,
       }
     }));
 
-    reviewLockRef.current = false;
-    if (currentIndex + 1 < queue.length) {
-      setCurrentIndex(prev => prev + 1);
-      loadQuestionDetail(queue[currentIndex + 1].id);
+    const idx = currentIndexRef.current;
+    if (idx + 1 < queue.length) {
+      const nextIdx = idx + 1;
+      currentIndexRef.current = nextIdx;
+      setCurrentIndex(nextIdx);
+      loadQuestionDetail(queue[nextIdx].id);
     } else {
       setState("FINISHED");
+      setTimeout(() => {
+        reviewLockRef.current = false;
+      }, 0);
     }
 
     // Call API in background to persist FSRS card and next review date
@@ -1113,21 +1381,25 @@ export function QuizClient({
           writtenAnswer: currentWrittenAnswer,
           isDiscursive: isDiscursive,
           assisted: isAssisted,
+          attendingTip: targetTip,
         }
       }));
     } catch {
       reviewedQuestionsRef.current.delete(questionId);
       toast.error("Erro ao salvar revisão (FSRS) em background.");
     }
-  }, [currentDetail, attemptResult, selectedLetter, userWrittenAnswer, currentIndex, queue, loadQuestionDetail, attendingTip]);
+  }, [currentDetail, attemptResult, selectedLetter, userWrittenAnswer, queue, loadQuestionDetail, attendingTip]);
 
   const prevQuestion = useCallback(() => {
     ensureCurrentQuestionReviewed();
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-      loadQuestionDetail(queue[currentIndex - 1].id);
+    const idx = currentIndexRef.current;
+    if (idx > 0) {
+      const prevIdx = idx - 1;
+      currentIndexRef.current = prevIdx;
+      setCurrentIndex(prevIdx);
+      loadQuestionDetail(queue[prevIdx].id);
     }
-  }, [currentIndex, queue, loadQuestionDetail, ensureCurrentQuestionReviewed]);
+  }, [queue, loadQuestionDetail, ensureCurrentQuestionReviewed]);
 
   const navigateQuestion = useCallback((direction: "next" | "previous") => {
     if (direction === "previous") {
@@ -1213,7 +1485,24 @@ export function QuizClient({
         sessionAnswers={sessionAnswers}
         onBackToFilters={handleNewSession}
         onRestartSession={() => {
+          reviewedQuestionsRef.current.clear();
+          attendingTipsByQidRef.current = {};
+          chatMessagesByQidRef.current = {};
+          draftWrittenByQidRef.current = {};
+          draftSelectedByQidRef.current = {};
+          timeSpentByQidRef.current = {};
+          sessionAnswersRef.current = {};
+          setSessionAnswers({});
+          setEliminatedAlternatives({});
+          setSelectedLetter(null);
+          setUserWrittenAnswer("");
+          setAttemptResult(null);
+          setAttendingTip(null);
+          setChatMessages([]);
+          setInitialTime(0);
+          quizTimerRef.current?.reset(0);
           setState("PLAYING");
+          currentIndexRef.current = 0;
           setCurrentIndex(0);
           if (queue.length > 0) {
             loadQuestionDetail(queue[0].id);
@@ -1548,7 +1837,13 @@ export function QuizClient({
                   </p>
                   <textarea
                     value={userWrittenAnswer}
-                    onChange={(e) => setUserWrittenAnswer(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (q) {
+                        draftWrittenByQidRef.current[q.id] = val;
+                      }
+                      setUserWrittenAnswer(val);
+                    }}
                     placeholder="Escreva sua hipótese diagnóstica ou conduta aqui..."
                     rows={4}
                     className="w-full bg-canvas border border-line-subtle focus:border-accent focus:bg-surface rounded-sm p-3.5 text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-1 focus:ring-accent transition-all resize-y text-sm font-normal leading-relaxed min-h-[100px]"
@@ -1816,7 +2111,7 @@ export function QuizClient({
                     <div className="pt-3 border-t border-line-subtle flex items-center justify-between flex-wrap gap-2 text-xs font-mono-lab text-ink-muted">
                       <div className="flex items-center gap-1.5">
                         <Clock size={14} />
-                        Próxima revisão FSRS: {new Date(attemptResult.next_review_date).toLocaleDateString('pt-BR')}
+                        Próxima revisão FSRS: {formatReviewDatePtBr(attemptResult.next_review_date)}
                       </div>
                       {Boolean(q.is_discursive || (q.alternatives || []).length <= 1) && (
                         <button

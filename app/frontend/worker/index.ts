@@ -139,10 +139,14 @@ self.addEventListener("fetch", (rawEvent: Event) => {
     try {
       const response = await fetchNavigationWithTimeout(event.request, 2800);
       if (isValidHtmlResponse(response)) {
-        const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
         const routesToCache = ["/estudar", "/simulado", "/"];
         if (routesToCache.includes(url.pathname)) {
-          cache.put(url.pathname, response.clone());
+          try {
+            const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
+            await cache.put(url.pathname, response.clone());
+          } catch (cacheErr) {
+            console.warn("[ServiceWorker] Ignorando falha de cota/cache ao salvar casca:", cacheErr);
+          }
         }
       }
       return response;
@@ -153,6 +157,14 @@ self.addEventListener("fetch", (rawEvent: Event) => {
     }
   })());
 });
+
+function isValidImageResponse(response: Response | undefined | null): response is Response {
+  if (!response) return false;
+  if (response.type === "opaque") return true;
+  if (!response.ok) return false;
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  return !contentType || contentType.startsWith("image/") || contentType.includes("octet-stream");
+}
 
 // Question images served from third-party CDNs are stored explicitly while a
 // package is downloaded. Workbox's same-origin API rule cannot serve those
@@ -165,9 +177,24 @@ self.addEventListener("fetch", (rawEvent: Event) => {
   if (url.origin === self.location.origin) return;
 
   event.respondWith((async () => {
-    const imageCache = await caches.open("medquest-image-cache");
-    const cached = await imageCache.match(event.request);
-    return cached || fetch(event.request);
+    try {
+      const imageCache = await caches.open("medquest-image-cache");
+      const cached = await imageCache.match(event.request);
+      if (isValidImageResponse(cached)) {
+        return cached;
+      }
+      if (cached) {
+        await imageCache.delete(event.request).catch(() => {});
+      }
+    } catch {
+      // Cache storage indisponível ou erro de leitura
+    }
+
+    try {
+      return await fetch(event.request);
+    } catch {
+      return new Response("", { status: 504, statusText: "Offline Image Unavailable" });
+    }
   })());
 });
 

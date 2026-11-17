@@ -9,6 +9,7 @@ export type SessionAnswer = {
   writtenAnswer?: string;
   isDiscursive?: boolean;
   assisted?: boolean;
+  attendingTip?: string | null;
 };
 
 export interface QuizSessionMachineState {
@@ -134,6 +135,8 @@ export function quizSessionReducer(
         ...state,
         phase: state.queue.length > 0 ? "PLAYING" : "FILTERS",
         currentIndex: 0,
+        sessionAnswers: {},
+        eliminatedAlternatives: {},
       };
     case "RESET_TO_FILTERS":
       return {

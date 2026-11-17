@@ -134,10 +134,16 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
       throw error;
     }
 
-    const isNetworkOrTimeout = isInternalTimeout ||
+    const isRetriableHttpConflict =
+      error instanceof ApiHttpError &&
+      error.status === 409 &&
+      error.code === "idempotency_processing";
+
+    const isNetworkOrTimeout =
+      isInternalTimeout ||
       error instanceof TypeError ||
-      (error instanceof ApiHttpError && error.status === 409 && error.code === "idempotency_processing") ||
-      (typeof navigator !== "undefined" && !navigator.onLine);
+      isRetriableHttpConflict ||
+      (!(error instanceof ApiHttpError) && typeof navigator !== "undefined" && !navigator.onLine);
 
     if (typeof window !== "undefined" && isIdempotentEndpoint && isNetworkOrTimeout && getLocalOwnerId() === requestOwner) {
       console.warn("[API] Erro de rede ou timeout detectado, adicionando à fila offline:", endpoint);
@@ -593,7 +599,7 @@ export const api = {
         return null;
       };
 
-      if (typeof window !== "undefined" && !navigator.onLine) {
+      if (isDeviceOffline()) {
         const local = await getLocalFallback();
         if (local) return local;
       }
@@ -684,7 +690,7 @@ export const api = {
         return null;
       };
 
-      if (typeof window !== "undefined" && !navigator.onLine) {
+      if (isDeviceOffline()) {
         const local = await getLocalFallback();
         if (local) return local;
       }

@@ -477,6 +477,7 @@ export function SimuladoClient({
         setAnswers({});
         setResultsMap({});
         setFlagged({});
+        setEliminatedMap({});
         hasAutoSubmittedRef.current = false;
         setState("PLAYING");
         toast.success(`Iniciando Simulado Offline: ${readyPkg.name}`);
@@ -516,6 +517,7 @@ export function SimuladoClient({
       setAnswers({});
       setResultsMap({});
       setFlagged({});
+      setEliminatedMap({});
       hasAutoSubmittedRef.current = false;
       setState("PLAYING");
 
@@ -1277,7 +1279,7 @@ export function SimuladoClient({
               )}
 
               <div className="flex flex-col gap-3">
-                {qDetail.alternatives.map((alt) => {
+                {(qDetail.alternatives || []).map((alt) => {
                   const isSelected = answers[qDetail.id] === alt.letter;
                   const res = resultsMap[qDetail.id];
                   const isEliminated = (eliminatedMap[qDetail.id] || []).includes(alt.letter);

@@ -60,7 +60,14 @@ async function prefetchImages(imageUrls: string[]): Promise<{ cachedCount: numbe
           // can immediately use the completed package offline.
           if (typeof caches !== "undefined") {
             const imageCache = await caches.open(OFFLINE_IMAGE_CACHE);
-            await imageCache.put(fullUrl, res.clone());
+            try {
+              await imageCache.put(fullUrl, res.clone());
+            } catch (cacheErr) {
+              if (isQuotaExceededError(cacheErr) && localDb) {
+                await localDb.purgeExpiredSimuladoPackages().catch(() => 0);
+                await imageCache.put(fullUrl, res.clone()).catch(() => {});
+              }
+            }
           }
           return true;
         }

@@ -34,7 +34,7 @@ export function getLocalOwnerId(): string {
   // During early hydration before Clerk SDK loads, check if we have a known logged-in user
   try {
     const lastUser = localStorage.getItem("medquest_last_user_id");
-    if (lastUser && !navigator.onLine && !window.Clerk?.loaded) return lastUser;
+    if (lastUser && isDeviceOffline() && !window.Clerk?.loaded) return lastUser;
     if (window.Clerk?.loaded) localStorage.removeItem("medquest_last_user_id");
   } catch {
     // Storage unavailable
@@ -55,7 +55,7 @@ export function getLocalOwnerId(): string {
 
 /** Wait for Clerk before restoring signed-in data; demo and offline sessions work without it. */
 export function isLocalIdentityReady(authLoaded: boolean): boolean {
-  return authLoaded || !navigator.onLine || document.cookie.split(";").some(cookie => cookie.trim() === "medquest_demo=1");
+  return authLoaded || isDeviceOffline() || document.cookie.split(";").some(cookie => cookie.trim() === "medquest_demo=1");
 }
 
 export interface SyncItem {

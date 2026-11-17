@@ -73,3 +73,40 @@ test("quizSessionReducer falls back to FILTERS when queue is empty", () => {
   });
   assert.equal(state.phase, "FILTERS");
 });
+
+test("quizSessionReducer RESTART_SESSION clears sessionAnswers and eliminatedAlternatives while preserving queue", () => {
+  const { createInitialQuizSessionState, quizSessionReducer } = loadReducer();
+  let state = createInitialQuizSessionState(false);
+
+  state = quizSessionReducer(state, {
+    type: "QUEUE_LOADED",
+    filters: { area: "Cirurgia", limit: "10" },
+    queue: [{ id: 101 }, { id: 102 }],
+  });
+
+  state = quizSessionReducer(state, { type: "GO_TO_INDEX", index: 1 });
+  state = quizSessionReducer(state, { type: "TOGGLE_ELIMINATE", questionId: 101, letter: "B" });
+  state = quizSessionReducer(state, {
+    type: "RECORD_ANSWER",
+    questionId: 101,
+    answer: {
+      letter: "A",
+      assisted: true,
+      attendingTip: "Observe os sinais de peritonite.",
+      result: { is_correct: true, assisted: true },
+    },
+  });
+  assert.equal(state.sessionAnswers[101].assisted, true);
+  assert.equal(state.sessionAnswers[101].attendingTip, "Observe os sinais de peritonite.");
+
+  state = quizSessionReducer(state, { type: "FINISH_SESSION" });
+  assert.equal(state.phase, "FINISHED");
+
+  state = quizSessionReducer(state, { type: "RESTART_SESSION" });
+  assert.equal(state.phase, "PLAYING");
+  assert.equal(state.currentIndex, 0);
+  assert.equal(state.queue.length, 2);
+  assert.equal(Object.keys(state.sessionAnswers).length, 0);
+  assert.equal(Object.keys(state.eliminatedAlternatives).length, 0);
+});
+
