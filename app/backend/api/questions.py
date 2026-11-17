@@ -167,7 +167,10 @@ def simulado_custom():
 @bp.route("/simulado/official-exams", methods=["GET"])
 def simulado_official_exams():
     db = get_db()
+    include_similar = request.args.get("similar_institutions") in ("1", "true", "True")
     target_institutions = ["USP-SP", "USP-RP", "UNICAMP", "UNIFESP", "SUS-SP"]
+    if include_similar:
+        target_institutions.extend(["ENARE", "FAMEMA", "FAMERP", "HSL", "EINSTEIN", "IAMSPE", "SCM-SP"])
     
     institution_meta = {
         "USP-SP": {
@@ -205,16 +208,70 @@ def simulado_official_exams():
             "badge_color": "emerald",
             "typical_questions": 100,
         },
+        "ENARE": {
+            "name": "ENARE",
+            "full_name": "Exame Nacional de Residência",
+            "standard_duration": 300,
+            "badge_color": "amber",
+            "typical_questions": 100,
+        },
+        "FAMEMA": {
+            "name": "FAMEMA",
+            "full_name": "Faculdade de Medicina de Marília",
+            "standard_duration": 240,
+            "badge_color": "sky",
+            "typical_questions": 100,
+        },
+        "FAMERP": {
+            "name": "FAMERP",
+            "full_name": "Faculdade de Medicina de São José do Rio Preto",
+            "standard_duration": 240,
+            "badge_color": "teal",
+            "typical_questions": 80,
+        },
+        "HSL": {
+            "name": "Sírio-Libanês",
+            "full_name": "Hospital Sírio-Libanês",
+            "standard_duration": 240,
+            "badge_color": "purple",
+            "typical_questions": 100,
+        },
+        "EINSTEIN": {
+            "name": "Einstein",
+            "full_name": "Hospital Israelita Albert Einstein",
+            "standard_duration": 240,
+            "badge_color": "slate",
+            "typical_questions": 75,
+        },
+        "IAMSPE": {
+            "name": "IAMSPE",
+            "full_name": "Instituto de Assistência Médica ao Servidor Público Estadual",
+            "standard_duration": 240,
+            "badge_color": "orange",
+            "typical_questions": 100,
+        },
+        "SCM-SP": {
+            "name": "Santa Casa SP",
+            "full_name": "Irmandade da Santa Casa de Misericórdia de São Paulo",
+            "standard_duration": 240,
+            "badge_color": "pink",
+            "typical_questions": 100,
+        },
     }
 
-    rows = db.execute("""
+    inst_codes_query = ["USP-SP", "USP", "USP-RP", "UNICAMP", "UNIFESP", "SUS-SP", "SUS"]
+    if include_similar:
+        inst_codes_query.extend(["ENARE", "FAMEMA", "FAMERP", "HSL", "EINSTEIN", "IAMSPE", "SCM-SP", "SCMSP", "SCM"])
+    placeholders = ",".join("?" * len(inst_codes_query))
+
+    rows = db.execute(f"""
         SELECT institution_code, year, COUNT(*) as n 
         FROM questions 
         WHERE missing_alts = 0 
-          AND institution_code IN ('USP-SP', 'USP', 'USP-RP', 'UNICAMP', 'UNIFESP', 'SUS-SP', 'SUS')
+          AND institution_code IN ({placeholders})
         GROUP BY institution_code, year
         ORDER BY year DESC
-    """).fetchall()
+    """, inst_codes_query).fetchall()
 
     grouped_years = {inst: {} for inst in target_institutions}
     for r in rows:

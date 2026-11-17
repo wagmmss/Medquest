@@ -14,6 +14,7 @@ import { SyncProvider } from "@/components/SyncProvider";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { WebVitals } from "@/components/WebVitals";
 import { AuthSync } from "@/components/AuthSync";
+import { QueryProvider } from "@/components/QueryProvider";
 
 export const viewport: Viewport = {
   themeColor: "#0ea5e9",
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="h-screen flex overflow-hidden bg-background text-on-background selection:bg-accent/20 selection:text-accent">
         <AppAuthProvider clerkEnabled={clerkEnabled}>
+          <QueryProvider>
           <WebVitals />
           <a href="#conteudo-principal" className="skip-link">Pular para o conteúdo principal</a>
           {!userId && !isDemoMode ? (
@@ -129,6 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
           <SyncProvider guestMode={!userId} />
           <Toaster position="top-right" />
+          </QueryProvider>
         </AppAuthProvider>
       </body>
     </html>

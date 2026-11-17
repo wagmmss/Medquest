@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
+import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
@@ -30,11 +32,12 @@ import { AlternativeList } from "./components/AlternativeList";
 import { AlternativeContent } from "@/components/AlternativeContent";
 import { PreceptorSection, ChatMessage } from "./components/PreceptorSection";
 import { QuizHeader } from "./components/QuizHeader";
-const QuizSessionReportModal = dynamic(
-  () => import("./components/QuizSessionReportModal").then((mod) => mod.QuizSessionReportModal),
-  { ssr: false }
-);
+import { QuizLoadingView, QuizSummaryView } from "./components/QuizSummaryView";
 import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
+import { QuestionNotePanel } from "@/components/QuestionNotePanel";
+import { buildAnkiCardFromQuestion, sendCardToAnki } from "@/lib/ankiExport";
+import { SessionAnswer as _SessionAnswer, QuizState } from "./quizSessionReducer";
+export type SessionAnswer = _SessionAnswer;
 import {
   LEARNING_SESSION_VERSION,
   readLearningSession,
@@ -43,16 +46,6 @@ import {
 } from "@/lib/sessionState";
 import { useQuizKeyboard } from "./hooks/useQuizKeyboard";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
-
-export type SessionAnswer = { 
-  letter: string; 
-  result?: AttemptResult | null; 
-  isOffline?: boolean; 
-  writtenAnswer?: string; 
-  isDiscursive?: boolean; 
-};
-
-type QuizState = "FILTERS" | "LOADING_QUEUE" | "PLAYING" | "FINISHED";
 
 export interface SavedQuizState {
   version: number;
@@ -122,7 +115,7 @@ export function QuizClient({
         return saved === "true";
       }
     }
-    return true;
+    return false;
   });
 
   const toggleTopic = () => {
@@ -132,8 +125,13 @@ export function QuizClient({
       return next;
     });
   };
-  const [dynamicMeta, setDynamicMeta] = useState<QuestionMeta>(meta || DEFAULT_META);
-  const [isUpdatingMeta, setIsUpdatingMeta] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: queriedMeta, isFetching: isUpdatingMeta } = useQuestionMetaQuery(
+    filters,
+    state === "FILTERS",
+    meta || DEFAULT_META
+  );
+  const dynamicMeta = queriedMeta ?? meta ?? DEFAULT_META;
   
   const [queue, setQueue] = useState<QuestionListItem[]>([]);
   const queueRef = useRef<QuestionListItem[]>([]);
@@ -526,8 +524,10 @@ export function QuizClient({
   const confirmFinish = useCallback(() => {
     ensureCurrentQuestionReviewed();
     setShowFinishModal(false);
+    // Invalida caches reativos após concluir sessão
+    invalidateStudyCaches(queryClient);
     setState("FINISHED");
-  }, [ensureCurrentQuestionReviewed]);
+  }, [ensureCurrentQuestionReviewed, queryClient]);
 
   const handleRequestFinish = useCallback(() => {
     const answeredInSession = Object.values(sessionAnswers).filter(a => a.result || a.isOffline).length;
@@ -702,36 +702,7 @@ export function QuizClient({
     setSelectedLetter(letter);
   }, [attemptResult, submitting, persistSession, currentDetail]);
 
-  // Effect to fetch dynamic meta when filters change
-  useEffect(() => {
-    if (state !== "FILTERS") return;
-    
-    let isMounted = true;
-    const fetchDynamicMeta = async () => {
-      setIsUpdatingMeta(true);
-      try {
-        // Keep topic options stable while the user selects several of them.
-        // Otherwise each selected subtema narrows the metadata response and
-        // makes the remaining specialties disappear from the tree.
-        const metaFilters = { ...filters };
-        delete metaFilters.subtema;
-        delete metaFilters.topic;
-        const newMeta = await api.questions.getMeta(metaFilters);
-        if (isMounted) setDynamicMeta(newMeta);
-      } catch {
-        console.error("Failed to load dynamic meta");
-      } finally {
-        if (isMounted) setIsUpdatingMeta(false);
-      }
-    };
-    
-    // Debounce to prevent spamming
-    const timeout = setTimeout(fetchDynamicMeta, 300);
-    return () => {
-      isMounted = false;
-      clearTimeout(timeout);
-    };
-  }, [filters, state]);
+  // Metadados dinâmicos gerenciados via TanStack Query (useQuestionMetaQuery)
 
 
 
@@ -1077,28 +1048,13 @@ export function QuizClient({
     );
   }
   if (state === "LOADING_QUEUE") {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-        <p className="text-ink-secondary text-sm font-medium">Montando sua sessão...</p>
-      </div>
-    );
+    return <QuizLoadingView />;
   }
 
   if (state === "FINISHED") {
-    const totalAnswered = Object.keys(sessionAnswers).length;
-    const correctCount = Object.values(sessionAnswers).filter(a => a.result?.is_correct).length;
-    const wrongItems = Object.entries(sessionAnswers)
-      .filter(([, ans]) => ans.result && !ans.result.is_correct)
-      .map(([qid, ans]) => ({ question_id: Number(qid), wrong_letter: ans.letter }));
-    const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
-
     return (
-      <QuizSessionReportModal
-        totalAnswered={totalAnswered}
-        correctCount={correctCount}
-        accuracy={accuracy}
-        wrongItems={wrongItems}
+      <QuizSummaryView
+        sessionAnswers={sessionAnswers}
         onBackToFilters={handleNewSession}
         onRestartSession={() => {
           setState("PLAYING");
@@ -1373,6 +1329,7 @@ export function QuizClient({
                 </div>
               )}
             </div>
+            <QuestionNotePanel questionId={q.id} />
           </div>
 
           {/* PAINEL DIREITO: Alternativas e Ações de Resposta */}
@@ -1617,6 +1574,26 @@ export function QuizClient({
                       Você já errou esta questão {currentDetail.times_wrong} {currentDetail.times_wrong === 1 ? 'vez' : 'vezes'} no passado.
                     </div>
                   ) : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!q || !attemptResult) return;
+                        const card = buildAnkiCardFromQuestion(q, attemptResult);
+                        const mode = await sendCardToAnki(card);
+                        toast.success(
+                          mode === "ankiconnect"
+                            ? "Card enviado para o Anki Desktop!"
+                            : "AnkiConnect offline: arquivo .tsv baixado para importar no Anki!"
+                        );
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs border border-line-subtle bg-elevated hover:bg-canvas hover:border-accent text-xs font-semibold text-ink-primary transition-colors cursor-pointer"
+                    >
+                      <BookOpen size={13} className="text-accent" />
+                      Enviar para o Anki (.tsv / AnkiConnect)
+                    </button>
+                  </div>
                   
                   {/* Ferramenta de Estudo Ativo: Preceptor AI */}
                   <div className="w-full">

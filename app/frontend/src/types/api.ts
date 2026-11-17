@@ -1025,6 +1025,74 @@ export interface AnalysisSummaryResponse {
   coverage: CoverageResponse;
 }
 
+export interface StudyPreset {
+  id: number;
+  name: string;
+  filters: Record<string, string | string[]>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type HighlightColor = "yellow" | "green" | "pink" | "blue";
+
+export interface QuestionHighlight {
+  id: string;
+  text: string;
+  color: HighlightColor;
+}
+
+export interface QuestionUserNote {
+  question_id: number;
+  highlights: QuestionHighlight[];
+  note_text: string;
+  updated_at: string | null;
+  area?: string | null;
+  subtema?: string | null;
+  institution_code?: string | null;
+  year?: number | null;
+  stem_preview?: string;
+}
+
+export type FocusPrevalence = "prioritario" | "alta" | "media";
+
+export interface FocusRadarItem {
+  area: string;
+  subtema: string;
+  prevalence: FocusPrevalence;
+  available: number;
+  answered: number;
+  attempts: number;
+  correct: number;
+  accuracy: number | null;
+  mastered: boolean;
+  sniper_url: string;
+}
+
+export interface FocusRadarArea {
+  area: string;
+  focuses_count: number;
+  mastered_count: number;
+  available: number;
+  answered: number;
+  attempts: number;
+  correct: number;
+  accuracy: number | null;
+}
+
+export interface FocusRadarResponse {
+  institution: string;
+  prevalence_filter: string;
+  summary: {
+    total_focuses: number;
+    mastered_focuses: number;
+    priority_total: number;
+    priority_mastered: number;
+  };
+  areas: FocusRadarArea[];
+  focuses: FocusRadarItem[];
+  sniper_url: string;
+}
+
 
 
 

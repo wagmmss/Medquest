@@ -1,7 +1,10 @@
 import React, { useMemo, useState, useCallback } from "react";
 import clsx from "clsx";
-import { Filter, RotateCcw, Play, RefreshCw, Brain, SlidersHorizontal, X, Search, Sparkles } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Filter, RotateCcw, Play, RefreshCw, Brain, SlidersHorizontal, X, Search, Sparkles, Bookmark, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { QuestionMeta } from "@/types/api";
+import { api } from "@/lib/api";
 import { SubjectTreeSelector } from "@/components/SubjectTreeSelector";
 import { SavedQuizState } from "../QuizClient";
 
@@ -95,6 +98,31 @@ export function QuizFilters({
   setShowTopicTree
 }: QuizFiltersProps) {
   const [adaptiveFocus, setAdaptiveFocus] = useState<"coverage" | "balanced" | "retention">("balanced");
+  const queryClient = useQueryClient();
+  const [presetName, setPresetName] = useState("");
+  const { data: presetsData } = useQuery({
+    queryKey: ["study-presets"],
+    queryFn: () => api.presets.list(),
+    enabled: showCustomSession,
+    staleTime: 60_000,
+  });
+  const savePresetMutation = useMutation({
+    mutationFn: (payload: { name: string; filters: Record<string, string | string[]> }) =>
+      api.presets.create(payload.name, payload.filters),
+    onSuccess: () => {
+      setPresetName("");
+      toast.success("Configuração salva nos Presets!");
+      void queryClient.invalidateQueries({ queryKey: ["study-presets"] });
+    },
+    onError: () => toast.error("Não foi possível salvar a configuração."),
+  });
+  const deletePresetMutation = useMutation({
+    mutationFn: (id: number) => api.presets.remove(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["study-presets"] });
+    },
+  });
+  const presets = presetsData?.presets ?? [];
   const groupedInstitutions = useMemo(() => {
     const map = new Map<string, { codes: string[], n: number }>();
     for (const i of dynamicMeta?.institutions || []) {
@@ -360,6 +388,63 @@ export function QuizFilters({
             </button>
           </div>
 
+          {/* Presets Salvos + Salvar Configuração */}
+          <div className="bg-canvas/70 border border-line-subtle rounded-md p-3 flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] font-mono-lab uppercase tracking-wider text-ink-muted flex items-center gap-1.5 font-semibold">
+                <Bookmark size={13} className="text-accent" />
+                Configurações Salvas ({presets.length})
+              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Nome do preset (ex: Clínica USP)"
+                  className="bg-surface border border-line-subtle rounded-xs px-2.5 py-1 text-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent w-44 sm:w-52"
+                />
+                <button
+                  type="button"
+                  disabled={!presetName.trim() || savePresetMutation.isPending}
+                  onClick={() => savePresetMutation.mutate({ name: presetName.trim(), filters })}
+                  className="px-2.5 py-1 rounded-xs bg-elevated hover:bg-accent hover:text-white border border-line-subtle text-xs font-semibold text-ink-primary disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Salvar configuração
+                </button>
+              </div>
+            </div>
+            {presets.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((p) => (
+                  <div
+                    key={p.id}
+                    className="inline-flex items-center gap-1 bg-surface border border-line-subtle rounded-xs px-2 py-1 text-xs"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilters(p.filters);
+                        if (typeof p.filters.limit === "string") setLocalLimit(p.filters.limit);
+                        toast.success(`Preset "${p.name}" aplicado.`);
+                      }}
+                      className="font-medium text-ink-primary hover:text-accent cursor-pointer"
+                    >
+                      {p.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deletePresetMutation.mutate(p.id)}
+                      aria-label={`Remover preset ${p.name}`}
+                      className="text-ink-muted hover:text-destructive cursor-pointer p-0.5"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-ink-primary">Status</label>
@@ -566,13 +651,21 @@ export function QuizFilters({
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 rounded-md transition-colors flex items-center justify-center gap-2 w-full mt-1 shadow-2xs text-xs cursor-pointer"
-          >
-            <Play size={15} fill="currentColor" />
-            Iniciar Sessão de Estudos
-          </button>
+          <div className="sticky bottom-2 z-20 bg-surface/95 backdrop-blur-sm border border-line-subtle rounded-md p-3 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-ink-secondary">
+              <span className="font-mono-lab font-bold text-base text-ink-primary tabular-nums">
+                {isUpdatingMeta ? "..." : (dynamicMeta?.total_questions ?? 0).toLocaleString("pt-BR")}
+              </span>
+              <span>questões disponíveis para estes filtros</span>
+            </div>
+            <button
+              type="submit"
+              className="bg-accent hover:bg-accent/90 text-white font-semibold px-5 py-2.5 rounded-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xs text-xs cursor-pointer"
+            >
+              <Play size={15} fill="currentColor" />
+              Iniciar Sessão de Estudos
+            </button>
+          </div>
         </form>
       )}
     </div>

@@ -1855,3 +1855,25 @@ def log_radar_action():
         action=action,
     )
     return jsonify({"success": True})
+
+
+@bp.route("/stats/focus-radar", methods=["GET"])
+def focus_radar():
+    """Retorna Domínio de Focos por Prevalência e URL Sniper para a banca selecionada."""
+    from .services.focus_radar import build_focus_radar
+
+    db = get_db()
+    user_id = getattr(g, "user_id", "1")
+    institution = (request.args.get("institution") or "").strip()
+    prevalence = (request.args.get("prevalence") or "all").strip().lower()
+    if prevalence not in ("all", "prioritario", "alta", "media"):
+        prevalence = "all"
+
+    cache_key = (user_id, "focus_radar", institution, prevalence)
+    cached = overview_cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+
+    payload = build_focus_radar(db, user_id=user_id, institution=institution, prevalence=prevalence)
+    overview_cache.set(cache_key, payload)
+    return jsonify(payload)
