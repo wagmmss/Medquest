@@ -14,6 +14,7 @@ export interface PrefetchResult {
   prefetched: number;
   cached: number;
   total: number;
+  questions?: Record<number, QuestionDetail>;
 }
 
 export interface PrefetchOptions {
@@ -28,6 +29,39 @@ const activePrefetchPromises = new Map<string, Promise<PrefetchResult>>();
 const activeIdPrefetches = new Set<number>();
 
 /**
+ * Recupera em lote do Dexie os detalhes completos das questões já em cache local,
+ * evitando chamadas HTTP individuais redundantes.
+ */
+export async function getCachedQuestionsMap(
+  ids: number[],
+  explicitOwnerId?: string
+): Promise<Record<number, QuestionDetail>> {
+  const result: Record<number, QuestionDetail> = {};
+  if (typeof window === "undefined" || !localDb?.questions || !Array.isArray(ids) || ids.length === 0) {
+    return result;
+  }
+  const uniqueIds = Array.from(
+    new Set(ids.filter((id) => typeof id === "number" && !isNaN(id) && id > 0))
+  );
+  if (uniqueIds.length === 0) return result;
+
+  try {
+    const ownerId = explicitOwnerId || getLocalOwnerId();
+    const keys = uniqueIds.map((id) => [id, ownerId] as [number, string]);
+    const records = await localDb.questions.bulkGet(keys);
+    records.forEach((item, idx) => {
+      const qId = uniqueIds[idx];
+      if (item && typeof qId === "number") {
+        result[qId] = item as unknown as QuestionDetail;
+      }
+    });
+  } catch {
+    // Fallback silencioso caso o IndexedDB esteja indisponível
+  }
+  return result;
+}
+
+/**
  * Pré-carrega no Dexie os detalhes completos (enunciado, alternativas, metadados)
  * de uma lista de IDs de questões específicas de forma transacional e atômica.
  *
@@ -39,7 +73,7 @@ export async function prefetchQuestionsByIds(
   options?: PrefetchOptions
 ): Promise<PrefetchResult> {
   if (typeof window === "undefined" || !localDb || !ids || !Array.isArray(ids) || ids.length === 0) {
-    return { prefetched: 0, cached: 0, total: 0 };
+    return { prefetched: 0, cached: 0, total: 0, questions: {} };
   }
 
   // 1. Sanitiza e desduplica IDs válidos
@@ -50,7 +84,7 @@ export async function prefetchQuestionsByIds(
   );
 
   if (uniqueIds.length === 0) {
-    return { prefetched: 0, cached: 0, total: 0 };
+    return { prefetched: 0, cached: 0, total: 0, questions: {} };
   }
 
   const ownerId = options?.ownerId || getLocalOwnerId();
@@ -68,6 +102,7 @@ export async function prefetchQuestionsByIds(
       prefetched: 0,
       cached: alreadyCached.size,
       total: uniqueIds.length,
+      questions: {},
     };
   }
 
@@ -77,6 +112,7 @@ export async function prefetchQuestionsByIds(
       prefetched: 0,
       cached: alreadyCached.size,
       total: uniqueIds.length,
+      questions: {},
     };
   }
 
@@ -93,7 +129,15 @@ export async function prefetchQuestionsByIds(
         prefetched: 0,
         cached: alreadyCached.size,
         total: uniqueIds.length,
+        questions: {},
       };
+    }
+
+    const questionsMap: Record<number, QuestionDetail> = {};
+    for (const q of questionsToCache) {
+      if (q && typeof q.id === "number") {
+        questionsMap[q.id] = q;
+      }
     }
 
     // 7. Persistência atômica transacional no Dexie com rollback e recuperação de cota
@@ -116,6 +160,7 @@ export async function prefetchQuestionsByIds(
       prefetched: savedCount,
       cached: alreadyCached.size + savedCount,
       total: uniqueIds.length,
+      questions: questionsMap,
     };
   } catch (err) {
     console.warn("[syncQueue] Falha durante prefetch transacional em segundo plano:", err);
@@ -123,6 +168,7 @@ export async function prefetchQuestionsByIds(
       prefetched: 0,
       cached: alreadyCached.size,
       total: uniqueIds.length,
+      questions: {},
     };
   } finally {
     // Libera a trava dos IDs processados

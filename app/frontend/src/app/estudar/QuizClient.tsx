@@ -9,15 +9,24 @@ import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, Clo
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { isLocalIdentityReady } from "@/lib/db";
-import { prefetchQuestionsByIds } from "@/lib/syncQueue";
+import { prefetchQuestionsByIds, getCachedQuestionsMap } from "@/lib/syncQueue";
 import { useAppUser } from "@/lib/auth-client";
 import { areFiltersEquivalent } from "@/lib/quizFilterMatch";
 
 import dynamic from "next/dynamic";
-import { ImageViewer } from "@/components/ImageViewer";
-import { ExplanationViewer } from "@/components/ExplanationViewer";
 import { FormattedContent, normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
 
+const ImageViewer = dynamic(
+  () => import("@/components/ImageViewer").then((mod) => mod.ImageViewer),
+  { ssr: false }
+);
+const ExplanationViewer = dynamic(
+  () => import("@/components/ExplanationViewer").then((mod) => mod.ExplanationViewer),
+  {
+    ssr: false,
+    loading: () => <div className="h-32 w-full rounded-xl bg-surface-subtle animate-pulse" />,
+  }
+);
 const QuestionClassificationModal = dynamic(
   () => import("@/components/QuestionClassificationModal").then((mod) => mod.QuestionClassificationModal),
   { ssr: false }
@@ -37,7 +46,11 @@ const LabValuesModal = dynamic(
   () => import("@/components/LabValuesModal").then((mod) => mod.LabValuesModal),
   { ssr: false }
 );
-import { QuizLoadingView, QuizSummaryView } from "./components/QuizSummaryView";
+import { QuizLoadingView } from "./components/QuizSummaryView";
+const QuizSummaryView = dynamic(
+  () => import("./components/QuizSummaryView").then((mod) => mod.QuizSummaryView),
+  { loading: () => <QuizLoadingView /> }
+);
 import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
 import { QuestionNotePanel } from "@/components/QuestionNotePanel";
 import { buildAnkiCardFromQuestion, sendCardToAnki } from "@/lib/ankiExport";
@@ -51,6 +64,26 @@ import {
 } from "@/lib/sessionState";
 import { useQuizKeyboard } from "./hooks/useQuizKeyboard";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
+
+const EMPTY_ELIMINATED: string[] = [];
+
+function warmQuestionImages(detail?: QuestionDetail | null): void {
+  if (typeof window === "undefined" || !detail) return;
+  const rawImages = [
+    ...(Array.isArray(detail.images) ? detail.images : []),
+    ...(Array.isArray(detail.clinical_case?.images) ? detail.clinical_case.images : []),
+  ];
+  for (const raw of rawImages) {
+    if (!raw || typeof raw !== "string") continue;
+    try {
+      const img = new window.Image();
+      img.decoding = "async";
+      img.src = normalizeImageSrc(raw);
+    } catch {
+      // Ignora falha de preload de imagem em segundo plano
+    }
+  }
+}
 
 export interface SavedQuizState {
   version: number;
@@ -123,13 +156,13 @@ export function QuizClient({
     return false;
   });
 
-  const toggleTopic = () => {
+  const toggleTopic = useCallback(() => {
     setShowTopic(prev => {
       const next = !prev;
       localStorage.setItem("medquest_show_topic", String(next));
       return next;
     });
-  };
+  }, []);
   const queryClient = useQueryClient();
   const { data: queriedMeta, isFetching: isUpdatingMeta } = useQuestionMetaQuery(
     filters,
@@ -235,13 +268,27 @@ export function QuizClient({
     setLoadingTip(false);
     setInitialTime(0);
 
-    // Se já estiver no cache, carrega instantaneamente sem tela de loading
+    // 1. Se já estiver no cache em memória, carrega instantaneamente sem tela de loading
     const cached = detailsCacheRef.current[id];
     if (cached) {
       const queueItem = queueRef.current.find(q => q.id === id);
       const mergedCached = queueItem ? { ...queueItem, ...cached } : cached;
       setCurrentDetail(mergedCached);
       setLoadingDetail(false);
+      return;
+    }
+
+    // 2. Verifica se já foi pré-carregada no Dexie em segundo plano antes de disparar HTTP individual
+    const dexieMap = await getCachedQuestionsMap([id]);
+    const dexieCached = dexieMap[id];
+    if (dexieCached && dexieCached.stem) {
+      const queueItem = queueRef.current.find(q => q.id === id);
+      const mergedDexie = queueItem ? { ...queueItem, ...dexieCached } : dexieCached;
+      detailsCacheRef.current[id] = mergedDexie;
+      if (detailRequestRef.current === requestId) {
+        setCurrentDetail(mergedDexie);
+        setLoadingDetail(false);
+      }
       return;
     }
 
@@ -266,9 +313,14 @@ export function QuizClient({
     }
   }, []);
 
-  // Pré-carregamento em segundo plano das próximas questões (Dexie + Cache em Memória)
+  // Pré-carregamento em segundo plano das próximas questões (Dexie + Cache em Memória + Imagens sem Waterfall)
   useEffect(() => {
     if (state !== "PLAYING" || queue.length === 0) return;
+
+    const immediateNextId = queue[currentIndex + 1]?.id;
+    if (immediateNextId && detailsCacheRef.current[immediateNextId]) {
+      warmQuestionImages(detailsCacheRef.current[immediateNextId]);
+    }
 
     const nextIds = [
       queue[currentIndex + 1]?.id,
@@ -282,16 +334,24 @@ export function QuizClient({
       prefetchingRef.current.add(nextId);
     }
 
-    // Persiste no Dexie em lote via syncQueue e popula cache em memória para 0ms
+    // Persiste no Dexie em lote via syncQueue e popula detailsCacheRef diretamente do lote/Dexie (0 chamadas getDetail individuais)
     prefetchQuestionsByIds(nextIds)
-      .then(async () => {
+      .then(async (res) => {
+        const batchMap = res?.questions || {};
+        const missingFromBatch = nextIds.filter((id) => !batchMap[id]);
+        const dexieMap =
+          missingFromBatch.length > 0 ? await getCachedQuestionsMap(missingFromBatch) : {};
+
         for (const nextId of nextIds) {
-          try {
-            const detail = await api.questions.getDetail(nextId);
-            detailsCacheRef.current[nextId] = detail;
-          } catch {
-            // Ignora falhas de prefetch em segundo plano
+          const detail = batchMap[nextId] || dexieMap[nextId];
+          if (detail) {
+            const queueItem = queueRef.current.find((q) => q.id === nextId);
+            detailsCacheRef.current[nextId] = queueItem ? { ...queueItem, ...detail } : detail;
           }
+        }
+
+        if (immediateNextId && detailsCacheRef.current[immediateNextId]) {
+          warmQuestionImages(detailsCacheRef.current[immediateNextId]);
         }
       })
       .catch(() => {
@@ -909,7 +969,16 @@ export function QuizClient({
     }
   }, [attemptResult, isOfflineSaved, submitting, currentDetail, userWrittenAnswer, getCurrentTime, attendingTip]);
 
-  const handleSendMessage = async (overrideText?: string) => {
+  const handleOpenLabs = useCallback(() => {
+    setLabsOpen(true);
+  }, []);
+
+  const handleClearChat = useCallback(() => {
+    setChatMessages([]);
+    setPreceptorInput("");
+  }, []);
+
+  const handleSendMessage = useCallback(async (overrideText?: string) => {
     if (!currentDetail) return;
     const textToSend = (overrideText ?? preceptorInput).trim();
     if (!textToSend) return;
@@ -955,7 +1024,7 @@ export function QuizClient({
     } finally {
       setAskingPreceptor(false);
     }
-  };
+  }, [currentDetail, preceptorInput, chatMessages, selectedLetter]);
 
   const nextQuestion = useCallback(() => {
     ensureCurrentQuestionReviewed();
@@ -1068,7 +1137,7 @@ export function QuizClient({
     nextQuestion();
   }, [nextQuestion, prevQuestion]);
 
-  const toggleFavorite = async () => {
+  const toggleFavorite = useCallback(async () => {
     if (!currentDetail || togglingFavorite || favoriteLockRef.current) return;
     favoriteLockRef.current = true;
     setTogglingFavorite(true);
@@ -1084,7 +1153,7 @@ export function QuizClient({
       favoriteLockRef.current = false;
       setTogglingFavorite(false);
     }
-  };
+  }, [currentDetail, togglingFavorite]);
 
   useQuizKeyboard({
     state,
@@ -1185,7 +1254,7 @@ export function QuizClient({
         hasQuestion={Boolean(q)}
         isFavorite={q?.is_favorite}
         onToggleFavorite={toggleFavorite}
-        onOpenLabs={() => setLabsOpen(true)}
+        onOpenLabs={handleOpenLabs}
         stemFontSize={stemFontSize}
         onCycleFontSize={cycleFontSize}
       />
@@ -1512,7 +1581,7 @@ export function QuizClient({
                   alternatives={q.alternatives || []}
                   selectedLetter={selectedLetter}
                   attemptResult={attemptResult}
-                  eliminatedLetters={eliminatedAlternatives[q.id] || []}
+                  eliminatedLetters={eliminatedAlternatives[q.id] || EMPTY_ELIMINATED}
                   submitting={submitting}
                   onSelectAlternative={selectAlternative}
                   onToggleEliminate={toggleEliminateAlternative}
@@ -1735,12 +1804,8 @@ export function QuizClient({
                       messages={chatMessages}
                       preceptorInput={preceptorInput}
                       askingPreceptor={askingPreceptor}
-                      onChangeInput={setPreceptorInput}
                       onSendMessage={handleSendMessage}
-                      onClearChat={() => {
-                        setChatMessages([]);
-                        setPreceptorInput("");
-                      }}
+                      onClearChat={handleClearChat}
                     />
                   </div>
 

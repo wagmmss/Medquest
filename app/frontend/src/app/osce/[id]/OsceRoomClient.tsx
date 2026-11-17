@@ -13,13 +13,19 @@ import {
 import { toast } from "react-hot-toast";
 import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback } from "@/types/api";
 import { api } from "@/lib/api";
-import { GhostPreceptorHUD } from "./GhostPreceptorHUD";
 import { PreceptorFeedback } from "@/types/osce-evaluation";
 import { useVitalStateEngine } from "./useVitalStateEngine";
 import { useOsceAudio } from "./useOsceAudio";
 import { SessionTimer } from "@/components/ui/SessionTimer";
-import { ClinicalStage } from "./ClinicalStage";
 
+const GhostPreceptorHUD = dynamic(
+  () => import("./GhostPreceptorHUD").then((m) => m.GhostPreceptorHUD),
+  { ssr: false }
+);
+const ClinicalStage = dynamic(
+  () => import("./ClinicalStage").then((m) => m.ClinicalStage),
+  { ssr: false }
+);
 const PrescriptionPad = dynamic(
   () => import("./PrescriptionPad").then((m) => m.PrescriptionPad),
   { ssr: false }

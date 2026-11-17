@@ -28,19 +28,39 @@ import { useCurator } from "@/hooks/useCurator";
 import { LEARNING_SESSION_VERSION, readLearningSession, writeLearningSession, removeLearningSession, deadlineFromNow } from "@/lib/sessionState";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { ImageViewer } from "@/components/ImageViewer";
-import { ExplanationViewer } from "@/components/ExplanationViewer";
-const QuestionClassificationModal = dynamic(
-  () => import("@/components/QuestionClassificationModal").then((mod) => mod.QuestionClassificationModal),
-  { ssr: false }
-);
 import { FormattedContent, normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
 import { AlternativeContent, getAlternativePlainText } from "@/components/AlternativeContent";
 import Image from "next/image";
 import { SimuladoStartScreen } from "./components/SimuladoStartScreen";
-import { SimuladoResultsView } from "./components/SimuladoResultsView";
 import { SimuladoNavGrid } from "./components/SimuladoNavGrid";
 import { SimuladoHeader } from "./components/SimuladoHeader";
+
+const ImageViewer = dynamic(
+  () => import("@/components/ImageViewer").then((mod) => mod.ImageViewer),
+  { ssr: false }
+);
+const ExplanationViewer = dynamic(
+  () => import("@/components/ExplanationViewer").then((mod) => mod.ExplanationViewer),
+  {
+    ssr: false,
+    loading: () => <div className="h-32 w-full rounded-xl bg-surface-subtle animate-pulse" />,
+  }
+);
+const QuestionClassificationModal = dynamic(
+  () => import("@/components/QuestionClassificationModal").then((mod) => mod.QuestionClassificationModal),
+  { ssr: false }
+);
+const SimuladoResultsView = dynamic(
+  () => import("./components/SimuladoResultsView").then((mod) => mod.SimuladoResultsView),
+  {
+    loading: () => (
+      <div className="max-w-5xl mx-auto w-full space-y-6 animate-pulse">
+        <div className="h-44 rounded-lg bg-surface border border-line-subtle" />
+        <div className="h-72 rounded-lg bg-surface border border-line-subtle" />
+      </div>
+    ),
+  }
+);
 
 type SimuladoState = "START" | "LOADING" | "PLAYING" | "SUBMITTING" | "RESULTS" | "OFFLINE_SUBMITTED";
 interface SavedSimuladoState {

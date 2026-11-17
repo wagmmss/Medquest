@@ -3,12 +3,21 @@ import { useRouter } from "next/navigation";
 
 import { useState, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { PlannerWeek, PlannerProgressMap, PlannerTopic, PlannerConfig, PlannerTopicProgressMap } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
 import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
-import { PlannerWizard } from "./PlannerWizard";
+
+const PlannerWizard = dynamic(
+  () => import("./PlannerWizard").then((m) => m.PlannerWizard),
+  {
+    loading: () => (
+      <div className="h-80 w-full max-w-3xl mx-auto rounded-xl bg-surface border border-line-subtle animate-pulse" />
+    ),
+  }
+);
 
 const getAreaColorClass = (areaName: string) => {
   const name = areaName.toLowerCase();

@@ -29,7 +29,7 @@ export interface AlternativeListProps {
 
 const HIDE_STATS_STORAGE_KEY = "medquest:hide-alt-stats";
 
-export const AlternativeList: React.FC<AlternativeListProps> = ({
+export const AlternativeList: React.FC<AlternativeListProps> = React.memo(({
   alternatives,
   selectedLetter,
   attemptResult,
@@ -279,5 +279,7 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
       })}
     </div>
   );
-};
+});
+
+AlternativeList.displayName = "AlternativeList";
 

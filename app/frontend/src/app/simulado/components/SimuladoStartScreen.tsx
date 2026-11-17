@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   FileSignature,
   Play,
@@ -16,9 +17,19 @@ import { api } from "@/lib/api";
 import clsx from "clsx";
 import { SimuladoCockpitHero } from "./SimuladoCockpitHero";
 import { SimuladoOfficialExams } from "./SimuladoOfficialExams";
-import { SimuladoQuickSprints } from "./SimuladoQuickSprints";
-import { SimuladoCustomBuilder } from "./SimuladoCustomBuilder";
-import { SimuladoHistoryView } from "./SimuladoHistoryView";
+
+const SimuladoQuickSprints = dynamic(
+  () => import("./SimuladoQuickSprints").then((m) => m.SimuladoQuickSprints),
+  { loading: () => <div className="h-28 w-full rounded-lg bg-surface border border-line-subtle animate-pulse" /> }
+);
+const SimuladoCustomBuilder = dynamic(
+  () => import("./SimuladoCustomBuilder").then((m) => m.SimuladoCustomBuilder),
+  { loading: () => <div className="h-64 w-full rounded-lg bg-surface border border-line-subtle animate-pulse" /> }
+);
+const SimuladoHistoryView = dynamic(
+  () => import("./SimuladoHistoryView").then((m) => m.SimuladoHistoryView),
+  { loading: () => <div className="h-64 w-full rounded-lg bg-surface border border-line-subtle animate-pulse" /> }
+);
 
 export interface CustomConfig {
   institutions: string[];

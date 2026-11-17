@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Sparkles,
   AlertTriangle,
@@ -12,13 +13,20 @@ import {
 } from "lucide-react";
 import { BottleneckTopic, PreceptorFocusResponse } from "@/types/api";
 import { api } from "@/lib/api";
-import { FormattedContent } from "@/components/FormattedContent";
+
+const FormattedContent = dynamic(
+  () => import("@/components/FormattedContent").then((m) => m.FormattedContent),
+  {
+    ssr: false,
+    loading: () => <div className="h-32 w-full rounded-md bg-elevated/40 animate-pulse" />,
+  }
+);
 
 interface PreceptorXrayButtonProps {
   initialBottlenecks?: BottleneckTopic[];
 }
 
-export function PreceptorXrayButton({
+export const PreceptorXrayButton = React.memo(function PreceptorXrayButton({
   initialBottlenecks = [],
 }: PreceptorXrayButtonProps) {
   const [isOpenModal, setIsOpenModal] = useState(false);
@@ -210,4 +218,4 @@ export function PreceptorXrayButton({
       )}
     </>
   );
-}
+});

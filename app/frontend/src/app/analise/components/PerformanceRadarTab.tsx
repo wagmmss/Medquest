@@ -4,17 +4,6 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Calendar, Clock, RefreshCcw } from "lucide-react";
-import {
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-} from "recharts";
 import type {
   AtRiskTopic,
   BlindspotsResponse,
@@ -28,6 +17,242 @@ import type {
 import { sliceTimelineByDays } from "@/lib/analysisTimeline";
 import { InstitutionRadarSection } from "@/components/analytics/InstitutionRadarSection";
 import { BlindspotsRadarSection } from "@/components/analytics/BlindspotsRadarSection";
+
+interface TimelineChartRow {
+  day: string;
+  dateShort: string;
+  attempts: number;
+  accPct: number;
+}
+
+function TimelineEvolutionChart({ data }: { data: TimelineChartRow[] }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const width = 760;
+  const height = 280;
+  const padTop = 18;
+  const padRight = 18;
+  const padBottom = 34;
+  const padLeft = 36;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  const maxAttempts = useMemo(() => {
+    let max = 10;
+    for (const d of data) {
+      if (d.attempts > max) max = d.attempts;
+    }
+    return Math.ceil(max / 5) * 5;
+  }, [data]);
+
+  const points = useMemo(() => {
+    const n = data.length;
+    return data.map((row, idx) => {
+      const slotW = plotW / Math.max(1, n);
+      const x = padLeft + slotW * idx + slotW / 2;
+      const barW = Math.min(24, Math.max(4, slotW * 0.56));
+      const barH = Math.max(0, (row.attempts / maxAttempts) * plotH);
+      const barY = padTop + plotH - barH;
+      const accClamped = Math.max(0, Math.min(100, row.accPct || 0));
+      const lineY = padTop + plotH - (accClamped / 100) * plotH;
+      return {
+        ...row,
+        x,
+        slotLeft: padLeft + slotW * idx,
+        slotW,
+        barW,
+        barH,
+        barY,
+        lineY,
+      };
+    });
+  }, [data, maxAttempts, plotW, plotH]);
+
+  const { linePath, areaPath } = useMemo(() => {
+    if (points.length === 0) return { linePath: "", areaPath: "" };
+    if (points.length === 1) {
+      const p = points[0];
+      const base = padTop + plotH;
+      return {
+        linePath: `M ${p.x} ${p.lineY}`,
+        areaPath: `M ${p.x - 10} ${base} L ${p.x} ${p.lineY} L ${p.x + 10} ${base} Z`,
+      };
+    }
+    let d = `M ${points[0].x.toFixed(1)} ${points[0].lineY.toFixed(1)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      const midX = ((p0.x + p1.x) / 2).toFixed(1);
+      d += ` C ${midX} ${p0.lineY.toFixed(1)}, ${midX} ${p1.lineY.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.lineY.toFixed(1)}`;
+    }
+    const base = (padTop + plotH).toFixed(1);
+    const firstX = points[0].x.toFixed(1);
+    const lastX = points[points.length - 1].x.toFixed(1);
+    return {
+      linePath: d,
+      areaPath: `${d} L ${lastX} ${base} L ${firstX} ${base} Z`,
+    };
+  }, [points, plotH]);
+
+  const yTicks = useMemo(
+    () => [0, 0.25, 0.5, 0.75, 1].map((t) => ({
+      val: Math.round(maxAttempts * t),
+      y: padTop + plotH * (1 - t),
+    })),
+    [maxAttempts, plotH]
+  );
+
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const activePoint = hoveredIdx !== null ? points[hoveredIdx] : null;
+
+  return (
+    <div
+      className="relative w-full h-full select-none"
+      onMouseLeave={() => setHoveredIdx(null)}
+    >
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-full overflow-visible"
+        role="img"
+        aria-label="Gráfico de evolução de volume e acurácia diária"
+      >
+        <defs>
+          <linearGradient id="colorAcc" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.25} />
+            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="barAttempts" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.12} />
+          </linearGradient>
+        </defs>
+
+        {yTicks.map((tick, idx) => (
+          <g key={idx}>
+            <line
+              x1={padLeft}
+              x2={width - padRight}
+              y1={tick.y}
+              y2={tick.y}
+              stroke="var(--border)"
+              strokeDasharray="4 4"
+              strokeOpacity={0.5}
+            />
+            <text
+              x={padLeft - 8}
+              y={tick.y + 4}
+              textAnchor="end"
+              fill="var(--muted-foreground)"
+              fontSize={11}
+            >
+              {tick.val}
+            </text>
+          </g>
+        ))}
+
+        {points.map((pt, idx) => (
+          <g key={pt.day}>
+            {hoveredIdx === idx && (
+              <rect
+                x={pt.slotLeft}
+                y={padTop}
+                width={pt.slotW}
+                height={plotH}
+                fill="var(--muted)"
+                opacity={0.15}
+                rx={4}
+              />
+            )}
+            {pt.barH > 0 && (
+              <rect
+                x={pt.x - pt.barW / 2}
+                y={pt.barY}
+                width={pt.barW}
+                height={pt.barH}
+                fill="url(#barAttempts)"
+                rx={3}
+              />
+            )}
+            {(idx % labelStep === 0 || idx === points.length - 1) && (
+              <text
+                x={pt.x}
+                y={height - 10}
+                textAnchor="middle"
+                fill="var(--muted-foreground)"
+                fontSize={11}
+                fontWeight={500}
+              >
+                {pt.dateShort}
+              </text>
+            )}
+          </g>
+        ))}
+
+        {areaPath && <path d={areaPath} fill="url(#colorAcc)" stroke="none" />}
+        {linePath && (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="var(--success)"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {points.map((pt, idx) => {
+          const isHovered = hoveredIdx === idx;
+          return (
+            <g key={`dot-${pt.day}`}>
+              <circle
+                cx={pt.x}
+                cy={pt.lineY}
+                r={isHovered ? 6 : 4}
+                fill={isHovered ? "var(--success)" : "var(--background)"}
+                stroke={isHovered ? "var(--background)" : "var(--success)"}
+                strokeWidth={2.5}
+              />
+              <rect
+                x={pt.slotLeft}
+                y={padTop}
+                width={pt.slotW}
+                height={plotH}
+                fill="transparent"
+                className="cursor-pointer"
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onFocus={() => setHoveredIdx(idx)}
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      {activePoint && (
+        <div
+          className="pointer-events-none absolute top-2 bg-popover border border-line-subtle shadow-md rounded-md p-3 text-xs z-50 min-w-[180px]"
+          style={{
+            left: `${Math.min(72, Math.max(4, (activePoint.x / width) * 100))}%`,
+          }}
+        >
+          <p className="font-mono-lab font-bold text-popover-foreground mb-2 border-b border-line-subtle pb-1.5">
+            {activePoint.day}
+          </p>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-muted-foreground">Volume</span>
+            <span className="font-mono-lab tabular-nums font-semibold text-foreground">
+              {activePoint.attempts} q.
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Acurácia</span>
+            <span className="font-mono-lab tabular-nums font-bold text-success">
+              {activePoint.accPct}%
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PerformanceRadarTabProps {
   overview?: OverviewStats;
@@ -401,111 +626,7 @@ export function PerformanceRadarTab({
             <div className="h-[340px] w-full min-w-0 border border-line-subtle rounded-md bg-canvas p-4 flex flex-col">
               {chartTimeline.length > 0 ? (
                 <div className="flex-1 min-h-0 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                      data={chartTimeline}
-                      margin={{ top: 10, right: 10, bottom: 10, left: -20 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorAcc" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--success)" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="barAttempts" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.45} />
-                          <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.12} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="4 4"
-                        vertical={false}
-                        stroke="var(--border)"
-                        opacity={0.5}
-                      />
-                      <XAxis
-                        dataKey="dateShort"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 }}
-                        dy={10}
-                      />
-                      <YAxis
-                        yAxisId="left"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                      />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        domain={[0, 100]}
-                        axisLine={false}
-                        tickLine={false}
-                        hide
-                      />
-                      <Tooltip
-                        cursor={{ fill: "var(--muted)", opacity: 0.15 }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const row = payload[0].payload;
-                            return (
-                              <div className="bg-popover border border-line-subtle shadow-md rounded-md p-3 text-xs z-50 min-w-[180px]">
-                                <p className="font-mono-lab font-bold text-popover-foreground mb-2 border-b border-line-subtle pb-1.5">
-                                  {row.day}
-                                </p>
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-muted-foreground">Volume</span>
-                                  <span className="font-mono-lab tabular-nums font-semibold text-foreground">
-                                    {row.attempts} q.
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-muted-foreground">Acurácia</span>
-                                  <span className="font-mono-lab tabular-nums font-bold text-success">
-                                    {row.accPct}%
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="attempts"
-                        fill="url(#barAttempts)"
-                        radius={[4, 4, 0, 0]}
-                        barSize={24}
-                      />
-                      <Area
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="accPct"
-                        stroke="none"
-                        fill="url(#colorAcc)"
-                      />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="accPct"
-                        stroke="var(--success)"
-                        strokeWidth={3}
-                        dot={{
-                          r: 4,
-                          fill: "var(--background)",
-                          strokeWidth: 2.5,
-                          stroke: "var(--success)",
-                        }}
-                        activeDot={{
-                          r: 6,
-                          fill: "var(--success)",
-                          stroke: "var(--background)",
-                          strokeWidth: 2.5,
-                        }}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  <TimelineEvolutionChart data={chartTimeline} />
                 </div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2 text-sm">

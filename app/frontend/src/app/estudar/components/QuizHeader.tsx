@@ -26,7 +26,7 @@ export interface QuizHeaderProps {
   onCycleFontSize?: () => void;
 }
 
-export const QuizHeader: React.FC<QuizHeaderProps> = ({
+export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
   onBackToFilters,
   completedCount,
   totalCount,
@@ -213,4 +213,6 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
       </div>
     </header>
   );
-};
+});
+
+QuizHeader.displayName = "QuizHeader";

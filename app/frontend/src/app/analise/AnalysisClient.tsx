@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { BarChart3, Crosshair, Layers, ShieldCheck } from "lucide-react";
 import type {
@@ -9,10 +10,36 @@ import type {
   TimelineStat,
 } from "@/types/api";
 import { api } from "@/lib/api";
-import { PerformanceRadarTab } from "./components/PerformanceRadarTab";
-import { CoverageThemesTab } from "./components/CoverageThemesTab";
-import { ReadinessEditalTab } from "./components/ReadinessEditalTab";
-import { FocusRadarTab } from "./components/FocusRadarTab";
+
+function AnalysisTabSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 pb-8 animate-pulse" aria-hidden="true">
+      <div className="h-32 w-full rounded-lg bg-surface border border-line-subtle" />
+      <div className="h-[380px] w-full rounded-lg bg-surface border border-line-subtle" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 rounded-lg bg-surface border border-line-subtle" />
+        <div className="h-64 rounded-lg bg-surface border border-line-subtle" />
+      </div>
+    </div>
+  );
+}
+
+const PerformanceRadarTab = dynamic(
+  () => import("./components/PerformanceRadarTab").then((m) => m.PerformanceRadarTab),
+  { loading: () => <AnalysisTabSkeleton /> }
+);
+const CoverageThemesTab = dynamic(
+  () => import("./components/CoverageThemesTab").then((m) => m.CoverageThemesTab),
+  { loading: () => <AnalysisTabSkeleton /> }
+);
+const ReadinessEditalTab = dynamic(
+  () => import("./components/ReadinessEditalTab").then((m) => m.ReadinessEditalTab),
+  { loading: () => <AnalysisTabSkeleton /> }
+);
+const FocusRadarTab = dynamic(
+  () => import("./components/FocusRadarTab").then((m) => m.FocusRadarTab),
+  { loading: () => <AnalysisTabSkeleton /> }
+);
 
 export type AnalysisTabKey = "desempenho" | "cobertura" | "prontidao" | "sniper";
 

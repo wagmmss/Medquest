@@ -31,15 +31,23 @@ export function useQuestionMetaQuery(
     enabled,
     placeholderData: (prev) => prev ?? initialData,
     staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
-export function useDashboardSummaryQuery(enabled = false) {
+export function useDashboardSummaryQuery(
+  enabled = false,
+  initialData?: DashboardSummaryResponse | null
+) {
   return useQuery<DashboardSummaryResponse>({
     queryKey: ["dashboard-summary"],
     queryFn: () => api.stats.getDashboardSummary(),
     enabled,
+    initialData: initialData ?? undefined,
     staleTime: 45_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 }

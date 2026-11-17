@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import clsx from "clsx";
 import {
   AlertCircle,
@@ -25,7 +26,11 @@ import type {
 } from "@/types/api";
 import { api } from "@/lib/api";
 import { normalizeTopicSearch } from "@/lib/analysisTimeline";
-import { ThemeDetailDrawer } from "./ThemeDetailDrawer";
+
+const ThemeDetailDrawer = dynamic(
+  () => import("./ThemeDetailDrawer").then((m) => m.ThemeDetailDrawer),
+  { ssr: false }
+);
 
 type StatusFilter = "all" | "high_yield" | "evidence" | "in_progress" | "not_started";
 

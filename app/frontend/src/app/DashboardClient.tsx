@@ -15,7 +15,7 @@ import { motion, Variants } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { readLearningSession, syncSessionFromCloud } from "@/lib/sessionState";
 import { triggerConfetti } from "@/lib/confetti";
-import { PreceptorXrayButton } from "@/components/PreceptorFocusCard";
+import { useDashboardSummaryQuery } from "@/lib/queries/useStudyQueries";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import clsx from "clsx";
 
@@ -37,6 +37,15 @@ interface DashboardCachedData {
 const OfflineModal = dynamic(
   () => import("@/components/OfflineModal").then((m) => m.OfflineModal),
   { ssr: false }
+);
+const PreceptorXrayButton = dynamic(
+  () => import("@/components/PreceptorFocusCard").then((m) => m.PreceptorXrayButton),
+  {
+    ssr: false,
+    loading: () => (
+      <span className="h-7 w-36 rounded-xs bg-elevated/60 border border-line-subtle inline-block animate-pulse" />
+    ),
+  }
 );
 
 function formatExamDate(dateStr: string): string {
@@ -132,14 +141,9 @@ export function DashboardClient({
   useEffect(() => {
     if (!isLocalIdentityReady(authLoaded)) return;
     let active = true;
-    // Check for active sessions
-    const checkSessions = async () => {
-      // Sincroniza da nuvem de forma assíncrona para não travar o carregamento
-      await Promise.allSettled([
-        syncSessionFromCloud<{ state?: string }>("simulado", (val): val is { state?: string } => typeof val === "object" && val !== null),
-        syncSessionFromCloud<{ state?: string }>("quiz", (val): val is { state?: string } => typeof val === "object" && val !== null)
-      ]);
+    let lastCloudSyncAt = 0;
 
+    const updateLocalActiveSession = () => {
       if (!active) return;
       const hasSimulado = readLearningSession<{ state?: string }>(
         "simulado",
@@ -159,19 +163,35 @@ export function DashboardClient({
         }
       }
     };
-    void checkSessions();
+
+    const checkSessions = async (forceCloudSync = false) => {
+      updateLocalActiveSession();
+      const now = Date.now();
+      if (!forceCloudSync && now - lastCloudSyncAt < 15_000) return;
+      lastCloudSyncAt = now;
+
+      await Promise.allSettled([
+        syncSessionFromCloud<{ state?: string }>("simulado", (val): val is { state?: string } => typeof val === "object" && val !== null),
+        syncSessionFromCloud<{ state?: string }>("quiz", (val): val is { state?: string } => typeof val === "object" && val !== null)
+      ]);
+      updateLocalActiveSession();
+    };
+    void checkSessions(true);
 
     const handleSessionChange = () => {
-      if (active) void checkSessions();
+      if (active) updateLocalActiveSession();
+    };
+    const handleWindowFocus = () => {
+      if (active) void checkSessions(false);
     };
 
     window.addEventListener("learning-session-changed", handleSessionChange);
-    window.addEventListener("focus", handleSessionChange);
+    window.addEventListener("focus", handleWindowFocus);
 
     return () => {
       active = false;
       window.removeEventListener("learning-session-changed", handleSessionChange);
-      window.removeEventListener("focus", handleSessionChange);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   }, [authLoaded]);
 
@@ -267,6 +287,8 @@ export function DashboardClient({
     } catch {}
   }, [initialStats]);
 
+  const { refetch: refetchDashboardSummary } = useDashboardSummaryQuery(false);
+
   const fetchDashboardDataRef = useRef<((retryCount?: number) => Promise<boolean>) | null>(null);
 
   const fetchDashboardData = useCallback(async (retryCount = 0) => {
@@ -281,7 +303,8 @@ export function DashboardClient({
     setIsReconnecting(true);
     setReconnectAttempt(retryCount + 1);
     try {
-      const data = await api.stats.getDashboardSummary();
+      const result = await refetchDashboardSummary();
+      const data = result.data ?? (await api.stats.getDashboardSummary());
       if (data && data.stats) {
         await applySummaryData(data);
         setIsReconnecting(false);
@@ -303,7 +326,7 @@ export function DashboardClient({
       isFetchingDashboardRef.current = false;
     }
     return false;
-  }, [applySummaryData]);
+  }, [applySummaryData, refetchDashboardSummary]);
 
   useEffect(() => {
     fetchDashboardDataRef.current = fetchDashboardData;

@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useDeferredValue } from "react";
+import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,8 +24,12 @@ import toast from "react-hot-toast";
 import { QuestionMeta } from "@/types/api";
 import { api } from "@/lib/api";
 import { parseNaturalSessionPrompt } from "@/lib/naturalSessionParser";
-import { SubjectTreeSelector } from "@/components/SubjectTreeSelector";
 import { SavedQuizState } from "../QuizClient";
+
+const SubjectTreeSelector = dynamic(
+  () => import("@/components/SubjectTreeSelector").then((mod) => mod.SubjectTreeSelector),
+  { ssr: false }
+);
 
 const AREA_VISUALS: Array<{
   match: string[];
@@ -134,7 +139,7 @@ export interface QuizFiltersProps {
   onQuickStartFilters?: (customFilters: Record<string, string | string[]>) => void;
 }
 
-export function QuizFilters({
+export const QuizFilters = React.memo(function QuizFilters({
   hasSavedState,
   savedSessionData,
   discardSavedQuiz,
@@ -159,11 +164,15 @@ export function QuizFilters({
   const queryClient = useQueryClient();
   const [presetName, setPresetName] = useState("");
   const [naturalPrompt, setNaturalPrompt] = useState("");
+  const deferredSubtemaSearch = useDeferredValue(subtemaSearch);
+  const deferredNaturalPrompt = useDeferredValue(naturalPrompt);
 
   const { data: overviewData } = useQuery({
     queryKey: ["estudar-overview-counts"],
     queryFn: () => api.stats.getOverview(),
     staleTime: 45_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const srsDueCount = overviewData?.srs_due_count ?? 0;
@@ -174,6 +183,8 @@ export function QuizFilters({
     queryFn: () => api.presets.list(),
     enabled: showCustomSession,
     staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const savePresetMutation = useMutation({
@@ -244,12 +255,12 @@ export function QuizFilters({
   const selectedSubtemasSet = useMemo(() => new Set(selectedSubtemas), [selectedSubtemas]);
 
   const filteredSearchSubtemas = useMemo(() => {
-    const query = subtemaSearch.trim().toLowerCase();
+    const query = deferredSubtemaSearch.trim().toLowerCase();
     if (!query || !dynamicMeta?.subtemas) return [];
     return dynamicMeta.subtemas
       .filter((s) => !selectedSubtemasSet.has(s.subtema) && s.subtema.toLowerCase().includes(query))
       .slice(0, 50);
-  }, [dynamicMeta, subtemaSearch, selectedSubtemasSet]);
+  }, [dynamicMeta, deferredSubtemaSearch, selectedSubtemasSet]);
 
   const handleRemoveSubtema = useCallback(
     (subtemaToRemove: string) => {
@@ -328,8 +339,8 @@ export function QuizFilters({
   );
 
   const parsedNaturalSession = useMemo(
-    () => parseNaturalSessionPrompt(naturalPrompt, availableSubtemaNames),
-    [naturalPrompt, availableSubtemaNames]
+    () => parseNaturalSessionPrompt(deferredNaturalPrompt, availableSubtemaNames),
+    [deferredNaturalPrompt, availableSubtemaNames]
   );
 
   const handleApplyNaturalSession = useCallback(
@@ -1021,4 +1032,4 @@ export function QuizFilters({
       )}
     </div>
   );
-}
+});

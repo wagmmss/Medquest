@@ -266,7 +266,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
   }
 }
 
-export function ExplanationViewer({ 
+function ExplanationViewerBase({ 
   explanation, 
   correctLetter,
   isDiscursive,
@@ -442,3 +442,8 @@ export function ExplanationViewer({
     </div>
   );
 }
+
+export const ExplanationViewer =
+  typeof React?.memo === "function"
+    ? React.memo(ExplanationViewerBase)
+    : ExplanationViewerBase;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Stethoscope, Sparkles, BookOpen, Send, RotateCcw, Zap, AlertTriangle, Layers, Target, TrendingUp, Clock, FileText } from "lucide-react";
 import { FormattedContent } from "@/components/FormattedContent";
 
@@ -46,9 +46,9 @@ export interface ChatMessage {
 
 export interface PreceptorSectionProps {
   messages: ChatMessage[];
-  preceptorInput: string;
+  preceptorInput?: string;
   askingPreceptor: boolean;
-  onChangeInput: (value: string) => void;
+  onChangeInput?: (value: string) => void;
   onSendMessage: (overrideText?: string) => void;
   onClearChat: () => void;
 }
@@ -61,15 +61,26 @@ const QUICK_ACTIONS = [
   { label: "/caso", icon: Layers, prompt: "/caso", desc: "Desafio clínico correlato" },
 ];
 
-export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
+export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
   messages,
-  preceptorInput,
+  preceptorInput = "",
   askingPreceptor,
   onChangeInput,
   onSendMessage,
   onClearChat,
 }) => {
+  const [localInput, setLocalInput] = useState(preceptorInput);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLocalInput(preceptorInput);
+  }, [preceptorInput]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setLocalInput("");
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -77,12 +88,25 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
     }
   }, [messages, askingPreceptor]);
 
+  const handleInputChange = (val: string) => {
+    setLocalInput(val);
+    onChangeInput?.(val);
+  };
+
+  const triggerSend = (overrideText?: string) => {
+    const text = (overrideText ?? localInput).trim();
+    if (!text || askingPreceptor) return;
+    if (!overrideText) {
+      setLocalInput("");
+      onChangeInput?.("");
+    }
+    onSendMessage(text);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!askingPreceptor && preceptorInput.trim()) {
-        onSendMessage();
-      }
+      triggerSend();
     }
   };
 
@@ -94,7 +118,10 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
         </h4>
         {messages.length > 0 && (
           <button
-            onClick={onClearChat}
+            onClick={() => {
+              setLocalInput("");
+              onClearChat();
+            }}
             disabled={askingPreceptor}
             className="text-xs text-ink-muted hover:text-ink-primary flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             title="Reiniciar discussão clínica"
@@ -118,7 +145,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                 <button
                   key={action.label}
                   type="button"
-                  onClick={() => onSendMessage(action.prompt)}
+                  onClick={() => triggerSend(action.prompt)}
                   disabled={askingPreceptor}
                   className="font-mono-lab text-xs font-semibold bg-surface hover:bg-accent/10 text-ink-primary hover:text-accent border border-line-subtle hover:border-accent/30 px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                   title={action.desc}
@@ -133,14 +160,14 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
           <textarea
             className="w-full bg-canvas border border-line-subtle rounded-md p-3 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none min-h-[85px] mt-1"
             placeholder="Qual conduta você tem dúvida? Ex: 'Por que a alternativa D está errada?' ou aperte Enter..."
-            value={preceptorInput}
-            onChange={(e) => onChangeInput(e.target.value)}
+            value={localInput}
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <div className="flex justify-end">
             <button
-              onClick={() => onSendMessage()}
-              disabled={askingPreceptor || !preceptorInput.trim()}
+              onClick={() => triggerSend()}
+              disabled={askingPreceptor || !localInput.trim()}
               className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md shadow-2xs transition-colors flex items-center gap-2 text-xs cursor-pointer disabled:cursor-not-allowed"
             >
               {askingPreceptor ? (
@@ -304,7 +331,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                 <button
                   key={action.label}
                   type="button"
-                  onClick={() => onSendMessage(action.prompt)}
+                  onClick={() => triggerSend(action.prompt)}
                   disabled={askingPreceptor}
                   className="font-mono-lab text-[11px] font-medium bg-surface hover:bg-accent/10 text-ink-primary hover:text-accent border border-line-subtle hover:border-accent/30 px-2 py-1 rounded-xs flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                   title={action.desc}
@@ -333,13 +360,13 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
                 return "Digite sua réplica ou dúvida adicional...";
               })()}
               rows={1}
-              value={preceptorInput}
-              onChange={(e) => onChangeInput(e.target.value)}
+              value={localInput}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
             />
             <button
-              onClick={() => onSendMessage()}
-              disabled={askingPreceptor || !preceptorInput.trim()}
+              onClick={() => triggerSend()}
+              disabled={askingPreceptor || !localInput.trim()}
               className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold px-3.5 rounded-md shadow-2xs transition-colors flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
               title="Enviar réplica"
             >
@@ -350,4 +377,6 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = ({
       )}
     </div>
   );
-};
+});
+
+PreceptorSection.displayName = "PreceptorSection";
