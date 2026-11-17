@@ -127,3 +127,13 @@ def test_ask_preceptor_ai_prompt_specialization(monkeypatch):
     assert "2. Estabilização Imediata (ABCDE)" in conduta_prompt
     assert "3. Terapêutica Farmacológica de Escolha" in conduta_prompt
     assert "### MODO ATIVADO: DISCUSSÃO CLÍNICA COMPLETA DO CASO" not in conduta_prompt
+
+    # 6. Teste do comando /dica (sem spoiler e sem NameError de jurisprudence_items)
+    dica_res = ask_preceptor_ai(
+        stem=stem, alternatives=alts, correct_letter="B", correct_text="Epinefrina IM",
+        user_letter="", user_question="/dica", area="Emergência", subtema="Alergia"
+    )
+    dica_prompt, _ = captured_prompts[-1]
+    assert "### MODO ATIVADO: DICA DO PRECEPTOR PRÉ-RESPOSTA (ATTENDING TIP)" in dica_prompt
+    assert "REGRA ABSOLUTA DE SIGILO" in dica_prompt
+    assert dica_res.get("jurisprudence_sources") == []

@@ -263,26 +263,26 @@ body.zen-mode > div:first-of-type {
 @utility font-body-lg { font-family: var(--font-body-lg); }
 
 :root {
-  /* Clinical Calm: Papel Azul-Gelo Sereno + Deep Navy + Teal */
-  --bg-canvas: #f5f8fc;
-  --bg-surface: #ffffff;
-  --bg-elevated: #edf2f8;
-  --ink-primary: #0f1e33;
+  /* Clinical Calm: Papel Fosco Sereno (sem branco puro ofuscante) */
+  --bg-canvas: #e9eef5;
+  --bg-surface: #f4f7fb;
+  --bg-elevated: #dfe6f0;
+  --ink-primary: #142238;
   --ink-secondary: #475569;
   --ink-muted: #64748b;
-  --line-subtle: #e2e9f2;
-  --line-strong: #cbd5e1;
+  --line-subtle: #d3dde8;
+  --line-strong: #b9c7d8;
   --accent: #0f9d9a;
   --accent-hover: #0b827f;
-  --accent-fg: #ffffff;
+  --accent-fg: #f8fafc;
   --critical: #e11d48;
-  --critical-bg: #fff1f2;
+  --critical-bg: #fce7ec;
   --warning: #d97706;
-  --warning-bg: #fffbeb;
+  --warning-bg: #fef3c7;
   --normal: #059669;
-  --normal-bg: #ecfdf5;
+  --normal-bg: #d1fae5;
   --info: #0284c7;
-  --info-bg: #f0f9ff;
+  --info-bg: #e0f2fe;
 
   --background: var(--bg-canvas);
   --on-background: var(--ink-primary);
@@ -321,17 +321,17 @@ body.zen-mode > div:first-of-type {
   --on-tertiary-fixed-variant: #475569;
 
   /* Surfaces & Containers */
-  --surface-bright: #ffffff;
-  --surface-dim: #e4e4e7;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f4f4f5;
-  --surface-container: #ffffff;
-  --surface-container-high: #f4f4f5;
-  --surface-container-highest: #e4e4e7;
-  --surface-variant: #f4f4f5;
-  --on-surface-variant: #71717a;
-  --inverse-surface: #18181b;
-  --inverse-on-surface: #f4f4f5;
+  --surface-bright: #f4f7fb;
+  --surface-dim: #dbe3ee;
+  --surface-container-lowest: #f7f9fc;
+  --surface-container-low: #edf2f8;
+  --surface-container: #f4f7fb;
+  --surface-container-high: #e3eaf3;
+  --surface-container-highest: #d7e1ed;
+  --surface-variant: #e6ecf5;
+  --on-surface-variant: #475569;
+  --inverse-surface: #1e293b;
+  --inverse-on-surface: #f1f5f9;
   --surface-tint: #0f172a;
 
   /* Borders & Outlines */
@@ -361,72 +361,72 @@ body.zen-mode > div:first-of-type {
 
 .dark {
   color-scheme: dark;
-  /* Clinical Precision: Radiology Dark (OLED / DICOM) */
-  --bg-canvas: #090a0c;
-  --bg-surface: #111215;
-  --bg-elevated: #18191d;
-  --ink-primary: #f4f5f6;
-  --ink-secondary: #9aa0a6;
-  --ink-muted: #5f6368;
-  --line-subtle: #202226;
-  --line-strong: #2e3138;
-  --accent: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --accent-fg: #090a0c;
+  /* Clinical Calm Dark: Ardósia Clínica Suave (sem preto OLED agressivo) */
+  --bg-canvas: #1a2230;
+  --bg-surface: #222c3d;
+  --bg-elevated: #2a364a;
+  --ink-primary: #e6edf6;
+  --ink-secondary: #a7b5c9;
+  --ink-muted: #7c8ca3;
+  --line-subtle: #313e54;
+  --line-strong: #41516c;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-fg: #0f172a;
   --critical: #fb7185;
-  --critical-bg: #271015;
+  --critical-bg: #3b1c28;
   --warning: #fbbf24;
-  --warning-bg: #261b07;
+  --warning-bg: #3a2d14;
   --normal: #34d399;
-  --normal-bg: #0b2318;
+  --normal-bg: #14362b;
   --info: #38bdf8;
-  --info-bg: #0c202d;
+  --info-bg: #153147;
 
   --background: var(--bg-canvas);
   --on-background: var(--ink-primary);
   --surface: var(--bg-surface);
   --on-surface: var(--ink-primary);
   
-  --primary: #fafafa;
-  --on-primary: #18181b;
-  --primary-container: #27272a;
-  --on-primary-container: #fafafa;
-  --primary-fixed: #27272a;
-  --on-primary-fixed: #fafafa;
-  --primary-fixed-dim: #3f3f46;
-  --on-primary-fixed-variant: #d4d4d8;
-  --inverse-primary: #18181b;
+  --primary: #e2e8f0;
+  --on-primary: #0f172a;
+  --primary-container: #2a364a;
+  --on-primary-container: #e2e8f0;
+  --primary-fixed: #2a364a;
+  --on-primary-fixed: #e2e8f0;
+  --primary-fixed-dim: #3b4b66;
+  --on-primary-fixed-variant: #cbd5e1;
+  --inverse-primary: #1a2230;
 
-  --secondary: #14b8a6;
-  --on-secondary: #042f2e;
-  --secondary-container: #115e59;
+  --secondary: #2dd4bf;
+  --on-secondary: #0f172a;
+  --secondary-container: #134e4a;
   --on-secondary-container: #ccfbf1;
-  --secondary-fixed: #0f766e;
+  --secondary-fixed: #115e59;
   --on-secondary-fixed: #ccfbf1;
-  --secondary-fixed-dim: #115e59;
+  --secondary-fixed-dim: #134e4a;
   --on-secondary-fixed-variant: #5eead4;
 
-  --tertiary: #a1a1aa;
-  --on-tertiary: #18181b;
-  --tertiary-container: #27272a;
-  --on-tertiary-container: #f4f4f5;
-  --tertiary-fixed: #27272a;
-  --on-tertiary-fixed: #f4f4f5;
-  --tertiary-fixed-dim: #3f3f46;
-  --on-tertiary-fixed-variant: #d4d4d8;
+  --tertiary: #94a3b8;
+  --on-tertiary: #0f172a;
+  --tertiary-container: #2a364a;
+  --on-tertiary-container: #e2e8f0;
+  --tertiary-fixed: #2a364a;
+  --on-tertiary-fixed: #e2e8f0;
+  --tertiary-fixed-dim: #3b4b66;
+  --on-tertiary-fixed-variant: #cbd5e1;
 
-  --surface-bright: #18181b;
-  --surface-dim: #09090b;
-  --surface-container-lowest: #000000;
-  --surface-container-low: #09090b;
-  --surface-container: #18181b;
-  --surface-container-high: #27272a;
-  --surface-container-highest: #3f3f46;
-  --surface-variant: #18181b;
-  --on-surface-variant: #a1a1aa;
-  --inverse-surface: #fafafa;
-  --inverse-on-surface: #18181b;
-  --surface-tint: #fafafa;
+  --surface-bright: #2a364a;
+  --surface-dim: #161d29;
+  --surface-container-lowest: #161d29;
+  --surface-container-low: #1d2635;
+  --surface-container: #222c3d;
+  --surface-container-high: #2a364a;
+  --surface-container-highest: #334157;
+  --surface-variant: #253042;
+  --on-surface-variant: #a7b5c9;
+  --inverse-surface: #e6edf6;
+  --inverse-on-surface: #1a2230;
+  --surface-tint: #e2e8f0;
 
   --outline: var(--line-subtle);
   --outline-variant: var(--line-strong);
@@ -447,7 +447,7 @@ body.zen-mode > div:first-of-type {
   --card-2: var(--bg-elevated);
   --muted: var(--bg-elevated);
   --muted-foreground: var(--ink-secondary);
-  --primary-foreground: #09090b;
+  --primary-foreground: #0f172a;
 }
 
 /* Custom Scrollbar */
@@ -468,11 +468,11 @@ body.zen-mode > div:first-of-type {
 
 /* Atmosfera sutil no topo das páginas (Clinical Calm) */
 .mq-page-hero {
-  background: linear-gradient(135deg, rgba(15, 157, 154, 0.12) 0%, rgba(11, 42, 74, 0.05) 55%, rgba(245, 248, 252, 0) 100%);
+  background: linear-gradient(135deg, rgba(15, 157, 154, 0.11) 0%, rgba(11, 42, 74, 0.05) 55%, var(--bg-surface) 100%);
   border: 1px solid var(--line-subtle);
   border-radius: 16px;
 }
 
 .dark .mq-page-hero {
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(56, 189, 248, 0.05) 55%, rgba(17, 18, 21, 0) 100%);
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.11) 0%, rgba(56, 189, 248, 0.06) 55%, var(--bg-surface) 100%);
 }
