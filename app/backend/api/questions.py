@@ -57,10 +57,22 @@ def invalidate_user_caches(user_id):
     """Invalidate every derived per-user view after a successful mutation."""
     meta_cache.clear_user(user_id)
     count_cache.clear_user(user_id)
+    from .filters import target_institutions_cache
+    target_institutions_cache.clear_user(user_id)
     from .stats import overview_cache
     overview_cache.clear_user(user_id)
-    from .adaptive import _profile_cache
+    from .adaptive import _profile_cache, clear_user_last_known_profile
     _profile_cache.clear_user(user_id)
+    clear_user_last_known_profile(user_id)
+
+
+def invalidate_global_question_caches():
+    """Invalidate global question metadata and totals caches after curator edits."""
+    meta_cache.clear()
+    count_cache.clear()
+    from .stats import _q_totals_cache
+    _q_totals_cache.clear()
+
 
 
 @bp.route("/simulado/usp")
@@ -845,19 +857,41 @@ def submit_attempt(qid):
                 fail_idempotency(db, g.user_id, lease_token)
             return jsonify({"error": "invalid input", "code": "INVALID_INPUT", "details": validation_errors(e)}), 400
 
-        q = db.execute("SELECT correct_letter, area, subtema FROM questions WHERE id = ?", (qid,)).fetchone()
+        q_exp_sql = """
+            SELECT q.correct_letter, q.area, q.subtema, e.explanation_text
+            FROM questions q
+            LEFT JOIN explanations e ON e.question_id = q.id
+            WHERE q.id = ?
+        """
+        alts_sql = "SELECT letter, is_correct FROM alternatives WHERE question_id = ?"
+
+        pre_res = None
+        if hasattr(db, "batch"):
+            try:
+                pre_res = db.batch([(q_exp_sql, (qid,)), (alts_sql, (qid,))])
+            except Exception:
+                pre_res = None
+
+        if pre_res is not None:
+            q = pre_res[0].fetchone()
+            alts_rows = pre_res[1].fetchall()
+        else:
+            q = db.execute(q_exp_sql, (qid,)).fetchone()
+            alts_rows = db.execute(alts_sql, (qid,)).fetchall()
+
         if not q:
             if lease_token:
                 fail_idempotency(db, g.user_id, lease_token)
             return jsonify({"error": "not found", "code": "QUESTION_NOT_FOUND"}), 404
 
-        alts_count = db.execute("SELECT COUNT(*) as n FROM alternatives WHERE question_id = ?", (qid,)).fetchone()["n"]
+        alts_count = len(alts_rows)
         is_discursive = bool(alts_count <= 1)
-
-        correct_alts_rows = db.execute(
-            "SELECT letter FROM alternatives WHERE question_id = ? AND is_correct = 1", (qid,)
-        ).fetchall()
-        correct_alts_set = {r["letter"].strip().upper() for r in correct_alts_rows}
+        correct_alts_set = {
+            r["letter"].strip().upper()
+            for r in alts_rows
+            if r["is_correct"] and r["letter"]
+        }
+        explanation_text = q["explanation_text"]
 
         with db_transaction(db, immediate=True):
             selected = (payload.selected_letter or "A").upper()
@@ -948,8 +982,6 @@ def submit_attempt(qid):
                             next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
                     """, (orig_qid, orig_next_review, orig_card_json, g.user_id))
 
-            exp = db.execute("SELECT explanation_text FROM explanations WHERE question_id = ?", (qid,)).fetchone()
-
             alt_stats = None
             if not is_discursive:
                 stat_rows = db.execute(
@@ -974,7 +1006,7 @@ def submit_attempt(qid):
             resp_data = {
                 "is_correct": reported_is_correct,
                 "correct_letter": q["correct_letter"],
-                "explanation": exp["explanation_text"] if exp else None,
+                "explanation": explanation_text,
                 "next_review_date": next_review,
                 "is_discursive": is_discursive,
                 "attempt_id": attempt_id,
@@ -1208,6 +1240,7 @@ def _process_single_attempt(
         except Exception as srs_err:
             logger.warning("Erro ao calcular FSRS no lote para questão %s: %s. Usando estado limpo.", item.question_id, srs_err)
             card_json, next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
+        srs_map[item.question_id] = card_json
         db.execute("""
             INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
             VALUES (?, ?, ?, ?)
@@ -1217,12 +1250,13 @@ def _process_single_attempt(
 
         if getattr(item, "twin_for_question_id", None):
             orig_qid = item.twin_for_question_id
-            orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, user_id)).fetchone()
+            orig_card = srs_map.get(orig_qid)
             try:
-                orig_card_json, orig_next_review = srs.review(orig_sr["fsrs_card"] if orig_sr else None, is_correct, conf, assisted=is_assisted)
+                orig_card_json, orig_next_review = srs.review(orig_card, is_correct, conf, assisted=is_assisted)
             except Exception as srs_err:
                 logger.warning("Erro ao calcular FSRS no lote para questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
                 orig_card_json, orig_next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
+            srs_map[orig_qid] = orig_card_json
             db.execute("""
                 INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                 VALUES (?, ?, ?, ?)
@@ -1272,11 +1306,16 @@ def submit_attempt_batch():
             return jsonify(resp_data)
 
         q_map, correct_alts_map, exp_map = _fetch_batch_metadata(db, q_ids)
+        srs_q_ids = list(q_ids)
+        for item in payload.attempts:
+            twin_id = getattr(item, "twin_for_question_id", None)
+            if twin_id:
+                srs_q_ids.append(twin_id)
                 
         with db_transaction(db, immediate=True):
             # Read FSRS cards after acquiring the write transaction. Otherwise
             # a concurrent batch can advance a card between this read and UPSERT.
-            srs_map = _fetch_srs_map(db, q_ids, g.user_id)
+            srs_map = _fetch_srs_map(db, srs_q_ids, g.user_id)
 
             for item in payload.attempts:
                 res = _process_single_attempt(

@@ -91,6 +91,19 @@ FOCUS_CONFIGS = {
 }
 
 
+def clear_user_last_known_profile(user_id):
+    """Remove cached fallback profiles for a user on stats reset or cache invalidation."""
+    if user_id is None:
+        return
+    user_str = str(user_id)
+    keys = [
+        k for k in list(_last_known_profile.keys())
+        if isinstance(k, tuple) and len(k) > 0 and (k[0] == user_id or str(k[0]) == user_str)
+    ]
+    for k in keys:
+        _last_known_profile.pop(k, None)
+
+
 def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adaptive_focus="balanced", target_institutions=None):
     """Rank eligible questions with twin questions and configurable focus ratios."""
     now = _utc(now)
@@ -100,20 +113,35 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
     rows = db.execute(
         f"""
+        WITH user_attempts_ranked AS (
+            SELECT
+                question_id,
+                is_correct,
+                ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY id DESC) AS rn
+            FROM attempts
+            WHERE user_id = ?
+        ),
+        user_attempts AS (
+            SELECT
+                question_id,
+                COUNT(*) AS attempts,
+                COALESCE(SUM(is_correct), 0) AS correct,
+                MAX(CASE WHEN rn = 1 THEN is_correct END) AS latest_correct
+            FROM user_attempts_ranked
+            GROUP BY question_id
+        )
         SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
                q.institution_label, q.topic, q.area, q.subtema,
-               COUNT(a.id) AS attempts, COALESCE(SUM(a.is_correct), 0) AS correct,
-               (SELECT a2.is_correct FROM attempts a2
-                WHERE a2.user_id = ? AND a2.question_id = q.id
-                ORDER BY a2.id DESC LIMIT 1) AS latest_correct,
-                sr.next_review_date, sr.fsrs_card
+               COALESCE(ua.attempts, 0) AS attempts,
+               COALESCE(ua.correct, 0) AS correct,
+               ua.latest_correct,
+               sr.next_review_date, sr.fsrs_card
         FROM questions q
-        LEFT JOIN attempts a ON a.question_id = q.id AND a.user_id = ?
+        LEFT JOIN user_attempts ua ON ua.question_id = q.id
         LEFT JOIN spaced_repetition sr ON sr.question_id = q.id AND sr.user_id = ?
         WHERE {where}
-        GROUP BY q.id
         """,
-        [user_id, user_id, user_id, *params],
+        [user_id, user_id, *params],
     ).fetchall()
 
     topic_totals = {}
@@ -135,6 +163,7 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
     # Track paired twin questions: twin_id -> (orig_id, orig_inst, topic)
     paired_twin_ids = {}
+    external_twin_rows = {}
     replaced_orig_ids = set()
 
     for row in rows:
@@ -205,6 +234,7 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
                 if db_twin and db_twin["id"] not in paired_twin_ids:
                     twin_candidate = db_twin
+                    external_twin_rows[db_twin["id"]] = dict(db_twin)
 
             if twin_candidate is not None:
                 paired_twin_ids[twin_candidate["id"]] = (orig_id, orig_inst, topic)
@@ -276,16 +306,26 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
     for twin_id, (orig_id, orig_inst, orig_topic) in paired_twin_ids.items():
         if twin_id not in seen_ids:
-            twin_row = db.execute(
-                """
-                SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
-                       q.institution_label, q.topic, q.area, q.subtema
-                FROM questions q WHERE q.id = ?
-                """,
-                (twin_id,),
-            ).fetchone()
+            twin_row = external_twin_rows.get(twin_id)
+            if twin_row is None:
+                fetched = db.execute(
+                    """
+                    SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
+                           q.institution_label, q.topic, q.area, q.subtema
+                    FROM questions q WHERE q.id = ?
+                    """,
+                    (twin_id,),
+                ).fetchone()
+                twin_row = dict(fetched) if fetched else None
             if twin_row:
-                item = dict(twin_row)
+                item = {
+                    k: twin_row[k]
+                    for k in (
+                        "id", "source_file", "source_number", "year",
+                        "institution_code", "institution_label", "topic", "area", "subtema",
+                    )
+                    if k in twin_row
+                }
                 topic_attempts, topic_correct, topic_avail, topic_answered = topic_totals.get(orig_topic, [0, 0, 0, 0])
                 topic_coverage = (topic_answered / topic_avail) if topic_avail > 0 else 0.0
                 topic_score, _ = topic_priority(topic_attempts, topic_correct, None, coverage=topic_coverage)
@@ -313,34 +353,53 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
 def get_adaptive_signals_by_topic(db, user_id, now=None):
     """Compute deterministic adaptive signals for ALL topics for the given user."""
+    use_cache = now is None
+    signals_cache_key = (user_id, "__signals__")
+    if use_cache:
+        cached_signals = _profile_cache.get(signals_cache_key)
+        if cached_signals is not None:
+            return cached_signals
+
     now = _utc(now)
-    rows = db.execute(
-        """
+    topics_sql = """
         WITH AttemptRanks AS (
             SELECT
-                q.id as question_id,
-                COALESCE(NULLIF(q.subtema, ''), q.topic) as topic,
+                q.id AS question_id,
+                COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
                 a.is_correct,
-                ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(q.subtema, ''), q.topic) ORDER BY a.answered_at ASC) as rn
+                ROW_NUMBER() OVER (
+                    PARTITION BY COALESCE(NULLIF(q.subtema, ''), q.topic)
+                    ORDER BY a.answered_at ASC
+                ) AS rn
             FROM attempts a
             JOIN questions q ON q.id = a.question_id
-            WHERE a.user_id = ? AND q.missing_alts=0 AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+            WHERE a.user_id = ? AND q.missing_alts = 0
+                  AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
         ),
         TopicStats AS (
             SELECT
                 topic,
                 COUNT(DISTINCT question_id) AS answered,
-                SUM(CASE WHEN rn <= 5 THEN is_correct ELSE 0 END) as diag_correct,
-                SUM(CASE WHEN rn <= 5 THEN 1 ELSE 0 END) as diag_attempts,
-                SUM(CASE WHEN rn > 5 THEN is_correct ELSE 0 END) as prac_correct,
-                SUM(CASE WHEN rn > 5 THEN 1 ELSE 0 END) as prac_attempts,
-                SUM(is_correct) as correct,
-                COUNT(is_correct) as attempts
+                SUM(CASE WHEN rn <= 5 THEN is_correct ELSE 0 END) AS diag_correct,
+                SUM(CASE WHEN rn <= 5 THEN 1 ELSE 0 END) AS diag_attempts,
+                SUM(CASE WHEN rn > 5 THEN is_correct ELSE 0 END) AS prac_correct,
+                SUM(CASE WHEN rn > 5 THEN 1 ELSE 0 END) AS prac_attempts,
+                SUM(is_correct) AS correct,
+                COUNT(is_correct) AS attempts
             FROM AttemptRanks
             GROUP BY topic
+        ),
+        QuestionTopics AS (
+            SELECT
+                COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
+                MIN(q.area) AS area,
+                COUNT(q.id) AS available
+            FROM questions q
+            WHERE q.missing_alts = 0
+                  AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+            GROUP BY COALESCE(NULLIF(q.subtema, ''), q.topic)
         )
-        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic, MIN(q.area) AS area,
-               COUNT(DISTINCT q.id) AS available,
+        SELECT qt.topic, qt.area, qt.available,
                COALESCE(ts.attempts, 0) AS attempts,
                COALESCE(ts.answered, 0) AS answered,
                COALESCE(ts.correct, 0) AS correct,
@@ -348,20 +407,31 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
                COALESCE(ts.diag_attempts, 0) AS diag_attempts,
                COALESCE(ts.prac_correct, 0) AS prac_correct,
                COALESCE(ts.prac_attempts, 0) AS prac_attempts
-        FROM questions q 
-        LEFT JOIN TopicStats ts ON ts.topic = COALESCE(NULLIF(q.subtema, ''), q.topic)
-        WHERE q.missing_alts=0 AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-        GROUP BY COALESCE(NULLIF(q.subtema, ''), q.topic)
-        """,
-        (user_id,),
-    ).fetchall()
-    fsrs_rows = db.execute(
-        """SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
-                  sr.fsrs_card, sr.next_review_date
-           FROM spaced_repetition sr JOIN questions q ON q.id=sr.question_id
-           WHERE sr.user_id=?""",
-        (user_id,),
-    ).fetchall()
+        FROM QuestionTopics qt
+        LEFT JOIN TopicStats ts ON ts.topic = qt.topic
+    """
+    fsrs_sql = """
+        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
+               sr.fsrs_card, sr.next_review_date
+        FROM spaced_repetition sr
+        JOIN questions q ON q.id = sr.question_id
+        WHERE sr.user_id = ?
+    """
+
+    batch_res = None
+    if hasattr(db, "batch"):
+        try:
+            batch_res = db.batch([(topics_sql, (user_id,)), (fsrs_sql, (user_id,))])
+        except Exception:
+            batch_res = None
+
+    if batch_res is not None:
+        rows = batch_res[0].fetchall()
+        fsrs_rows = batch_res[1].fetchall()
+    else:
+        rows = db.execute(topics_sql, (user_id,)).fetchall()
+        fsrs_rows = db.execute(fsrs_sql, (user_id,)).fetchall()
+
     memory = {}
     for row in fsrs_rows:
         metrics = fsrs_metrics(row["fsrs_card"], now)
@@ -397,6 +467,8 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
             "retrievability": retrievability, "due_count": mem["due"],
             "priority_score": score, "reasons": reasons,
         }
+    if use_cache:
+        _profile_cache.set(signals_cache_key, signals)
     return signals
 
 
@@ -433,7 +505,7 @@ def _build_fallback_profile(now: datetime, cache_key: tuple) -> dict:
     }
 
 
-def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
+def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config_row=None):
     """Build a transparent personalized diagnosis and daily goal."""
     use_cache = now is None
     cache_key = (user_id, subtema, limit)
@@ -442,9 +514,10 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
         if cached is not None:
             return cached
 
+    raw_now = now
     now = _utc(now)
     try:
-        signals = get_adaptive_signals_by_topic(db, user_id, now=now)
+        signals = get_adaptive_signals_by_topic(db, user_id, now=raw_now)
         due_total = sum(item["due_count"] for item in signals.values())
 
         topics = []
@@ -460,16 +533,22 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
         topics.sort(key=lambda item: (-item["priority_score"], item["topic"]))
         if subtema is not None:
             topics = [item for item in topics if item["topic"] == subtema]
-        config = db.execute(
-            "SELECT questions_per_day, target_score, exam_date, hours_per_day FROM planner_config WHERE user_id=?",
-            (user_id,),
-        ).fetchone()
+        if config_row is not None:
+            config = config_row
+        else:
+            config = db.execute(
+                "SELECT questions_per_day, target_score, exam_date, hours_per_day FROM planner_config WHERE user_id=?",
+                (user_id,),
+            ).fetchone()
     except Exception as exc:
         logger.warning("Fallback de perfil adaptativo acionado para user_id=%s: %s", user_id, exc)
         return _build_fallback_profile(now, cache_key)
 
-    daily_goal = int(config["questions_per_day"] if config and config["questions_per_day"] else 30)
-    hours_per_day = int(config["hours_per_day"] if config and config["hours_per_day"] else 4)
+    cfg_dict = dict(config) if config else {}
+    daily_goal = int(cfg_dict.get("questions_per_day") or 30)
+    hours_per_day = int(cfg_dict.get("hours_per_day") or 4)
+    target_score = cfg_dict.get("target_score")
+    exam_date = cfg_dict.get("exam_date")
     
     # Orçamento de tempo: 1 questão = 3 min (resolução + leitura comentada) -> 20 q/h
     max_capacity = hours_per_day * 20
@@ -487,8 +566,8 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
             "backlog_pending": backlog_pending,
             "hours_budget": hours_per_day,
             "max_capacity": max_capacity,
-            "target_score": config["target_score"] if config else None,
-            "exam_date": config["exam_date"] if config else None,
+            "target_score": target_score,
+            "exam_date": exam_date,
         },
         "topics": topics[:limit] if limit is not None else topics,
         "method": {
@@ -500,4 +579,5 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
     if use_cache:
         _profile_cache.set(cache_key, result)
     return result
+
 

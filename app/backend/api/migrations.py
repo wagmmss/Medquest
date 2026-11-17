@@ -86,9 +86,18 @@ def apply_pending_migrations(db) -> list[str]:
         try:
             for statement in _statements(path):
                 # Comandos como ANALYZE/VACUUM não são suportados pelo driver LibSQL/Turso remoto
-                if statement.upper().rstrip(";") in ("ANALYZE", "VACUUM"):
+                stmt_upper = statement.upper().rstrip(";")
+                if stmt_upper in ("ANALYZE", "VACUUM"):
                     continue
-                db.execute(statement)
+                try:
+                    db.execute(statement)
+                except Exception as stmt_exc:
+                    err_lower = str(stmt_exc).lower()
+                    if stmt_upper.startswith("CREATE INDEX IF NOT EXISTS") and (
+                        "no such column" in err_lower or "no such table" in err_lower
+                    ):
+                        continue
+                    raise
         except Exception:
             _record_migrations(db, records_to_insert)
             raise

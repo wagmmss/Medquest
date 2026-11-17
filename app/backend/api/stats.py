@@ -52,18 +52,53 @@ overview_cache = SimpleTTLCache(60)
 _area_totals_cache = SimpleTTLCache(300)
 _q_totals_cache = SimpleTTLCache(300)
 
+
+def _db_cache_scope() -> str:
+    return os.environ.get("MEDQUEST_DB") or os.environ.get("TURSO_DATABASE_URL") or "default"
+
+
+def _has_assisted_column(db) -> bool:
+    scope = _db_cache_scope()
+    cache_key = ("has_assisted_col", scope)
+    cached = _q_totals_cache.get(cache_key)
+    if cached is not None:
+        return bool(cached)
+    try:
+        cols = {r["name"] for r in db.execute("PRAGMA table_info(attempts)").fetchall()}
+        has_col = "assisted" in cols
+    except Exception:
+        has_col = True
+    _q_totals_cache.set(cache_key, has_col)
+    return has_col
+
+
+def _get_cached_total_questions(db) -> int:
+    scope = _db_cache_scope()
+    cache_key = ("total_active_q", scope)
+    cached = _q_totals_cache.get(cache_key)
+    if cached is not None:
+        return int(cached)
+    row = db.execute("SELECT COUNT(*) AS n FROM questions WHERE missing_alts = 0").fetchone()
+    total = int(row["n"] or 0) if row else 0
+    _q_totals_cache.set(cache_key, total)
+    return total
+
+
 def _get_cached_area_totals(db):
-    cached = _area_totals_cache.get("area_totals")
+    cache_key = ("area_totals", _db_cache_scope())
+    cached = _area_totals_cache.get(cache_key)
     if cached is not None:
         return cached
     totals = db.execute(
         "SELECT area, COUNT(*) n FROM questions WHERE area IS NOT NULL AND area != '' GROUP BY area"
     ).fetchall()
-    _area_totals_cache.set("area_totals", totals)
+    _area_totals_cache.set(cache_key, totals)
     return totals
 
+
 def _get_cached_q_totals_map(db):
-    cached = _q_totals_cache.get("q_totals_map")
+    cache_key = ("q_totals_map", _db_cache_scope())
+    cached = _q_totals_cache.get(cache_key)
     if cached is not None:
         return cached
     rows = db.execute("""
@@ -77,8 +112,9 @@ def _get_cached_q_totals_map(db):
         norm_a = get_normalized_area(r["area"])
         sub = r["subtema"]
         q_map[(norm_a, sub)] = r["n_questions"]
-    _q_totals_cache.set("q_totals_map", q_map)
+    _q_totals_cache.set(cache_key, q_map)
     return q_map
+
 
 
 def responsible_streak(days_studied, today, days_per_week=6):
@@ -117,24 +153,34 @@ def _fetch_attempt_rollup(db, user_id: str, now_utc: datetime):
     last7_start = (now_utc - timedelta(days=7)).isoformat()
     prev7_start = (now_utc - timedelta(days=14)).isoformat()
     now_value = now_utc.isoformat()
+    total_q = _get_cached_total_questions(db)
+    has_assisted = _has_assisted_column(db)
+    assisted_col = "COALESCE(assisted, 0) AS assisted" if has_assisted else "0 AS assisted"
+    assisted_sum = (
+        "COALESCE(SUM(CASE WHEN is_correct = 1 AND assisted = 1 THEN 1 ELSE 0 END), 0) AS assisted_correct"
+        if has_assisted
+        else "0 AS assisted_correct"
+    )
 
     # Uma única varredura com CTE em attempts consolida métricas gerais,
-    # janela de 7/14 dias, última tentativa e caderno de erros.
-    return db.execute("""
+    # janela de 7/14 dias, última tentativa, acertos com dica e caderno de erros.
+    row = db.execute(f"""
         WITH user_attempts AS (
             SELECT
                 question_id,
                 is_correct,
+                {assisted_col},
                 answered_at,
                 ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY id DESC) AS rn
             FROM attempts
             WHERE user_id = ?
         )
         SELECT
-            (SELECT COUNT(*) FROM questions WHERE missing_alts = 0) AS total_q,
+            ? AS total_q,
             COUNT(*) AS total_attempts,
             COUNT(DISTINCT question_id) AS distinct_answered,
             COALESCE(SUM(is_correct), 0) AS correct,
+            {assisted_sum},
             COALESCE(SUM(CASE WHEN rn = 1 AND is_correct = 1 THEN 1 ELSE 0 END), 0) AS last_correct,
             COALESCE(SUM(CASE WHEN answered_at >= ? THEN is_correct ELSE 0 END), 0) AS last7_correct,
             COALESCE(SUM(CASE WHEN answered_at >= ? THEN 1 ELSE 0 END), 0) AS last7_total,
@@ -147,11 +193,13 @@ def _fetch_attempt_rollup(db, user_id: str, now_utc: datetime):
         FROM user_attempts
     """, (
         user_id,
+        total_q,
         last7_start, last7_start,
         prev7_start, last7_start,
         prev7_start, last7_start,
         now_value, user_id,
     )).fetchone()
+    return dict(row) if row else {}
 
 
 def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> dict:
@@ -170,15 +218,9 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> d
     accuracy_last7 = (overview["last7_correct"] / overview["last7_total"]) if overview["last7_total"] else None
     accuracy_prev7 = (overview["prev7_correct"] / overview["prev7_total"]) if overview["prev7_total"] else None
 
-    assisted_correct = 0
-    try:
-        assisted_row = db.execute(
-            "SELECT COALESCE(SUM(CASE WHEN is_correct = 1 AND COALESCE(assisted, 0) = 1 THEN 1 ELSE 0 END), 0) AS assisted_correct FROM attempts WHERE user_id = ?",
-            (user_id,),
-        ).fetchone()
-        if assisted_row:
-            assisted_correct = int(assisted_row["assisted_correct"] or 0)
-    except Exception:
+    if "assisted_correct" in (overview.keys() if hasattr(overview, "keys") else {}):
+        assisted_correct = int(overview["assisted_correct"] or 0)
+    else:
         assisted_correct = 0
 
     unassisted_correct = max(0, int(correct or 0) - assisted_correct)
@@ -202,11 +244,6 @@ def _get_streak_and_target_info(db, user_id: str, now_utc: datetime, tz_offset: 
     # Shift answered_at by tz_offset to get local date string
     sign = '+' if tz_offset >= 0 else '-'
     offset_str = f"{sign}{abs(tz_offset)} minutes"
-    day_rows = db.execute(
-        "SELECT DISTINCT substr(datetime(answered_at, ?), 1, 10) AS day FROM attempts WHERE user_id = ? ORDER BY day DESC",
-        (offset_str, user_id)
-    ).fetchall()
-    days_studied = {r["day"] for r in day_rows}
 
     if config is None:
         config_row = db.execute(
@@ -215,18 +252,26 @@ def _get_streak_and_target_info(db, user_id: str, now_utc: datetime, tz_offset: 
         config = dict(config_row) if config_row else {}
 
     local_today = (now_utc + timedelta(minutes=tz_offset)).date()
-    local_today_str = str(local_today)
-    streak = responsible_streak(days_studied, local_today, config.get("days_per_week") or 6)
-
     # Calculate UTC boundaries for the local day
     local_start = datetime(local_today.year, local_today.month, local_today.day, tzinfo=timezone.utc) - timedelta(minutes=tz_offset)
     local_end = local_start + timedelta(days=1)
 
-    today_answered_row = db.execute(
-        "SELECT COUNT(DISTINCT question_id) AS today_answered FROM attempts WHERE user_id = ? AND answered_at >= ? AND answered_at < ?",
-        (user_id, local_start.isoformat(), local_end.isoformat())
-    ).fetchone()
-    today_answered_count = today_answered_row["today_answered"] if today_answered_row else 0
+    day_rows = db.execute(
+        """
+        SELECT
+            substr(datetime(answered_at, ?), 1, 10) AS day,
+            COUNT(DISTINCT CASE WHEN answered_at >= ? AND answered_at < ? THEN question_id END) AS today_q
+        FROM attempts
+        WHERE user_id = ?
+        GROUP BY day
+        ORDER BY day DESC
+        """,
+        (offset_str, local_start.isoformat(), local_end.isoformat(), user_id),
+    ).fetchall()
+    days_studied = {r["day"] for r in day_rows if r["day"]}
+    today_answered_count = sum(int(r["today_q"] or 0) for r in day_rows)
+
+    streak = responsible_streak(days_studied, local_today, config.get("days_per_week") or 6)
 
     daily_target = config.get("questions_per_day") or 20
     exam_date_str = config.get("exam_date")
@@ -362,66 +407,42 @@ def breakdown():
 def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
     date_filter = "AND answered_at >= date('now', ?)" if days is not None else ""
     params = (user_id, f'-{days} days') if days is not None else (user_id,)
-    try:
-        rows = db.execute(f"""
-            WITH ranked AS (
-                SELECT
-                    substr(answered_at, 1, 10) AS day,
-                    question_id,
-                    is_correct,
-                    COALESCE(assisted, 0) AS assisted,
-                    time_spent_ms,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY substr(answered_at, 1, 10), question_id
-                        ORDER BY answered_at DESC, id DESC
-                    ) AS rn
-                FROM attempts
-                WHERE user_id = ? {date_filter}
-            )
+    has_assisted = _has_assisted_column(db)
+    assisted_col = "COALESCE(assisted, 0) AS assisted" if has_assisted else "0 AS assisted"
+    assisted_sum = (
+        "SUM(CASE WHEN is_correct = 1 AND assisted = 1 THEN 1 ELSE 0 END) AS assisted_correct"
+        if has_assisted
+        else "0 AS assisted_correct"
+    )
+    rows = db.execute(f"""
+        WITH ranked AS (
             SELECT
-                day,
-                COUNT(*) AS attempts,
-                SUM(is_correct) AS correct,
-                SUM(CASE WHEN is_correct = 1 AND assisted = 1 THEN 1 ELSE 0 END) AS assisted_correct,
-                SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
-                SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
-                AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
-                SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
-                COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
-            FROM ranked
-            GROUP BY day
-            ORDER BY day
-        """, params).fetchall()
-    except Exception:
-        rows = db.execute(f"""
-            WITH ranked AS (
-                SELECT
-                    substr(answered_at, 1, 10) AS day,
-                    question_id,
-                    is_correct,
-                    0 AS assisted,
-                    time_spent_ms,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY substr(answered_at, 1, 10), question_id
-                        ORDER BY answered_at DESC, id DESC
-                    ) AS rn
-                FROM attempts
-                WHERE user_id = ? {date_filter}
-            )
-            SELECT
-                day,
-                COUNT(*) AS attempts,
-                SUM(is_correct) AS correct,
-                0 AS assisted_correct,
-                SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
-                SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
-                AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
-                SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
-                COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
-            FROM ranked
-            GROUP BY day
-            ORDER BY day
-        """, params).fetchall()
+                substr(answered_at, 1, 10) AS day,
+                question_id,
+                is_correct,
+                {assisted_col},
+                time_spent_ms,
+                ROW_NUMBER() OVER (
+                    PARTITION BY substr(answered_at, 1, 10), question_id
+                    ORDER BY answered_at DESC, id DESC
+                ) AS rn
+            FROM attempts
+            WHERE user_id = ? {date_filter}
+        )
+        SELECT
+            day,
+            COUNT(*) AS attempts,
+            SUM(is_correct) AS correct,
+            {assisted_sum},
+            SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
+            SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
+            AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
+            SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
+            COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
+        FROM ranked
+        GROUP BY day
+        ORDER BY day
+    """, params).fetchall()
 
     return [
         {
@@ -444,13 +465,19 @@ def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
 
 @bp.route("/stats/timeline")
 def timeline():
-    db = get_db()
     days_param = request.args.get("days")
     try:
         days = int(days_param) if days_param else None
     except ValueError:
         days = None
-    return jsonify(_get_timeline_data(db, g.user_id, days=days))
+    cache_key = (g.user_id, "timeline", days)
+    cached = overview_cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+    db = get_db()
+    data = _get_timeline_data(db, g.user_id, days=days)
+    overview_cache.set(cache_key, data)
+    return jsonify(data)
 
 
 def _get_weak_topics_data(db, user_id: str, min_attempts: int = 5) -> list[dict]:
@@ -472,12 +499,18 @@ def _get_weak_topics_data(db, user_id: str, min_attempts: int = 5) -> list[dict]
 
 @bp.route("/stats/weak-topics")
 def weak_topics():
-    db = get_db()
     try:
         min_attempts = int(request.args.get("min_attempts", 5))
     except (TypeError, ValueError):
         min_attempts = 3
-    return jsonify(_get_weak_topics_data(db, g.user_id, min_attempts=min_attempts))
+    cache_key = (g.user_id, "weak_topics", min_attempts)
+    cached = overview_cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+    db = get_db()
+    data = _get_weak_topics_data(db, g.user_id, min_attempts=min_attempts)
+    overview_cache.set(cache_key, data)
+    return jsonify(data)
 
 
 def _get_srs_due_recommendation(db, user_id):
@@ -583,12 +616,24 @@ def _get_explore_recommendation(db, user_id):
 def _get_fallback_recommendations(db, user_id, has_recs):
     if has_recs:
         return []
-    total_attempts = db.execute("SELECT COUNT(*) n FROM attempts WHERE user_id = ?", (user_id,)).fetchone()["n"]
-    last_correct = db.execute("""
-        SELECT COUNT(*) n FROM attempts a1 WHERE a1.user_id = ? AND a1.is_correct = 1
-        AND a1.id = (SELECT MAX(a2.id) FROM attempts a2 WHERE a2.user_id = ? AND a2.question_id = a1.question_id)
-    """, (user_id, user_id)).fetchone()["n"]
-    distinct_answered = db.execute("SELECT COUNT(DISTINCT question_id) n FROM attempts WHERE user_id = ?", (user_id,)).fetchone()["n"]
+    row = db.execute("""
+        WITH user_attempts AS (
+            SELECT
+                question_id,
+                is_correct,
+                ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY id DESC) AS rn
+            FROM attempts
+            WHERE user_id = ?
+        )
+        SELECT
+            COUNT(*) AS total_attempts,
+            COUNT(DISTINCT question_id) AS distinct_answered,
+            COALESCE(SUM(CASE WHEN rn = 1 AND is_correct = 1 THEN 1 ELSE 0 END), 0) AS last_correct
+        FROM user_attempts
+    """, (user_id,)).fetchone()
+    total_attempts = int(row["total_attempts"] or 0) if row else 0
+    distinct_answered = int(row["distinct_answered"] or 0) if row else 0
+    last_correct = int(row["last_correct"] or 0) if row else 0
     accuracy_latest = (last_correct / distinct_answered) if distinct_answered else None
 
     if distinct_answered >= 10 and accuracy_latest is not None and accuracy_latest >= 0.8:
@@ -608,8 +653,13 @@ def _get_fallback_recommendations(db, user_id, has_recs):
 
 @bp.route("/stats/recommendations")
 def recommendations():
-    db = get_db()
     user_id = g.user_id
+    cache_key = (user_id, "recommendations")
+    cached = overview_cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+
+    db = get_db()
     recs = []
 
     srs_rec = _get_srs_due_recommendation(db, user_id)
@@ -633,7 +683,9 @@ def recommendations():
     fallback_recs = _get_fallback_recommendations(db, user_id, bool(recs))
     recs.extend(fallback_recs)
 
-    return jsonify(recs[:5])
+    out = recs[:5]
+    overview_cache.set(cache_key, out)
+    return jsonify(out)
 
 
 @bp.route("/stats/learning-profile")
@@ -646,7 +698,7 @@ _institution_area_totals_cache = SimpleTTLCache(300)
 
 
 def _get_available_questions_by_area(db, institution_code: str | None = None) -> dict[str, int]:
-    cache_key = institution_code or "__all__"
+    cache_key = (institution_code or "__all__", _db_cache_scope())
     cached = _institution_area_totals_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -1332,16 +1384,40 @@ def _calculate_area_metrics(item: dict) -> None:
 
 def _get_domain_summary_data(db, user_id: str) -> dict:
     rows = db.execute("""
+        WITH user_subtema_attempts AS (
+            SELECT
+                q.area,
+                q.subtema,
+                COUNT(a.id) AS attempts,
+                COALESCE(SUM(a.is_correct), 0) AS correct
+            FROM attempts a
+            JOIN questions q ON q.id = a.question_id
+            WHERE a.user_id = ?
+                  AND q.missing_alts = 0
+                  AND q.area IS NOT NULL AND q.area != ''
+                  AND q.subtema IS NOT NULL AND q.subtema != ''
+            GROUP BY q.area, q.subtema
+        ),
+        question_subtemas AS (
+            SELECT
+                q.area,
+                q.subtema,
+                COUNT(q.id) AS total_questions
+            FROM questions q
+            WHERE q.missing_alts = 0
+                  AND q.area IS NOT NULL AND q.area != ''
+                  AND q.subtema IS NOT NULL AND q.subtema != ''
+            GROUP BY q.area, q.subtema
+        )
         SELECT
-            q.area,
-            q.subtema,
-            COUNT(DISTINCT q.id) AS total_questions,
-            COUNT(a.id) AS attempts,
-            COALESCE(SUM(a.is_correct), 0) AS correct
-        FROM questions q
-        LEFT JOIN attempts a ON a.question_id = q.id AND a.user_id = ?
-        WHERE q.missing_alts = 0 AND q.area IS NOT NULL AND q.area != '' AND q.subtema IS NOT NULL AND q.subtema != ''
-        GROUP BY q.area, q.subtema
+            qs.area,
+            qs.subtema,
+            qs.total_questions,
+            COALESCE(ua.attempts, 0) AS attempts,
+            COALESCE(ua.correct, 0) AS correct
+        FROM question_subtemas qs
+        LEFT JOIN user_subtema_attempts ua
+          ON ua.area = qs.area AND ua.subtema = qs.subtema
     """, (user_id,)).fetchall()
 
     areas_map = {}
@@ -1464,22 +1540,55 @@ def dashboard_summary():
         return jsonify(cached_payload)
 
     rollup = _fetch_attempt_rollup(db, user_id, now_utc)
-    config_row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
+    planner_queries = [
+        ("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)),
+        ("SELECT * FROM planner_progress WHERE user_id = ?", (user_id,)),
+        ("SELECT week, subtema, completed FROM planner_topic_progress WHERE user_id = ?", (user_id,)),
+    ]
+    batch_res = None
+    if hasattr(db, "batch"):
+        try:
+            batch_res = db.batch(planner_queries)
+        except Exception:
+            batch_res = None
+
+    if batch_res is not None:
+        config_row = batch_res[0].fetchone()
+        prog_rows = batch_res[1].fetchall()
+        topic_rows = batch_res[2].fetchall()
+        planner_prog = {
+            str(r["week"]): {
+                "studied": bool(r["studied"]),
+                "studied_at": r["studied_at"],
+                "rev24h": bool(r["rev24h"]),
+                "rev7d": bool(r["rev7d"]),
+                "rev30d": bool(r["rev30d"]),
+            }
+            for r in prog_rows
+        }
+        planner_topics = {}
+        for r in topic_rows:
+            val = bool(r["completed"])
+            planner_topics[f"{r['week']}:{r['subtema']}"] = val
+            if val:
+                planner_topics[r["subtema"]] = True
+    else:
+        config_row = db.execute(planner_queries[0][0], planner_queries[0][1]).fetchone()
+        from .plan import get_planner_progress_data, get_planner_topic_progress_data
+        planner_prog = get_planner_progress_data(db, user_id)
+        planner_topics = get_planner_topic_progress_data(db, user_id)
+
     raw_config = dict(config_row) if config_row else {}
 
     overview = _get_overview_metrics(db, user_id, now_utc, rollup=rollup)
     streak_info = _get_streak_and_target_info(db, user_id, now_utc, tz_offset, config=raw_config)
     overview.update(streak_info)
 
-    benchmark_data = _get_benchmark_data(db, user_id, now_utc, rollup=rollup, config=raw_config or None)
+    benchmark_data = _get_benchmark_data(db, user_id, now_utc, rollup=rollup, config=raw_config)
     bottlenecks_data = _get_bottlenecks_data(db, user_id, limit=3)
     domain_data = _get_domain_summary_data(db, user_id)
     error_data = _get_error_notebook_summary_data(db, user_id, rollup=rollup)
-
-    from .plan import get_planner_progress_data, get_planner_topic_progress_data
     planner_cfg = _format_planner_config_from_row(raw_config)
-    planner_prog = get_planner_progress_data(db, user_id)
-    planner_topics = get_planner_topic_progress_data(db, user_id)
 
     payload = {
         "stats": overview,
@@ -1558,33 +1667,56 @@ def _get_institution_label(db, institution_code: str | None) -> str:
 
 def _fetch_all_priority_topics(db, user_id: str, institution_code: str | None, inst_clause: str, aliases: list[str] | None = None) -> dict[str, list[dict]]:
     """Busca em lote os tópicos prioritários para todas as áreas baseados nas estatísticas de desempenho."""
-    sub_params = [user_id]
-    if aliases:
-        sub_params.extend(aliases)
-    elif institution_code:
-        sub_params.append(institution_code)
+    inst_params = []
+    if inst_clause and "?" in inst_clause:
+        if aliases:
+            inst_params.extend(aliases)
+        elif institution_code:
+            inst_params.append(institution_code)
 
+    sub_params = [user_id, *inst_params, *inst_params]
     sub_rows = db.execute(f"""
-        WITH ranked_topics AS (
+        WITH user_subtema_attempts AS (
             SELECT
                 q.area,
                 q.subtema,
-                COUNT(DISTINCT q.id) AS sub_available,
                 COUNT(DISTINCT a.question_id) AS sub_answered,
                 COUNT(a.id) AS sub_attempts,
-                COALESCE(SUM(a.is_correct), 0) AS sub_correct,
-                ROW_NUMBER() OVER (
-                    PARTITION BY q.area
-                    ORDER BY
-                        (CASE WHEN COUNT(a.id) = 0 THEN 0 WHEN (CAST(COALESCE(SUM(a.is_correct), 0) AS FLOAT) / COUNT(a.id)) < 0.65 THEN 1 ELSE 2 END) ASC,
-                        (CASE WHEN COUNT(a.id) > 0 THEN (CAST(COALESCE(SUM(a.is_correct), 0) AS FLOAT) / COUNT(a.id)) ELSE 0 END) ASC,
-                        COUNT(DISTINCT q.id) DESC
-                ) AS rnk
+                COALESCE(SUM(a.is_correct), 0) AS sub_correct
+            FROM attempts a
+            JOIN questions q ON q.id = a.question_id
+            WHERE a.user_id = ? AND q.missing_alts = 0 AND q.area IS NOT NULL AND q.area != '' {inst_clause}
+                  AND q.subtema IS NOT NULL AND q.subtema != ''
+            GROUP BY q.area, q.subtema
+        ),
+        question_subtemas AS (
+            SELECT
+                q.area,
+                q.subtema,
+                COUNT(q.id) AS sub_available
             FROM questions q
-            LEFT JOIN attempts a ON a.question_id = q.id AND a.user_id = ?
             WHERE q.missing_alts = 0 AND q.area IS NOT NULL AND q.area != '' {inst_clause}
                   AND q.subtema IS NOT NULL AND q.subtema != ''
             GROUP BY q.area, q.subtema
+        ),
+        ranked_topics AS (
+            SELECT
+                qs.area,
+                qs.subtema,
+                qs.sub_available,
+                COALESCE(ua.sub_answered, 0) AS sub_answered,
+                COALESCE(ua.sub_attempts, 0) AS sub_attempts,
+                COALESCE(ua.sub_correct, 0) AS sub_correct,
+                ROW_NUMBER() OVER (
+                    PARTITION BY qs.area
+                    ORDER BY
+                        (CASE WHEN COALESCE(ua.sub_attempts, 0) = 0 THEN 0 WHEN (CAST(COALESCE(ua.sub_correct, 0) AS FLOAT) / ua.sub_attempts) < 0.65 THEN 1 ELSE 2 END) ASC,
+                        (CASE WHEN COALESCE(ua.sub_attempts, 0) > 0 THEN (CAST(COALESCE(ua.sub_correct, 0) AS FLOAT) / ua.sub_attempts) ELSE 0 END) ASC,
+                        qs.sub_available DESC
+                ) AS rnk
+            FROM question_subtemas qs
+            LEFT JOIN user_subtema_attempts ua
+              ON ua.area = qs.area AND ua.subtema = qs.subtema
         )
         SELECT area, subtema, sub_available, sub_answered, sub_attempts, sub_correct
         FROM ranked_topics
@@ -1727,7 +1859,14 @@ def _build_institution_stats(db, user_id: str, institution_code: str | None = No
     }
 
 
-def _get_institution_radar_data(db, user_id: str, raw_inst: str = "", raw_compare: str = "", emit_event: bool = True) -> dict:
+def _get_institution_radar_data(
+    db,
+    user_id: str,
+    raw_inst: str = "",
+    raw_compare: str = "",
+    emit_event: bool = True,
+    config: dict | None = None,
+) -> dict:
     raw_inst = (raw_inst or "").strip()[:64]
     raw_compare = (raw_compare or "").strip()[:64]
 
@@ -1760,9 +1899,13 @@ def _get_institution_radar_data(db, user_id: str, raw_inst: str = "", raw_compar
         if top_inst_row:
             institution = get_canonical_institution(top_inst_row["institution_code"]) or top_inst_row["institution_code"]
         else:
-            cfg_row = db.execute("SELECT target_institution FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
-            if cfg_row and cfg_row["target_institution"]:
-                planner_inst = cfg_row["target_institution"].strip().split(",")[0].strip()
+            if config is not None:
+                target_inst_val = config.get("target_institution")
+            else:
+                cfg_row = db.execute("SELECT target_institution FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
+                target_inst_val = cfg_row["target_institution"] if cfg_row else None
+            if target_inst_val:
+                planner_inst = target_inst_val.strip().split(",")[0].strip()
                 canonical_planner = get_canonical_institution(planner_inst)
                 if canonical_planner in ALLOWED_ANALYSIS_INSTITUTIONS:
                     institution = canonical_planner
@@ -1886,19 +2029,21 @@ def analysis_summary():
 
     now_utc = datetime.now(timezone.utc)
     rollup = _fetch_attempt_rollup(db, user_id, now_utc)
+    config_row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
+    raw_config = dict(config_row) if config_row else {}
     overview = {
         **_get_overview_metrics(db, user_id, now_utc, rollup=rollup),
-        **_get_streak_and_target_info(db, user_id, now_utc, tz_offset),
+        **_get_streak_and_target_info(db, user_id, now_utc, tz_offset, config=raw_config),
     }
 
     radar_data = _get_institution_radar_data(
-        db, user_id, raw_inst=raw_inst, raw_compare=raw_compare, emit_event=False
+        db, user_id, raw_inst=raw_inst, raw_compare=raw_compare, emit_event=False, config=raw_config
     )
     resolved_inst = raw_inst or radar_data["institution"]["code"]
 
     payload = {
         "overview": overview,
-        "learning_profile": build_learning_profile(db, user_id),
+        "learning_profile": build_learning_profile(db, user_id, config_row=raw_config),
         "exam_readiness": _get_exam_readiness_data(
             db, user_id, raw_institution=resolved_inst, emit_event=False
         ),

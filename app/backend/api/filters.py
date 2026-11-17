@@ -1,8 +1,12 @@
 """Construção das cláusulas de filtro da fila de estudo (compartilhado por rotas)."""
+import os
 from datetime import datetime, timezone
 
 from flask import g
+from api.cache import SimpleTTLCache
 from api.edital_profiles import resolve_institution_codes
+
+target_institutions_cache = SimpleTTLCache(60, max_size=500)
 
 
 def question_filter_clauses(args):
@@ -127,6 +131,13 @@ def get_user_target_institutions(db, user_id: str) -> set[str]:
     """Retorna o conjunto expandido de institution_codes alvo do usuário (configurados no planejador de residência)."""
     if not user_id:
         return set()
+
+    db_scope = os.environ.get("MEDQUEST_DB") or os.environ.get("TURSO_DATABASE_URL") or "default"
+    cache_key = (user_id, db_scope)
+    cached = target_institutions_cache.get(cache_key)
+    if cached is not None:
+        return set(cached)
+
     try:
         row = db.execute(
             "SELECT target_institution FROM planner_config WHERE user_id = ?",
@@ -136,6 +147,7 @@ def get_user_target_institutions(db, user_id: str) -> set[str]:
         return set()
 
     if not row:
+        target_institutions_cache.set(cache_key, frozenset())
         return set()
 
     try:
@@ -144,6 +156,7 @@ def get_user_target_institutions(db, user_id: str) -> set[str]:
         return set()
 
     if not raw or not isinstance(raw, str):
+        target_institutions_cache.set(cache_key, frozenset())
         return set()
 
     codes = set()
@@ -154,5 +167,7 @@ def get_user_target_institutions(db, user_id: str) -> set[str]:
             for exp in expanded:
                 codes.add(exp)
                 codes.add(exp.upper())
+    target_institutions_cache.set(cache_key, frozenset(codes))
     return codes
+
 

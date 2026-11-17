@@ -39,11 +39,24 @@ def app(tmp_path):
     con.close()
     os.environ["MEDQUEST_DB"] = str(dbfile)
     try:
+        from api.adaptive import _last_known_profile, _profile_cache
+        from api.filters import target_institutions_cache
         from api.questions import count_cache, meta_cache
-        from api.stats import overview_cache
-        meta_cache.cache.clear()
-        count_cache.cache.clear()
-        overview_cache.cache.clear()
+        from api.stats import (
+            _area_totals_cache,
+            _institution_area_totals_cache,
+            _q_totals_cache,
+            overview_cache,
+        )
+        meta_cache.clear()
+        count_cache.clear()
+        overview_cache.clear()
+        _profile_cache.clear()
+        _last_known_profile.clear()
+        target_institutions_cache.clear()
+        _q_totals_cache.clear()
+        _area_totals_cache.clear()
+        _institution_area_totals_cache.clear()
         app = create_app(testing=True)
         yield app
     finally:

@@ -88,9 +88,16 @@ def init_knowledge_schema(conn: sqlite3.Connection) -> None:
         """)
 
 
+from .cache import SimpleTTLCache
+
+_knowledge_cache = SimpleTTLCache(300, max_size=500)
+_jurisprudence_cache = SimpleTTLCache(300, max_size=500)
+
+
 def _sanitize_fts_query(raw_query: str) -> str:
     """Sanitiza strings de busca para operadores válidos do SQLite FTS5."""
-    cleaned = re.sub(r'[^\w\s]', ' ', raw_query, flags=re.UNICODE)
+    without_commands = re.sub(r'(?:^|\s)/[a-zA-ZÀ-ÿ0-9_-]+', ' ', raw_query or "")
+    cleaned = re.sub(r'[^\w\s]', ' ', without_commands, flags=re.UNICODE)
     tokens = [t.strip() for t in cleaned.split() if len(t.strip()) >= 3]
     if not tokens:
         return ""
@@ -123,53 +130,69 @@ def retrieve_medical_context(
     if not fts_query:
         return []
 
+    norm_area = area.strip()
+    norm_subtema = subtema.strip()
+    try:
+        mtime_ns = os.stat(db_file).st_mtime_ns
+    except OSError:
+        mtime_ns = 0
+
+    cache_key = (db_file, mtime_ns, norm_area, norm_subtema, fts_query, top_k)
+    cached = _knowledge_cache.get(cache_key)
+    if cached is not None:
+        return list(cached)
+
+    conn = None
     try:
         conn = get_knowledge_connection(db_file)
         results = []
 
         # Tentativa 1: Busca FTS5 filtrando por especialidade/área quando informada
-        norm_area = area.strip()
-        norm_subtema = subtema.strip()
+        cursor = conn.cursor()
+        if norm_area:
+            cursor.execute(
+                """
+                SELECT kc.id, kc.source_file, kc.source_type, kc.specialty,
+                       kc.topic, kc.subtopic, kc.title, kc.content, fts.rank
+                FROM knowledge_fts fts
+                JOIN knowledge_chunks kc ON fts.rowid = kc.id
+                WHERE knowledge_fts MATCH ?
+                  AND (kc.specialty LIKE ? OR kc.topic LIKE ? OR kc.subtopic LIKE ?)
+                ORDER BY fts.rank
+                LIMIT ?
+                """,
+                (fts_query, f"%{norm_area}%", f"%{norm_area}%", f"%{norm_subtema}%", top_k)
+            )
+            results = [dict(row) for row in cursor.fetchall()]
 
-        with conn:
-            cursor = conn.cursor()
-            if norm_area:
-                cursor.execute(
-                    """
-                    SELECT kc.id, kc.source_file, kc.source_type, kc.specialty,
-                           kc.topic, kc.subtopic, kc.title, kc.content, fts.rank
-                    FROM knowledge_fts fts
-                    JOIN knowledge_chunks kc ON fts.rowid = kc.id
-                    WHERE knowledge_fts MATCH ?
-                      AND (kc.specialty LIKE ? OR kc.topic LIKE ? OR kc.subtopic LIKE ?)
-                    ORDER BY fts.rank
-                    LIMIT ?
-                    """,
-                    (fts_query, f"%{norm_area}%", f"%{norm_area}%", f"%{norm_subtema}%", top_k)
-                )
-                results = [dict(row) for row in cursor.fetchall()]
+        # Tentativa 2: Fallback para busca global por ranking BM25 se filtragem for muito restritiva
+        if not results:
+            cursor.execute(
+                """
+                SELECT kc.id, kc.source_file, kc.source_type, kc.specialty,
+                       kc.topic, kc.subtopic, kc.title, kc.content, fts.rank
+                FROM knowledge_fts fts
+                JOIN knowledge_chunks kc ON fts.rowid = kc.id
+                WHERE knowledge_fts MATCH ?
+                ORDER BY fts.rank
+                LIMIT ?
+                """,
+                (fts_query, top_k)
+            )
+            results = [dict(row) for row in cursor.fetchall()]
 
-            # Tentativa 2: Fallback para busca global por ranking BM25 se filtragem for muito restritiva
-            if not results:
-                cursor.execute(
-                    """
-                    SELECT kc.id, kc.source_file, kc.source_type, kc.specialty,
-                           kc.topic, kc.subtopic, kc.title, kc.content, fts.rank
-                    FROM knowledge_fts fts
-                    JOIN knowledge_chunks kc ON fts.rowid = kc.id
-                    WHERE knowledge_fts MATCH ?
-                    ORDER BY fts.rank
-                    LIMIT ?
-                    """,
-                    (fts_query, top_k)
-                )
-                results = [dict(row) for row in cursor.fetchall()]
-
+        _knowledge_cache.set(cache_key, results)
         return results
 
     except Exception as exc:
         logger.warning("[Grounding] Erro na recuperação de contexto médico: %s", exc)
         return []
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def retrieve_jurisprudence_context(
@@ -194,6 +217,12 @@ def retrieve_jurisprudence_context(
 
     if not fts_query:
         return []
+
+    db_scope = os.environ.get("MEDQUEST_DB") or os.environ.get("TURSO_DATABASE_URL") or "default"
+    cache_key = (db_scope, current_question_id or -1, fts_query, top_k)
+    cached = _jurisprudence_cache.get(cache_key)
+    if cached is not None:
+        return list(cached)
 
     try:
         cur = db.execute(
@@ -230,10 +259,13 @@ def retrieve_jurisprudence_context(
                 "stem_excerpt": (stem_clean[:220] + "...") if len(stem_clean) > 220 else stem_clean,
                 "explanation_excerpt": (expl_clean[:500] + "...") if len(expl_clean) > 500 else expl_clean
             })
+        if results:
+            _jurisprudence_cache.set(cache_key, results)
         return results
     except Exception as exc:
         logger.warning("[Grounding] Falha ao recuperar jurisprudência de bancas: %s", exc)
         return []
+
 
 
 def format_jurisprudence_block(precedents: List[Dict[str, Any]]) -> str:

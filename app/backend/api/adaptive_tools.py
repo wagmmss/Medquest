@@ -27,32 +27,25 @@ def get_student_weak_topics(db, user_id: Optional[str], limit: int = 5) -> Dict[
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # 1. Total de tentativas e acurácia global
+        # 1. Total de tentativas, acurácia global e revisões FSRS vencidas hoje em query única
         totals_row = db.execute(
             """
-            SELECT COUNT(*) AS total, COALESCE(SUM(is_correct), 0) AS correct
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(is_correct), 0) AS correct,
+                (SELECT COUNT(*) FROM spaced_repetition WHERE user_id = ? AND next_review_date <= ?) AS srs_due
             FROM attempts
             WHERE user_id = ?
             """,
-            (user_id,)
+            (user_id, now_iso, user_id)
         ).fetchone()
 
         total_attempts = totals_row["total"] if totals_row else 0
         total_correct = totals_row["correct"] if totals_row else 0
+        srs_due_count = totals_row["srs_due"] if totals_row else 0
         overall_accuracy = (
             round((total_correct / total_attempts) * 100, 1) if total_attempts > 0 else 0.0
         )
-
-        # 2. Revisões FSRS vencidas hoje
-        srs_row = db.execute(
-            """
-            SELECT COUNT(*) AS srs_due
-            FROM spaced_repetition
-            WHERE user_id = ? AND next_review_date <= ?
-            """,
-            (user_id, now_iso)
-        ).fetchone()
-        srs_due_count = srs_row["srs_due"] if srs_row else 0
 
         # 3. Subtemas com maior impacto de perda de pontos e significância estatística
         # Critério adaptativo: quando o aluno já tem volume considerável de questões,

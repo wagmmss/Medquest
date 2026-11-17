@@ -15,23 +15,35 @@ bp = Blueprint("ai_routes", __name__)
 @require_auth
 def ask_question_ai(question_id):
     db = get_db()
-    q = db.execute("""
+    q_sql = """
         SELECT q.id, q.stem, q.area, q.subtema, q.topic,
                e.explanation_text
         FROM questions q
         LEFT JOIN explanations e ON q.id = e.question_id
         WHERE q.id = ?
-    """, (question_id,)).fetchone()
-
-    if not q:
-        return jsonify({"error": "Questão não encontrada"}), 404
-
-    alts = db.execute("""
+    """
+    alts_sql = """
         SELECT letter, text, is_correct
         FROM alternatives
         WHERE question_id = ?
         ORDER BY letter
-    """, (question_id,)).fetchall()
+    """
+    batch_res = None
+    if hasattr(db, "batch"):
+        try:
+            batch_res = db.batch([(q_sql, (question_id,)), (alts_sql, (question_id,))])
+        except Exception:
+            batch_res = None
+
+    if batch_res is not None:
+        q = batch_res[0].fetchone()
+        alts = batch_res[1].fetchall() if q else []
+    else:
+        q = db.execute(q_sql, (question_id,)).fetchone()
+        alts = db.execute(alts_sql, (question_id,)).fetchall() if q else []
+
+    if not q:
+        return jsonify({"error": "Questão não encontrada"}), 404
 
     alts_list = [{"letter": a["letter"], "text": a["text"], "is_correct": bool(a["is_correct"])} for a in alts]
     correct_alt = next((a for a in alts_list if a["is_correct"]), None)
@@ -87,7 +99,6 @@ def preceptor_dashboard_focus():
     para o Dashboard do estudante. Suporta modo rápido (apenas métricas) e
     modo com parecer clínico de IA.
     """
-    db = get_db()
     user_id = getattr(g, "user_id", "1")
 
     body = request.get_json(silent=True) or {}
@@ -97,6 +108,13 @@ def preceptor_dashboard_focus():
         generate_ai = ai_arg in ("1", "true", "True")
 
     if not generate_ai:
+        from .stats import overview_cache
+        cache_key = (user_id, "preceptor_focus_fast")
+        cached = overview_cache.get(cache_key)
+        if cached is not None:
+            return jsonify(cached)
+
+        db = get_db()
         from .adaptive_tools import get_student_weak_topics
         diag_data = get_student_weak_topics(db, user_id, limit=5)
         weak_list = diag_data.get("weak_topics", [])
@@ -110,7 +128,7 @@ def preceptor_dashboard_focus():
             rec_area = "Clínica Médica"
             rec_url = "/estudar?area=Clinica%20Medica&limit=15"
 
-        return jsonify({
+        payload = {
             "diagnostic_data": diag_data,
             "recommended_topic": {
                 "subtema": rec_subtema,
@@ -118,8 +136,12 @@ def preceptor_dashboard_focus():
                 "practice_url": rec_url,
             },
             "source": "database_snapshot"
-        })
+        }
+        overview_cache.set(cache_key, payload)
+        return jsonify(payload)
 
+    db = get_db()
     result = ai.generate_preceptor_dashboard_focus(db, user_id)
     return jsonify(result)
+
 

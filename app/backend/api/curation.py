@@ -101,8 +101,8 @@ def update_question_classification(qid):
                 WHERE id = ?
             """, (area, subtema, topic, qid))
 
-    from .questions import invalidate_user_caches, meta_cache
-    meta_cache.cache.clear()
+    from .questions import invalidate_global_question_caches, invalidate_user_caches
+    invalidate_global_question_caches()
     invalidate_user_caches(getattr(g, "user_id", None))
 
     return jsonify({
@@ -170,8 +170,8 @@ def delete_question(qid):
             (qid, now_iso, user_email),
         )
 
-    from .questions import invalidate_user_caches, meta_cache
-    meta_cache.cache.clear()
+    from .questions import invalidate_global_question_caches, invalidate_user_caches
+    invalidate_global_question_caches()
     invalidate_user_caches(getattr(g, "user_id", None))
 
     return jsonify({

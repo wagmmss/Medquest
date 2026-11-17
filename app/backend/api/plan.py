@@ -392,6 +392,7 @@ def generate_plan():
                     INSERT INTO planner_schedule (user_id, mode, week, subtema, display_order, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, insert_records)
+        invalidate_user_caches(g.user_id)
 
     return jsonify(plan)
 

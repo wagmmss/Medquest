@@ -161,36 +161,55 @@ def _fetch_batch_metadata(db, q_ids: list[int], chunk_size: int = 500) -> tuple[
     q_map = {}
     correct_alts_map = {}
     exp_map = {}
+    unique_ids = list(dict.fromkeys(q_ids))
+    if not unique_ids:
+        return q_map, correct_alts_map, exp_map
 
-    for i in range(0, len(q_ids), chunk_size):
-        chunk = q_ids[i:i + chunk_size]
+    for i in range(0, len(unique_ids), chunk_size):
+        chunk = unique_ids[i:i + chunk_size]
         placeholders = ",".join("?" * len(chunk))
+        q_exp_sql = f"""
+            SELECT q.id, q.correct_letter, e.explanation_text
+            FROM questions q
+            LEFT JOIN explanations e ON e.question_id = q.id
+            WHERE q.id IN ({placeholders})
+        """
+        alts_sql = (
+            f"SELECT question_id, letter FROM alternatives "
+            f"WHERE question_id IN ({placeholders}) AND is_correct = 1"
+        )
 
-        qs = db.execute(f"SELECT id, correct_letter FROM questions WHERE id IN ({placeholders})", chunk).fetchall()
+        batch_res = None
+        if hasattr(db, "batch"):
+            try:
+                batch_res = db.batch([(q_exp_sql, chunk), (alts_sql, chunk)])
+            except Exception:
+                batch_res = None
+
+        if batch_res is not None:
+            qs = batch_res[0].fetchall()
+            alts_rows = batch_res[1].fetchall()
+        else:
+            qs = db.execute(q_exp_sql, chunk).fetchall()
+            alts_rows = db.execute(alts_sql, chunk).fetchall()
+
         for q in qs:
-            q_map[q["id"]] = q["correct_letter"]
+            qid = q["id"]
+            q_map[qid] = q["correct_letter"]
+            if q["explanation_text"] is not None:
+                exp_map[qid] = q["explanation_text"]
 
-        alts_rows = db.execute(
-            f"SELECT question_id, letter FROM alternatives WHERE question_id IN ({placeholders}) AND is_correct = 1",
-            chunk,
-        ).fetchall()
         for a in alts_rows:
             correct_alts_map.setdefault(a["question_id"], set()).add(a["letter"].strip().upper())
-
-        exps = db.execute(
-            f"SELECT question_id, explanation_text FROM explanations WHERE question_id IN ({placeholders})",
-            chunk,
-        ).fetchall()
-        for e in exps:
-            exp_map[e["question_id"]] = e["explanation_text"]
 
     return q_map, correct_alts_map, exp_map
 
 
 def _fetch_srs_map(db, q_ids: list[int], user_id: int, chunk_size: int = 500) -> dict:
     srs_map = {}
-    for i in range(0, len(q_ids), chunk_size):
-        chunk = q_ids[i:i + chunk_size]
+    unique_ids = list(dict.fromkeys(q_ids))
+    for i in range(0, len(unique_ids), chunk_size):
+        chunk = unique_ids[i:i + chunk_size]
         placeholders = ",".join("?" * len(chunk))
         chunk_args = [*chunk, user_id]
         srs_data = db.execute(
@@ -200,3 +219,4 @@ def _fetch_srs_map(db, q_ids: list[int], user_id: int, chunk_size: int = 500) ->
         for card in srs_data:
             srs_map[card["question_id"]] = card["fsrs_card"]
     return srs_map
+
