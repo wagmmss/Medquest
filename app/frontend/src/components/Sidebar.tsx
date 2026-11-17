@@ -12,7 +12,6 @@ import { useZenMode } from "@/hooks/useZenMode";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
-import { openCommandPalette } from "@/components/CommandPalette";
 import Image from "next/image";
 
 const SIDEBAR_EVENT = "medquest-sidebar-collapsed-change";
@@ -62,7 +61,7 @@ export function Sidebar() {
           isCollapsed ? "w-16" : "w-60"
         )}
       >
-        {/* LOGO & TITULO CLINICO */}
+        {/* LOGO & TITULO */}
         <div
           className={clsx(
             "flex items-center border-b border-line-subtle/80 py-2.5",
@@ -70,13 +69,13 @@ export function Sidebar() {
           )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xs bg-ink-primary text-surface flex items-center justify-center shadow-2xs shrink-0">
-              <ClinicalIcon name="local_hospital" className="w-4 h-4 text-canvas" strokeWidth={2.2} />
+            <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center shadow-xs shrink-0">
+              <ClinicalIcon name="local_hospital" className="w-4 h-4" strokeWidth={2.2} />
             </div>
             {!isCollapsed && (
               <div className="flex flex-col min-w-0">
                 <h1 className="font-bold text-sm text-ink-primary tracking-tight truncate">MedQuest</h1>
-                <span className="text-[10px] font-mono-lab uppercase tracking-wider text-ink-muted truncate">Clinical Workspace</span>
+                <span className="text-[11px] text-ink-muted truncate">Residência Médica</span>
               </div>
             )}
           </div>
@@ -84,7 +83,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={toggleCollapse}
-              className="p-1 rounded-xs text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
               title="Recolher barra lateral"
               aria-label="Recolher barra lateral"
             >
@@ -97,7 +96,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={toggleCollapse}
-            className="mx-auto p-1.5 rounded-xs border border-line-subtle text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
+            className="mx-auto p-1.5 rounded-lg border border-line-subtle text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
             title="Expandir barra lateral"
             aria-label="Expandir barra lateral"
           >
@@ -106,28 +105,6 @@ export function Sidebar() {
         )}
 
         {/* NAVEGACAO PRINCIPAL */}
-        <div className="px-0.5">
-          <button
-            type="button"
-            onClick={openCommandPalette}
-            title="Busca Rápida Global (Ctrl+K)"
-            className={clsx(
-              "w-full flex items-center rounded-xs border border-line-subtle bg-canvas/70 hover:bg-elevated text-ink-secondary hover:text-ink-primary transition-colors text-xs cursor-pointer",
-              isCollapsed ? "justify-center p-2" : "justify-between px-2.5 py-1.5"
-            )}
-          >
-            <span className="flex items-center gap-2 min-w-0">
-              <ClinicalIcon name="search" className="w-3.5 h-3.5 shrink-0 text-accent" />
-              {!isCollapsed && <span className="truncate">Busca rápida...</span>}
-            </span>
-            {!isCollapsed && (
-              <kbd className="text-[10px] font-mono-lab px-1 py-0.5 rounded-xs bg-surface border border-line-subtle text-ink-muted">
-                Ctrl+K
-              </kbd>
-            )}
-          </button>
-        </div>
-
         <nav className="flex-1 flex flex-col gap-1 overflow-y-auto px-0.5 py-1" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
@@ -138,11 +115,11 @@ export function Sidebar() {
                 title={isCollapsed ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
-                  "flex items-center rounded-xs transition-colors text-xs font-medium",
-                  isCollapsed ? "justify-center py-2.5 px-2" : "gap-2.5 py-2 px-2.5",
+                  "flex items-center rounded-xl transition-colors text-[13px] font-medium",
+                  isCollapsed ? "justify-center py-2.5 px-2" : "gap-2.5 py-2 px-3",
                   isActive 
-                    ? "bg-elevated text-ink-primary font-semibold border border-line-subtle shadow-2xs" 
-                    : "text-ink-secondary hover:bg-elevated/60 hover:text-ink-primary"
+                    ? "bg-accent/10 text-ink-primary font-semibold border border-accent/25" 
+                    : "text-ink-secondary hover:bg-elevated/70 hover:text-ink-primary"
                 )}
               >
                 <ClinicalIcon 

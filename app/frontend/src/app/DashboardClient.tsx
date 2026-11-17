@@ -633,59 +633,50 @@ export function DashboardClient({
           </div>
         </motion.div>
       ) : stats.distinct_answered === 0 ? (
-        <motion.div variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-5 sm:p-6 shadow-2xs">
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-5">
-            <div className="w-12 h-12 rounded-xs bg-ink-primary text-surface flex items-center justify-center shadow-2xs shrink-0">
-              <ClinicalIcon name="local_hospital" className="w-6 h-6 text-canvas" />
-            </div>
-            <div className="text-center sm:text-left">
-              <h3 className="text-lg sm:text-xl font-bold text-ink-primary mb-0.5">
-                Boas-vindas ao MedQuest!
+        <motion.div variants={itemVariants} className="shrink-0 mq-page-hero p-6 sm:p-7 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-ink-primary mb-1">
+                Comece sua preparação
               </h3>
-              <p className="text-xs text-ink-secondary max-w-xl">
-                Seu painel inteligente é calibrado a cada questão respondida. Siga os 2 passos abaixo para configurar seu direcionamento:
+              <p className="text-sm text-ink-secondary max-w-xl">
+                Configure sua data de prova ou responda um bloco rápido de 20 questões para calibrar seu painel de desempenho.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Passo 1 */}
-            <div className="p-4 rounded-xs bg-elevated/40 border border-line-subtle flex flex-col justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl bg-surface border border-line-subtle flex flex-col justify-between gap-4 shadow-2xs">
               <div>
-                <div className="flex items-center gap-1.5 mb-1.5 text-accent font-mono-lab font-bold text-xs uppercase tracking-wider">
-                  <span className="w-4 h-4 rounded-xs bg-accent text-accent-fg flex items-center justify-center text-[10px]">1</span>
-                  Planejamento
-                </div>
-                <h4 className="font-bold text-ink-primary text-sm mb-1">Defina sua Prova e Meta</h4>
-                <p className="text-xs text-ink-secondary mb-3">
-                  Informe a data do seu exame e horas semanais para receber sugestões de cronograma.
+                <span className="inline-block text-xs font-semibold text-accent mb-1">Cronograma</span>
+                <h4 className="font-bold text-ink-primary text-base mb-1">Definir prova e disponibilidade</h4>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Informe sua banca-alvo, data da prova e horas semanais para organizar suas metas.
                 </p>
               </div>
               <Link 
                 href="/planner" 
-                className="w-full py-2 px-3 bg-surface hover:bg-elevated text-ink-primary border border-line-subtle font-bold rounded-xs text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                className="w-full py-2.5 px-4 bg-surface hover:bg-elevated text-ink-primary border border-line-subtle font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
-                <span>Configurar no Planner →</span>
+                <span>Configurar cronograma</span>
+                <ClinicalIcon name="arrow_forward" className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Passo 2 */}
-            <div className="p-4 rounded-xs bg-elevated/40 border border-line-subtle flex flex-col justify-between">
+            <div className="p-5 rounded-2xl bg-surface border border-line-subtle flex flex-col justify-between gap-4 shadow-2xs">
               <div>
-                <div className="flex items-center gap-1.5 mb-1.5 text-accent font-mono-lab font-bold text-xs uppercase tracking-wider">
-                  <span className="w-4 h-4 rounded-xs bg-accent text-accent-fg flex items-center justify-center text-[10px]">2</span>
-                  Diagnóstico Inicial
-                </div>
-                <h4 className="font-bold text-ink-primary text-sm mb-1">Faça 20 Questões de Teste</h4>
-                <p className="text-xs text-ink-secondary mb-3">
-                  Calibre seu diagnóstico inicial de pontos fracos, retenção e faixa estimada de prontidão.
+                <span className="inline-block text-xs font-semibold text-accent mb-1">Diagnóstico inicial</span>
+                <h4 className="font-bold text-ink-primary text-base mb-1">Resolver 20 questões de nivelamento</h4>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Mapeie seus pontos fortes, retenção espaçada e estimativa inicial de prontidão.
                 </p>
               </div>
               <Link 
                 href="/estudar?limit=20" 
-                className="w-full py-2 px-3 bg-ink-primary hover:bg-ink-primary/90 text-surface font-bold rounded-xs text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
-                <ClinicalIcon name="play_arrow" className="w-3.5 h-3.5" /> <span>Iniciar 20 Questões</span>
+                <ClinicalIcon name="play_arrow" className="w-3.5 h-3.5" />
+                <span>Iniciar 20 questões</span>
               </Link>
             </div>
           </div>
@@ -702,14 +693,11 @@ export function DashboardClient({
           )}
 
           {/* PLANO DE HOJE UNIFICADO (3 Pilares + Raio-X do Preceptor no cabeçalho) */}
-          <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 sm:p-5 shadow-2xs">
-            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-line-subtle">
+          <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-2xl p-5 sm:p-6 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2 text-ink-primary">
                 <ClinicalIcon name="schedule" className="w-4 h-4 text-accent" />
-                <h3 className="text-sm font-bold tracking-tight">Plano de Hoje</h3>
-                <span className="hidden sm:inline text-[11px] font-mono-lab text-ink-muted">
-                  · Metas personalizadas diárias
-                </span>
+                <h3 className="text-base font-bold tracking-tight">Plano de Hoje</h3>
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">

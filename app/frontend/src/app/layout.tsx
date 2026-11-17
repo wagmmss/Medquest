@@ -1,7 +1,29 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider, SignIn } from '@clerk/nextjs';
 import { ptBR } from '@clerk/localizations';
+import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from 'next/font/google';
 import { cookies } from 'next/headers';
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-sans-clinical",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-mono-lab",
+  display: "swap",
+});
 import { getServerAuthState, isClerkServerEnabled } from "@/lib/auth-server";
 import { AppAuthProvider } from "@/lib/auth-client";
 import "./globals.css";
@@ -75,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const documentTree = (
     <html
       lang="pt-BR"
-      className="font-sans h-full antialiased"
+      className={`${plusJakarta.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

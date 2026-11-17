@@ -103,7 +103,7 @@ export function QuizClient({
   );
   const { isZenMode: zenMode, toggleZenMode } = useZenMode();
   const [subtemaSearch, setSubtemaSearch] = useState("");
-  const [showCustomSession, setShowCustomSession] = useState(false);
+  const [showCustomSession, setShowCustomSession] = useState(true);
   const [showTopicTree, setShowTopicTree] = useState(false);
   const [hasSavedState, setHasSavedState] = useState(false);
   const [savedSessionData, setSavedSessionData] = useState<SavedQuizState | null>(null);

@@ -291,7 +291,7 @@ export function AnalysisClient({
       <div
         role="tablist"
         aria-label="Seções de Análise"
-        className="flex flex-wrap items-center gap-1.5 bg-surface border border-line-subtle p-1.5 rounded-lg w-full sm:w-fit"
+        className="flex flex-wrap items-center gap-1.5 bg-surface border border-line-subtle p-1.5 rounded-2xl w-full sm:w-fit shadow-2xs"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -304,10 +304,10 @@ export function AnalysisClient({
               aria-selected={isSelected}
               onClick={() => handleTabChange(tab.key)}
               className={clsx(
-                "flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer min-h-[38px]",
+                "flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer min-h-[38px]",
                 isSelected
                   ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface-subtle"
+                  : "text-ink-secondary hover:text-ink-primary hover:bg-elevated/60"
               )}
             >
               <Icon size={15} />

@@ -43,22 +43,22 @@ export function CadernoClient() {
 
   return (
     <div className="flex flex-col gap-5 w-full max-w-5xl mx-auto">
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-line-subtle pb-4">
+      <header className="mq-page-hero p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] font-mono-lab uppercase tracking-wider text-accent font-semibold">
-            Retenção Ativa & Macetes
+          <span className="inline-block text-xs font-semibold text-accent">
+            Retenção Ativa &amp; Macetes
           </span>
           <h1 className="text-2xl font-bold text-ink-primary tracking-tight flex items-center gap-2 mt-0.5">
             <StickyNote className="w-6 h-6 text-accent" />
             Caderno Inteligente
           </h1>
-          <p className="text-xs text-ink-secondary mt-1">
+          <p className="text-sm text-ink-secondary mt-1">
             Todos os grifos de enunciado e macetes clínicos anotados durante suas sessões, organizados por área e tema.
           </p>
         </div>
         <Link
           href="/estudar"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xs bg-accent text-white text-xs font-semibold hover:bg-accent/90 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/90 transition-colors shrink-0 shadow-2xs"
         >
           <BookOpen className="w-3.5 h-3.5" />
           Estudar Questões
@@ -67,20 +67,20 @@ export function CadernoClient() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar em macetes, grifos ou subtemas..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line-subtle rounded-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full pl-10 pr-3 py-2.5 text-xs bg-surface border border-line-subtle rounded-xl text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent shadow-2xs"
           />
         </div>
         <select
           value={areaFilter}
           onChange={(e) => setAreaFilter(e.target.value)}
           aria-label="Filtrar por grande área"
-          className="px-3 py-2 text-xs bg-surface border border-line-subtle rounded-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+          className="px-3.5 py-2.5 text-xs bg-surface border border-line-subtle rounded-xl text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent shadow-2xs"
         >
           <option value="">Todas as Grandes Áreas</option>
           {AREAS.filter(Boolean).map((area) => (

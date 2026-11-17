@@ -235,8 +235,8 @@ export function SearchClient({
   return (
     <div className="flex flex-col gap-5 max-w-6xl mx-auto px-4 sm:px-6 py-5 pb-24">
       {/* Top Header */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2 text-accent font-mono-lab font-bold text-xs tracking-wider uppercase">
+      <div className="mq-page-hero p-5 sm:p-6 shadow-2xs flex flex-col gap-1.5">
+        <div className="flex items-center gap-2 text-accent font-semibold text-xs">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Pesquisa Clínica em {totalCountLabel}</span>
         </div>
@@ -259,7 +259,7 @@ export function SearchClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ex: infarto com supra, cetoacidose, sinal de Cullen, apendicite, pré-eclâmpsia..."
-          className="w-full h-12 pl-10 pr-20 rounded-lg bg-surface border border-line-subtle text-ink-primary placeholder:text-ink-muted text-sm shadow-2xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+          className="w-full h-12 pl-10 pr-20 rounded-2xl bg-surface border border-line-subtle text-ink-primary placeholder:text-ink-muted text-sm shadow-2xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
         />
         <div className="absolute right-3 flex items-center gap-1.5">
           {query && (

@@ -15,6 +15,7 @@ import { NAV_ITEMS } from "@/lib/navigation";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
+import { openCommandPalette } from "@/components/CommandPalette";
 
 export default function TopNav() {
   const { user, isLoaded } = useAppUser();
@@ -87,6 +88,52 @@ export default function TopNav() {
 
   return (
     <>
+      {/* Desktop Unified Topbar (Medway-inspired calm bar) */}
+      <header className="app-top-nav hidden md:flex items-center justify-between gap-4 w-full px-6 py-2.5 h-14 bg-surface/90 backdrop-blur-md border-b border-line-subtle z-10 sticky top-0 select-none">
+        <div className="flex items-center gap-2 min-w-0 text-xs text-ink-secondary">
+          <span className="font-semibold text-ink-primary truncate">
+            {NAV_ITEMS.find((item) => item.href === pathname)?.label || "MedQuest"}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="flex items-center justify-between gap-3 w-full max-w-md px-3.5 py-1.5 rounded-full bg-elevated/80 hover:bg-elevated border border-line-subtle text-xs text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+          title="Abrir busca global (Ctrl+K)"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <ClinicalIcon name="search" className="w-3.5 h-3.5 text-accent shrink-0" />
+            <span className="truncate">Pesquisar provas, temas, questões ou macetes...</span>
+          </span>
+          <kbd className="text-[10px] font-mono-lab px-1.5 py-0.5 rounded-xs bg-surface border border-line-subtle text-ink-muted shrink-0">
+            Ctrl+K
+          </kbd>
+        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/estudar?status=srs_due&limit=50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold border border-accent/25 transition-colors"
+          >
+            <ClinicalIcon name="psychology" className="w-3.5 h-3.5" />
+            <span>Revisão do dia</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="relative w-8 h-8 rounded-full bg-elevated border border-line-subtle overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all"
+            aria-label="Abrir minha conta"
+          >
+            {isLoaded && user?.imageUrl ? (
+              <Image src={user.imageUrl} alt="Avatar" fill sizes="32px" className="object-cover" />
+            ) : (
+              <ClinicalIcon name="person" className="w-4 h-4 text-ink-muted" />
+            )}
+          </button>
+        </div>
+      </header>
+
       <header className="app-top-nav md:hidden flex justify-between items-center w-full px-3.5 sm:px-4 py-2 h-14 bg-surface border-b border-line-subtle z-10 sticky top-0 transition-colors max-w-full overflow-hidden select-none">
         <h1 className="font-semibold text-base text-ink-primary tracking-tight flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-xs bg-ink-primary text-surface flex items-center justify-center shadow-2xs shrink-0">
