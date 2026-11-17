@@ -14,6 +14,7 @@ Uso:
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -246,6 +247,19 @@ def get_backend_pytest_cmd():
     return "pytest"
 
 
+def get_backend_ruff_cmd():
+    """Retorna comando executavel ruff do backend virtualenv (ou None se ausente)."""
+    if os.name == "nt":
+        venv_ruff = BACKEND_DIR / ".venv" / "Scripts" / "ruff.exe"
+        if venv_ruff.exists():
+            return str(venv_ruff)
+    else:
+        venv_ruff = BACKEND_DIR / ".venv" / "bin" / "ruff"
+        if venv_ruff.exists():
+            return str(venv_ruff)
+    return shutil.which("ruff")
+
+
 def run_tier_fast():
     """Camada 1: Fast (Commit Local — Escopo Incremental por Diff)."""
     print("================================================================")
@@ -267,12 +281,26 @@ def run_tier_fast():
         return True, 0.05
 
     py_cmd = get_backend_python_cmd()
+    _ = py_cmd
     pytest_cmd = get_backend_pytest_cmd()
 
     timings = []
     all_ok = True
 
-    # 1. Backend: Testes do escopo alterado
+    # 1. Backend: Linter rápido (ruff) e testes do escopo alterado
+    changed_py_files = [
+        str((ROOT_DIR / f).resolve())
+        for f in changed
+        if f.endswith(".py") and (ROOT_DIR / f).is_file()
+    ]
+    ruff_cmd = get_backend_ruff_cmd()
+    if changed_py_files and ruff_cmd:
+        cmd = [ruff_cmd, "check", "--select", "E,F", "--ignore", "E501"] + changed_py_files[:20]
+        ok, el = run_command(cmd, ROOT_DIR, f"Backend Incremental Lint - ruff ({len(changed_py_files)} arquivos)")
+        timings.append(("Backend Incremental Lint (ruff)", el))
+        if not ok:
+            all_ok = False
+
     backend_tests = map_backend_tests(changed)
     if backend_tests:
         cmd = [pytest_cmd, "-q", "--disable-warnings"] + backend_tests
