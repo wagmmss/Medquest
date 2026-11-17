@@ -1,5 +1,6 @@
 """Deterministic adaptive-learning scoring for study queues and diagnostics."""
 import json
+import logging
 import math
 from datetime import datetime, timezone
 
@@ -9,7 +10,9 @@ from .cache import SimpleTTLCache
 from .filters import get_user_target_institutions
 from .srs import _question_scheduler as _scheduler, _safe_load_card
 
+logger = logging.getLogger(__name__)
 _profile_cache = SimpleTTLCache(60)
+_last_known_profile: dict[tuple, dict] = {}
 
 
 def _utc(value=None):
@@ -397,6 +400,39 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
     return signals
 
 
+def _build_fallback_profile(now: datetime, cache_key: tuple) -> dict:
+    """Retorna último perfil conhecido ou fallback determinístico seguro em falha de banco."""
+    stale = _last_known_profile.get(cache_key)
+    if stale is not None:
+        return {
+            **stale,
+            "method": {
+                **stale.get("method", {}),
+                "stale_fallback": True,
+            },
+        }
+    return {
+        "generated_at": now.isoformat(),
+        "goal": {
+            "questions_today": 30,
+            "configured_daily_questions": 30,
+            "reviews_due": 0,
+            "reviews_to_do_today": 0,
+            "backlog_pending": 0,
+            "hours_budget": 4,
+            "max_capacity": 80,
+            "target_score": None,
+            "exam_date": None,
+        },
+        "topics": [],
+        "method": {
+            "deterministic": True,
+            "fallback": True,
+            "signals": ["FSRS retrievability", "accuracy with evidence confidence", "coverage", "due reviews"],
+        },
+    }
+
+
 def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
     """Build a transparent personalized diagnosis and daily goal."""
     use_cache = now is None
@@ -407,26 +443,31 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
             return cached
 
     now = _utc(now)
-    signals = get_adaptive_signals_by_topic(db, user_id, now=now)
-    due_total = sum(item["due_count"] for item in signals.values())
+    try:
+        signals = get_adaptive_signals_by_topic(db, user_id, now=now)
+        due_total = sum(item["due_count"] for item in signals.values())
 
-    topics = []
-    for item in signals.values():
-        reasons = list(item["reasons"])
-        if item["coverage"] < 0.2 and "low_coverage" not in reasons:
-            reasons.append("low_coverage")
-        topics.append({
-            **item,
-            "reasons": reasons or ["balanced_practice"],
-        })
+        topics = []
+        for item in signals.values():
+            reasons = list(item["reasons"])
+            if item["coverage"] < 0.2 and "low_coverage" not in reasons:
+                reasons.append("low_coverage")
+            topics.append({
+                **item,
+                "reasons": reasons or ["balanced_practice"],
+            })
 
-    topics.sort(key=lambda item: (-item["priority_score"], item["topic"]))
-    if subtema is not None:
-        topics = [item for item in topics if item["topic"] == subtema]
-    config = db.execute(
-        "SELECT questions_per_day, target_score, exam_date, hours_per_day FROM planner_config WHERE user_id=?",
-        (user_id,),
-    ).fetchone()
+        topics.sort(key=lambda item: (-item["priority_score"], item["topic"]))
+        if subtema is not None:
+            topics = [item for item in topics if item["topic"] == subtema]
+        config = db.execute(
+            "SELECT questions_per_day, target_score, exam_date, hours_per_day FROM planner_config WHERE user_id=?",
+            (user_id,),
+        ).fetchone()
+    except Exception as exc:
+        logger.warning("Fallback de perfil adaptativo acionado para user_id=%s: %s", user_id, exc)
+        return _build_fallback_profile(now, cache_key)
+
     daily_goal = int(config["questions_per_day"] if config and config["questions_per_day"] else 30)
     hours_per_day = int(config["hours_per_day"] if config and config["hours_per_day"] else 4)
     
@@ -455,6 +496,7 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
             "signals": ["FSRS retrievability", "accuracy with evidence confidence", "coverage", "due reviews"],
         },
     }
+    _last_known_profile[cache_key] = result
     if use_cache:
         _profile_cache.set(cache_key, result)
     return result

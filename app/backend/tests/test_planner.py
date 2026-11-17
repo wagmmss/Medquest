@@ -740,6 +740,45 @@ def test_planner_move_topic_preserves_completion_progress(client, app):
     assert topics_progress_after.get(f"3:{topic}") is True
 
 
+def test_build_learning_profile_fallback_sem_cache():
+    from api.adaptive import _last_known_profile, _profile_cache, build_learning_profile
+
+    class BrokenDB:
+        def execute(self, *args, **kwargs):
+            raise RuntimeError("DB offline")
+
+    _profile_cache.cache.clear()
+    _last_known_profile.clear()
+
+    profile = build_learning_profile(BrokenDB(), "user_offline_test")
+    assert profile["method"]["deterministic"] is True
+    assert profile["method"]["fallback"] is True
+    assert profile["goal"]["questions_today"] == 30
+    assert profile["topics"] == []
+
+
+def test_build_learning_profile_stale_fallback_em_desconexao():
+    from api.adaptive import _last_known_profile, _profile_cache, build_learning_profile
+
+    class BrokenDB:
+        def execute(self, *args, **kwargs):
+            raise RuntimeError("DB timeout")
+
+    _profile_cache.cache.clear()
+    cache_key = ("user_stale_test", None, 15)
+    _last_known_profile[cache_key] = {
+        "generated_at": "2026-11-17T12:00:00+00:00",
+        "goal": {"questions_today": 45, "reviews_due": 12},
+        "topics": [{"topic": "Cardiologia", "priority_score": 0.9}],
+        "method": {"deterministic": True},
+    }
+
+    profile = build_learning_profile(BrokenDB(), "user_stale_test")
+    assert profile["method"]["stale_fallback"] is True
+    assert profile["goal"]["questions_today"] == 45
+    assert profile["topics"][0]["topic"] == "Cardiologia"
+
+
 
 
 
