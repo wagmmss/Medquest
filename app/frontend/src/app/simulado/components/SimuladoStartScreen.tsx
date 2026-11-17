@@ -70,6 +70,7 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
   setFeedbackMode = () => {},
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>("official");
+  const [includeSimilar, setIncludeSimilar] = useState(false);
   const [officialExams, setOfficialExams] = useState<OfficialExam[]>([]);
   const [loadingExams, setLoadingExams] = useState(true);
   const [sessions, setSessions] = useState<SimuladoSessionItem[]>([]);
@@ -77,9 +78,10 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
+      setLoadingExams(true);
       try {
         const [examsRes, sessionsRes] = await Promise.allSettled([
-          api.questions.getOfficialExams(),
+          api.questions.getOfficialExams(includeSimilar),
           api.questions.getSimuladoSessions(),
         ]);
 
@@ -100,7 +102,7 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [includeSimilar]);
 
   const completedCount = sessions.length;
   const averageAccuracy =
@@ -291,14 +293,25 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
 
       <div className="w-full">
         {activeTab === "official" && (
-          <SimuladoOfficialExams
-            exams={officialExams}
-            isLoading={loadingExams}
-            onStartExam={handleStartOfficialExam}
-            onDownloadExam={handleDownloadOfficialExam}
-            isOffline={isOffline}
-            isDownloading={isDownloadingPackage}
-          />
+          <div className="space-y-4">
+            <label className="inline-flex items-center gap-2.5 text-xs font-medium text-ink-primary bg-surface border border-line-subtle rounded-xs px-3 py-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includeSimilar}
+                onChange={(e) => setIncludeSimilar(e.target.checked)}
+                className="rounded-xs accent-accent cursor-pointer"
+              />
+              <span>Incluir instituições similares (ENARE, Einstein, Sírio-Libanês, FAMEMA, FAMERP, IAMSPE, Santa Casa)</span>
+            </label>
+            <SimuladoOfficialExams
+              exams={officialExams}
+              isLoading={loadingExams}
+              onStartExam={handleStartOfficialExam}
+              onDownloadExam={handleDownloadOfficialExam}
+              isOffline={isOffline}
+              isDownloading={isDownloadingPackage}
+            />
+          </div>
         )}
 
         {activeTab === "builder" && (

@@ -35,6 +35,7 @@ import { QuizHeader } from "./components/QuizHeader";
 import { QuizLoadingView, QuizSummaryView } from "./components/QuizSummaryView";
 import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
 import { QuestionNotePanel } from "@/components/QuestionNotePanel";
+import { buildAnkiCardFromQuestion, sendCardToAnki } from "@/lib/ankiExport";
 import { SessionAnswer as _SessionAnswer, QuizState } from "./quizSessionReducer";
 export type SessionAnswer = _SessionAnswer;
 import {
@@ -1573,6 +1574,26 @@ export function QuizClient({
                       Você já errou esta questão {currentDetail.times_wrong} {currentDetail.times_wrong === 1 ? 'vez' : 'vezes'} no passado.
                     </div>
                   ) : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!q || !attemptResult) return;
+                        const card = buildAnkiCardFromQuestion(q, attemptResult);
+                        const mode = await sendCardToAnki(card);
+                        toast.success(
+                          mode === "ankiconnect"
+                            ? "Card enviado para o Anki Desktop!"
+                            : "AnkiConnect offline: arquivo .tsv baixado para importar no Anki!"
+                        );
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs border border-line-subtle bg-elevated hover:bg-canvas hover:border-accent text-xs font-semibold text-ink-primary transition-colors cursor-pointer"
+                    >
+                      <BookOpen size={13} className="text-accent" />
+                      Enviar para o Anki (.tsv / AnkiConnect)
+                    </button>
+                  </div>
                   
                   {/* Ferramenta de Estudo Ativo: Preceptor AI */}
                   <div className="w-full">

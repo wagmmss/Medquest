@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { BarChart3, Layers, ShieldCheck } from "lucide-react";
+import { BarChart3, Crosshair, Layers, ShieldCheck } from "lucide-react";
 import type {
   AnalysisSummaryResponse,
   ExamReadiness,
@@ -12,8 +12,9 @@ import { api } from "@/lib/api";
 import { PerformanceRadarTab } from "./components/PerformanceRadarTab";
 import { CoverageThemesTab } from "./components/CoverageThemesTab";
 import { ReadinessEditalTab } from "./components/ReadinessEditalTab";
+import { FocusRadarTab } from "./components/FocusRadarTab";
 
-export type AnalysisTabKey = "desempenho" | "cobertura" | "prontidao";
+export type AnalysisTabKey = "desempenho" | "cobertura" | "prontidao" | "sniper";
 
 interface AnalysisClientProps {
   initialSummary: AnalysisSummaryResponse;
@@ -265,6 +266,7 @@ export function AnalysisClient({
     { key: "desempenho", label: "Desempenho & Radar", icon: BarChart3 },
     { key: "cobertura", label: "Cobertura & Temas", icon: Layers },
     { key: "prontidao", label: "Prontidão por Edital", icon: ShieldCheck },
+    { key: "sniper", label: "Focos & Sniper", icon: Crosshair },
   ];
 
   return (
@@ -351,6 +353,14 @@ export function AnalysisClient({
           loadingReadiness={loadingReadiness}
           readinessError={readinessError}
           onRetryReadiness={() => setReadinessRetry((r) => r + 1)}
+        />
+      )}
+
+      {activeTab === "sniper" && (
+        <FocusRadarTab
+          institutionOptions={availableInstitutions}
+          selectedInstitution={selectedInstitution}
+          onSelectInstitution={setSelectedInstitution}
         />
       )}
     </div>

@@ -183,6 +183,16 @@ export const api = {
         signal,
       });
     },
+    getFocusRadar: (institution?: string, prevalence: string = "all") => {
+      const params = new URLSearchParams();
+      if (institution) params.append("institution", institution);
+      if (prevalence) params.append("prevalence", prevalence);
+      const qs = params.toString();
+      return apiFetch<import("@/types/api").FocusRadarResponse>(
+        `/api/stats/focus-radar${qs ? `?${qs}` : ""}`,
+        { cache: "no-store" }
+      );
+    },
     getCoverage: () => apiFetch<CoverageResponse>("/api/coverage", { cache: 'no-store' }),
     getTimeline: (days: number = 14, signal?: AbortSignal) =>
       apiFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}`, { cache: 'no-store', signal }),
@@ -619,7 +629,10 @@ export const api = {
     }) => apiFetch<{success: boolean}>("/api/simulado/sessions", {
       method: "POST", body: JSON.stringify(data),
     }),
-    getOfficialExams: () => apiFetch<{ exams: OfficialExam[] }>("/api/simulado/official-exams", { cache: "no-store" }),
+    getOfficialExams: (includeSimilar: boolean = false) => {
+      const qs = includeSimilar ? "?similar_institutions=1" : "";
+      return apiFetch<{ exams: OfficialExam[] }>(`/api/simulado/official-exams${qs}`, { cache: "no-store" });
+    },
     getSimuladoSessions: () => apiFetch<{ sessions: SimuladoSessionItem[] }>("/api/simulado/sessions", { cache: "no-store" }),
     deleteSimuladoSession: (sessionId: string) => apiFetch<{ success: boolean; deleted: boolean }>(`/api/simulado/sessions/${sessionId}`, {
       method: "DELETE"
