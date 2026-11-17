@@ -19,7 +19,8 @@ cd "$REPO_ROOT"
 echo "Exportando snapshot enxuto de HEAD ($(git rev-parse --short HEAD))..."
 git archive --format=tar HEAD \
   -- . \
-  ':!app/backend/data' \
+  ':!app/backend/data/all_medway_exams_raw.json' \
+  ':!app/backend/data/tier1_extraction_progress.json' \
   ':!app/backend/static/images' \
   ':!app/frontend/public/images' \
   ':!docs/audits' \
