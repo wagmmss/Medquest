@@ -65,27 +65,53 @@ def question_filter_clauses(args):
         clauses.append(f"q.topic IN ({','.join('?' * len(topics))})")
         params.extend(topics)
 
-    status = args.get("status", "all")
+    raw_status = (args.get("status") or "all").strip().lower()
+    status_tokens = [s.strip() for s in raw_status.split(",") if s.strip() and s.strip() != "all"]
     unanswered_only = args.get("unanswered_only")
-    if status in ("unanswered", "new") or (unanswered_only in ("true", "1") and status in ("all", None, "")):
-        clauses.append("q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)")
-        params.append(g.user_id)
-    elif status == "wrong":
-        clauses.append("""q.id IN (
-            SELECT question_id FROM attempts a1 WHERE a1.user_id = ? AND a1.is_correct = 0
-            AND a1.id = (SELECT MAX(a2.id) FROM attempts a2 WHERE a2.user_id = ? AND a2.question_id = a1.question_id)
-        )""")
-        params.extend([g.user_id, g.user_id])
-    elif status == "answered":
-        clauses.append("q.id IN (SELECT question_id FROM attempts WHERE user_id = ?)")
-        params.append(g.user_id)
-    elif status == "srs_due":
-        clauses.append("q.id IN (SELECT question_id FROM spaced_repetition WHERE user_id = ? AND next_review_date <= ?)")
-        params.extend([g.user_id, datetime.now(timezone.utc).isoformat()])
+    if not status_tokens and unanswered_only in ("true", "1"):
+        status_tokens = ["unanswered"]
 
-    if args.get("favorite") == "1":
+    if status_tokens:
+        status_or_clauses = []
+        status_params = []
+        for st in status_tokens:
+            if st in ("unanswered", "new"):
+                status_or_clauses.append("q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)")
+                status_params.append(g.user_id)
+            elif st == "wrong":
+                status_or_clauses.append("""q.id IN (
+                    SELECT question_id FROM attempts a1 WHERE a1.user_id = ? AND a1.is_correct = 0
+                    AND a1.id = (SELECT MAX(a2.id) FROM attempts a2 WHERE a2.user_id = ? AND a2.question_id = a1.question_id)
+                )""")
+                status_params.extend([g.user_id, g.user_id])
+            elif st == "answered":
+                status_or_clauses.append("q.id IN (SELECT question_id FROM attempts WHERE user_id = ?)")
+                status_params.append(g.user_id)
+            elif st == "srs_due":
+                status_or_clauses.append("q.id IN (SELECT question_id FROM spaced_repetition WHERE user_id = ? AND next_review_date <= ?)")
+                status_params.extend([g.user_id, datetime.now(timezone.utc).isoformat()])
+            elif st == "favorite":
+                status_or_clauses.append("q.id IN (SELECT question_id FROM favorites WHERE user_id = ?)")
+                status_params.append(g.user_id)
+        if status_or_clauses:
+            clauses.append("(" + " OR ".join(status_or_clauses) + ")")
+            params.extend(status_params)
+
+    if args.get("favorite") in ("1", "true"):
         clauses.append("q.id IN (SELECT question_id FROM favorites WHERE user_id = ?)")
         params.append(g.user_id)
+
+    if args.get("has_images") in ("1", "true"):
+        clauses.append("q.id IN (SELECT question_id FROM question_images)")
+
+    if args.get("exclude_annulled") in ("1", "true"):
+        clauses.append("UPPER(COALESCE(q.correct_letter, '')) != 'ANULADA'")
+
+    q_type = (args.get("question_type") or "").strip().lower()
+    if q_type == "objetiva":
+        clauses.append("(SELECT COUNT(*) FROM alternatives a WHERE a.question_id = q.id) > 1")
+    elif q_type == "discursiva":
+        clauses.append("(SELECT COUNT(*) FROM alternatives a WHERE a.question_id = q.id) <= 1")
 
     if args.get("id"):
         clauses.append("q.id = ?")

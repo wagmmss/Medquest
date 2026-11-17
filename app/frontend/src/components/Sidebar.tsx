@@ -12,6 +12,7 @@ import { useZenMode } from "@/hooks/useZenMode";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
+import { openCommandPalette } from "@/components/CommandPalette";
 import Image from "next/image";
 
 const SIDEBAR_EVENT = "medquest-sidebar-collapsed-change";
@@ -105,6 +106,28 @@ export function Sidebar() {
         )}
 
         {/* NAVEGACAO PRINCIPAL */}
+        <div className="px-0.5">
+          <button
+            type="button"
+            onClick={openCommandPalette}
+            title="Busca Rápida Global (Ctrl+K)"
+            className={clsx(
+              "w-full flex items-center rounded-xs border border-line-subtle bg-canvas/70 hover:bg-elevated text-ink-secondary hover:text-ink-primary transition-colors text-xs cursor-pointer",
+              isCollapsed ? "justify-center p-2" : "justify-between px-2.5 py-1.5"
+            )}
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <ClinicalIcon name="search" className="w-3.5 h-3.5 shrink-0 text-accent" />
+              {!isCollapsed && <span className="truncate">Busca rápida...</span>}
+            </span>
+            {!isCollapsed && (
+              <kbd className="text-[10px] font-mono-lab px-1 py-0.5 rounded-xs bg-surface border border-line-subtle text-ink-muted">
+                Ctrl+K
+              </kbd>
+            )}
+          </button>
+        </div>
+
         <nav className="flex-1 flex flex-col gap-1 overflow-y-auto px-0.5 py-1" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;

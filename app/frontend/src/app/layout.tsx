@@ -15,6 +15,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { WebVitals } from "@/components/WebVitals";
 import { AuthSync } from "@/components/AuthSync";
 import { QueryProvider } from "@/components/QueryProvider";
+import { CommandPalette } from "@/components/CommandPalette";
 
 export const viewport: Viewport = {
   themeColor: "#0ea5e9",
@@ -127,6 +128,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </div>
               </div>
               <OnboardingTour />
+              <CommandPalette />
             </div>
           )}
           <SyncProvider guestMode={!userId} />

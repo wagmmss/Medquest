@@ -446,44 +446,146 @@ export function QuizFilters({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-ink-primary">Status</label>
-              <select
-                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                value={filters.status || (filters.unanswered_only === "true" ? "unanswered" : "")}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const next: Record<string, string | string[]> = { ...filters, status: val };
-                  if (val === "unanswered") {
-                    next.unanswered_only = "true";
-                  } else if (val === "") {
-                    delete next.unanswered_only;
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-ink-primary">
+                Filtros Combináveis (Status &amp; Formato)
+              </label>
+              {(() => {
+                const rawStatus =
+                  typeof filters.status === "string"
+                    ? filters.status
+                    : filters.unanswered_only === "true"
+                    ? "unanswered"
+                    : "";
+                const activeStatuses = new Set(
+                  rawStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s && s !== "all")
+                );
+                const toggleStatusToken = (token: string) => {
+                  const nextSet = new Set(activeStatuses);
+                  if (nextSet.has(token)) nextSet.delete(token);
+                  else nextSet.add(token);
+                  const nextFilters: Record<string, string | string[]> = { ...filters };
+                  const serialized = Array.from(nextSet).join(",");
+                  if (serialized) {
+                    nextFilters.status = serialized;
+                  } else {
+                    delete nextFilters.status;
                   }
-                  setFilters(next);
-                }}
-              >
-                <option value="unanswered">Não respondidas (Padrão)</option>
-                <option value="">Todas (inclui já respondidas)</option>
-                <option value="srs_due">Para Revisão (Repetição Espaçada)</option>
-                <option value="wrong">Errei anteriormente</option>
-              </select>
+                  if (nextSet.size === 1 && nextSet.has("unanswered")) {
+                    nextFilters.unanswered_only = "true";
+                  } else {
+                    delete nextFilters.unanswered_only;
+                  }
+                  setFilters(nextFilters);
+                };
+
+                return (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { token: "unanswered", label: "Não respondidas" },
+                      { token: "wrong", label: "Errei" },
+                      { token: "srs_due", label: "Revisão SRS" },
+                      { token: "favorite", label: "Favoritas" },
+                    ].map((opt) => {
+                      const active = activeStatuses.has(opt.token);
+                      return (
+                        <button
+                          key={opt.token}
+                          type="button"
+                          onClick={() => toggleStatusToken(opt.token)}
+                          className={clsx(
+                            "px-2.5 py-1 rounded-xs border text-[11px] font-medium transition-colors cursor-pointer",
+                            active
+                              ? "bg-accent/15 border-accent text-accent font-semibold"
+                              : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFilters((prev) => {
+                          const next = { ...prev };
+                          if (next.has_images === "1") delete next.has_images;
+                          else next.has_images = "1";
+                          return next;
+                        })
+                      }
+                      className={clsx(
+                        "px-2.5 py-1 rounded-xs border text-[11px] font-medium transition-colors cursor-pointer",
+                        filters.has_images === "1"
+                          ? "bg-accent/15 border-accent text-accent font-semibold"
+                          : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
+                      )}
+                    >
+                      Com imagens
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFilters((prev) => {
+                          const next = { ...prev };
+                          if (next.exclude_annulled === "1") delete next.exclude_annulled;
+                          else next.exclude_annulled = "1";
+                          return next;
+                        })
+                      }
+                      className={clsx(
+                        "px-2.5 py-1 rounded-xs border text-[11px] font-medium transition-colors cursor-pointer",
+                        filters.exclude_annulled === "1"
+                          ? "bg-accent/15 border-accent text-accent font-semibold"
+                          : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
+                      )}
+                    >
+                      Ocultar anuladas
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-ink-primary">Quantidade de Questões</label>
-              <input
-                type="number"
-                min="1"
-                max="200"
-                className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs font-mono-lab tabular-nums text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                value={localLimit}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setLocalLimit(val);
-                  setFilters((prev) => ({ ...prev, limit: val }));
-                }}
-              />
-              <p className="text-[11px] text-ink-muted">Máximo de 200 questões por sessão.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-ink-primary">Tipo de Questão</label>
+                <select
+                  className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-2.5 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  value={typeof filters.question_type === "string" ? filters.question_type : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFilters((prev) => {
+                      const next = { ...prev };
+                      if (val) next.question_type = val;
+                      else delete next.question_type;
+                      return next;
+                    });
+                  }}
+                >
+                  <option value="">Todas</option>
+                  <option value="objetiva">Objetivas</option>
+                  <option value="discursiva">Discursivas</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-ink-primary">Quantidade</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  className="w-full bg-canvas border border-line-subtle rounded-md py-2 px-3 text-xs font-mono-lab tabular-nums text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  value={localLimit}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLocalLimit(val);
+                    setFilters((prev) => ({ ...prev, limit: val }));
+                  }}
+                />
+              </div>
             </div>
           </div>
 

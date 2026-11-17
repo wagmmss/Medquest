@@ -586,6 +586,20 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               />
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleToggleIntensive}
+            aria-pressed={isIntensive}
+            title="Filtrar o cronograma para exibir apenas temas prioritários de alta incidência"
+            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors shadow-sm cursor-pointer ${
+              isIntensive
+                ? "bg-warning/15 text-warning border-warning/40"
+                : "bg-surface text-foreground border-border hover:bg-muted"
+            }`}
+          >
+            <Zap size={15} />
+            {isIntensive ? "Reta Final: Ativa" : "Modo Reta Final"}
+          </button>
           <button 
             onClick={() => setShowSettingsModal(true)}
             aria-haspopup="dialog"
