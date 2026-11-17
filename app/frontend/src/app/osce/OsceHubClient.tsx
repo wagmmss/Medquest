@@ -89,15 +89,15 @@ export function OsceHubClient({ initialStations }: OsceHubClientProps) {
   return (
     <div className="max-w-7xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
       {/* Header com Branding Clínico de 2ª Fase */}
-      <div className="bg-surface border border-line-subtle rounded-sm p-6 md:p-8 shadow-xs">
+      <div className="mq-page-hero p-6 md:p-8 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2.5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xs bg-accent/10 text-accent text-xs font-mono-lab uppercase font-semibold border border-accent/20">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
               <Stethoscope className="w-3.5 h-3.5" />
               <span>Simulador Oficial de 2ª Fase Prática (OSCE)</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-ink-primary font-sans">
-              Arena OSCE & Beira-Leito
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-ink-primary">
+              Arena OSCE &amp; Beira-Leito
             </h1>
             <p className="text-ink-secondary text-sm max-w-2xl leading-relaxed">
               Treinamento de estações clínicas com paciente virtual falante, estetoscópio interativo, 
@@ -107,20 +107,20 @@ export function OsceHubClient({ initialStations }: OsceHubClientProps) {
           </div>
 
           {/* Métricas Clínicas */}
-          <div className="grid grid-cols-3 gap-2 shrink-0 bg-canvas p-3 rounded-sm border border-line-subtle">
+          <div className="grid grid-cols-3 gap-2 shrink-0 bg-surface p-3 rounded-2xl border border-line-subtle shadow-2xs">
             <div className="text-center px-3 py-1">
               <div className="text-xl md:text-2xl font-bold font-mono-lab tabular-nums text-ink-primary">{stats.total}</div>
-              <div className="text-[11px] font-mono-lab text-ink-tertiary uppercase">Estações</div>
+              <div className="text-[11px] font-medium text-ink-secondary">Estações</div>
             </div>
             <div className="text-center px-3 py-1 border-x border-line-subtle">
               <div className="text-xl md:text-2xl font-bold font-mono-lab tabular-nums text-accent">{stats.completed}</div>
-              <div className="text-[11px] font-mono-lab text-ink-tertiary uppercase">Feitas</div>
+              <div className="text-[11px] font-medium text-ink-secondary">Feitas</div>
             </div>
             <div className="text-center px-3 py-1">
               <div className="text-xl md:text-2xl font-bold font-mono-lab tabular-nums text-emerald-500">
                 {stats.completed > 0 ? stats.avgScore : "—"}
               </div>
-              <div className="text-[11px] font-mono-lab text-ink-tertiary uppercase">Média</div>
+              <div className="text-[11px] font-medium text-ink-secondary">Média</div>
             </div>
           </div>
         </div>
@@ -129,10 +129,10 @@ export function OsceHubClient({ initialStations }: OsceHubClientProps) {
         <div className="flex items-center gap-2 mt-6 border-t border-line-subtle pt-5">
           <button
             onClick={() => setActiveTab("avulso")}
-            className={`px-3.5 py-1.5 rounded-xs text-xs font-mono-lab font-semibold transition-colors cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
               activeTab === "avulso"
                 ? "bg-ink-primary text-canvas shadow-xs"
-                : "bg-canvas text-ink-secondary hover:text-ink-primary border border-line-subtle"
+                : "bg-surface text-ink-secondary hover:text-ink-primary border border-line-subtle"
             }`}
           >
             Treino Avulso por Estação

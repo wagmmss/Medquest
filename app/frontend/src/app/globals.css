@@ -85,17 +85,18 @@
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
 
-  --font-mono-lab: "JetBrains Mono", "Geist Mono", monospace;
-  --font-sans-clinical: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono-lab: var(--font-mono-lab), "JetBrains Mono", monospace;
+  --font-sans-clinical: var(--font-sans-clinical), "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: var(--font-display), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
 
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
 
-  --radius: 0.125rem;
-  --radius-lg: 0.25rem;
-  --radius-xl: 0.5rem;
-  --radius-full: 0.75rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
 
   --spacing-margin: 32px;
   --spacing-unit: 4px;
@@ -130,6 +131,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
   :where(a, button, input, select, textarea, [role="button"]):focus-visible {
@@ -257,17 +263,17 @@ body.zen-mode > div:first-of-type {
 @utility font-body-lg { font-family: var(--font-body-lg); }
 
 :root {
-  /* Clinical Precision: Ambulatório Paper */
-  --bg-canvas: #f9f9f8;
+  /* Clinical Calm: Papel Azul-Gelo Sereno + Deep Navy + Teal */
+  --bg-canvas: #f5f8fc;
   --bg-surface: #ffffff;
-  --bg-elevated: #f2f2f0;
-  --ink-primary: #111315;
-  --ink-secondary: #4b525d;
-  --ink-muted: #7b828e;
-  --line-subtle: #e5e7eb;
-  --line-strong: #d1d5db;
-  --accent: #0284c7;
-  --accent-hover: #0369a1;
+  --bg-elevated: #edf2f8;
+  --ink-primary: #0f1e33;
+  --ink-secondary: #475569;
+  --ink-muted: #64748b;
+  --line-subtle: #e2e9f2;
+  --line-strong: #cbd5e1;
+  --accent: #0f9d9a;
+  --accent-hover: #0b827f;
   --accent-fg: #ffffff;
   --critical: #e11d48;
   --critical-bg: #fff1f2;
@@ -283,13 +289,13 @@ body.zen-mode > div:first-of-type {
   --surface: var(--bg-surface);
   --on-surface: var(--ink-primary);
   
-  /* Primary: Elegant deep blue */
-  --primary: #0f172a;
+  /* Primary: Deep Medical Navy */
+  --primary: #0b2a4a;
   --on-primary: #ffffff;
   --primary-container: #e2e8f0;
-  --on-primary-container: #0f172a;
+  --on-primary-container: #0b2a4a;
   --primary-fixed: #e2e8f0;
-  --on-primary-fixed: #0f172a;
+  --on-primary-fixed: #0b2a4a;
   --primary-fixed-dim: #cbd5e1;
   --on-primary-fixed-variant: #334155;
   --inverse-primary: #f8fafc;
@@ -458,4 +464,15 @@ body.zen-mode > div:first-of-type {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ink-muted);
+}
+
+/* Atmosfera sutil no topo das páginas (Clinical Calm) */
+.mq-page-hero {
+  background: linear-gradient(135deg, rgba(15, 157, 154, 0.12) 0%, rgba(11, 42, 74, 0.05) 55%, rgba(245, 248, 252, 0) 100%);
+  border: 1px solid var(--line-subtle);
+  border-radius: 16px;
+}
+
+.dark .mq-page-hero {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(56, 189, 248, 0.05) 55%, rgba(17, 18, 21, 0) 100%);
 }

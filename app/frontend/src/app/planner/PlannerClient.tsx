@@ -538,10 +538,10 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+      <div className="mq-page-hero p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <CalendarDays className="text-primary" size={28} />
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-ink-primary flex items-center gap-2">
+            <CalendarDays className="text-accent" size={28} />
             Seu Cronograma de Estudos
           </h2>
           <p className="text-muted-foreground text-sm">Cronograma estruturado por carga, cobertura e temas de alta incidência. Arraste matérias para mover entre semanas.</p>
