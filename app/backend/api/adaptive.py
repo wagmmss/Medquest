@@ -5,8 +5,11 @@ from datetime import datetime, timezone
 
 from fsrs import Card
 
+from .cache import SimpleTTLCache
 from .filters import get_user_target_institutions
 from .srs import _question_scheduler as _scheduler, _safe_load_card
+
+_profile_cache = SimpleTTLCache(60)
 
 
 def _utc(value=None):
@@ -396,6 +399,13 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
 
 def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
     """Build a transparent personalized diagnosis and daily goal."""
+    use_cache = now is None
+    cache_key = (user_id, subtema, limit)
+    if use_cache:
+        cached = _profile_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     now = _utc(now)
     signals = get_adaptive_signals_by_topic(db, user_id, now=now)
     due_total = sum(item["due_count"] for item in signals.values())
@@ -426,7 +436,7 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
     backlog_pending = max(0, due_total - max_capacity)
     questions_today = max(daily_goal, reviews_to_do_today)
 
-    return {
+    result = {
         "generated_at": now.isoformat(),
         "goal": {
             "questions_today": questions_today, 
@@ -445,4 +455,7 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15):
             "signals": ["FSRS retrievability", "accuracy with evidence confidence", "coverage", "due reviews"],
         },
     }
+    if use_cache:
+        _profile_cache.set(cache_key, result)
+    return result
 

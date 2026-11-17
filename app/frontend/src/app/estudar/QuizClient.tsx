@@ -54,10 +54,6 @@ export type SessionAnswer = {
 
 type QuizState = "FILTERS" | "LOADING_QUEUE" | "PLAYING" | "FINISHED";
 
-function resolveImageUrl(img: string | null | undefined): string {
-  return normalizeImageSrc(img);
-}
-
 export interface SavedQuizState {
   version: number;
   state: "PLAYING" | "FINISHED";
@@ -1126,7 +1122,7 @@ export function QuizClient({
       {/* Fullscreen Image Modal */}
       {enlargedImage && (
         <ImageViewer 
-          src={resolveImageUrl(enlargedImage)} 
+          src={normalizeImageSrc(enlargedImage)} 
           isOpen={!!enlargedImage} 
           onClose={() => setEnlargedImage(null)} 
         />
@@ -1217,7 +1213,7 @@ export function QuizClient({
                       onClick={() => setEnlargedImage(img)}
                     >
                       <Image
-                        src={resolveImageUrl(img)} 
+                        src={normalizeImageSrc(img)} 
                         alt={`Imagem do Caso ${i+1}`} 
                         width={800}
                         height={600}
@@ -1352,7 +1348,7 @@ export function QuizClient({
                       onClick={() => setEnlargedImage(img)}
                     >
                       <Image
-                        src={resolveImageUrl(img)} 
+                        src={normalizeImageSrc(img)} 
                         alt={`Imagem ${i+1}`} 
                         width={800}
                         height={600}

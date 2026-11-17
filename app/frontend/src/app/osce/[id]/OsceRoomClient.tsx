@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { 
   Stethoscope, Clock, FileText,
@@ -12,16 +13,29 @@ import {
 import { toast } from "react-hot-toast";
 import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback } from "@/types/api";
 import { api } from "@/lib/api";
-import { PrescriptionPad } from "./PrescriptionPad";
-import { ProcedureMannequin } from "./ProcedureMannequin";
 import { GhostPreceptorHUD } from "./GhostPreceptorHUD";
-import { StationResultMirror } from "./StationResultMirror";
 import { PreceptorFeedback } from "@/types/osce-evaluation";
 import { useVitalStateEngine } from "./useVitalStateEngine";
 import { useOsceAudio } from "./useOsceAudio";
 import { SessionTimer } from "@/components/ui/SessionTimer";
-import { MultiparameterMonitor } from "./MultiparameterMonitor";
 import { ClinicalStage } from "./ClinicalStage";
+
+const PrescriptionPad = dynamic(
+  () => import("./PrescriptionPad").then((m) => m.PrescriptionPad),
+  { ssr: false }
+);
+const ProcedureMannequin = dynamic(
+  () => import("./ProcedureMannequin").then((m) => m.ProcedureMannequin),
+  { ssr: false }
+);
+const StationResultMirror = dynamic(
+  () => import("./StationResultMirror").then((m) => m.StationResultMirror),
+  { ssr: false }
+);
+const MultiparameterMonitor = dynamic(
+  () => import("./MultiparameterMonitor").then((m) => m.MultiparameterMonitor),
+  { ssr: false }
+);
 
 interface OsceRoomClientProps {
   station: OsceStationDetail;
