@@ -320,6 +320,7 @@ export function AnalysisClient({
       {/* Tab Content */}
       {activeTab === "desempenho" && (
         <PerformanceRadarTab
+          overview={summary.overview}
           learningProfile={summary.learning_profile}
           selectedInstitution={selectedInstitution}
           institutionOptions={availableInstitutions}

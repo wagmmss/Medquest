@@ -36,7 +36,7 @@ export function ThemeDetailDrawer({
   topic,
   onClose,
 }: ThemeDetailDrawerProps) {
-  const [practiceLimit, setPracticeLimit] = useState<10 | 20 | 30>(20);
+  const [practiceLimit, setPracticeLimit] = useState<10 | 20 | 30>(10);
   const [progress, setProgress] = useState<ThemeProgress | null>(null);
   const [savingProgress, setSavingProgress] = useState(false);
 
@@ -162,14 +162,25 @@ export function ThemeDetailDrawer({
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar detalhes do tema"
-            className="p-2 rounded-md border border-line-subtle bg-canvas text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {available > 0 && (
+              <Link
+                href={urls.practice(10)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+              >
+                <Zap size={13} />
+                Treinar (10q)
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar detalhes do tema"
+              className="p-2 rounded-md border border-line-subtle bg-canvas text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Edital Details */}
@@ -404,7 +415,7 @@ export function ThemeDetailDrawer({
                 href={urls.practice(practiceLimit)}
                 className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-colors"
               >
-                Iniciar Prática ({practiceLimit} q) <ArrowRight size={14} />
+                Treinar ({practiceLimit}q) <ArrowRight size={14} />
               </Link>
             ) : (
               <button

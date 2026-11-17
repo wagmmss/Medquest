@@ -28,6 +28,9 @@ export function QuizSummaryView({
 }) {
   const totalAnswered = Object.keys(sessionAnswers).length;
   const correctCount = Object.values(sessionAnswers).filter((a) => a.result?.is_correct).length;
+  const assistedCorrectCount = Object.values(sessionAnswers).filter(
+    (a) => a.result?.is_correct && (a.assisted || a.result?.assisted)
+  ).length;
   const wrongItems = Object.entries(sessionAnswers)
     .filter(([, ans]) => ans.result && !ans.result.is_correct)
     .map(([qid, ans]) => ({ question_id: Number(qid), wrong_letter: ans.letter }));
@@ -37,6 +40,7 @@ export function QuizSummaryView({
     <QuizSessionReportModal
       totalAnswered={totalAnswered}
       correctCount={correctCount}
+      assistedCorrectCount={assistedCorrectCount}
       accuracy={accuracy}
       wrongItems={wrongItems}
       onBackToFilters={onBackToFilters}

@@ -870,12 +870,21 @@ def submit_attempt(qid):
                 is_correct = check_is_correct(selected, q["correct_letter"], correct_alts_set)
 
             observed_at = _resolve_answered_at(payload.answered_at)
-            cursor = db.execute(
-                """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id)
-                   VALUES (?,?,?,?,?,?,?)""",
-                (qid, selected, is_correct, observed_at,
-                 payload.time_spent_ms, payload.confidence, g.user_id),
-            )
+            assisted_flag = 1 if getattr(payload, "assisted", False) else 0
+            try:
+                cursor = db.execute(
+                    """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id, assisted)
+                       VALUES (?,?,?,?,?,?,?,?)""",
+                    (qid, selected, is_correct, observed_at,
+                     payload.time_spent_ms, payload.confidence, g.user_id, assisted_flag),
+                )
+            except Exception:
+                cursor = db.execute(
+                    """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id)
+                       VALUES (?,?,?,?,?,?,?)""",
+                    (qid, selected, is_correct, observed_at,
+                     payload.time_spent_ms, payload.confidence, g.user_id),
+                )
             attempt_id = getattr(cursor, "lastrowid", None)
             if not attempt_id:
                 att_row = db.execute(
@@ -893,10 +902,20 @@ def submit_attempt(qid):
             if payload.confidence != "defer":
                 sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (qid, g.user_id)).fetchone()
                 try:
-                    card_json, next_review = srs.review(sr["fsrs_card"] if sr else None, is_correct, payload.confidence)
+                    card_json, next_review = srs.review(
+                        sr["fsrs_card"] if sr else None,
+                        is_correct,
+                        payload.confidence,
+                        assisted=bool(assisted_flag),
+                    )
                 except Exception as srs_err:
                     logger.warning("Erro ao calcular FSRS na tentativa da questão %s: %s. Usando estado limpo.", qid, srs_err)
-                    card_json, next_review = srs.review(None, is_correct, payload.confidence)
+                    card_json, next_review = srs.review(
+                        None,
+                        is_correct,
+                        payload.confidence,
+                        assisted=bool(assisted_flag),
+                    )
                 db.execute("""
                     INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                     VALUES (?, ?, ?, ?)
@@ -908,10 +927,20 @@ def submit_attempt(qid):
                     orig_qid = payload.twin_for_question_id
                     orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, g.user_id)).fetchone()
                     try:
-                        orig_card_json, orig_next_review = srs.review(orig_sr["fsrs_card"] if orig_sr else None, is_correct, payload.confidence)
+                        orig_card_json, orig_next_review = srs.review(
+                            orig_sr["fsrs_card"] if orig_sr else None,
+                            is_correct,
+                            payload.confidence,
+                            assisted=bool(assisted_flag),
+                        )
                     except Exception as srs_err:
                         logger.warning("Erro ao calcular FSRS na questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                        orig_card_json, orig_next_review = srs.review(None, is_correct, payload.confidence)
+                        orig_card_json, orig_next_review = srs.review(
+                            None,
+                            is_correct,
+                            payload.confidence,
+                            assisted=bool(assisted_flag),
+                        )
                     db.execute("""
                         INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                         VALUES (?, ?, ?, ?)
@@ -920,7 +949,24 @@ def submit_attempt(qid):
                     """, (orig_qid, orig_next_review, orig_card_json, g.user_id))
 
             exp = db.execute("SELECT explanation_text FROM explanations WHERE question_id = ?", (qid,)).fetchone()
-            
+
+            alt_stats = None
+            if not is_discursive:
+                stat_rows = db.execute(
+                    """SELECT UPPER(TRIM(selected_letter)) AS letter, COUNT(*) AS cnt
+                       FROM attempts
+                       WHERE question_id = ? AND selected_letter IS NOT NULL AND TRIM(selected_letter) != ''
+                       GROUP BY UPPER(TRIM(selected_letter))""",
+                    (qid,),
+                ).fetchall()
+                total_votes = sum(int(r["cnt"] or 0) for r in stat_rows)
+                if total_votes > 0:
+                    alt_stats = {
+                        r["letter"]: round((int(r["cnt"]) / total_votes) * 100)
+                        for r in stat_rows
+                        if r["letter"]
+                    }
+
             # If it's a discursive question being revealed (confidence == "defer" and is_correct not explicitly given),
             # return is_correct: None so frontend enters self-assessment mode.
             reported_is_correct = None if (is_discursive and payload.confidence == "defer" and payload.is_correct is None) else bool(is_correct)
@@ -932,6 +978,8 @@ def submit_attempt(qid):
                 "next_review_date": next_review,
                 "is_discursive": is_discursive,
                 "attempt_id": attempt_id,
+                "assisted": bool(assisted_flag),
+                **({"alt_stats": alt_stats} if alt_stats else {}),
             }
 
             if lease_token:
@@ -977,18 +1025,30 @@ def review_fsrs(qid):
 
         with db_transaction(db, immediate=True):
             if getattr(data, "attempt_id", None) is not None:
-                last_attempt = db.execute(
-                    "SELECT id, is_correct, confidence FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?",
-                    (data.attempt_id, qid, g.user_id)
-                ).fetchone()
+                try:
+                    last_attempt = db.execute(
+                        "SELECT id, is_correct, confidence, assisted FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?",
+                        (data.attempt_id, qid, g.user_id)
+                    ).fetchone()
+                except Exception:
+                    last_attempt = db.execute(
+                        "SELECT id, is_correct, confidence FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?",
+                        (data.attempt_id, qid, g.user_id)
+                    ).fetchone()
             else:
                 last_attempt = None
 
             if not last_attempt:
-                last_attempt = db.execute(
-                    "SELECT id, is_correct, confidence FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
-                    (qid, g.user_id)
-                ).fetchone()
+                try:
+                    last_attempt = db.execute(
+                        "SELECT id, is_correct, confidence, assisted FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
+                        (qid, g.user_id)
+                    ).fetchone()
+                except Exception:
+                    last_attempt = db.execute(
+                        "SELECT id, is_correct, confidence FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
+                        (qid, g.user_id)
+                    ).fetchone()
 
             if not last_attempt:
                 resp_data = {"error": "No attempt found", "code": "NO_ATTEMPT_FOUND"}
@@ -998,6 +1058,8 @@ def review_fsrs(qid):
 
             prev_confidence = last_attempt["confidence"]
             prev_is_correct = int(bool(last_attempt["is_correct"]))
+            attempt_dict = dict(last_attempt)
+            is_assisted = bool(data.assisted) if data.assisted is not None else bool(attempt_dict.get("assisted", 0))
             is_rectification = (
                 data.is_correct is not None
                 and int(bool(data.is_correct)) != prev_is_correct
@@ -1014,6 +1076,7 @@ def review_fsrs(qid):
                     "success": True,
                     "next_review_date": existing_sr["next_review_date"] if existing_sr else None,
                     "is_correct": bool(prev_is_correct),
+                    "assisted": is_assisted,
                     "warning": "Confiança atualizada, mas FSRS retido na primeira impressão para evitar avanço duplo.",
                 }
                 if lease_token:
@@ -1035,10 +1098,20 @@ def review_fsrs(qid):
 
             sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (qid, g.user_id)).fetchone()
             try:
-                card_json, next_review = srs.review(sr["fsrs_card"] if sr else None, is_correct_for_srs, confidence)
+                card_json, next_review = srs.review(
+                    sr["fsrs_card"] if sr else None,
+                    is_correct_for_srs,
+                    confidence,
+                    assisted=is_assisted,
+                )
             except Exception as srs_err:
                 logger.warning("Erro ao calcular FSRS na revisão da questão %s: %s. Usando estado limpo.", qid, srs_err)
-                card_json, next_review = srs.review(None, is_correct_for_srs, confidence)
+                card_json, next_review = srs.review(
+                    None,
+                    is_correct_for_srs,
+                    confidence,
+                    assisted=is_assisted,
+                )
             db.execute("""
                 INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                 VALUES (?, ?, ?, ?)
@@ -1050,10 +1123,20 @@ def review_fsrs(qid):
                 orig_qid = data.twin_for_question_id
                 orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, g.user_id)).fetchone()
                 try:
-                    orig_card_json, orig_next_review = srs.review(orig_sr["fsrs_card"] if orig_sr else None, is_correct_for_srs, confidence)
+                    orig_card_json, orig_next_review = srs.review(
+                        orig_sr["fsrs_card"] if orig_sr else None,
+                        is_correct_for_srs,
+                        confidence,
+                        assisted=is_assisted,
+                    )
                 except Exception as srs_err:
                     logger.warning("Erro ao calcular FSRS na questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                    orig_card_json, orig_next_review = srs.review(None, is_correct_for_srs, confidence)
+                    orig_card_json, orig_next_review = srs.review(
+                        None,
+                        is_correct_for_srs,
+                        confidence,
+                        assisted=is_assisted,
+                    )
                 db.execute("""
                     INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                     VALUES (?, ?, ?, ?)
@@ -1061,7 +1144,12 @@ def review_fsrs(qid):
                         next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
                 """, (orig_qid, orig_next_review, orig_card_json, g.user_id))
 
-            resp_data = {"success": True, "next_review_date": next_review, "is_correct": bool(is_correct_for_srs)}
+            resp_data = {
+                "success": True,
+                "next_review_date": next_review,
+                "is_correct": bool(is_correct_for_srs),
+                "assisted": is_assisted,
+            }
             if lease_token:
                 complete_idempotency(db, g.user_id, 200, resp_data, lease_token)
 
@@ -1092,13 +1180,21 @@ def _process_single_attempt(
     else:
         is_correct = check_is_correct(selected, correct_letter, correct_alts_map.get(item.question_id))
     conf = item.confidence or "certeza"
+    is_assisted = bool(getattr(item, "assisted", False))
     item_answered_at = _resolve_answered_at(getattr(item, "answered_at", None)) if getattr(item, "answered_at", None) else answered_at
 
-    db.execute(
-        """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id)
-           VALUES (?,?,?,?,?,?,?)""",
-        (item.question_id, selected, is_correct, item_answered_at, item.time_spent_ms, conf, user_id),
-    )
+    try:
+        db.execute(
+            """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id, assisted)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (item.question_id, selected, is_correct, item_answered_at, item.time_spent_ms, conf, user_id, 1 if is_assisted else 0),
+        )
+    except Exception:
+        db.execute(
+            """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id)
+               VALUES (?,?,?,?,?,?,?)""",
+            (item.question_id, selected, is_correct, item_answered_at, item.time_spent_ms, conf, user_id),
+        )
 
     next_review = None
     if conf == "defer":
@@ -1108,10 +1204,10 @@ def _process_single_attempt(
     else:
         old_card = srs_map.get(item.question_id)
         try:
-            card_json, next_review = srs.review(old_card, is_correct, conf)
+            card_json, next_review = srs.review(old_card, is_correct, conf, assisted=is_assisted)
         except Exception as srs_err:
             logger.warning("Erro ao calcular FSRS no lote para questão %s: %s. Usando estado limpo.", item.question_id, srs_err)
-            card_json, next_review = srs.review(None, is_correct, conf)
+            card_json, next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
         db.execute("""
             INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
             VALUES (?, ?, ?, ?)
@@ -1123,10 +1219,10 @@ def _process_single_attempt(
             orig_qid = item.twin_for_question_id
             orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, user_id)).fetchone()
             try:
-                orig_card_json, orig_next_review = srs.review(orig_sr["fsrs_card"] if orig_sr else None, is_correct, conf)
+                orig_card_json, orig_next_review = srs.review(orig_sr["fsrs_card"] if orig_sr else None, is_correct, conf, assisted=is_assisted)
             except Exception as srs_err:
                 logger.warning("Erro ao calcular FSRS no lote para questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                orig_card_json, orig_next_review = srs.review(None, is_correct, conf)
+                orig_card_json, orig_next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
             db.execute("""
                 INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
                 VALUES (?, ?, ?, ?)
@@ -1139,7 +1235,8 @@ def _process_single_attempt(
         "is_correct": bool(is_correct),
         "correct_letter": correct_letter,
         "explanation": exp_map.get(item.question_id),
-        "next_review_date": next_review
+        "next_review_date": next_review,
+        "assisted": is_assisted,
     }
 
 

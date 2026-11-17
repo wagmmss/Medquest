@@ -42,10 +42,15 @@ _CONFIDENCE_MAP = {
 }
 
 
-def _rating(is_correct, confidence):
+def _rating(is_correct, confidence, assisted: bool = False):
     if not is_correct:
         return Rating.Again
-    return _CONFIDENCE_MAP.get((confidence or "").lower(), Rating.Good)
+    raw_rating = _CONFIDENCE_MAP.get((confidence or "").lower(), Rating.Good)
+    if assisted:
+        # Acerto com ajuda (Dica do Preceptor antes de responder) nunca conta como Easy (Domino +76d).
+        # Se o aluno marcou "certeza" ou "duvida" com dica prévia, o teto pedagógico é Hard (~15d).
+        return Rating.Hard
+    return raw_rating
 
 
 def _safe_load_card(card_json: str | None) -> Card:
@@ -66,7 +71,7 @@ def _safe_load_card(card_json: str | None) -> Card:
     return Card()
 
 
-def review(card_json, is_correct, confidence=None, now=None):
+def review(card_json, is_correct, confidence=None, now=None, assisted: bool = False):
     """Recebe o estado do card (JSON ou None) e devolve (novo_json, próxima_revisão_iso).
     
     Aplica clamp defensivo garantindo que qualquer agendamento respeite D+1 (>= 24 horas),
@@ -74,7 +79,11 @@ def review(card_json, is_correct, confidence=None, now=None):
     """
     card = _safe_load_card(card_json)
     now_utc = (now if now is not None else datetime.now(timezone.utc)).astimezone(timezone.utc)
-    card, _log = _question_scheduler.review_card(card, _rating(is_correct, confidence), review_datetime=now_utc)
+    card, _log = _question_scheduler.review_card(
+        card,
+        _rating(is_correct, confidence, assisted=assisted),
+        review_datetime=now_utc,
+    )
 
     # Clamp defensivo: garantia incondicional de D+1 (>= 24 horas)
     min_due = now_utc + timedelta(days=1)

@@ -8,6 +8,7 @@ export type SessionAnswer = {
   isOffline?: boolean;
   writtenAnswer?: string;
   isDiscursive?: boolean;
+  assisted?: boolean;
 };
 
 export interface QuizSessionMachineState {

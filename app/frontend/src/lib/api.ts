@@ -480,7 +480,7 @@ export const api = {
         throw err;
       }
     },
-    submitAttempt: (id: number, selected_letter: string, time_spent_ms: number, confidence: string = "defer", is_correct?: boolean | null, user_answer_text?: string, twin_for_question_id?: number | null) =>
+    submitAttempt: (id: number, selected_letter: string, time_spent_ms: number, confidence: string = "defer", is_correct?: boolean | null, user_answer_text?: string, twin_for_question_id?: number | null, assisted?: boolean) =>
       apiFetch<AttemptResult>(`/api/questions/${id}/attempt`, {
         method: "POST",
         body: JSON.stringify({
@@ -489,17 +489,19 @@ export const api = {
           confidence,
           ...(is_correct !== undefined && is_correct !== null ? { is_correct } : {}),
           ...(user_answer_text ? { user_answer_text } : {}),
-          ...(twin_for_question_id ? { twin_for_question_id } : {})
+          ...(twin_for_question_id ? { twin_for_question_id } : {}),
+          ...(assisted !== undefined ? { assisted: Boolean(assisted) } : {})
         }),
       }),
-    reviewFSRS: (id: number, confidence: string, is_correct?: boolean, twin_for_question_id?: number | null, attempt_id?: number | null) =>
-      apiFetch<{success: boolean, next_review_date: string, is_correct?: boolean}>(`/api/questions/${id}/review`, {
+    reviewFSRS: (id: number, confidence: string, is_correct?: boolean, twin_for_question_id?: number | null, attempt_id?: number | null, assisted?: boolean) =>
+      apiFetch<{success: boolean, next_review_date: string, is_correct?: boolean, assisted?: boolean}>(`/api/questions/${id}/review`, {
         method: "POST",
         body: JSON.stringify({
           confidence,
           ...(is_correct !== undefined ? { is_correct } : {}),
           ...(twin_for_question_id ? { twin_for_question_id } : {}),
-          ...(attempt_id ? { attempt_id } : {})
+          ...(attempt_id ? { attempt_id } : {}),
+          ...(assisted !== undefined ? { assisted: Boolean(assisted) } : {})
         })
       }),
     toggleFavorite: (id: number) => apiFetch<{is_favorite: boolean}>(`/api/questions/${id}/favorite`, {

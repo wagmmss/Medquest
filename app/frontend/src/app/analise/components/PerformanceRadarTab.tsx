@@ -21,6 +21,7 @@ import type {
   DistractorStat,
   InstitutionRadarResponse,
   LearningProfile,
+  OverviewStats,
   TimelineStat,
   WeakTopic,
 } from "@/types/api";
@@ -29,6 +30,7 @@ import { InstitutionRadarSection } from "@/components/analytics/InstitutionRadar
 import { BlindspotsRadarSection } from "@/components/analytics/BlindspotsRadarSection";
 
 interface PerformanceRadarTabProps {
+  overview?: OverviewStats;
   learningProfile: LearningProfile;
   selectedInstitution: string;
   institutionOptions: { key: string; label: string }[];
@@ -52,6 +54,7 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export function PerformanceRadarTab({
+  overview,
   learningProfile,
   selectedInstitution,
   institutionOptions,
@@ -97,6 +100,7 @@ export function PerformanceRadarTab({
   const periodPaceStats = useMemo(() => {
     let totalAttempts = 0;
     let totalCorrect = 0;
+    let assistedCorrect = 0;
     let totalTimeMs = 0;
     let timedAttempts = 0;
 
@@ -105,16 +109,30 @@ export function PerformanceRadarTab({
       const correct = timelineMode === "latest" ? (t.latest_correct ?? t.correct) : t.correct;
       totalAttempts += count || 0;
       totalCorrect += correct || 0;
+      assistedCorrect += t.assisted_correct ?? 0;
       totalTimeMs += t.total_time_ms || 0;
       timedAttempts += t.timed_attempts || 0;
     }
+
+    if (visibleTimeline.length === 0 && overview?.assisted_correct_count) {
+      assistedCorrect = overview.assisted_correct_count;
+    }
+    const unassistedCorrect = Math.max(0, totalCorrect - assistedCorrect);
 
     const avgSeconds = timedAttempts > 0 ? Math.round(totalTimeMs / timedAttempts / 1000) : null;
     const totalMinutes = totalTimeMs > 0 ? Math.round(totalTimeMs / 60000) : 0;
     const periodAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : null;
 
-    return { totalAttempts, avgSeconds, totalMinutes, periodAccuracy };
-  }, [visibleTimeline, timelineMode]);
+    return {
+      totalAttempts,
+      totalCorrect,
+      assistedCorrect,
+      unassistedCorrect,
+      avgSeconds,
+      totalMinutes,
+      periodAccuracy,
+    };
+  }, [visibleTimeline, timelineMode, overview]);
 
   const distractorsBySubtema = useMemo(() => {
     const map = new Map<string, DistractorStat>();
@@ -334,6 +352,11 @@ export function PerformanceRadarTab({
             <p className="text-base font-bold text-ink-primary font-mono-lab tabular-nums">
               {periodPaceStats.periodAccuracy !== null ? `${periodPaceStats.periodAccuracy}%` : "—"}
             </p>
+            {periodPaceStats.totalCorrect > 0 && (
+              <p className="text-[10px] font-mono-lab text-ink-muted mt-0.5 tabular-nums">
+                {periodPaceStats.unassistedCorrect} correto · {periodPaceStats.assistedCorrect} c/ ajuda
+              </p>
+            )}
           </div>
           <div className="bg-canvas border border-line-subtle rounded-xl px-3.5 py-2.5">
             <p className="text-[11px] text-ink-secondary font-medium">Tempo / Questão</p>
@@ -642,7 +665,7 @@ export function PerformanceRadarTab({
                 return (
                   <Link
                     key={wt.topic}
-                    href={`/estudar?subtema=${encodeURIComponent(wt.topic)}&status=all&limit=50`}
+                    href={`/estudar?subtema=${encodeURIComponent(wt.topic)}&status=all&limit=10`}
                     className="p-4 hover:bg-surface-subtle/60 transition-colors flex items-center justify-between gap-4 group"
                   >
                     <div className="min-w-0 flex-1">
@@ -677,6 +700,9 @@ export function PerformanceRadarTab({
                         )}
                       >
                         {((wt.accuracy || 0) * 100).toFixed(0)}%
+                      </span>
+                      <span className="text-[11px] font-semibold text-accent">
+                        Treinar (10q) →
                       </span>
                     </div>
                   </Link>

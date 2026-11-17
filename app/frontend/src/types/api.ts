@@ -23,6 +23,8 @@ export interface OverviewStats {
   target_score?: number | null;
   target_institution?: string | null;
   primary_institution?: string | null;
+  assisted_correct_count?: number;
+  unassisted_correct_count?: number;
 }
 
 export interface CoverageSubtema {
@@ -64,6 +66,8 @@ export interface TimelineStat {
   day: string;
   attempts: number;
   correct: number;
+  assisted_correct?: number;
+  unassisted_correct?: number;
   accuracy: number;
   latest_attempts?: number;
   latest_correct?: number;
@@ -455,6 +459,7 @@ export interface QuestionDetail extends QuestionListItem {
   usp_micro?: string;
   is_favorite?: boolean;
   times_wrong?: number;
+  alt_stats?: Record<string, number>;
 }
 
 export interface AttemptResult {
@@ -464,6 +469,8 @@ export interface AttemptResult {
   next_review_date: string | null;
   is_discursive?: boolean;
   attempt_id?: number | null;
+  assisted?: boolean;
+  alt_stats?: Record<string, number>;
 }
 
 export interface BatchAttemptItem {
@@ -474,6 +481,7 @@ export interface BatchAttemptItem {
   is_correct?: boolean;
   user_answer_text?: string;
   twin_for_question_id?: number;
+  assisted?: boolean;
 }
 
 export interface BatchAttemptResultItem {

@@ -48,6 +48,7 @@ class AttemptIn(APIInput):
     user_answer_text: str | None = Field(default=None, max_length=10000)
     twin_for_question_id: int | None = None
     answered_at: str | None = Field(default=None, max_length=64)
+    assisted: bool = False
 
 
 class BatchAttemptItem(APIInput):
@@ -59,6 +60,7 @@ class BatchAttemptItem(APIInput):
     user_answer_text: str | None = Field(default=None, max_length=10000)
     twin_for_question_id: int | None = None
     answered_at: str | None = Field(default=None, max_length=64)
+    assisted: bool = False
 
 
 class BatchAttemptIn(APIInput):
@@ -70,6 +72,7 @@ class ReviewIn(APIInput):
     is_correct: bool | None = None
     twin_for_question_id: int | None = None
     attempt_id: int | None = None
+    assisted: bool | None = None
 
 
 class PlannerConfigIn(APIInput):

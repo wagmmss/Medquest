@@ -380,10 +380,10 @@ export function CoverageThemesTab({
                         sub.displayArea
                       )}&subtema=${encodeURIComponent(
                         sub.subtema
-                      )}&limit=20&unanswered_only=${unansweredParam}`}
+                      )}&limit=10&unanswered_only=${unansweredParam}`}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors"
                     >
-                      <PlayCircle size={14} /> Praticar agora
+                      <PlayCircle size={14} /> Treinar (10q)
                     </Link>
                     <button
                       type="button"
@@ -625,10 +625,10 @@ export function CoverageThemesTab({
                                         sub.area || area.area
                                       )}&subtema=${encodeURIComponent(
                                         sub.subtema
-                                      )}&limit=50&unanswered_only=${unansweredParam}`}
+                                      )}&limit=10&unanswered_only=${unansweredParam}`}
                                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-xs whitespace-nowrap"
                                     >
-                                      <PlayCircle size={13} /> Praticar
+                                      <PlayCircle size={13} /> Treinar (10q)
                                     </Link>
                                   </div>
                                 </td>
@@ -716,10 +716,10 @@ export function CoverageThemesTab({
                                   sub.area || area.area
                                 )}&subtema=${encodeURIComponent(
                                   sub.subtema
-                                )}&limit=50&unanswered_only=${unansweredParam}`}
+                                )}&limit=10&unanswered_only=${unansweredParam}`}
                                 className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md"
                               >
-                                <PlayCircle size={14} /> Praticar
+                                <PlayCircle size={14} /> Treinar (10q)
                               </Link>
                             </div>
                           </div>

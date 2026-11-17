@@ -170,6 +170,19 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> d
     accuracy_last7 = (overview["last7_correct"] / overview["last7_total"]) if overview["last7_total"] else None
     accuracy_prev7 = (overview["prev7_correct"] / overview["prev7_total"]) if overview["prev7_total"] else None
 
+    assisted_correct = 0
+    try:
+        assisted_row = db.execute(
+            "SELECT COALESCE(SUM(CASE WHEN is_correct = 1 AND COALESCE(assisted, 0) = 1 THEN 1 ELSE 0 END), 0) AS assisted_correct FROM attempts WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        if assisted_row:
+            assisted_correct = int(assisted_row["assisted_correct"] or 0)
+    except Exception:
+        assisted_correct = 0
+
+    unassisted_correct = max(0, int(correct or 0) - assisted_correct)
+
     return {
         "total_questions": total_q,
         "distinct_answered": distinct_answered,
@@ -180,6 +193,8 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None) -> d
         "srs_due_count": srs_due_count,
         "accuracy_last7": accuracy_last7,
         "accuracy_prev7": accuracy_prev7,
+        "assisted_correct_count": assisted_correct,
+        "unassisted_correct_count": unassisted_correct,
     }
 
 
@@ -347,39 +362,74 @@ def breakdown():
 def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
     date_filter = "AND answered_at >= date('now', ?)" if days is not None else ""
     params = (user_id, f'-{days} days') if days is not None else (user_id,)
-    rows = db.execute(f"""
-        WITH ranked AS (
+    try:
+        rows = db.execute(f"""
+            WITH ranked AS (
+                SELECT
+                    substr(answered_at, 1, 10) AS day,
+                    question_id,
+                    is_correct,
+                    COALESCE(assisted, 0) AS assisted,
+                    time_spent_ms,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY substr(answered_at, 1, 10), question_id
+                        ORDER BY answered_at DESC, id DESC
+                    ) AS rn
+                FROM attempts
+                WHERE user_id = ? {date_filter}
+            )
             SELECT
-                substr(answered_at, 1, 10) AS day,
-                question_id,
-                is_correct,
-                time_spent_ms,
-                ROW_NUMBER() OVER (
-                    PARTITION BY substr(answered_at, 1, 10), question_id
-                    ORDER BY answered_at DESC, id DESC
-                ) AS rn
-            FROM attempts
-            WHERE user_id = ? {date_filter}
-        )
-        SELECT
-            day,
-            COUNT(*) AS attempts,
-            SUM(is_correct) AS correct,
-            SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
-            SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
-            AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
-            SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
-            COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
-        FROM ranked
-        GROUP BY day
-        ORDER BY day
-    """, params).fetchall()
+                day,
+                COUNT(*) AS attempts,
+                SUM(is_correct) AS correct,
+                SUM(CASE WHEN is_correct = 1 AND assisted = 1 THEN 1 ELSE 0 END) AS assisted_correct,
+                SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
+                SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
+                AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
+                SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
+                COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
+            FROM ranked
+            GROUP BY day
+            ORDER BY day
+        """, params).fetchall()
+    except Exception:
+        rows = db.execute(f"""
+            WITH ranked AS (
+                SELECT
+                    substr(answered_at, 1, 10) AS day,
+                    question_id,
+                    is_correct,
+                    0 AS assisted,
+                    time_spent_ms,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY substr(answered_at, 1, 10), question_id
+                        ORDER BY answered_at DESC, id DESC
+                    ) AS rn
+                FROM attempts
+                WHERE user_id = ? {date_filter}
+            )
+            SELECT
+                day,
+                COUNT(*) AS attempts,
+                SUM(is_correct) AS correct,
+                0 AS assisted_correct,
+                SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
+                SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
+                AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
+                SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
+                COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
+            FROM ranked
+            GROUP BY day
+            ORDER BY day
+        """, params).fetchall()
 
     return [
         {
             "day": r["day"],
             "attempts": r["attempts"],
             "correct": r["correct"],
+            "assisted_correct": int(r["assisted_correct"] or 0),
+            "unassisted_correct": max(0, int(r["correct"] or 0) - int(r["assisted_correct"] or 0)),
             "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0,
             "latest_attempts": r["latest_attempts"],
             "latest_correct": r["latest_correct"],

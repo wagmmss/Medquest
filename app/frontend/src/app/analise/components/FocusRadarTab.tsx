@@ -169,10 +169,14 @@ export function FocusRadarTab({
                   </div>
 
                   <Link
-                    href={f.sniper_url}
+                    href={
+                      f.sniper_url.includes("limit=")
+                        ? f.sniper_url.replace(/limit=\d+/, "limit=10")
+                        : `${f.sniper_url}${f.sniper_url.includes("?") ? "&" : "?"}limit=10`
+                    }
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xs border border-line-subtle bg-canvas hover:border-accent hover:text-accent text-[11px] font-semibold text-ink-primary transition-colors shrink-0 w-fit"
                   >
-                    Treinar foco <ArrowRight className="w-3 h-3" />
+                    Treinar (10q) <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
               ))}

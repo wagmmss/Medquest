@@ -807,6 +807,7 @@ export function QuizClient({
     attemptLockRef.current = true;
     
     setSubmitting(true);
+    const isAssistedAttempt = Boolean(attendingTip);
 
     try {
       const res = await api.questions.submitAttempt(
@@ -816,13 +817,20 @@ export function QuizClient({
         "defer",
         undefined,
         undefined,
-        currentDetail.twin_for_question_id
+        currentDetail.twin_for_question_id,
+        isAssistedAttempt
       );
-      setAttemptResult(res);
+      const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
+      setAttemptResult(enrichedRes);
       setIsOfflineSaved(false);
       setSessionAnswers(prev => ({
         ...prev,
-        [currentDetail.id]: { letter: selectedLetter, result: res, writtenAnswer: userWrittenAnswer }
+        [currentDetail.id]: {
+          letter: selectedLetter,
+          result: enrichedRes,
+          writtenAnswer: userWrittenAnswer,
+          assisted: isAssistedAttempt,
+        }
       }));
 
     } catch (err) {
@@ -831,7 +839,12 @@ export function QuizClient({
         setIsOfflineSaved(true);
         setSessionAnswers(prev => ({
           ...prev,
-          [currentDetail.id]: { letter: selectedLetter, isOffline: true, writtenAnswer: userWrittenAnswer }
+          [currentDetail.id]: {
+            letter: selectedLetter,
+            isOffline: true,
+            writtenAnswer: userWrittenAnswer,
+            assisted: isAssistedAttempt,
+          }
         }));
       } else {
         toast.error("Erro ao enviar resposta.");
@@ -840,13 +853,14 @@ export function QuizClient({
       attemptLockRef.current = false;
       setSubmitting(false);
     }
-  }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime]);
+  }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime, attendingTip]);
 
   const handleDiscursiveReveal = useCallback(async () => {
     if (attemptLockRef.current || attemptResult || isOfflineSaved || submitting || !currentDetail) return;
     attemptLockRef.current = true;
     
     setSubmitting(true);
+    const isAssistedAttempt = Boolean(attendingTip);
 
     try {
       const res = await api.questions.submitAttempt(
@@ -856,20 +870,34 @@ export function QuizClient({
         "defer", 
         null,
         userWrittenAnswer,
-        currentDetail.twin_for_question_id
+        currentDetail.twin_for_question_id,
+        isAssistedAttempt
       );
-      setAttemptResult(res);
+      const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
+      setAttemptResult(enrichedRes);
       setIsOfflineSaved(false);
       setSessionAnswers(prev => ({
         ...prev,
-        [currentDetail.id]: { letter: "A", result: res, writtenAnswer: userWrittenAnswer, isDiscursive: true }
+        [currentDetail.id]: {
+          letter: "A",
+          result: enrichedRes,
+          writtenAnswer: userWrittenAnswer,
+          isDiscursive: true,
+          assisted: isAssistedAttempt,
+        }
       }));
     } catch (e: unknown) {
       if (e instanceof OfflineQueuedError) {
         setIsOfflineSaved(true);
         setSessionAnswers(prev => ({
           ...prev,
-          [currentDetail.id]: { letter: "A", isOffline: true, writtenAnswer: userWrittenAnswer, isDiscursive: true }
+          [currentDetail.id]: {
+            letter: "A",
+            isOffline: true,
+            writtenAnswer: userWrittenAnswer,
+            isDiscursive: true,
+            assisted: isAssistedAttempt,
+          }
         }));
         toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
       } else {
@@ -879,7 +907,7 @@ export function QuizClient({
       attemptLockRef.current = false;
       setSubmitting(false);
     }
-  }, [attemptResult, isOfflineSaved, submitting, currentDetail, userWrittenAnswer, getCurrentTime]);
+  }, [attemptResult, isOfflineSaved, submitting, currentDetail, userWrittenAnswer, getCurrentTime, attendingTip]);
 
   const handleSendMessage = async (overrideText?: string) => {
     if (!currentDetail) return;
@@ -952,9 +980,11 @@ export function QuizClient({
     const isDiscursive = Boolean(currentDetail.is_discursive || (currentDetail.alternatives || []).length <= 1);
     const institutionCode = currentDetail.institution_code;
 
+    const isAssisted = Boolean(currentAttemptResult?.assisted || attendingTip);
+
     // Optimistic UI updates - Update session answers synchronously before advancing
     const isCorr = explicitIsCorrect !== undefined ? explicitIsCorrect : (currentAttemptResult?.is_correct ?? false);
-    const optimisticDays = !isCorr ? 7 : conf === "chutei" ? 15 : conf === "certeza" ? 76 : 34;
+    const optimisticDays = !isCorr ? 7 : isAssisted ? 15 : conf === "chutei" ? 15 : conf === "certeza" ? 76 : 34;
     const optimisticDueIso =
       currentAttemptResult?.next_review_date ??
       new Date(Date.now() + optimisticDays * 86400_000).toISOString();
@@ -965,6 +995,7 @@ export function QuizClient({
         explanation: null,
       }),
       is_correct: isCorr,
+      assisted: isAssisted,
       next_review_date: optimisticDueIso,
     };
     attemptResultRef.current = optimisticResult;
@@ -976,7 +1007,8 @@ export function QuizClient({
         letter: currentSelectedLetter || "A",
         result: optimisticResult,
         writtenAnswer: currentWrittenAnswer,
-        isDiscursive: isDiscursive
+        isDiscursive: isDiscursive,
+        assisted: isAssisted,
       }
     }));
 
@@ -995,7 +1027,8 @@ export function QuizClient({
         conf,
         explicitIsCorrect,
         twinQuestionId,
-        currentAttemptResult?.attempt_id
+        currentAttemptResult?.attempt_id,
+        isAssisted
       );
       const updatedResult: AttemptResult = {
         ...optimisticResult,
@@ -1009,14 +1042,15 @@ export function QuizClient({
           letter: currentSelectedLetter || "A",
           result: updatedResult,
           writtenAnswer: currentWrittenAnswer,
-          isDiscursive: isDiscursive
+          isDiscursive: isDiscursive,
+          assisted: isAssisted,
         }
       }));
     } catch {
       reviewedQuestionsRef.current.delete(questionId);
       toast.error("Erro ao salvar revisão (FSRS) em background.");
     }
-  }, [currentDetail, attemptResult, selectedLetter, userWrittenAnswer, currentIndex, queue, loadQuestionDetail]);
+  }, [currentDetail, attemptResult, selectedLetter, userWrittenAnswer, currentIndex, queue, loadQuestionDetail, attendingTip]);
 
   const prevQuestion = useCallback(() => {
     ensureCurrentQuestionReviewed();
@@ -1093,6 +1127,10 @@ export function QuizClient({
         setSubtemaSearch={setSubtemaSearch}
         showTopicTree={showTopicTree}
         setShowTopicTree={setShowTopicTree}
+        onQuickStartFilters={(customFilters) => {
+          updateUrlWithFilters(customFilters);
+          loadQueue(customFilters);
+        }}
       />
     );
   }
@@ -1479,6 +1517,8 @@ export function QuizClient({
                   onSelectAlternative={selectAlternative}
                   onToggleEliminate={toggleEliminateAlternative}
                   onImageClick={setEnlargedImage}
+                  questionId={q.id}
+                  alreadyAnsweredLetter={q.already_answered?.selected_letter ?? null}
                 />
 
                 {!attemptResult && !isOfflineSaved && selectedLetter && (
@@ -1603,9 +1643,21 @@ export function QuizClient({
                   attemptResult.is_correct === false ? "border-critical/20 bg-critical/10" :
                   "border-line-subtle bg-canvas"
                 )}>
-                  <div className="flex items-center gap-2 font-bold text-sm">
+                  <div className="flex flex-wrap items-center gap-2 font-bold text-sm">
                     {attemptResult.is_correct === true ? (
-                      <><ClinicalIcon name="checkCircle" size={16} className="text-normal" /> <span className="text-normal font-mono-lab uppercase tracking-wide">Resposta Correta</span></>
+                      <>
+                        <ClinicalIcon name="checkCircle" size={16} className="text-normal" />
+                        <span className="text-normal font-mono-lab uppercase tracking-wide">
+                          {attemptResult.assisted || Boolean(attendingTip)
+                            ? "Resposta Correta (com ajuda)"
+                            : "Resposta Correta"}
+                        </span>
+                        {(attemptResult.assisted || Boolean(attendingTip)) && (
+                          <span className="text-[10px] font-mono-lab px-2 py-0.5 rounded-xs bg-warning/15 text-warning border border-warning/30">
+                            Dica do Preceptor usada • FSRS calibrado
+                          </span>
+                        )}
+                      </>
                     ) : attemptResult.is_correct === false ? (
                       <><ClinicalIcon name="crossCircle" size={16} className="text-critical" /> <span className="text-critical font-mono-lab uppercase tracking-wide">Resposta Incorreta</span></>
                     ) : (
@@ -1736,21 +1788,34 @@ export function QuizClient({
                             <span className="text-[10px] text-ink-muted font-normal">+15 dias • [1]</span>
                           </button>
                           <button
-                            title="Raciocínio correto, mas exigiu esforço ou dúvida. Intervalo FSRS: ~34 dias."
+                            title="Raciocínio correto, mas exigiu esforço ou dica. Intervalo FSRS calibrado."
                             onClick={() => handleReviewFSRS("duvida")}
                             className="bg-accent/10 hover:bg-accent/20 text-ink border border-accent/40 shadow-xs font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab ring-1 ring-accent/20"
                           >
                             <span className="flex items-center gap-1 font-semibold">Com Esforço</span>
-                            <span className="text-[10px] text-accent font-normal">+34 dias • [2]</span>
+                            <span className="text-[10px] text-accent font-normal">
+                              {attemptResult.assisted || Boolean(attendingTip) ? "+15 dias (c/ dica) • [2]" : "+34 dias • [2]"}
+                            </span>
                           </button>
-                          <button
-                            title="Questão dominada com total convicção. Intervalo FSRS: ~76 dias."
-                            onClick={() => handleReviewFSRS("certeza")}
-                            className="bg-normal/10 hover:bg-normal/20 text-ink border border-normal/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
-                          >
-                            <span className="flex items-center gap-1 font-semibold">Domino</span>
-                            <span className="text-[10px] text-normal font-normal">+76 dias • [3]</span>
-                          </button>
+                          {attemptResult.assisted || Boolean(attendingTip) ? (
+                            <button
+                              title="Como a Dica do Preceptor (/dica) foi consultada antes da resposta, o intervalo máximo é calibrado como Hard (~15 dias)."
+                              onClick={() => handleReviewFSRS("certeza")}
+                              className="bg-surface-subtle hover:bg-elevated text-ink-secondary border border-line-subtle font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
+                            >
+                              <span className="flex items-center gap-1 font-semibold">Com Ajuda (Máx. Hard)</span>
+                              <span className="text-[10px] text-warning font-normal">+15 dias • [3]</span>
+                            </button>
+                          ) : (
+                            <button
+                              title="Questão dominada com total convicção. Intervalo FSRS: ~76 dias."
+                              onClick={() => handleReviewFSRS("certeza")}
+                              className="bg-normal/10 hover:bg-normal/20 text-ink border border-normal/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
+                            >
+                              <span className="flex items-center gap-1 font-semibold">Domino</span>
+                              <span className="text-[10px] text-normal font-normal">+76 dias • [3]</span>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex flex-col sm:flex-row gap-2">

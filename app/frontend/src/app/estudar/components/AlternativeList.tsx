@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Scissors } from "lucide-react";
+import { Scissors, Eye, EyeOff, BarChart2 } from "lucide-react";
 import clsx from "clsx";
 import { AttemptResult } from "@/types/api";
 import { AlternativeContent, getAlternativePlainText } from "@/components/AlternativeContent";
@@ -11,6 +11,7 @@ export interface AlternativeItem {
   letter: string;
   text: string;
   is_correct?: boolean;
+  pct?: number;
 }
 
 export interface AlternativeListProps {
@@ -22,7 +23,11 @@ export interface AlternativeListProps {
   onSelectAlternative: (letter: string) => void;
   onToggleEliminate: (letter: string) => void;
   onImageClick?: (url: string) => void;
+  questionId?: number;
+  alreadyAnsweredLetter?: string | null;
 }
+
+const HIDE_STATS_STORAGE_KEY = "medquest:hide-alt-stats";
 
 export const AlternativeList: React.FC<AlternativeListProps> = ({
   alternatives,
@@ -33,9 +38,46 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
   onSelectAlternative,
   onToggleEliminate,
   onImageClick,
+  alreadyAnsweredLetter,
 }) => {
+  const [hideStats, setHideStats] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(HIDE_STATS_STORAGE_KEY) === "1";
+  });
+
+  const toggleHideStats = () => {
+    setHideStats((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(HIDE_STATS_STORAGE_KEY, next ? "1" : "0");
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-2.5" role="region" aria-label="Alternativas da questão">
+      <div className="flex items-center justify-between px-0.5">
+        <span className="text-[11px] font-mono-lab uppercase tracking-wider text-ink-muted font-semibold flex items-center gap-1.5">
+          <BarChart2 size={12} className="text-accent" />
+          Alternativas ({alternatives.length})
+        </span>
+        <button
+          type="button"
+          onClick={toggleHideStats}
+          aria-pressed={hideStats}
+          title={
+            hideStats
+              ? "Mostrar estatísticas das alternativas e histórico prévio"
+              : "Ocultar estatísticas das alternativas e histórico prévio para evitar viés na revisão"
+          }
+          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xs border border-line-subtle bg-surface hover:bg-elevated text-[11px] font-mono-lab text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+        >
+          {hideStats ? <EyeOff size={12} className="text-warning" /> : <Eye size={12} className="text-accent" />}
+          <span>{hideStats ? "Estatísticas ocultas" : "Ocultar estatísticas"}</span>
+        </button>
+      </div>
+
       {alternatives.map((alt) => {
         const isSelected = selectedLetter === alt.letter;
         const isCorrect =
@@ -43,6 +85,18 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
           (attemptResult && isSelected && attemptResult.is_correct);
         const isWrong = attemptResult && isSelected && !attemptResult.is_correct;
         const isEliminated = eliminatedLetters.includes(alt.letter);
+
+        const rawStatPct =
+          attemptResult?.alt_stats?.[alt.letter] ??
+          (typeof alt.pct === "number" ? alt.pct : undefined);
+        const statPct =
+          typeof rawStatPct === "number"
+            ? Math.max(0, Math.min(100, Math.round(rawStatPct)))
+            : null;
+        const showStatBar = Boolean(attemptResult && !hideStats && statPct !== null);
+        const showPreviousAttemptTag = Boolean(
+          !hideStats && !attemptResult && alreadyAnsweredLetter && alreadyAnsweredLetter === alt.letter
+        );
 
         let altClass =
           "bg-surface border-line-subtle hover:bg-elevated/50 hover:border-line-strong cursor-pointer shadow-xs";
@@ -58,7 +112,7 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
           } else if (isWrong) {
             altClass = "bg-critical/10 border-critical/50 text-ink shadow-xs cursor-default ring-1 ring-critical/30";
           } else {
-            altClass = "bg-surface border-line-subtle opacity-40 cursor-default";
+            altClass = "bg-surface border-line-subtle opacity-55 cursor-default";
           }
         }
 
@@ -100,7 +154,7 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
               }
             }}
             className={clsx(
-              "group relative text-left p-3 sm:p-3.5 rounded-sm border transition-all flex items-start gap-2.5 sm:gap-3 w-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent select-none",
+              "group relative text-left p-3 sm:p-3.5 rounded-sm border transition-all flex items-start gap-2.5 sm:gap-3 w-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent select-none overflow-hidden",
               altClass
             )}
             aria-label={altAriaLabel}
@@ -170,19 +224,55 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
               )}
             </div>
 
-            {/* Texto da Alternativa */}
+            {/* Texto da Alternativa + Barra de Estatística */}
             <div
               aria-hidden="true"
               className={clsx(
-                "pt-0.5 text-ink leading-relaxed flex-1 text-sm md:text-base transition-all",
+                "pt-0.5 text-ink leading-relaxed flex-1 text-sm md:text-base transition-all min-w-0",
                 isEliminated && !isCorrect && "line-through text-ink-muted/70 decoration-ink-muted/50"
               )}
             >
-              <AlternativeContent
-                content={alt.text}
-                isEliminated={isEliminated && !isCorrect}
-                onImageClick={onImageClick}
-              />
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <AlternativeContent
+                    content={alt.text}
+                    isEliminated={isEliminated && !isCorrect}
+                    onImageClick={onImageClick}
+                  />
+                </div>
+                {showPreviousAttemptTag && (
+                  <span className="shrink-0 text-[10px] font-mono-lab px-1.5 py-0.5 rounded-xs bg-elevated border border-line-subtle text-ink-muted">
+                    Marcada antes
+                  </span>
+                )}
+                {showStatBar && (
+                  <span
+                    className={clsx(
+                      "shrink-0 text-[11px] font-mono-lab tabular-nums font-bold px-1.5 py-0.5 rounded-xs border",
+                      isCorrect
+                        ? "bg-normal/15 text-normal border-normal/30"
+                        : isWrong
+                        ? "bg-critical/15 text-critical border-critical/30"
+                        : "bg-canvas text-ink-muted border-line-subtle"
+                    )}
+                    title="Proporção de escolha pelos médicos residentes nesta alternativa"
+                  >
+                    {statPct}%
+                  </span>
+                )}
+              </div>
+
+              {showStatBar && (
+                <div className="mt-2 h-1 w-full bg-canvas/80 rounded-full overflow-hidden">
+                  <div
+                    className={clsx(
+                      "h-full transition-all duration-300 rounded-full",
+                      isCorrect ? "bg-normal" : isWrong ? "bg-critical" : "bg-ink-muted/40"
+                    )}
+                    style={{ width: `${statPct}%` }}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         );
@@ -190,3 +280,4 @@ export const AlternativeList: React.FC<AlternativeListProps> = ({
     </div>
   );
 };
+

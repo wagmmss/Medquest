@@ -22,6 +22,7 @@ import {
 import toast from "react-hot-toast";
 import { QuestionMeta } from "@/types/api";
 import { api } from "@/lib/api";
+import { parseNaturalSessionPrompt } from "@/lib/naturalSessionParser";
 import { SubjectTreeSelector } from "@/components/SubjectTreeSelector";
 import { SavedQuizState } from "../QuizClient";
 
@@ -38,7 +39,7 @@ const AREA_VISUALS: Array<{
     icon: Stethoscope,
   },
   {
-    match: ["Cirurgia Geral"],
+    match: ["Cirurgia Geral", "Cirurgia"],
     label: "Cirurgia Geral",
     badgeClass: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20",
     icon: Scissors,
@@ -130,6 +131,7 @@ export interface QuizFiltersProps {
   setSubtemaSearch: (val: string) => void;
   showTopicTree: boolean;
   setShowTopicTree: React.Dispatch<React.SetStateAction<boolean>>;
+  onQuickStartFilters?: (customFilters: Record<string, string | string[]>) => void;
 }
 
 export function QuizFilters({
@@ -151,10 +153,12 @@ export function QuizFilters({
   setSubtemaSearch,
   showTopicTree,
   setShowTopicTree,
+  onQuickStartFilters,
 }: QuizFiltersProps) {
   const [adaptiveFocus, setAdaptiveFocus] = useState<"coverage" | "balanced" | "retention">("balanced");
   const queryClient = useQueryClient();
   const [presetName, setPresetName] = useState("");
+  const [naturalPrompt, setNaturalPrompt] = useState("");
 
   const { data: overviewData } = useQuery({
     queryKey: ["estudar-overview-counts"],
@@ -318,26 +322,149 @@ export function QuizFilters({
     setFilters((prev) => ({ ...prev, limit: str }));
   };
 
+  const availableSubtemaNames = useMemo(
+    () => (dynamicMeta?.subtemas || []).map((s) => s.subtema),
+    [dynamicMeta?.subtemas]
+  );
+
+  const parsedNaturalSession = useMemo(
+    () => parseNaturalSessionPrompt(naturalPrompt, availableSubtemaNames),
+    [naturalPrompt, availableSubtemaNames]
+  );
+
+  const handleApplyNaturalSession = useCallback(
+    (autoStart: boolean) => {
+      if (!parsedNaturalSession.isValid) return;
+      const nextFilters = { ...parsedNaturalSession.filters };
+      if (!nextFilters.limit) {
+        nextFilters.limit = localLimit || "20";
+      } else if (typeof nextFilters.limit === "string") {
+        setLocalLimit(nextFilters.limit);
+      }
+      setFilters(nextFilters);
+      if (autoStart && onQuickStartFilters) {
+        onQuickStartFilters(nextFilters);
+      } else {
+        setShowCustomSession(true);
+        toast.success("Filtros preenchidos a partir do comando clínico.");
+      }
+    },
+    [parsedNaturalSession, localLimit, setLocalLimit, setFilters, onQuickStartFilters, setShowCustomSession]
+  );
+
   return (
     <div className="max-w-5xl mx-auto w-full flex flex-col gap-5 pb-6">
       {/* Hero atmosférico limpo */}
-      <div className="mq-page-hero p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
-            Montar Bateria de Questões
-          </h1>
-          <p className="text-xs sm:text-sm text-ink-secondary mt-1">
-            Escolha especialidades, combine filtros ou dispare uma revisão guiada pelo seu histórico.
-          </p>
+      <div className="mq-page-hero p-5 sm:p-6 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
+              Montar Bateria de Questões
+            </h1>
+            <p className="text-xs sm:text-sm text-ink-secondary mt-1">
+              Escolha especialidades, combine filtros ou descreva sua bateria em linguagem natural.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCustomSession(!showCustomSession)}
+            className="text-xs font-semibold text-ink-secondary hover:text-ink-primary bg-surface border border-line-subtle px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0 w-fit"
+          >
+            {showCustomSession ? "Ver apenas atalhos" : "Expandir filtros"}
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowCustomSession(!showCustomSession)}
-          className="text-xs font-semibold text-ink-secondary hover:text-ink-primary bg-surface border border-line-subtle px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0 w-fit"
-        >
-          {showCustomSession ? "Ver apenas atalhos" : "Expandir filtros"}
-        </button>
+        {/* Construtor de Sessão em Linguagem Natural (Feature B.4) */}
+        <div className="bg-surface/90 border border-line-subtle rounded-xl p-3.5 flex flex-col gap-2.5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-accent pointer-events-none"
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={naturalPrompt}
+                onChange={(e) => setNaturalPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && parsedNaturalSession.isValid) {
+                    e.preventDefault();
+                    handleApplyNaturalSession(true);
+                  }
+                }}
+                placeholder='Comando rápido: ex. "15 questões de GO da UNICAMP que errei" ou "20 de trauma na USP-SP"'
+                aria-label="Montar bateria por comando em linguagem natural"
+                className="w-full pl-9 pr-8 py-2 bg-canvas border border-line-subtle rounded-lg text-xs sm:text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:border-accent"
+              />
+              {naturalPrompt && (
+                <button
+                  type="button"
+                  onClick={() => setNaturalPrompt("")}
+                  aria-label="Limpar comando rápido"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink-primary cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {parsedNaturalSession.isValid && (
+                <button
+                  type="button"
+                  onClick={() => handleApplyNaturalSession(false)}
+                  className="px-3 py-2 rounded-lg border border-line-subtle bg-canvas hover:bg-elevated text-xs font-semibold text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+                >
+                  Aplicar filtros
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={!parsedNaturalSession.isValid}
+                onClick={() => handleApplyNaturalSession(true)}
+                className="px-3.5 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-45 text-primary-foreground text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <Play size={12} fill="currentColor" />
+                Iniciar Bateria
+              </button>
+            </div>
+          </div>
+
+          {parsedNaturalSession.chips.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[11px] font-mono-lab text-ink-muted mr-1">
+                Filtros reconhecidos:
+              </span>
+              {parsedNaturalSession.chips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono-lab font-semibold bg-accent/10 text-accent border border-accent/25"
+                >
+                  {chip.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+              <span className="font-mono-lab">Exemplos:</span>
+              {[
+                "15 questões de GO da UNICAMP que errei",
+                "20 de trauma na USP-SP",
+                "10 revisões vencidas de pediatria",
+              ].map((sample) => (
+                <button
+                  key={sample}
+                  type="button"
+                  onClick={() => setNaturalPrompt(sample)}
+                  className="px-2 py-0.5 rounded-md bg-canvas hover:bg-elevated border border-line-subtle text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+                >
+                  “{sample}”
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Retomar sessão salva */}
@@ -535,7 +662,7 @@ export function QuizFilters({
                         setFilters((prev) => {
                           const next = { ...prev };
                           if (isSelected) delete next.area;
-                          else next.area = areaCfg.match[0];
+                          else next.area = areaCfg.match.find((m) => areaCountsMap.has(m)) || areaCfg.match[0];
                           return next;
                         });
                       }}

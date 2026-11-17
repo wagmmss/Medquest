@@ -13,29 +13,16 @@
 
 ## 🔄 Próxima Tarefa em Andamento
 
-- [ ] **Rastreamento de Acerto Assistido (`assisted`) na Tentativa e FSRS (`app/backend/api/questions.py`, `app/backend/api/srs.py`)**:
-    1. **Arquivo/Módulo Alvo**: `app/backend/api/questions.py`, `app/backend/api/schemas.py`, `app/frontend/src/app/estudar/QuizClient.tsx`
-    2. **Função/Componente/Seletor**: Endpoint `submit_attempt` / `AttemptPayload` e envio da tentativa após uso de `handleRequestAttendingTip`
-    3. **Comportamento Esperado / Critério de Aceite**: Enviar flag `assisted: true` quando a Dica do Preceptor foi aberta antes da resposta, ajustar o rating FSRS (ex.: limitar a `Hard` em acertos assistidos) e expor contagem separada na Análise (`Correto` vs `Correto com ajuda`).
+- Nenhuma tarefa pendente no momento — backlog prioritário concluído e validado.
 
 ---
 
 ## 📋 Backlog Prioritário (Tarefas Cirúrgicas)
 
-1. [ ] **Criação de Sessão por Linguagem Natural (`app/frontend/src/app/estudar/components/QuizFilters.tsx`)**:
-    - **Arquivo/Módulo Alvo**: `app/frontend/src/app/estudar/components/QuizFilters.tsx`
-    - **Função/Componente/Seletor**: Barra rápida no topo do painel de filtros combináveis
-    - **Comportamento Esperado / Critério de Aceite**: Permitir descrever a sessão em linguagem natural (ex.: `"20 questões de Cardiologia da USP-SP não respondidas"`) e mapear para os filtros e limite do bloco em 1 clique.
-
-2. [ ] **Botão "Treinar Agora" por Tema em Cobertura e Foco (`app/frontend/src/app/analise/components/CoverageThemesTab.tsx`)**:
-    - **Arquivo/Módulo Alvo**: `app/frontend/src/app/analise/components/CoverageThemesTab.tsx`, `app/frontend/src/app/analise/components/ThemeDetailDrawer.tsx`
-    - **Função/Componente/Seletor**: Ação direta nas linhas de subtema e no drawer de detalhe
-    - **Comportamento Esperado / Critério de Aceite**: Exibir botão `Treinar (10q)` abrindo `/estudar?subtema=...&limit=10` diretamente a partir do diagnóstico de cobertura.
-
-3. [ ] **Ocultar Estatísticas de Alternativas Antes da Revisão (`app/frontend/src/app/estudar/components/AlternativeList.tsx`)**:
-    - **Arquivo/Módulo Alvo**: `app/frontend/src/app/estudar/components/AlternativeList.tsx`
-    - **Função/Componente/Seletor**: Toggle discreto para ocultar porcentagens de marcação/dificuldade durante revisões
-    - **Comportamento Esperado / Critério de Aceite**: Persistir preferência em `localStorage` para evitar viés cognitivo em questões já respondidas anteriormente.
+1. [x] **Rastreamento de Acerto Assistido (`assisted`) na Tentativa e FSRS (`app/backend/api/questions.py`, `app/backend/api/srs.py`, `QuizClient.tsx`)**
+2. [x] **Criação de Sessão por Linguagem Natural (`app/frontend/src/app/estudar/components/QuizFilters.tsx`, `src/lib/naturalSessionParser.ts`)**
+3. [x] **Botão `Treinar (10q)` por Tema em Cobertura, Drawer, Pontos Fracos e Foco (`CoverageThemesTab.tsx`, `ThemeDetailDrawer.tsx`, `FocusRadarTab.tsx`, `PerformanceRadarTab.tsx`)**
+4. [x] **Ocultar Estatísticas de Alternativas Antes/Durante a Revisão (`app/frontend/src/app/estudar/components/AlternativeList.tsx`)**
 
 ---
 
@@ -53,6 +40,7 @@
 
 ## ✅ Última Tarefa Concluída
 
-- [x] **UI/UX Clinical Calm, Hardening `adaptive.py` e Melhorias AMBOSS (2026-11-17)**: Aplicada linguagem visual Clinical Calm nas páginas principais, corrigida compatibilidade Turbopack em `layout.tsx`, implementado fallback resiliente em `api/adaptive.py`, adicionados treino direto + toggle `Última tentativa` + KPIs de tempo em `/analise`, e `LabValuesModal` + controle `Aa` + Dica do Preceptor pré-resposta (`/dica`) em `/estudar`.
+- [x] **Acerto Assistido (`assisted`), Sessão por Linguagem Natural, Treino Direto (10q), Toggle Anti-Viés em Alternativas e Auditoria Clinical Calm (2026-11-17)**: Implementado rastreamento completo de tentativas assistidas por `/dica` (calibração FSRS para `Rating.Hard`, migração `018_attempts_assisted.sql`, diferenciação `Correto` vs `Correto com ajuda` em `/analise` e no resumo de sessão), construtor de bateria em linguagem natural PT-BR (`naturalSessionParser.ts` + `QuizFilters.tsx`), ação direta `Treinar (10q)` em todas as abas de `/analise`, toggle persistido em `localStorage` para ocultar estatísticas/histórico das alternativas em `AlternativeList.tsx`, e normalização de tokens semânticos Clinical Calm em `globals.css`.
 
 > 📁 Histórico completo arquivado em [CHANGELOG.md](CHANGELOG.md)
+

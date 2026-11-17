@@ -69,7 +69,11 @@
   /* Clinical Precision Workspace Tokens */
   --color-canvas: var(--bg-canvas);
   --color-surface: var(--bg-surface);
+  --color-surface-subtle: var(--bg-surface-subtle);
   --color-elevated: var(--bg-elevated);
+  --color-popover: var(--bg-popover);
+  --color-popover-foreground: var(--ink-primary);
+  --color-ink: var(--ink-primary);
   --color-ink-primary: var(--ink-primary);
   --color-ink-secondary: var(--ink-secondary);
   --color-ink-muted: var(--ink-muted);
@@ -80,10 +84,16 @@
   --color-accent-fg: var(--accent-fg);
   --color-critical: var(--critical);
   --color-critical-bg: var(--critical-bg);
+  --color-warning-bg: var(--warning-bg);
   --color-normal: var(--normal);
   --color-normal-bg: var(--normal-bg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
+  --color-area-clinica: var(--area-clinica);
+  --color-area-cirurgia: var(--area-cirurgia);
+  --color-area-go: var(--area-go);
+  --color-area-pediatria: var(--area-pediatria);
+  --color-area-preventiva: var(--area-preventiva);
 
   --font-mono-lab: var(--font-mono-lab), "JetBrains Mono", monospace;
   --font-sans-clinical: var(--font-sans-clinical), "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -266,7 +276,9 @@ body.zen-mode > div:first-of-type {
   /* Clinical Calm: Papel Fosco Médio (conforto em leitura prolongada) */
   --bg-canvas: #dce3ec;
   --bg-surface: #eaeff5;
+  --bg-surface-subtle: #e2e8f1;
   --bg-elevated: #d2dbe6;
+  --bg-popover: #f0f4f8;
   --ink-primary: #142238;
   --ink-secondary: #435164;
   --ink-muted: #5d6c80;
@@ -283,6 +295,11 @@ body.zen-mode > div:first-of-type {
   --normal-bg: #d1fae5;
   --info: #0284c7;
   --info-bg: #e0f2fe;
+  --area-clinica: #0f766e;
+  --area-cirurgia: #0284c7;
+  --area-go: #be185d;
+  --area-pediatria: #d97706;
+  --area-preventiva: #4f46e5;
 
   --background: var(--bg-canvas);
   --on-background: var(--ink-primary);
@@ -364,7 +381,9 @@ body.zen-mode > div:first-of-type {
   /* Clinical Calm Dark: Grafite Neutro Suave (equilíbrio entre OLED e cinza-carvão) */
   --bg-canvas: #121417;
   --bg-surface: #191c20;
+  --bg-surface-subtle: #1e2228;
   --bg-elevated: #22262c;
+  --bg-popover: #1d2127;
   --ink-primary: #e4e7eb;
   --ink-secondary: #9ca3af;
   --ink-muted: #6b7280;
@@ -381,6 +400,11 @@ body.zen-mode > div:first-of-type {
   --normal-bg: #112b22;
   --info: #38bdf8;
   --info-bg: #122838;
+  --area-clinica: #2dd4bf;
+  --area-cirurgia: #38bdf8;
+  --area-go: #f472b6;
+  --area-pediatria: #fbbf24;
+  --area-preventiva: #818cf8;
 
   --background: var(--bg-canvas);
   --on-background: var(--ink-primary);
