@@ -65,6 +65,12 @@ export interface TimelineStat {
   attempts: number;
   correct: number;
   accuracy: number;
+  latest_attempts?: number;
+  latest_correct?: number;
+  latest_accuracy?: number;
+  avg_time_ms?: number | null;
+  total_time_ms?: number;
+  timed_attempts?: number;
 }
 
 export interface WeakTopic {

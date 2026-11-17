@@ -345,22 +345,49 @@ def breakdown():
 
 
 def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
-    if days is not None:
-        rows = db.execute("""
-            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
+    date_filter = "AND answered_at >= date('now', ?)" if days is not None else ""
+    params = (user_id, f'-{days} days') if days is not None else (user_id,)
+    rows = db.execute(f"""
+        WITH ranked AS (
+            SELECT
+                substr(answered_at, 1, 10) AS day,
+                question_id,
+                is_correct,
+                time_spent_ms,
+                ROW_NUMBER() OVER (
+                    PARTITION BY substr(answered_at, 1, 10), question_id
+                    ORDER BY answered_at DESC, id DESC
+                ) AS rn
             FROM attempts
-            WHERE user_id = ? AND answered_at >= date('now', ?)
-            GROUP BY day ORDER BY day
-        """, (user_id, f'-{days} days')).fetchall()
-    else:
-        rows = db.execute("""
-            SELECT substr(answered_at, 1, 10) AS day, COUNT(*) AS attempts, SUM(is_correct) AS correct
-            FROM attempts WHERE user_id = ? GROUP BY day ORDER BY day
-        """, (user_id,)).fetchall()
+            WHERE user_id = ? {date_filter}
+        )
+        SELECT
+            day,
+            COUNT(*) AS attempts,
+            SUM(is_correct) AS correct,
+            SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS latest_attempts,
+            SUM(CASE WHEN rn = 1 THEN is_correct ELSE 0 END) AS latest_correct,
+            AVG(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms END) AS avg_time_ms,
+            SUM(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN time_spent_ms ELSE 0 END) AS total_time_ms,
+            COUNT(CASE WHEN time_spent_ms IS NOT NULL AND time_spent_ms > 0 AND time_spent_ms < 1800000 THEN 1 END) AS timed_attempts
+        FROM ranked
+        GROUP BY day
+        ORDER BY day
+    """, params).fetchall()
 
     return [
-        {"day": r["day"], "attempts": r["attempts"], "correct": r["correct"],
-         "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0}
+        {
+            "day": r["day"],
+            "attempts": r["attempts"],
+            "correct": r["correct"],
+            "accuracy": (r["correct"] / r["attempts"]) if r["attempts"] else 0,
+            "latest_attempts": r["latest_attempts"],
+            "latest_correct": r["latest_correct"],
+            "latest_accuracy": (r["latest_correct"] / r["latest_attempts"]) if r["latest_attempts"] else 0,
+            "avg_time_ms": round(r["avg_time_ms"]) if r["avg_time_ms"] is not None else None,
+            "total_time_ms": int(r["total_time_ms"] or 0),
+            "timed_attempts": int(r["timed_attempts"] or 0),
+        }
         for r in rows
     ]
 

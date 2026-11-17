@@ -66,6 +66,7 @@ export function PerformanceRadarTab({
   onRefreshTimeline,
 }: PerformanceRadarTabProps) {
   const [days, setDays] = useState<number>(14);
+  const [timelineMode, setTimelineMode] = useState<"all" | "latest">("all");
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -79,13 +80,41 @@ export function PerformanceRadarTab({
 
   const chartTimeline = useMemo(
     () =>
-      visibleTimeline.map((t) => ({
-        ...t,
-        dateShort: t.day.split("-").slice(1).reverse().join("/"),
-        accPct: parseFloat(((t.accuracy || 0) * 100).toFixed(1)),
-      })),
-    [visibleTimeline]
+      visibleTimeline.map((t) => {
+        const useLatest = timelineMode === "latest";
+        const rawAcc = useLatest ? (t.latest_accuracy ?? t.accuracy) : t.accuracy;
+        const count = useLatest ? (t.latest_attempts ?? t.attempts) : t.attempts;
+        return {
+          ...t,
+          attempts: count,
+          dateShort: t.day.split("-").slice(1).reverse().join("/"),
+          accPct: parseFloat(((rawAcc || 0) * 100).toFixed(1)),
+        };
+      }),
+    [visibleTimeline, timelineMode]
   );
+
+  const periodPaceStats = useMemo(() => {
+    let totalAttempts = 0;
+    let totalCorrect = 0;
+    let totalTimeMs = 0;
+    let timedAttempts = 0;
+
+    for (const t of visibleTimeline) {
+      const count = timelineMode === "latest" ? (t.latest_attempts ?? t.attempts) : t.attempts;
+      const correct = timelineMode === "latest" ? (t.latest_correct ?? t.correct) : t.correct;
+      totalAttempts += count || 0;
+      totalCorrect += correct || 0;
+      totalTimeMs += t.total_time_ms || 0;
+      timedAttempts += t.timed_attempts || 0;
+    }
+
+    const avgSeconds = timedAttempts > 0 ? Math.round(totalTimeMs / timedAttempts / 1000) : null;
+    const totalMinutes = totalTimeMs > 0 ? Math.round(totalTimeMs / 60000) : 0;
+    const periodAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : null;
+
+    return { totalAttempts, avgSeconds, totalMinutes, periodAccuracy };
+  }, [visibleTimeline, timelineMode]);
 
   const distractorsBySubtema = useMemo(() => {
     const map = new Map<string, DistractorStat>();
@@ -165,19 +194,33 @@ export function PerformanceRadarTab({
             )}
           </div>
 
-          <Link
-            href={`/estudar?mode=adaptive&limit=${learningProfile.goal.questions_today}${
-              selectedInstitution
-                ? `&institution=${encodeURIComponent(selectedInstitution)}`
-                : ""
-            }`}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-          >
-            Iniciar sessão personalizada
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            {priorityTopic && (
+              <Link
+                href={`/estudar?subtema=${encodeURIComponent(priorityTopic.topic)}&limit=10${
+                  selectedInstitution
+                    ? `&institution=${encodeURIComponent(selectedInstitution)}`
+                    : ""
+                }`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface border border-line-subtle px-4 py-2.5 text-sm font-semibold text-ink-primary hover:border-accent/50 hover:text-accent transition-colors shadow-2xs"
+              >
+                Treinar prioridade (10q)
+              </Link>
+            )}
+            <Link
+              href={`/estudar?mode=adaptive&limit=${learningProfile.goal.questions_today}${
+                selectedInstitution
+                  ? `&institution=${encodeURIComponent(selectedInstitution)}`
+                  : ""
+              }`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-2xs"
+            >
+              Iniciar sessão personalizada
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -203,41 +246,110 @@ export function PerformanceRadarTab({
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-surface-subtle p-1 rounded-md border border-line-subtle">
-            {[14, 30, 90, 180].map((d) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="group"
+              aria-label="Modo de cálculo da acurácia"
+              className="flex items-center gap-1 bg-surface-subtle p-1 rounded-xl border border-line-subtle"
+            >
               <button
-                key={d}
                 type="button"
-                onClick={() => setDays(d)}
-                disabled={loadingTimeline}
-                aria-pressed={days === d}
-                aria-label={`Ver evolução de ${d} dias`}
+                onClick={() => setTimelineMode("all")}
+                aria-pressed={timelineMode === "all"}
                 className={clsx(
-                  "px-2.5 py-1.5 text-xs font-mono-lab font-semibold rounded-xs transition-colors cursor-pointer min-h-[34px] min-w-[44px] inline-flex items-center justify-center",
-                  days === d
+                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px]",
+                  timelineMode === "all"
                     ? "bg-surface text-foreground shadow-xs border border-line-subtle"
-                    : "text-muted-foreground hover:text-foreground",
-                  loadingTimeline && "opacity-50 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {d}D
+                Todas
               </button>
-            ))}
-            {onRefreshTimeline && (
               <button
                 type="button"
-                onClick={onRefreshTimeline}
-                disabled={loadingTimeline}
-                aria-label="Atualizar histórico de evolução"
-                title="Atualizar histórico"
-                className="p-1.5 min-h-[34px] min-w-[34px] rounded-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+                onClick={() => setTimelineMode("latest")}
+                aria-pressed={timelineMode === "latest"}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px]",
+                  timelineMode === "latest"
+                    ? "bg-surface text-foreground shadow-xs border border-line-subtle"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <RefreshCcw
-                  size={14}
-                  className={loadingTimeline ? "animate-spin text-primary" : undefined}
-                />
+                Última tentativa
               </button>
-            )}
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-surface-subtle p-1 rounded-xl border border-line-subtle">
+              {[14, 30, 90, 180].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays(d)}
+                  disabled={loadingTimeline}
+                  aria-pressed={days === d}
+                  aria-label={`Ver evolução de ${d} dias`}
+                  className={clsx(
+                    "px-2.5 py-1.5 text-xs font-mono-lab font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px] min-w-[44px] inline-flex items-center justify-center",
+                    days === d
+                      ? "bg-surface text-foreground shadow-xs border border-line-subtle"
+                      : "text-muted-foreground hover:text-foreground",
+                    loadingTimeline && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {d}D
+                </button>
+              ))}
+              {onRefreshTimeline && (
+                <button
+                  type="button"
+                  onClick={onRefreshTimeline}
+                  disabled={loadingTimeline}
+                  aria-label="Atualizar histórico de evolução"
+                  title="Atualizar histórico"
+                  className="p-1.5 min-h-[34px] min-w-[34px] rounded-lg text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCcw
+                    size={14}
+                    className={loadingTimeline ? "animate-spin text-primary" : undefined}
+                  />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Faixa de KPIs do Período (Ritmo & Acurácia) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="bg-canvas border border-line-subtle rounded-xl px-3.5 py-2.5">
+            <p className="text-[11px] text-ink-secondary font-medium">Questões no período</p>
+            <p className="text-base font-bold text-ink-primary font-mono-lab tabular-nums">
+              {periodPaceStats.totalAttempts}
+            </p>
+          </div>
+          <div className="bg-canvas border border-line-subtle rounded-xl px-3.5 py-2.5">
+            <p className="text-[11px] text-ink-secondary font-medium">
+              {timelineMode === "latest" ? "Acurácia (última)" : "Acurácia (geral)"}
+            </p>
+            <p className="text-base font-bold text-ink-primary font-mono-lab tabular-nums">
+              {periodPaceStats.periodAccuracy !== null ? `${periodPaceStats.periodAccuracy}%` : "—"}
+            </p>
+          </div>
+          <div className="bg-canvas border border-line-subtle rounded-xl px-3.5 py-2.5">
+            <p className="text-[11px] text-ink-secondary font-medium">Tempo / Questão</p>
+            <p className="text-base font-bold text-ink-primary font-mono-lab tabular-nums">
+              {periodPaceStats.avgSeconds !== null ? `${periodPaceStats.avgSeconds}s` : "—"}
+            </p>
+          </div>
+          <div className="bg-canvas border border-line-subtle rounded-xl px-3.5 py-2.5">
+            <p className="text-[11px] text-ink-secondary font-medium">Tempo Total</p>
+            <p className="text-base font-bold text-ink-primary font-mono-lab tabular-nums">
+              {periodPaceStats.totalMinutes > 0
+                ? periodPaceStats.totalMinutes >= 60
+                  ? `${Math.floor(periodPaceStats.totalMinutes / 60)}h ${periodPaceStats.totalMinutes % 60}m`
+                  : `${periodPaceStats.totalMinutes}m`
+                : "—"}
+            </p>
           </div>
         </div>
 
@@ -493,11 +605,14 @@ export function PerformanceRadarTab({
                       {topic.items_count} {topic.items_count === 1 ? "questão em risco" : "questões em risco"}
                     </span>
                   </div>
-                  <div className="flex flex-col items-end shrink-0">
+                  <div className="flex flex-col items-end shrink-0 gap-1">
                     <span className="text-xs font-mono-lab tabular-nums font-semibold text-warning">
                       {topic.retrievability !== undefined
                         ? `${Math.round(topic.retrievability * 100)}% retenção`
                         : "Baixa retenção"}
+                    </span>
+                    <span className="text-[11px] font-semibold text-accent">
+                      Treinar →
                     </span>
                   </div>
                 </Link>
