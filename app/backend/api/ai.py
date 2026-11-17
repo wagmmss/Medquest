@@ -118,6 +118,8 @@ def detect_preceptor_mode(
     q = user_query.strip().lower()
 
     # 1. Comandos com barra explícitos
+    if q.startswith("/dica") or q.startswith("/tip"):
+        return "dica"
     if q.startswith("/foco") or q.startswith("/diagnostico"):
         return "foco"
     if q.startswith("/conduta") or q.startswith("/protocolo") or q.startswith("/manejo"):
@@ -245,17 +247,19 @@ REGRAS DE ANCORAGEM NAS FONTES:
 """
 
     # 1.1 Recuperação de Jurisprudência de Bancas (43k questões do SQLite FTS5)
-    jurisprudence_items = retrieve_jurisprudence_context(
-        db=db,
-        current_question_id=question_id,
-        area=area,
-        subtema=subtema,
-        stem=stem,
-        user_question=safe_user_query,
-        top_k=2
-    )
-    jurisprudence_block = format_jurisprudence_block(jurisprudence_items)
-    jurisprudence_instruction = f"\n{jurisprudence_block}\n" if jurisprudence_block else ""
+    jurisprudence_instruction = ""
+    if mode != "dica":
+        jurisprudence_items = retrieve_jurisprudence_context(
+            db=db,
+            current_question_id=question_id,
+            area=area,
+            subtema=subtema,
+            stem=stem,
+            user_question=safe_user_query,
+            top_k=2
+        )
+        jurisprudence_block = format_jurisprudence_block(jurisprudence_items)
+        jurisprudence_instruction = f"\n{jurisprudence_block}\n" if jurisprudence_block else ""
 
     # 2. Tool Calling Adaptativo se mode == "foco"
     tool_call_meta = None
@@ -292,7 +296,15 @@ REGRAS DE ANCORAGEM NAS FONTES:
             history_formatted = "### HISTÓRICO DA DISCUSSÃO CLÍNICA PRÉVIA:\n" + "\n\n".join(history_lines) + "\n\n"
 
     # 4. Construção das Diretrizes Exclusivas por Modo
-    if mode == "foco":
+    if mode == "dica":
+        mode_instructions = """
+### MODO ATIVADO: DICA DO PRECEPTOR PRÉ-RESPOSTA (ATTENDING TIP)
+DIRETRIZES OBRIGATÓRIAS:
+1. ⛔ REGRA ABSOLUTA DE SIGILO: O aluno AINDA NÃO RESPONDEU à questão. É TERMINANTEMENTE PROIBIDO revelar a letra do gabarito, citar ou parafrasear diretamente a alternativa correta, ou entregar o diagnóstico/conduta final de bandeja.
+2. Responda em NO MÁXIMO 2 frases curtas e diretas (estilo preceptor à beira do leito).
+3. Aponte apenas o dado semiológico, fisiopatológico ou critério de gravidade do enunciado que destrava o raciocínio clínico para que o próprio aluno escolha a alternativa.
+"""
+    elif mode == "foco":
         mode_instructions = f"""
 {diagnostic_block}
 

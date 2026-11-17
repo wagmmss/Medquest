@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
 import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
-import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target } from "lucide-react";
+import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2 } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { isLocalIdentityReady } from "@/lib/db";
@@ -170,6 +170,8 @@ export function QuizClient({
   const getCurrentTime = useCallback(() => quizTimerRef.current?.getTime() ?? initialTime, [initialTime]);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [labsOpen, setLabsOpen] = useState(false);
+  const [attendingTip, setAttendingTip] = useState<string | null>(null);
+  const [loadingTip, setLoadingTip] = useState(false);
   const [stemFontSize, setStemFontSize] = useState<StemFontSize>(() => {
     if (typeof window === "undefined") return "md";
     const saved = window.localStorage.getItem("medquest:stem-font-size");
@@ -185,6 +187,23 @@ export function QuizClient({
       return next;
     });
   }, []);
+
+  const handleRequestAttendingTip = useCallback(async () => {
+    if (!currentDetail || loadingTip || attendingTip) return;
+    setLoadingTip(true);
+    try {
+      const res = await api.questions.askAI(currentDetail.id, "/dica", "");
+      if (res?.answer) {
+        setAttendingTip(res.answer);
+      } else {
+        toast.error("Não foi possível gerar a dica agora.");
+      }
+    } catch {
+      toast.error("Preceptor indisponível no momento.");
+    } finally {
+      setLoadingTip(false);
+    }
+  }, [currentDetail, loadingTip, attendingTip]);
 
   const stemFontClass =
     stemFontSize === "sm"
@@ -212,6 +231,8 @@ export function QuizClient({
     setIsOfflineSaved(false);
     setChatMessages([]);
     setPreceptorInput("");
+    setAttendingTip(null);
+    setLoadingTip(false);
     setInitialTime(0);
 
     // Se já estiver no cache, carrega instantaneamente sem tela de loading
@@ -1358,6 +1379,35 @@ export function QuizClient({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {(!attemptResult || attendingTip) && (
+                <div className="pt-2">
+                  {!attendingTip ? (
+                    <button
+                      type="button"
+                      onClick={handleRequestAttendingTip}
+                      disabled={loadingTip}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      {loadingTip ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Lightbulb size={14} />
+                      )}
+                      {loadingTip ? "Gerando dica clínica..." : "Dica do Preceptor (sem spoiler)"}
+                    </button>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/8 border border-amber-500/25 text-xs sm:text-sm text-ink-primary leading-relaxed flex items-start gap-2.5">
+                      <Lightbulb size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mb-0.5">
+                          Dica do Preceptor
+                        </p>
+                        <p>{attendingTip}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
