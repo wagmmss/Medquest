@@ -59,6 +59,8 @@ def invalidate_user_caches(user_id):
     count_cache.clear_user(user_id)
     from .stats import overview_cache
     overview_cache.clear_user(user_id)
+    from .adaptive import _profile_cache
+    _profile_cache.clear_user(user_id)
 
 
 @bp.route("/simulado/usp")
