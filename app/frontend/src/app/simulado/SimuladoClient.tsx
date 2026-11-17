@@ -43,10 +43,6 @@ import { SimuladoNavGrid } from "./components/SimuladoNavGrid";
 import { SimuladoHeader } from "./components/SimuladoHeader";
 
 type SimuladoState = "START" | "LOADING" | "PLAYING" | "SUBMITTING" | "RESULTS" | "OFFLINE_SUBMITTED";
-
-function resolveImageUrl(img: string | null | undefined): string {
-  return normalizeImageSrc(img);
-}
 interface SavedSimuladoState {
   version: number;
   state: SimuladoState;
@@ -1154,7 +1150,7 @@ export function SimuladoClient({
               )}
 
               <ImageViewer
-                src={resolveImageUrl(enlargedImage)}
+                src={normalizeImageSrc(enlargedImage)}
                 isOpen={!!enlargedImage}
                 onClose={() => setEnlargedImage(null)}
               />
@@ -1219,7 +1215,7 @@ export function SimuladoClient({
                           onClick={() => setEnlargedImage(img)}
                         >
                           <Image
-                            src={resolveImageUrl(img)}
+                            src={normalizeImageSrc(img)}
                             alt={`Imagem do Caso ${i+1}`}
                             width={800}
                             height={600}
@@ -1248,7 +1244,7 @@ export function SimuladoClient({
                       onClick={() => setEnlargedImage(img)}
                     >
                       <Image
-                        src={resolveImageUrl(img)}
+                        src={normalizeImageSrc(img)}
                         alt={`Imagem ${i+1}`}
                         width={800}
                         height={600}
