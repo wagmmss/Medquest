@@ -31,7 +31,12 @@ import { QuizFilters } from "./components/QuizFilters";
 import { AlternativeList } from "./components/AlternativeList";
 import { AlternativeContent } from "@/components/AlternativeContent";
 import { PreceptorSection, ChatMessage } from "./components/PreceptorSection";
-import { QuizHeader } from "./components/QuizHeader";
+import { QuizHeader, StemFontSize } from "./components/QuizHeader";
+
+const LabValuesModal = dynamic(
+  () => import("@/components/LabValuesModal").then((mod) => mod.LabValuesModal),
+  { ssr: false }
+);
 import { QuizLoadingView, QuizSummaryView } from "./components/QuizSummaryView";
 import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
 import { QuestionNotePanel } from "@/components/QuestionNotePanel";
@@ -164,6 +169,29 @@ export function QuizClient({
   // Expose current time without causing re-renders
   const getCurrentTime = useCallback(() => quizTimerRef.current?.getTime() ?? initialTime, [initialTime]);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [labsOpen, setLabsOpen] = useState(false);
+  const [stemFontSize, setStemFontSize] = useState<StemFontSize>(() => {
+    if (typeof window === "undefined") return "md";
+    const saved = window.localStorage.getItem("medquest:stem-font-size");
+    return saved === "sm" || saved === "lg" ? saved : "md";
+  });
+
+  const cycleFontSize = useCallback(() => {
+    setStemFontSize((prev) => {
+      const next: StemFontSize = prev === "md" ? "lg" : prev === "lg" ? "sm" : "md";
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("medquest:stem-font-size", next);
+      }
+      return next;
+    });
+  }, []);
+
+  const stemFontClass =
+    stemFontSize === "sm"
+      ? "text-sm md:text-base"
+      : stemFontSize === "lg"
+      ? "text-lg md:text-xl"
+      : "text-base md:text-lg";
 
   const detailsCacheRef = useRef<Record<number, QuestionDetail>>({});
   const prefetchingRef = useRef<Set<number>>(new Set());
@@ -1083,6 +1111,7 @@ export function QuizClient({
           onClose={() => setEnlargedImage(null)} 
         />
       )}
+      <LabValuesModal open={labsOpen} onClose={() => setLabsOpen(false)} />
       {/* Top Bar */}
       <QuizHeader
         onBackToFilters={handleBackToFilters}
@@ -1097,6 +1126,9 @@ export function QuizClient({
         hasQuestion={Boolean(q)}
         isFavorite={q?.is_favorite}
         onToggleFavorite={toggleFavorite}
+        onOpenLabs={() => setLabsOpen(true)}
+        stemFontSize={stemFontSize}
+        onCycleFontSize={cycleFontSize}
       />
 
       {filters.mode === "remediation" && (
@@ -1292,7 +1324,7 @@ export function QuizClient({
               <FormattedContent 
                 content={q.stem} 
                 onImageClick={setEnlargedImage} 
-                className="text-ink text-base md:text-lg leading-relaxed font-normal" 
+                className={`text-ink ${stemFontClass} leading-relaxed font-normal`} 
               />
 
               {extraStemImages.length > 0 && (

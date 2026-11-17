@@ -2,9 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { Keyboard } from "lucide-react";
+import { FlaskConical, Keyboard } from "lucide-react";
 import { QuizTimer, QuizTimerHandle } from "@/components/QuizTimer";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
+
+export type StemFontSize = "sm" | "md" | "lg";
 
 export interface QuizHeaderProps {
   onBackToFilters: () => void;
@@ -19,6 +21,9 @@ export interface QuizHeaderProps {
   hasQuestion: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onOpenLabs?: () => void;
+  stemFontSize?: StemFontSize;
+  onCycleFontSize?: () => void;
 }
 
 export const QuizHeader: React.FC<QuizHeaderProps> = ({
@@ -34,6 +39,9 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
   hasQuestion,
   isFavorite = false,
   onToggleFavorite,
+  onOpenLabs,
+  stemFontSize = "md",
+  onCycleFontSize,
 }) => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -122,6 +130,31 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
+        {onOpenLabs && (
+          <button
+            type="button"
+            onClick={onOpenLabs}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-secondary hover:text-accent rounded-xs transition-colors border border-line-subtle text-xs font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            title="Valores de Referência Laboratoriais"
+            aria-label="Abrir valores de referência laboratoriais"
+          >
+            <FlaskConical size={13} />
+            <span className="hidden md:inline">Labs</span>
+          </button>
+        )}
+
+        {onCycleFontSize && (
+          <button
+            type="button"
+            onClick={onCycleFontSize}
+            className="flex items-center justify-center px-2 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-mono-lab font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            title={`Tamanho do texto: ${stemFontSize === "sm" ? "Compacto" : stemFontSize === "lg" ? "Ampliado" : "Padrão"} (clique para alternar)`}
+            aria-label="Alternar tamanho da fonte do enunciado"
+          >
+            Aa{stemFontSize === "sm" ? "−" : stemFontSize === "lg" ? "+" : ""}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onRequestFinish}
