@@ -1,24 +1,12 @@
 import Link from "next/link";
 import { getSubtemaDetails } from "@/lib/plannerData";
-import { isDynamicServerUsageError, serverApi, QuestionMeta } from "@/lib/server-api";
 import { QuizClient } from "./QuizClient";
-
-export const dynamic = "force-dynamic";
 
 export default async function EstudarPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  let meta: QuestionMeta | undefined;
-  try {
-    meta = await serverApi.questions.getMeta();
-  } catch (err: unknown) {
-    if (isDynamicServerUsageError(err)) {
-      throw err;
-    }
-    console.warn("SSR getMeta fallback to client fetch:", err);
-  }
   const rawParams = await searchParams;
 
   // Convert searchParams to record of strings or string arrays
@@ -40,7 +28,6 @@ export default async function EstudarPage({
         </Link>
       )}
       <QuizClient 
-        meta={meta} 
         initialFilters={initialFilters}
       />
     </div>

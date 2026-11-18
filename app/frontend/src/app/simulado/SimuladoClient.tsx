@@ -24,6 +24,7 @@ import clsx from "clsx";
 import toast from "react-hot-toast";
 import { useAppUser } from "@/lib/auth-client";
 import { useCurator } from "@/hooks/useCurator";
+import { useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 
 import { LEARNING_SESSION_VERSION, readLearningSession, writeLearningSession, removeLearningSession, deadlineFromNow } from "@/lib/sessionState";
 import { motion, AnimatePresence } from "framer-motion";
@@ -97,11 +98,17 @@ function isSavedSimuladoState(value: unknown): value is SavedSimuladoState {
 
 export function SimuladoClient({
   initialFilters = {},
-  meta
+  meta: initialMeta
 }: {
   initialFilters?: Record<string, string | string[]>;
   meta?: QuestionMeta;
 }) {
+  const { data: queriedMeta } = useQuestionMetaQuery(
+    {},
+    !initialMeta,
+    initialMeta
+  );
+  const meta = queriedMeta ?? initialMeta;
   const { isLoaded: authLoaded } = useAppUser();
   const { isCurator } = useCurator();
   const [isClassificationModalOpen, setIsClassificationModalOpen] = useState(false);

@@ -11,6 +11,7 @@ import clsx from "clsx";
 import { api } from "@/lib/api";
 import { QuestionMeta, SearchResult, SearchFilterOptions } from "@/types/api";
 import { parseSearchHighlight } from "@/lib/searchHighlight";
+import { useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 
 const QUICK_TOPICS = [
   "IAM com supra",
@@ -79,7 +80,12 @@ export function SearchClient({
   initialMeta = null,
 }: SearchClientProps) {
   const router = useRouter();
-  const [meta, setMeta] = useState<QuestionMeta | null>(initialMeta);
+  const { data: queriedMeta } = useQuestionMetaQuery(
+    {},
+    !initialMeta,
+    initialMeta ?? undefined
+  );
+  const meta = initialMeta ?? (queriedMeta?.total_questions ? queriedMeta : null);
   const [query, setQuery] = useState(initialQuery);
   const [selectedArea, setSelectedArea] = useState(initialArea);
   const [selectedInstitution, setSelectedInstitution] = useState(initialInstitution);
@@ -93,22 +99,6 @@ export function SearchClient({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (meta) return;
-    let cancelled = false;
-    api.questions
-      .getMeta()
-      .then((data) => {
-        if (!cancelled) setMeta(data);
-      })
-      .catch(() => {
-        // graceful fallback to minimal filter list
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [meta]);
 
   const areaOptions = useMemo(() => {
     const rawAreas = meta?.areas?.map((a) => a.area).filter(Boolean) || FALLBACK_AREAS;

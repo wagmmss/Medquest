@@ -1,4 +1,3 @@
-import { serverApi } from "@/lib/server-api";
 import { SearchClient } from "./SearchClient";
 
 interface SearchPageProps {
@@ -13,7 +12,6 @@ interface SearchPageProps {
 
 export default async function BuscarPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const initialMeta = await serverApi.questions.getMeta().catch(() => null);
 
   return (
     <SearchClient
@@ -22,7 +20,6 @@ export default async function BuscarPage({ searchParams }: SearchPageProps) {
       initialInstitution={params.institution || "Todas"}
       initialYear={params.year || "Todos"}
       initialWithImage={params.has_images === "true"}
-      initialMeta={initialMeta}
     />
   );
 }

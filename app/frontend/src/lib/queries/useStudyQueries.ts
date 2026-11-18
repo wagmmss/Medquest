@@ -17,7 +17,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export function useQuestionMetaQuery(
   filters: Record<string, string | string[]>,
   enabled: boolean,
-  initialData: QuestionMeta
+  initialData?: QuestionMeta
 ) {
   const metaFilters: Record<string, string | string[]> = { ...filters };
   delete metaFilters.subtema;
@@ -56,4 +56,5 @@ export function invalidateStudyCaches(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
   void queryClient.invalidateQueries({ queryKey: ["question-meta"] });
   void queryClient.invalidateQueries({ queryKey: ["analysis-summary"] });
+  void queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
 }

@@ -3,6 +3,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { api } from "@/lib/api";
+import { fetchPlannerBundle } from "@/lib/queries/plannerBundle";
 
 const prefetchedQueries = new Map<string, number>();
 const PREFETCH_COOLDOWN_MS = 30_000;
@@ -35,7 +36,7 @@ export function prefetchRouteIntent(
       queryFn: () => api.stats.getDashboardSummary(),
       staleTime: 45_000,
     });
-  } else if (href === "/estudar") {
+  } else if (href === "/estudar" || href === "/simulado" || href === "/buscar") {
     prefetchedQueries.set(href, now);
     void queryClient.prefetchQuery({
       queryKey: ["question-meta", "{}"],
@@ -61,6 +62,13 @@ export function prefetchRouteIntent(
     void queryClient.prefetchQuery({
       queryKey: ["analysis-summary", "USP-SP", ""],
       queryFn: () => api.stats.getAnalysisSummary("USP-SP"),
+      staleTime: 60_000,
+    });
+  } else if (href === "/planner") {
+    prefetchedQueries.set(href, now);
+    void queryClient.prefetchQuery({
+      queryKey: ["planner-bundle", false],
+      queryFn: () => fetchPlannerBundle(false),
       staleTime: 60_000,
     });
   }
