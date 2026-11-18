@@ -164,15 +164,16 @@ ALLOWED_ANALYSIS_INSTITUTIONS: list[str] = [
 # Mapeamento de códigos/aliases históricos no banco para as bancas alvo
 INSTITUTION_ALIASES: Dict[str, list[str]] = {
     "USP-SP": ["USP-SP", "USP SP", "USP SP 2020", "USP SP 2021", "USP SP 2022", "USP SP 2023", "USP SP 2024"],
-    "USP-RP": ["USP-RP", "USP RP 2020", "USP RP 2021", "USP RP 2022", "USP RP 2023", "USP RP 2024"],
+    "USP-RP": ["USP-RP", "USP RP", "USP RP 2020", "USP RP 2021", "USP RP 2022", "USP RP 2023", "USP RP 2024"],
     "UNICAMP": ["UNICAMP"],
     "UNIFESP": ["UNIFESP"],
-    "SUS-SP": ["SUS-SP", "SUS", "SUS SP 2020", "SUS SP 2021", "SUS SP 2022", "SUS SP 2023", "SUS SP 2024"],
+    "SUS-SP": ["SUS-SP", "SUS", "SUS SP", "SUS SP 2020", "SUS SP 2021", "SUS SP 2022", "SUS SP 2023", "SUS SP 2024"],
+    "SES-PE": ["SES-PE", "SES PE"],
     "ENARE": ["ENARE"],
     "SCMSP": ["SCMSP", "SCM", "SCM-SP", "SANTA CASA SP", "SANTA CASA DE SP"],
     "IAMSPE": ["IAMSPE", "IAMSPE 2020", "IAMSPE 2021", "IAMSPE 2022", "IAMSPE 2023", "IAMSPE 2024"],
     "AMRIGS": ["AMRIGS"],
-    "SCMRP": ["SCMRP", "SCMRP 2021", "SCMRP 2022", "SCMRP 2023"],
+    "SCMRP": ["SCMRP", "SCM-RP", "SCMRP 2021", "SCMRP 2022", "SCMRP 2023"],
 }
 
 def resolve_institution_codes(code: Optional[str]) -> list[str]:

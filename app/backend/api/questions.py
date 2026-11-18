@@ -653,8 +653,31 @@ def meta():
         total = db.execute(queries[5][0], queries[5][1]).fetchone()["n"]
         answered = db.execute(queries[6][0], queries[6][1]).fetchone()["n"]
     
+    merged_institutions: dict[str, dict] = {}
+    for row in institutions:
+        raw_code = row["institution_code"]
+        canon_code = get_canonical_institution(raw_code) or raw_code
+        if not canon_code:
+            continue
+        existing = merged_institutions.get(canon_code)
+        if existing is None:
+            merged_institutions[canon_code] = {
+                "institution_code": canon_code,
+                "institution_label": row["institution_label"] or canon_code,
+                "n": int(row["n"] or 0),
+            }
+        else:
+            existing["n"] += int(row["n"] or 0)
+            if raw_code == canon_code and row["institution_label"]:
+                existing["institution_label"] = row["institution_label"]
+
+    deduped_institutions = sorted(
+        merged_institutions.values(),
+        key=lambda item: (-item["n"], item["institution_code"]),
+    )
+
     result = {
-        "institutions": [dict(r) for r in institutions],
+        "institutions": deduped_institutions,
         "years": [r["year"] for r in years],
         "sources": [],
         "areas": [dict(r) for r in areas],
