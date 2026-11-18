@@ -18,12 +18,10 @@ const PREVALENCE_OPTIONS: Array<{ value: "all" | FocusPrevalence; label: string 
 export function FocusRadarTab({
   institutionOptions,
   selectedInstitution,
-  onSelectInstitution,
   onInspectSubtema,
 }: {
   institutionOptions: { key: string; label: string }[];
   selectedInstitution: string;
-  onSelectInstitution: (inst: string) => void;
   onInspectSubtema?: (subtema: string) => void;
 }) {
   const [prevalence, setPrevalence] = useState<"all" | FocusPrevalence>("prioritario");
@@ -68,19 +66,9 @@ export function FocusRadarTab({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedInstitution}
-            onChange={(e) => onSelectInstitution(e.target.value)}
-            aria-label="Selecionar banca alvo"
-            className="px-3 py-2 text-xs bg-canvas border border-line-subtle rounded-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            <option value="">Todas as Bancas</option>
-            {institutionOptions.map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <span className="px-2.5 py-1.5 text-xs font-mono-lab bg-canvas border border-line-subtle rounded-xs text-ink-secondary">
+            Banca: <strong className="text-ink-primary">{institutionOptions.find((o) => o.key === selectedInstitution)?.label || selectedInstitution || "Todas"}</strong>
+          </span>
 
           <select
             value={prevalence}

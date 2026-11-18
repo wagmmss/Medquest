@@ -8,7 +8,6 @@ interface ReadinessEditalTabProps {
   examReadiness: ExamReadiness;
   institutionOptions: { key: string; label: string }[];
   selectedInstitution: string;
-  onSelectInstitution: (inst: string) => void;
   loadingReadiness: boolean;
   readinessError: string | null;
   onRetryReadiness: () => void;
@@ -18,7 +17,6 @@ export function ReadinessEditalTab({
   examReadiness,
   institutionOptions,
   selectedInstitution,
-  onSelectInstitution,
   loadingReadiness,
   readinessError,
   onRetryReadiness,
@@ -38,21 +36,14 @@ export function ReadinessEditalTab({
             curricular do edital.
           </p>
         </div>
-        <label className="text-xs font-semibold text-muted-foreground flex flex-col gap-1">
-          Banca / Edital
-          <select
-            value={selectedInstitution}
-            onChange={(e) => onSelectInstitution(e.target.value)}
-            className="bg-canvas border border-line-subtle rounded-md px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 min-h-[40px]"
-            aria-label="Selecionar edital da instituição"
-          >
-            {institutionOptions.map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-canvas border border-line-subtle text-xs font-mono-lab text-foreground shrink-0">
+          <span className="text-muted-foreground">Banca ativa:</span>
+          <span className="font-bold">
+            {institutionOptions.find((o) => o.key === selectedInstitution)?.label ||
+              selectedInstitution ||
+              "Todas"}
+          </span>
+        </div>
       </div>
 
       {readinessError && (

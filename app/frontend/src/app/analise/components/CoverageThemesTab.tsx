@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   AlertCircle,
@@ -24,7 +25,6 @@ import type {
   CoverageSubtema,
   LearningProfileTopic,
 } from "@/types/api";
-import { api } from "@/lib/api";
 import { normalizeTopicSearch } from "@/lib/analysisTimeline";
 
 const ThemeDetailDrawer = dynamic(
@@ -68,11 +68,8 @@ export function CoverageThemesTab({
   onSelectSubtema,
   initialError = null,
 }: CoverageThemesTabProps) {
-  const [localRefresh, setLocalRefresh] = useState<{
-    base: CoverageArea[];
-    data: CoverageArea[];
-  } | null>(null);
-  const areas = localRefresh?.base === initialAreas ? localRefresh.data : initialAreas;
+  const queryClient = useQueryClient();
+  const areas = initialAreas;
   const [error, setError] = useState<string | null>(initialError);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
@@ -96,10 +93,7 @@ export function CoverageThemesTab({
     setIsRefreshing(true);
     setError(null);
     try {
-      const res = await api.stats.getCoverage();
-      if (res?.areas) {
-        setLocalRefresh({ base: initialAreas, data: res.areas });
-      }
+      await queryClient.invalidateQueries({ queryKey: ["analysis-summary"] });
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Falha ao atualizar dados de cobertura"
@@ -107,7 +101,7 @@ export function CoverageThemesTab({
     } finally {
       setIsRefreshing(false);
     }
-  }, [initialAreas]);
+  }, [queryClient]);
 
   const getStatusTag = (status: CoverageSubtema["status"]) => {
     if (status === "mastered") {

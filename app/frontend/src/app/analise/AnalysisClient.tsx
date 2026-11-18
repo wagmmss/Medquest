@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { BarChart3, Crosshair, Layers, ShieldCheck } from "lucide-react";
 import type {
   AnalysisSummaryResponse,
-  TimelineStat,
 } from "@/types/api";
 import { api } from "@/lib/api";
 
@@ -101,13 +100,6 @@ export function AnalysisClient({
     initialInstitution || initialSummary.exam_readiness?.institution || "USP-SP"
   );
 
-  const [timelineOverride, setTimelineOverride] = useState<TimelineStat[] | null>(null);
-  const [loadingTimeline, setLoadingTimeline] = useState(false);
-  const [timelineError, setTimelineError] = useState<string | null>(null);
-  const [timelineRetry, setTimelineRetry] = useState(0);
-
-  const isFirstTimelineMount = useRef(true);
-
   const syncUrlParams = useCallback(
     (tab: AnalysisTabKey, subtema: string | null) => {
       if (typeof window === "undefined") return;
@@ -171,6 +163,19 @@ export function AnalysisClient({
     refetchOnWindowFocus: false,
   });
 
+  const {
+    data: timelineQueryData,
+    isFetching: loadingTimeline,
+    isError: isTimelineQueryError,
+    refetch: refetchTimeline,
+  } = useQuery({
+    queryKey: ["analysis-timeline-180"],
+    queryFn: () => api.stats.getTimeline(180),
+    enabled: false,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const localReadiness =
     cachedReadiness?.institution === selectedInstitution
       ? cachedReadiness
@@ -178,7 +183,10 @@ export function AnalysisClient({
   const readinessError = isReadinessQueryError
     ? "Falha ao atualizar dados de prontidão deste edital."
     : null;
-  const timeline180 = timelineOverride ?? summary.timeline_180 ?? [];
+  const timeline180 = timelineQueryData ?? summary.timeline_180 ?? [];
+  const timelineError = isTimelineQueryError
+    ? "Não foi possível carregar a evolução de desempenho."
+    : null;
 
   const summaryError =
     manualSummaryError ??
@@ -188,7 +196,6 @@ export function AnalysisClient({
 
   const handleRefreshAll = useCallback(async () => {
     setManualSummaryError(null);
-    setTimelineOverride(null);
     const result = await refetchSummary();
     if (result.isError) {
       setManualSummaryError(
@@ -201,38 +208,11 @@ export function AnalysisClient({
   }, [refetchSummary, refetchReadiness, activeTab]);
 
   useEffect(() => {
-    if (isFirstTimelineMount.current) {
-      isFirstTimelineMount.current = false;
-      return;
-    }
-    const controller = new AbortController();
-    setLoadingTimeline(true);
-    setTimelineError(null);
-    api.stats
-      .getTimeline(180, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setTimelineOverride(data);
-          setTimelineError(null);
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setTimelineError("Não foi possível carregar a evolução de desempenho.");
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoadingTimeline(false);
-      });
-    return () => controller.abort();
-  }, [timelineRetry]);
-
-  useEffect(() => {
     let lastFocus = Date.now();
     const handleFocus = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         if (Date.now() - lastFocus > 30000) {
-          setTimelineRetry((r) => r + 1);
+          void refetchTimeline();
           if (activeTab === "prontidao") {
             void refetchReadiness();
           }
@@ -260,7 +240,7 @@ export function AnalysisClient({
       document.removeEventListener("visibilitychange", handleFocus);
       window.removeEventListener("sync-item-success", handleSync);
     };
-  }, [handleRefreshAll, activeTab, refetchReadiness]);
+  }, [handleRefreshAll, activeTab, refetchReadiness, refetchTimeline]);
 
   const tabs: Array<{
     key: AnalysisTabKey;
@@ -291,34 +271,52 @@ export function AnalysisClient({
         </div>
       )}
 
-      {/* Segmented Clinical Tab Bar */}
-      <div
-        role="tablist"
-        aria-label="Seções de Análise"
-        className="flex flex-wrap items-center gap-1.5 bg-surface border border-line-subtle p-1.5 rounded-2xl w-full sm:w-fit shadow-2xs"
-      >
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isSelected = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              onClick={() => handleTabChange(tab.key)}
-              className={clsx(
-                "flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer min-h-[38px]",
-                isSelected
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-ink-secondary hover:text-ink-primary hover:bg-elevated/60"
-              )}
-            >
-              <Icon size={15} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Segmented Clinical Tab Bar + Banca-Alvo Unificada */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div
+          role="tablist"
+          aria-label="Seções de Análise"
+          className="flex flex-wrap items-center gap-1.5 bg-surface border border-line-subtle p-1.5 rounded-2xl w-full lg:w-fit shadow-2xs"
+        >
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isSelected = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                onClick={() => handleTabChange(tab.key)}
+                className={clsx(
+                  "flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer min-h-[38px]",
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-ink-secondary hover:text-ink-primary hover:bg-elevated/60"
+                )}
+              >
+                <Icon size={15} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <label className="flex items-center gap-2 bg-surface border border-line-subtle rounded-2xl px-3.5 py-1.5 text-xs font-semibold text-ink-secondary w-full lg:w-auto justify-between lg:justify-start shadow-2xs">
+          <span className="whitespace-nowrap">Banca-Alvo:</span>
+          <select
+            value={selectedInstitution}
+            onChange={(e) => setSelectedInstitution(e.target.value)}
+            aria-label="Selecionar banca-alvo da análise"
+            className="bg-canvas border border-line-subtle rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-primary focus:outline-none focus:ring-2 focus:ring-primary/25 min-h-[34px]"
+          >
+            {availableInstitutions.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {/* Tab Content */}
@@ -336,7 +334,7 @@ export function AnalysisClient({
           distractors={summary.distractors || []}
           timelineError={timelineError}
           loadingTimeline={loadingTimeline}
-          onRefreshTimeline={() => setTimelineRetry((r) => r + 1)}
+          onRefreshTimeline={() => void refetchTimeline()}
         />
       )}
 
@@ -354,7 +352,6 @@ export function AnalysisClient({
           examReadiness={localReadiness}
           institutionOptions={availableInstitutions}
           selectedInstitution={selectedInstitution}
-          onSelectInstitution={setSelectedInstitution}
           loadingReadiness={loadingReadiness}
           readinessError={readinessError}
           onRetryReadiness={() => void refetchReadiness()}
@@ -365,7 +362,6 @@ export function AnalysisClient({
         <FocusRadarTab
           institutionOptions={availableInstitutions}
           selectedInstitution={selectedInstitution}
-          onSelectInstitution={setSelectedInstitution}
           onInspectSubtema={(subtema) => {
             setSelectedSubtema(subtema);
             setActiveTab("cobertura");
