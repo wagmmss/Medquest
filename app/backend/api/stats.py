@@ -483,10 +483,10 @@ def timeline():
 def _get_weak_topics_data(db, user_id: str, min_attempts: int = 5) -> list[dict]:
     min_attempts = max(5, min(min_attempts, 1000))
     rows = db.execute("""
-        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
+        SELECT TRIM(COALESCE(NULLIF(TRIM(q.subtema), ''), NULLIF(TRIM(q.topic), ''))) AS topic,
                COUNT(a.id) AS attempts, SUM(a.is_correct) AS correct
         FROM attempts a JOIN questions q ON q.id = a.question_id
-        WHERE a.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+        WHERE a.user_id = ? AND COALESCE(NULLIF(TRIM(q.subtema), ''), NULLIF(TRIM(q.topic), '')) IS NOT NULL
         GROUP BY topic HAVING attempts >= ?
         ORDER BY (CAST(correct AS FLOAT) / attempts) ASC LIMIT 15
     """, (user_id, min_attempts)).fetchall()

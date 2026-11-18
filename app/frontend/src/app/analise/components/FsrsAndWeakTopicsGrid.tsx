@@ -73,13 +73,13 @@ export function FsrsAndWeakTopicsGrid({
         </div>
         <div className="divide-y divide-line-subtle">
           {weakTopics && weakTopics.length > 0 ? (
-            weakTopics.slice(0, 8).map((wt) => {
+            weakTopics.slice(0, 8).map((wt, idx) => {
               const distractor = distractorsBySubtema.get(wt.topic);
               const worstChoice = distractor?.wrong_choices?.[0];
 
               return (
                 <Link
-                  key={wt.topic}
+                  key={`${wt.topic}-${idx}`}
                   href={`/estudar?subtema=${encodeURIComponent(wt.topic)}&status=all&limit=10`}
                   className="p-4 hover:bg-elevated/40 transition-colors flex items-center justify-between gap-4 group"
                 >
