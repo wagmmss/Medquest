@@ -14,7 +14,6 @@ import {
   CircleDashed,
   Clock,
   Flame,
-  Info,
   PlayCircle,
   RefreshCcw,
   Search,
@@ -34,23 +33,8 @@ const ThemeDetailDrawer = dynamic(
 
 type StatusFilter = "all" | "high_yield" | "evidence" | "in_progress" | "not_started";
 
-const statusRank: Record<CoverageSubtema["status"], number> = {
-  not_started: 0,
-  in_progress: 1,
-  proficient: 2,
-  mastered: 3,
-};
-
 function formatCoverage(sub: CoverageSubtema) {
   return `${sub.answered}/${sub.n_questions} (${(sub.coverage_pct * 100).toFixed(0)}%)`;
-}
-
-function priorityReason(sub: CoverageSubtema) {
-  if (sub.status === "not_started")
-    return `Ainda não iniciado · ${sub.n_questions} questões disponíveis`;
-  if (sub.status === "in_progress")
-    return `Em aprendizado · ${formatCoverage(sub)} coberto`;
-  return `Boa evidência inicial · ${formatCoverage(sub)} coberto`;
 }
 
 interface CoverageThemesTabProps {
@@ -170,26 +154,6 @@ export function CoverageThemesTab({
         return { ...area, filteredSubtemas };
       }),
     [areas, normalizedQuery, statusFilter]
-  );
-
-  const priorities = useMemo(
-    () =>
-      areas
-        .flatMap((area) =>
-          (area.subtemas || []).map((sub) => ({
-            ...sub,
-            displayArea: sub.area || area.area,
-          }))
-        )
-        .filter((sub) => sub.highYield && sub.status !== "mastered")
-        .sort(
-          (a, b) =>
-            statusRank[a.status] - statusRank[b.status] ||
-            a.coverage_pct - b.coverage_pct ||
-            b.n_questions - a.n_questions
-        )
-        .slice(0, 3),
-    [areas]
   );
 
   const {
@@ -322,82 +286,6 @@ export function CoverageThemesTab({
             {isRefreshing ? "Atualizando..." : "Tentar novamente"}
           </button>
         </div>
-      )}
-
-      {/* Prioridades de cobertura */}
-      {priorities.length > 0 && (
-        <section
-          aria-label="Prioridades de cobertura"
-          className="bg-surface border border-line-subtle rounded-lg p-5"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4">
-            <div>
-              <div className="flex items-center gap-2 text-warning">
-                <AlertCircle size={17} />
-                <h2 className="text-base font-bold text-foreground">
-                  Prioridades de cobertura
-                </h2>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Temas de alta incidência ainda sem evidência suficiente de consolidação.
-              </p>
-            </div>
-            <span className="text-[11px] text-muted-foreground font-mono-lab">
-              Prevalência USP-SP / USP-RP
-            </span>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {priorities.map((sub) => {
-              const unansweredParam = sub.answered < sub.n_questions ? "true" : "false";
-              return (
-                <div
-                  key={`${sub.displayArea}-${sub.subtema}`}
-                  className="border border-line-subtle rounded-md p-4 bg-canvas flex flex-col justify-between gap-3"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openSubtemaDrawer(sub.subtema)}
-                        className="font-semibold text-sm text-foreground leading-snug text-left hover:text-primary transition-colors cursor-pointer"
-                      >
-                        {sub.subtema}
-                      </button>
-                      <Flame
-                        size={15}
-                        className="shrink-0 text-warning"
-                        aria-label="Alta incidência"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {sub.displayArea} · {priorityReason(sub)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/estudar?area=${encodeURIComponent(
-                        sub.displayArea
-                      )}&subtema=${encodeURIComponent(
-                        sub.subtema
-                      )}&limit=10&unanswered_only=${unansweredParam}`}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors"
-                    >
-                      <PlayCircle size={14} /> Treinar (10q)
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => openSubtemaDrawer(sub.subtema)}
-                      className="inline-flex items-center justify-center min-h-[38px] px-2.5 py-1.5 text-xs font-semibold border border-line-subtle rounded-md bg-surface text-foreground hover:bg-surface-subtle transition-colors cursor-pointer"
-                      title="Detalhes do tema"
-                    >
-                      <Info size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
       )}
 
       {/* Search & Filter Bar */}
