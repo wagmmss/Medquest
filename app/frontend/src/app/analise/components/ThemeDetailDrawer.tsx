@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   ArrowRight,
@@ -36,9 +37,20 @@ export function ThemeDetailDrawer({
   topic,
   onClose,
 }: ThemeDetailDrawerProps) {
-  const [practiceLimit, setPracticeLimit] = useState<10 | 20 | 30>(10);
-  const [progress, setProgress] = useState<ThemeProgress | null>(null);
+  const queryClient = useQueryClient();
+  const [manualPracticeLimit, setManualPracticeLimit] = useState<{
+    subtema: string;
+    limit: 10 | 20 | 30;
+  } | null>(null);
   const [savingProgress, setSavingProgress] = useState(false);
+
+  const { data: queriedProgress } = useQuery({
+    queryKey: ["theme-progress", subtema],
+    queryFn: () => api.themes.getProgress(subtema!),
+    enabled: Boolean(subtema),
+    staleTime: 60_000,
+    retry: 1,
+  });
 
   useEffect(() => {
     if (!subtema) return;
@@ -49,37 +61,18 @@ export function ThemeDetailDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [subtema, onClose]);
 
-  useEffect(() => {
-    if (!subtema) return;
-    const controller = new AbortController();
-    api.themes
-      .getProgress(subtema, controller.signal)
-      .then((res) => {
-        if (!controller.signal.aborted) {
-          setProgress(res);
-          if (res.study_path === "essential") {
-            setPracticeLimit(10);
-          } else {
-            setPracticeLimit(20);
-          }
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setProgress({
-            subtema,
-            theory_completed: false,
-            study_path: "complete",
-            updated_at: null,
-          });
-        }
-      });
-    return () => controller.abort();
-  }, [subtema]);
-
   if (!subtema) return null;
 
-  const activeProgress = progress?.subtema === subtema ? progress : null;
+  const activeProgress: ThemeProgress | null =
+    queriedProgress?.subtema === subtema ? queriedProgress : null;
+  const practiceLimit: 10 | 20 | 30 =
+    manualPracticeLimit?.subtema === subtema
+      ? manualPracticeLimit.limit
+      : activeProgress?.study_path === "essential"
+      ? 10
+      : 20;
+  const setPracticeLimit = (limit: 10 | 20 | 30) =>
+    setManualPracticeLimit({ subtema, limit });
 
   const group = plannerData.find((area) =>
     area.macroThemes.some((theme) => theme.dbSubtemas.includes(subtema))
@@ -115,13 +108,13 @@ export function ThemeDetailDrawer({
       study_path: nextPath,
       updated_at: new Date().toISOString(),
     };
-    setProgress(optimistic);
+    queryClient.setQueryData(["theme-progress", subtema], optimistic);
     try {
       const saved = await api.themes.saveProgress(subtema, {
         theory_completed: nextCompleted,
         study_path: nextPath,
       });
-      setProgress(saved);
+      queryClient.setQueryData(["theme-progress", subtema], saved);
     } catch {
       // Keep UI responsive even if offline/save fails
     } finally {

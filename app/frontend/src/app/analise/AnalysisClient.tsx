@@ -7,7 +7,6 @@ import clsx from "clsx";
 import { BarChart3, Crosshair, Layers, ShieldCheck } from "lucide-react";
 import type {
   AnalysisSummaryResponse,
-  ExamReadiness,
   TimelineStat,
 } from "@/types/api";
 import { api } from "@/lib/api";
@@ -101,17 +100,12 @@ export function AnalysisClient({
   const [selectedInstitution, setSelectedInstitution] = useState<string>(
     initialInstitution || initialSummary.exam_readiness?.institution || "USP-SP"
   );
-  const [readinessOverride, setReadinessOverride] = useState<ExamReadiness | null>(null);
-  const [loadingReadiness, setLoadingReadiness] = useState(false);
-  const [readinessError, setReadinessError] = useState<string | null>(null);
-  const [readinessRetry, setReadinessRetry] = useState(0);
 
   const [timelineOverride, setTimelineOverride] = useState<TimelineStat[] | null>(null);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [timelineRetry, setTimelineRetry] = useState(0);
 
-  const isFirstReadinessMount = useRef(true);
   const isFirstTimelineMount = useRef(true);
 
   const syncUrlParams = useCallback(
@@ -164,7 +158,26 @@ export function AnalysisClient({
     [initialSummary, cachedSummary]
   );
 
-  const localReadiness = readinessOverride ?? summary.exam_readiness;
+  const {
+    data: cachedReadiness,
+    isFetching: loadingReadiness,
+    isError: isReadinessQueryError,
+    refetch: refetchReadiness,
+  } = useQuery({
+    queryKey: ["exam-readiness", selectedInstitution || "USP-SP"],
+    queryFn: () => api.stats.getExamReadiness(selectedInstitution || undefined),
+    enabled: activeTab === "prontidao",
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const localReadiness =
+    cachedReadiness?.institution === selectedInstitution
+      ? cachedReadiness
+      : summary.exam_readiness;
+  const readinessError = isReadinessQueryError
+    ? "Falha ao atualizar dados de prontidão deste edital."
+    : null;
   const timeline180 = timelineOverride ?? summary.timeline_180 ?? [];
 
   const summaryError =
@@ -175,7 +188,6 @@ export function AnalysisClient({
 
   const handleRefreshAll = useCallback(async () => {
     setManualSummaryError(null);
-    setReadinessOverride(null);
     setTimelineOverride(null);
     const result = await refetchSummary();
     if (result.isError) {
@@ -183,34 +195,10 @@ export function AnalysisClient({
         "Falha ao atualizar o painel analítico. Tente novamente."
       );
     }
-  }, [refetchSummary]);
-
-  useEffect(() => {
-    if (isFirstReadinessMount.current) {
-      isFirstReadinessMount.current = false;
-      return;
+    if (activeTab === "prontidao") {
+      void refetchReadiness();
     }
-    const controller = new AbortController();
-    setLoadingReadiness(true);
-    setReadinessError(null);
-    api.stats
-      .getExamReadiness(selectedInstitution || undefined, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setReadinessOverride(data);
-          setReadinessError(null);
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setReadinessError("Falha ao atualizar dados de prontidão deste edital.");
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoadingReadiness(false);
-      });
-    return () => controller.abort();
-  }, [selectedInstitution, readinessRetry]);
+  }, [refetchSummary, refetchReadiness, activeTab]);
 
   useEffect(() => {
     if (isFirstTimelineMount.current) {
@@ -245,7 +233,9 @@ export function AnalysisClient({
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         if (Date.now() - lastFocus > 30000) {
           setTimelineRetry((r) => r + 1);
-          setReadinessRetry((r) => r + 1);
+          if (activeTab === "prontidao") {
+            void refetchReadiness();
+          }
         }
         lastFocus = Date.now();
       }
@@ -270,7 +260,7 @@ export function AnalysisClient({
       document.removeEventListener("visibilitychange", handleFocus);
       window.removeEventListener("sync-item-success", handleSync);
     };
-  }, [handleRefreshAll]);
+  }, [handleRefreshAll, activeTab, refetchReadiness]);
 
   const tabs: Array<{
     key: AnalysisTabKey;
@@ -367,7 +357,7 @@ export function AnalysisClient({
           onSelectInstitution={setSelectedInstitution}
           loadingReadiness={loadingReadiness}
           readinessError={readinessError}
-          onRetryReadiness={() => setReadinessRetry((r) => r + 1)}
+          onRetryReadiness={() => void refetchReadiness()}
         />
       )}
 
@@ -376,6 +366,11 @@ export function AnalysisClient({
           institutionOptions={availableInstitutions}
           selectedInstitution={selectedInstitution}
           onSelectInstitution={setSelectedInstitution}
+          onInspectSubtema={(subtema) => {
+            setSelectedSubtema(subtema);
+            setActiveTab("cobertura");
+            syncUrlParams("cobertura", subtema);
+          }}
         />
       )}
     </div>

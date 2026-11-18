@@ -147,6 +147,8 @@ export default async function AnalisePage({
       ? "cobertura"
       : rawTab === "prontidao"
       ? "prontidao"
+      : rawTab === "sniper"
+      ? "sniper"
       : "desempenho";
 
   return (

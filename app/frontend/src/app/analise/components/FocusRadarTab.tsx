@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Crosshair, CheckCircle2, ArrowRight, Flame } from "lucide-react";
+import { Crosshair, CheckCircle2, ArrowRight, Flame, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { FocusPrevalence } from "@/types/api";
+import { normalizeTopicSearch } from "@/lib/analysisTimeline";
 
 const PREVALENCE_OPTIONS: Array<{ value: "all" | FocusPrevalence; label: string }> = [
   { value: "all", label: "Todas" },
@@ -18,12 +19,15 @@ export function FocusRadarTab({
   institutionOptions,
   selectedInstitution,
   onSelectInstitution,
+  onInspectSubtema,
 }: {
   institutionOptions: { key: string; label: string }[];
   selectedInstitution: string;
   onSelectInstitution: (inst: string) => void;
+  onInspectSubtema?: (subtema: string) => void;
 }) {
   const [prevalence, setPrevalence] = useState<"all" | FocusPrevalence>("prioritario");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["focus-radar", selectedInstitution, prevalence],
@@ -33,7 +37,19 @@ export function FocusRadarTab({
 
   const summary = data?.summary;
   const areas = data?.areas ?? [];
-  const focuses = data?.focuses ?? [];
+  const normalizedSearch = useMemo(
+    () => normalizeTopicSearch(searchQuery.trim()),
+    [searchQuery]
+  );
+  const focuses = useMemo(() => {
+    const raw = data?.focuses ?? [];
+    if (!normalizedSearch) return raw;
+    return raw.filter(
+      (f) =>
+        normalizeTopicSearch(f.subtema).includes(normalizedSearch) ||
+        normalizeTopicSearch(f.area).includes(normalizedSearch)
+    );
+  }, [data?.focuses, normalizedSearch]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -103,40 +119,57 @@ export function FocusRadarTab({
       ) : (
         <>
           {summary && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-surface border border-line-subtle rounded-sm p-3.5">
-                <span className="text-[11px] font-mono-lab uppercase text-ink-muted">Focos Prioritários</span>
-                <p className="text-xl font-bold text-ink-primary mt-1 tabular-nums">
-                  {summary.priority_mastered} / {summary.priority_total}
-                </p>
-                <span className="text-[11px] text-ink-secondary">dominados na banca</span>
-              </div>
-              <div className="bg-surface border border-line-subtle rounded-sm p-3.5">
-                <span className="text-[11px] font-mono-lab uppercase text-ink-muted">Domínio Total</span>
-                <p className="text-xl font-bold text-ink-primary mt-1 tabular-nums">
-                  {summary.mastered_focuses} / {summary.total_focuses}
-                </p>
-                <span className="text-[11px] text-ink-secondary">focos mapeados</span>
-              </div>
-              {areas.slice(0, 2).map((a) => (
-                <div key={a.area} className="bg-surface border border-line-subtle rounded-sm p-3.5">
-                  <span className="text-[11px] font-mono-lab uppercase text-ink-muted truncate block">{a.area}</span>
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-surface border border-line-subtle rounded-sm p-3.5">
+                  <span className="text-[11px] font-mono-lab uppercase text-ink-muted">Focos Prioritários</span>
                   <p className="text-xl font-bold text-ink-primary mt-1 tabular-nums">
-                    {a.mastered_count} / {a.focuses_count}
+                    {summary.priority_mastered} / {summary.priority_total}
                   </p>
-                  <span className="text-[11px] text-ink-secondary">
-                    {a.accuracy !== null ? `${Math.round(a.accuracy * 100)}% acerto` : `${a.available} questões`}
-                  </span>
+                  <span className="text-[11px] text-ink-secondary">dominados na banca</span>
                 </div>
-              ))}
+                <div className="bg-surface border border-line-subtle rounded-sm p-3.5">
+                  <span className="text-[11px] font-mono-lab uppercase text-ink-muted">Domínio Total</span>
+                  <p className="text-xl font-bold text-ink-primary mt-1 tabular-nums">
+                    {summary.mastered_focuses} / {summary.total_focuses}
+                  </p>
+                  <span className="text-[11px] text-ink-secondary">focos mapeados</span>
+                </div>
+              </div>
+              {areas.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {areas.map((a) => (
+                    <div key={a.area} className="bg-surface border border-line-subtle rounded-sm p-3">
+                      <span className="text-[11px] font-mono-lab uppercase text-ink-muted truncate block">{a.area}</span>
+                      <p className="text-lg font-bold text-ink-primary mt-1 tabular-nums">
+                        {a.mastered_count} / {a.focuses_count}
+                      </p>
+                      <span className="text-[11px] text-ink-secondary">
+                        {a.accuracy !== null ? `${Math.round(a.accuracy * 100)}% acerto` : `${a.available} questões`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           <div className="bg-surface border border-line-subtle rounded-md overflow-hidden">
-            <div className="px-4 py-3 border-b border-line-subtle flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-line-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <h3 className="text-xs font-bold uppercase tracking-wider font-mono-lab text-ink-primary">
                 Focos Ranqueados por Incidência ({focuses.length})
               </h3>
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-ink-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filtrar subtema ou área..."
+                  aria-label="Filtrar focos por subtema ou área"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-canvas border border-line-subtle rounded-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              </div>
             </div>
             <div className="divide-y divide-line-subtle max-h-[520px] overflow-y-auto">
               {focuses.map((f) => (
@@ -157,7 +190,17 @@ export function FocusRadarTab({
                       >
                         {f.prevalence}
                       </span>
-                      <span className="text-xs font-semibold text-ink-primary truncate">{f.subtema}</span>
+                      {onInspectSubtema ? (
+                        <button
+                          type="button"
+                          onClick={() => onInspectSubtema(f.subtema)}
+                          className="text-xs font-semibold text-ink-primary hover:text-accent hover:underline truncate text-left cursor-pointer"
+                        >
+                          {f.subtema}
+                        </button>
+                      ) : (
+                        <span className="text-xs font-semibold text-ink-primary truncate">{f.subtema}</span>
+                      )}
                       {f.mastered && <CheckCircle2 className="w-3.5 h-3.5 text-normal shrink-0" />}
                     </div>
                     <span className="text-[11px] text-ink-muted">
