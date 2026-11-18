@@ -9,6 +9,7 @@ import type {
   AnalysisSummaryResponse,
 } from "@/types/api";
 import { api } from "@/lib/api";
+import { NextActionBanner } from "./components/NextActionBanner";
 
 function AnalysisTabSkeleton() {
   return (
@@ -318,6 +319,19 @@ export function AnalysisClient({
           </select>
         </label>
       </div>
+
+      <NextActionBanner
+        selectedInstitution={selectedInstitution}
+        institutionLabel={
+          availableInstitutions.find((o) => o.key === selectedInstitution)?.label ||
+          selectedInstitution ||
+          "Todas"
+        }
+        examReadiness={localReadiness}
+        atRiskTopic={summary.at_risk?.[0]}
+        weakTopic={summary.weak_topics?.[0]}
+        onOpenTab={(tab) => handleTabChange(tab)}
+      />
 
       {/* Tab Content */}
       {activeTab === "desempenho" && (
