@@ -24,9 +24,7 @@ export function InstitutionRadarSection({
   institutionOptions,
   defaultInstitution = "USP-SP",
 }: InstitutionRadarSectionProps) {
-  const [selectedInst, setSelectedInst] = useState<string>(
-    initialData?.institution.code || defaultInstitution
-  );
+  const selectedInst = defaultInstitution || initialData?.institution.code || "USP-SP";
   const [compareInst, setCompareInst] = useState<string>("");
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
   const [radarData, setRadarData] = useState<InstitutionRadarResponse | null>(initialData || null);
@@ -126,20 +124,6 @@ export function InstitutionRadarSection({
 
         {/* Seletores e Alternância de Visualização */}
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex flex-col text-xs font-semibold text-muted-foreground">
-            Banca Alvo
-            <select
-              value={selectedInst}
-              onChange={(e) => setSelectedInst(e.target.value)}
-              aria-label="Selecionar banca alvo"
-              className="mt-1 bg-canvas border border-line-subtle rounded-md px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 min-h-[40px]"
-            >
-              {institutionOptions.map(opt => (
-                <option key={opt.key} value={opt.key}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-
           <label className="flex flex-col text-xs font-semibold text-muted-foreground">
             Comparar com
             <select

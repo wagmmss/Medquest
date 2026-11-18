@@ -330,6 +330,7 @@ export function AnalysisClient({
         examReadiness={localReadiness}
         atRiskTopic={summary.at_risk?.[0]}
         weakTopic={summary.weak_topics?.[0]}
+        questionsToday={summary.learning_profile?.goal?.questions_today}
         onOpenTab={(tab) => handleTabChange(tab)}
       />
 

@@ -12,6 +12,7 @@ interface NextActionBannerProps {
   examReadiness?: ExamReadiness;
   atRiskTopic?: AtRiskTopic;
   weakTopic?: WeakTopic;
+  questionsToday?: number;
   onOpenTab: (tab: "prontidao" | "sniper" | "cobertura") => void;
 }
 
@@ -21,6 +22,7 @@ export function NextActionBanner({
   examReadiness,
   atRiskTopic,
   weakTopic,
+  questionsToday,
   onOpenTab,
 }: NextActionBannerProps) {
   const { data: focusData } = useQuery({
@@ -79,6 +81,20 @@ export function NextActionBanner({
             >
               <Flame className="w-3.5 h-3.5" />
               <span>Bateria Sniper</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+
+          {questionsToday && questionsToday > 0 && (
+            <Link
+              href={`/estudar?mode=adaptive&limit=${questionsToday}${
+                selectedInstitution
+                  ? `&institution=${encodeURIComponent(selectedInstitution)}`
+                  : ""
+              }`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <span>Sessão adaptativa ({questionsToday}q)</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           )}

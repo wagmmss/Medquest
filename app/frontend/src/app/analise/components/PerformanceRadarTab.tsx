@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import clsx from "clsx";
-import { Calendar, Clock, RefreshCcw } from "lucide-react";
+import { Calendar, RefreshCcw } from "lucide-react";
 import type {
   AtRiskTopic,
   BlindspotsResponse,
@@ -36,25 +35,14 @@ interface PerformanceRadarTabProps {
   onRefreshTimeline?: () => void;
 }
 
-const REASON_LABELS: Record<string, string> = {
-  low_accuracy: "baixa acurácia",
-  reviews_due: "revisões vencidas",
-  memory_at_risk: "risco de esquecimento",
-  low_coverage: "baixa cobertura",
-  balanced_practice: "prática equilibrada",
-};
-
 export function PerformanceRadarTab({
   overview,
-  learningProfile,
   selectedInstitution,
   institutionOptions,
   institutionRadar,
   blindspots,
   timeline180,
   atRiskTopics,
-  weakTopics,
-  distractors,
   timelineError = null,
   loadingTimeline = false,
   onRefreshTimeline,
@@ -125,114 +113,8 @@ export function PerformanceRadarTab({
     };
   }, [visibleTimeline, timelineMode, overview]);
 
-  const distractorsBySubtema = useMemo(() => {
-    const map = new Map<string, DistractorStat>();
-    if (!Array.isArray(distractors)) return map;
-    for (const d of distractors) {
-      if (d?.subtema) map.set(d.subtema, d);
-    }
-    return map;
-  }, [distractors]);
-
-  const priorityTopic = learningProfile.topics[0];
-  const adaptiveRemainder = Math.max(
-    0,
-    learningProfile.goal.questions_today - learningProfile.goal.reviews_to_do_today
-  );
-
   return (
     <div className="flex flex-col gap-6 pb-8">
-      {/* Adaptive Goal Banner */}
-      <section className="bg-surface border border-line-subtle rounded-lg p-5 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
-              </span>
-              <h2 className="text-lg font-bold text-ink-primary">Meta adaptativa de hoje</h2>
-            </div>
-
-            <p className="text-sm text-ink-secondary">
-              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
-                {learningProfile.goal.questions_today}
-              </span>{" "}
-              questões:{" "}
-              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
-                {learningProfile.goal.reviews_to_do_today}
-              </span>{" "}
-              revisões FSRS e até{" "}
-              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
-                {adaptiveRemainder}
-              </span>{" "}
-              questões adaptativas.
-            </p>
-
-            {learningProfile.goal.backlog_pending > 0 && (
-              <div className="mt-3 p-3 bg-warning/10 border border-warning/25 text-ink-primary rounded-md text-xs flex items-start gap-2 max-w-xl">
-                <Clock size={15} className="mt-0.5 shrink-0 text-warning" />
-                <p>
-                  Orçamento de tempo ({learningProfile.goal.hours_budget}h/dia) ativado: limitamos
-                  suas revisões a {learningProfile.goal.max_capacity} questões hoje. As{" "}
-                  {learningProfile.goal.backlog_pending} pendências foram redistribuídas.
-                </p>
-              </div>
-            )}
-
-            {priorityTopic && (
-              <p className="text-xs text-ink-secondary mt-2.5">
-                Prioridade atual:{" "}
-                <span className="font-semibold text-ink-primary">{priorityTopic.topic}</span>
-                {priorityTopic.reasons.length > 0 && (
-                  <span>
-                    {" "}
-                    ·{" "}
-                    {priorityTopic.reasons
-                      .map((r) => REASON_LABELS[r] || r)
-                      .join(", ")}
-                  </span>
-                )}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            {priorityTopic && (
-              <Link
-                href={`/estudar?subtema=${encodeURIComponent(priorityTopic.topic)}&limit=10${
-                  selectedInstitution
-                    ? `&institution=${encodeURIComponent(selectedInstitution)}`
-                    : ""
-                }`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface border border-line-subtle px-4 py-2.5 text-sm font-semibold text-ink-primary hover:border-accent/50 hover:text-accent transition-colors shadow-2xs"
-              >
-                Treinar prioridade (10q)
-              </Link>
-            )}
-            <Link
-              href={`/estudar?mode=adaptive&limit=${learningProfile.goal.questions_today}${
-                selectedInstitution
-                  ? `&institution=${encodeURIComponent(selectedInstitution)}`
-                  : ""
-              }`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-2xs"
-            >
-              Iniciar sessão personalizada
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* Radar Comparativo de Bancas */}
       <InstitutionRadarSection
         initialData={institutionRadar}
@@ -485,11 +367,7 @@ export function PerformanceRadarTab({
         })()}
       </section>
 
-      <FsrsAndWeakTopicsGrid
-        atRiskTopics={atRiskTopics}
-        weakTopics={weakTopics}
-        distractorsBySubtema={distractorsBySubtema}
-      />
+      <FsrsAndWeakTopicsGrid atRiskTopics={atRiskTopics} />
     </div>
   );
 }
