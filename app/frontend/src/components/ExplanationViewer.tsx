@@ -288,7 +288,7 @@ function ExplanationViewerBase({
         className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={() => setEnlargedImage(null)}
       >
-        <div className="relative max-w-5xl max-h-[90vh] flex flex-col items-center">
+        <div className="relative max-w-5xl max-h-[90dvh] flex flex-col items-center">
           <button 
             type="button"
             onClick={() => setEnlargedImage(null)}
@@ -301,7 +301,7 @@ function ExplanationViewerBase({
           <img 
             src={enlargedImage} 
             alt="Figura médica explicativa ampliada"
-            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10"
+            className="max-w-full max-h-[85dvh] object-contain rounded-lg shadow-2xl border border-white/10"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -312,7 +312,7 @@ function ExplanationViewerBase({
   if (!explanation || !parsed) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3 p-5 rounded-xl bg-muted/40 border border-border text-muted-foreground">
+        <div className="flex items-center gap-3 p-5 rounded-xl bg-elevated/40 border border-line-subtle text-ink-muted">
           <AlertCircle size={18} aria-hidden="true" />
           <span>Nenhum comentário oficial disponível para esta questão.</span>
         </div>
@@ -338,7 +338,7 @@ function ExplanationViewerBase({
               <span className="font-bold text-xs sm:text-sm uppercase tracking-wider opacity-90">
                 {isDiscursiveDetected ? "Resposta Esperada pela Banca (Gabarito):" : "Gabarito Oficial:"}
               </span>
-              <span className="font-extrabold text-sm sm:text-base underline decoration-2 underline-offset-2 text-foreground">
+              <span className="font-extrabold text-sm sm:text-base underline decoration-2 underline-offset-2 text-ink-primary">
                 {parsed.gabarito}
               </span>
             </div>
@@ -347,12 +347,12 @@ function ExplanationViewerBase({
 
         {/* 1. PULO DO GATO (Âncora de Alto Rendimento) */}
         {parsed.puloDoGato && (
-          <div className="relative overflow-hidden rounded-2xl bg-amber-500/10 border border-amber-500/25 p-5 md:p-6 text-foreground shadow-sm">
+          <div className="relative overflow-hidden rounded-2xl bg-amber-500/10 border border-amber-500/25 p-5 md:p-6 text-ink-primary shadow-sm">
             <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-sm md:text-base uppercase tracking-wider mb-2">
               <Sparkles size={18} aria-hidden="true" className="shrink-0 animate-pulse" />
               <span>Pulo do Gato</span>
             </div>
-            <div className="text-foreground text-sm md:text-base leading-relaxed font-medium">
+            <div className="text-ink-primary text-sm md:text-base leading-relaxed font-medium">
               <FormattedContent content={parsed.puloDoGato} onImageClick={setEnlargedImage} />
             </div>
           </div>
@@ -360,12 +360,12 @@ function ExplanationViewerBase({
 
         {/* 2. PADRÃO DE RESPOSTA DA BANCA (Se seção explícita presente) */}
         {parsed.padraoResposta && (
-          <div className="rounded-2xl bg-primary/10 border border-primary/25 p-5 md:p-6 text-foreground shadow-sm">
+          <div className="rounded-2xl bg-primary/10 border border-primary/25 p-5 md:p-6 text-ink-primary shadow-sm">
             <div className="flex items-center gap-2 text-primary font-bold text-sm md:text-base uppercase tracking-wider mb-2">
               <Award size={18} aria-hidden="true" className="shrink-0" />
               <span>Padrão de Resposta Oficial da Banca</span>
             </div>
-            <div className="text-foreground text-sm md:text-base leading-relaxed font-medium">
+            <div className="text-ink-primary text-sm md:text-base leading-relaxed font-medium">
               <FormattedContent content={parsed.padraoResposta} onImageClick={setEnlargedImage} />
             </div>
           </div>
@@ -373,12 +373,12 @@ function ExplanationViewerBase({
 
         {/* 3. RACIOCÍNIO CLÍNICO / RESOLUÇÃO DETALHADA */}
         {parsed.raciocinioClinico && (
-          <div className="rounded-2xl bg-blue-500/10 border border-blue-500/20 p-5 md:p-6 text-foreground">
+          <div className="rounded-2xl bg-blue-500/10 border border-blue-500/20 p-5 md:p-6 text-ink-primary">
             <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-sm md:text-base uppercase tracking-wider mb-2">
               <Stethoscope size={18} aria-hidden="true" className="shrink-0" />
               <span>{isDiscursiveDetected ? "Padrão de Resposta da Banca & Comentário" : "Raciocínio Clínico"}</span>
             </div>
-            <div className="text-foreground text-sm md:text-base leading-relaxed">
+            <div className="text-ink-primary text-sm md:text-base leading-relaxed">
               <FormattedContent content={parsed.raciocinioClinico} onImageClick={setEnlargedImage} />
             </div>
           </div>
@@ -386,14 +386,14 @@ function ExplanationViewerBase({
 
         {/* 4. ALTERNATIVA CORRETA (Apenas questões de múltipla escolha) */}
         {!isDiscursiveDetected && parsed.alternativaCorreta && (
-          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-5 md:p-6 text-foreground">
+          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-5 md:p-6 text-ink-primary">
             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm md:text-base uppercase tracking-wider mb-2">
               <CheckCircle2 size={18} aria-hidden="true" className="shrink-0" />
               <span>
                 Alternativa Correta {parsed.alternativaCorreta.letter ? `(${parsed.alternativaCorreta.letter})` : (correctLetter ? `(${correctLetter})` : "")}
               </span>
             </div>
-            <div className="text-foreground text-sm md:text-base leading-relaxed">
+            <div className="text-ink-primary text-sm md:text-base leading-relaxed">
               <FormattedContent content={parsed.alternativaCorreta.text} onImageClick={setEnlargedImage} />
             </div>
           </div>
@@ -402,7 +402,7 @@ function ExplanationViewerBase({
         {/* 5. ANÁLISE DOS DISTRATORES (Apenas questões de múltipla escolha) */}
         {!isDiscursiveDetected && parsed.distratores && parsed.distratores.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs uppercase tracking-wider px-1">
+            <div className="flex items-center gap-2 text-ink-muted font-bold text-xs uppercase tracking-wider px-1">
               <XCircle size={14} aria-hidden="true" className="text-rose-500" />
               <span>Análise das Alternativas Incorretas</span>
             </div>
@@ -410,13 +410,13 @@ function ExplanationViewerBase({
               {parsed.distratores.map((dist, idx) => (
                 <div 
                   key={idx} 
-                  className="rounded-xl border border-border bg-card/60 p-4 transition-all hover:bg-muted/30"
+                  className="rounded-xl border border-line-subtle bg-surface/60 p-4 transition-all hover:bg-elevated/30"
                 >
                   <div className="flex items-start gap-3">
                     <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-400 font-bold text-xs shrink-0 mt-0.5">
                       {dist.letter}
                     </span>
-                    <div className="text-sm md:text-base text-foreground leading-relaxed flex-1">
+                    <div className="text-sm md:text-base text-ink-primary leading-relaxed flex-1">
                       <FormattedContent content={dist.text} onImageClick={setEnlargedImage} />
                     </div>
                   </div>
@@ -434,7 +434,7 @@ function ExplanationViewerBase({
   // Fallback: render formatted raw markdown
   return (
     <div className="space-y-4">
-      <div className="text-foreground text-sm md:text-base leading-relaxed">
+      <div className="text-ink-primary text-sm md:text-base leading-relaxed">
         <FormattedContent content={parsed.fallbackText || ""} onImageClick={setEnlargedImage} />
       </div>
 

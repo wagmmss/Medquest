@@ -391,26 +391,26 @@ export function PerformanceRadarTab({
                   />
                 </svg>
               </span>
-              <h2 className="text-lg font-bold text-foreground">Meta adaptativa de hoje</h2>
+              <h2 className="text-lg font-bold text-ink-primary">Meta adaptativa de hoje</h2>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono-lab tabular-nums font-semibold text-foreground">
+            <p className="text-sm text-ink-secondary">
+              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
                 {learningProfile.goal.questions_today}
               </span>{" "}
               questões:{" "}
-              <span className="font-mono-lab tabular-nums font-semibold text-foreground">
+              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
                 {learningProfile.goal.reviews_to_do_today}
               </span>{" "}
               revisões FSRS e até{" "}
-              <span className="font-mono-lab tabular-nums font-semibold text-foreground">
+              <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
                 {adaptiveRemainder}
               </span>{" "}
               questões adaptativas.
             </p>
 
             {learningProfile.goal.backlog_pending > 0 && (
-              <div className="mt-3 p-3 bg-warning/10 border border-warning/25 text-foreground rounded-md text-xs flex items-start gap-2 max-w-xl">
+              <div className="mt-3 p-3 bg-warning/10 border border-warning/25 text-ink-primary rounded-md text-xs flex items-start gap-2 max-w-xl">
                 <Clock size={15} className="mt-0.5 shrink-0 text-warning" />
                 <p>
                   Orçamento de tempo ({learningProfile.goal.hours_budget}h/dia) ativado: limitamos
@@ -421,9 +421,9 @@ export function PerformanceRadarTab({
             )}
 
             {priorityTopic && (
-              <p className="text-xs text-muted-foreground mt-2.5">
+              <p className="text-xs text-ink-secondary mt-2.5">
                 Prioridade atual:{" "}
-                <span className="font-semibold text-foreground">{priorityTopic.topic}</span>
+                <span className="font-semibold text-ink-primary">{priorityTopic.topic}</span>
                 {priorityTopic.reasons.length > 0 && (
                   <span>
                     {" "}
@@ -481,10 +481,10 @@ export function PerformanceRadarTab({
       <section className="bg-surface border border-line-subtle rounded-lg p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-foreground">
+            <h2 className="text-xl font-bold text-ink-primary">
               Evolução: volume e acurácia diária
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               Acurácia diária oscila com amostras pequenas; avalie a tendência junto com o volume.
             </p>
           </div>
@@ -493,17 +493,17 @@ export function PerformanceRadarTab({
             <div
               role="group"
               aria-label="Modo de cálculo da acurácia"
-              className="flex items-center gap-1 bg-surface-subtle p-1 rounded-xl border border-line-subtle"
+              className="flex items-center gap-1 bg-elevated/60 p-1 rounded-xl border border-line-subtle"
             >
               <button
                 type="button"
                 onClick={() => setTimelineMode("all")}
                 aria-pressed={timelineMode === "all"}
                 className={clsx(
-                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px]",
+                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[38px]",
                   timelineMode === "all"
-                    ? "bg-surface text-foreground shadow-xs border border-line-subtle"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-surface text-ink-primary shadow-xs border border-line-subtle"
+                    : "text-ink-muted hover:text-ink-primary"
                 )}
               >
                 Todas
@@ -513,17 +513,17 @@ export function PerformanceRadarTab({
                 onClick={() => setTimelineMode("latest")}
                 aria-pressed={timelineMode === "latest"}
                 className={clsx(
-                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px]",
+                  "px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[38px]",
                   timelineMode === "latest"
-                    ? "bg-surface text-foreground shadow-xs border border-line-subtle"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-surface text-ink-primary shadow-xs border border-line-subtle"
+                    : "text-ink-muted hover:text-ink-primary"
                 )}
               >
                 Última tentativa
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-surface-subtle p-1 rounded-xl border border-line-subtle">
+            <div className="flex items-center gap-1.5 bg-elevated/60 p-1 rounded-xl border border-line-subtle">
               {[14, 30, 90, 180].map((d) => (
                 <button
                   key={d}
@@ -533,10 +533,10 @@ export function PerformanceRadarTab({
                   aria-pressed={days === d}
                   aria-label={`Ver evolução de ${d} dias`}
                   className={clsx(
-                    "px-2.5 py-1.5 text-xs font-mono-lab font-semibold rounded-lg transition-colors cursor-pointer min-h-[34px] min-w-[44px] inline-flex items-center justify-center",
+                    "px-2.5 py-1.5 text-xs font-mono-lab font-semibold rounded-lg transition-colors cursor-pointer min-h-[38px] min-w-[44px] inline-flex items-center justify-center",
                     days === d
-                      ? "bg-surface text-foreground shadow-xs border border-line-subtle"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-surface text-ink-primary shadow-xs border border-line-subtle"
+                      : "text-ink-muted hover:text-ink-primary",
                     loadingTimeline && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -550,7 +550,7 @@ export function PerformanceRadarTab({
                   disabled={loadingTimeline}
                   aria-label="Atualizar histórico de evolução"
                   title="Atualizar histórico"
-                  className="p-1.5 min-h-[34px] min-w-[34px] rounded-lg text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+                  className="p-1.5 min-h-[38px] min-w-[38px] rounded-lg text-ink-muted hover:text-ink-primary transition-colors inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCcw
                     size={14}
@@ -620,7 +620,7 @@ export function PerformanceRadarTab({
           </div>
         ) : (
           <div aria-busy={loadingTimeline}>
-            <p className="text-xs text-muted-foreground mb-3 font-mono-lab">
+            <p className="text-xs text-ink-muted mb-3 font-mono-lab">
               Dados exibidos: últimos {days} dias{loadingTimeline ? " · Atualizando…" : ""}
             </p>
             <div className="h-[340px] w-full min-w-0 border border-line-subtle rounded-md bg-canvas p-4 flex flex-col">
@@ -629,7 +629,7 @@ export function PerformanceRadarTab({
                   <TimelineEvolutionChart data={chartTimeline} />
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2 text-sm">
+                <div className="h-full flex flex-col items-center justify-center text-ink-muted gap-2 text-sm">
                   <p>Nenhuma atividade registrada neste recorte de {days} dias.</p>
                 </div>
               )}
@@ -641,24 +641,24 @@ export function PerformanceRadarTab({
       {/* Heatmap de Consistência (Últimos 6 meses) */}
       <section className="bg-surface border border-line-subtle rounded-lg p-6">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2 text-foreground">
+          <div className="flex items-center gap-2 text-ink-primary">
             <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h3 className="text-base font-bold text-foreground">
+            <h3 className="text-base font-bold text-ink-primary">
               Histórico de Atividade (Últimos 6 meses)
             </h3>
           </div>
-          <span className="text-xs text-muted-foreground hidden sm:inline-block font-mono-lab">
+          <span className="text-xs text-ink-muted hidden sm:inline-block font-mono-lab">
             Consistência e volume diário
           </span>
         </div>
 
         {(() => {
           if (!isMounted) {
-            return <div className="w-full h-[105px] bg-surface-subtle rounded-md" />;
+            return <div className="w-full h-[105px] bg-elevated/60 rounded-md" />;
           }
           if (!timeline180 || timeline180.length === 0) {
             return (
-              <p className="text-sm text-muted-foreground py-6 text-center">
+              <p className="text-sm text-ink-muted py-6 text-center">
                 Nenhuma atividade registrada nos últimos 6 meses.
               </p>
             );
@@ -681,7 +681,7 @@ export function PerformanceRadarTab({
             const dateStr = d.toISOString().split("T")[0];
             const count = activityMap.get(dateStr) || 0;
 
-            let colorClass = "bg-surface-subtle";
+            let colorClass = "bg-elevated";
             if (count > 0 && count <= 10) colorClass = "bg-primary/30";
             else if (count > 10 && count <= 30) colorClass = "bg-primary/50";
             else if (count > 30 && count <= 60) colorClass = "bg-primary/75";
@@ -704,9 +704,9 @@ export function PerformanceRadarTab({
               <div className="flex flex-col flex-wrap gap-1 h-[105px] min-w-max content-start">
                 {grid}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-3 pt-2 border-t border-line-subtle font-mono-lab">
+              <div className="flex items-center justify-between text-[11px] text-ink-muted mt-3 pt-2 border-t border-line-subtle font-mono-lab">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-surface-subtle" /> 0
+                  <span className="w-2.5 h-2.5 rounded-xs bg-elevated" /> 0
                   <span className="w-2.5 h-2.5 rounded-xs bg-primary/30 ml-2" /> 1-10
                   <span className="w-2.5 h-2.5 rounded-xs bg-primary/50 ml-1" /> 11-30
                   <span className="w-2.5 h-2.5 rounded-xs bg-primary/75 ml-1" /> 31-60
@@ -724,8 +724,8 @@ export function PerformanceRadarTab({
         {/* Radar de Esquecimento (FSRS) */}
         <section className="bg-surface border border-line-subtle rounded-lg p-6 flex flex-col">
           <div className="mb-4">
-            <h3 className="font-bold text-lg text-foreground">Radar de Esquecimento (FSRS)</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h3 className="font-bold text-lg text-ink-primary">Radar de Esquecimento (FSRS)</h3>
+            <p className="text-xs text-ink-muted mt-1">
               Subtemas com questões próximas do limiar de retenção programada.
             </p>
           </div>
@@ -740,12 +740,12 @@ export function PerformanceRadarTab({
                 >
                   <div className="flex flex-col min-w-0 pr-3">
                     <span
-                      className="font-medium text-sm text-foreground leading-tight truncate"
+                      className="font-medium text-sm text-ink-primary leading-tight truncate"
                       title={topic.subtema}
                     >
                       {topic.subtema}
                     </span>
-                    <span className="text-xs text-muted-foreground mt-0.5 font-mono-lab tabular-nums">
+                    <span className="text-xs text-ink-muted mt-0.5 font-mono-lab tabular-nums">
                       {topic.items_count} {topic.items_count === 1 ? "questão em risco" : "questões em risco"}
                     </span>
                   </div>
@@ -762,7 +762,7 @@ export function PerformanceRadarTab({
                 </Link>
               ))
             ) : (
-              <div className="h-full min-h-[140px] flex items-center justify-center text-xs text-muted-foreground text-center p-4 border border-dashed border-line-subtle rounded-md">
+              <div className="h-full min-h-[140px] flex items-center justify-center text-xs text-ink-muted text-center p-4 border border-dashed border-line-subtle rounded-md">
                 Nenhuma questão com risco elevado de esquecimento no momento.
               </div>
             )}
@@ -771,9 +771,9 @@ export function PerformanceRadarTab({
 
         {/* Tópicos Fracos & Armadilhas */}
         <section className="bg-surface border border-line-subtle rounded-lg overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-line-subtle bg-surface-subtle">
-            <h3 className="font-bold text-lg text-foreground">Tópicos Fracos & Armadilhas</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+          <div className="p-5 border-b border-line-subtle bg-elevated/60">
+            <h3 className="font-bold text-lg text-ink-primary">Tópicos Fracos & Armadilhas</h3>
+            <p className="text-xs text-ink-muted mt-1">
               Ordenados por acurácia, com amostra visível e padrão de distratores.
             </p>
           </div>
@@ -787,24 +787,24 @@ export function PerformanceRadarTab({
                   <Link
                     key={wt.topic}
                     href={`/estudar?subtema=${encodeURIComponent(wt.topic)}&status=all&limit=10`}
-                    className="p-4 hover:bg-surface-subtle/60 transition-colors flex items-center justify-between gap-4 group"
+                    className="p-4 hover:bg-elevated/40 transition-colors flex items-center justify-between gap-4 group"
                   >
                     <div className="min-w-0 flex-1">
                       <p
-                        className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors"
+                        className="font-medium text-sm text-ink-primary truncate group-hover:text-primary transition-colors"
                         title={wt.topic}
                       >
                         {wt.topic}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-mono-lab tabular-nums">
+                      <p className="text-xs text-ink-muted mt-0.5 font-mono-lab tabular-nums">
                         {wt.correct} acertos em {wt.attempts} tentativas
                         {wt.attempts < 10 ? " · amostra inicial" : ""}
                       </p>
 
                       {worstChoice && worstChoice.count >= 2 && wt.attempts >= 5 && (
                         <div className="mt-2 flex items-center gap-1.5 flex-wrap bg-destructive/5 w-fit px-2 py-1 rounded-xs border border-destructive/20 text-xs">
-                          <span className="text-muted-foreground">Distrator recorrente:</span>
-                          <span className="inline-flex items-center justify-center bg-canvas font-mono-lab font-bold text-foreground w-5 h-5 rounded-xs text-[10px] uppercase border border-line-subtle">
+                          <span className="text-ink-muted">Distrator recorrente:</span>
+                          <span className="inline-flex items-center justify-center bg-canvas font-mono-lab font-bold text-ink-primary w-5 h-5 rounded-xs text-[10px] uppercase border border-line-subtle">
                             {worstChoice.letter}
                           </span>
                           <span className="font-mono-lab font-semibold text-destructive">
@@ -830,7 +830,7 @@ export function PerformanceRadarTab({
                 );
               })
             ) : (
-              <div className="p-8 text-center text-xs text-muted-foreground">
+              <div className="p-8 text-center text-xs text-ink-muted">
                 Nenhum tópico fraco identificado ainda (mínimo de 5 tentativas por tema).
               </div>
             )}

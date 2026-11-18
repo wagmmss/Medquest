@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -31,6 +31,17 @@ export function BottomNav() {
   const { isZenMode, toggleZenMode } = useZenMode();
   const { isOffline, forcedOffline } = useOfflineStatus();
 
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMoreOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMoreOpen]);
+
   return (
     <>
       {/* DRAWER "MAIS" PARA ROTAS COMPLEMENTARES NO MOBILE */}
@@ -46,15 +57,16 @@ export function BottomNav() {
           role="dialog"
           aria-modal="true"
           aria-label="Menu complementar"
-          className="fixed bottom-16 left-0 right-0 max-h-[70vh] bg-surface border-t border-line-subtle z-50 md:hidden flex flex-col shadow-xl animate-in slide-in-from-bottom duration-200"
+          className="fixed bottom-16 left-0 right-0 max-h-[70dvh] bg-surface border-t border-line-subtle z-50 md:hidden flex flex-col shadow-xl animate-in slide-in-from-bottom duration-200"
         >
           <div className="flex items-center justify-between p-3.5 border-b border-line-subtle">
             <span className="text-xs font-mono-lab font-bold uppercase tracking-wider text-ink-secondary">
               Navegação Completa
             </span>
             <button
+              type="button"
               onClick={() => setIsMoreOpen(false)}
-              className="p-1 rounded text-ink-muted hover:text-ink-primary hover:bg-elevated"
+              className="min-w-[38px] min-h-[38px] flex items-center justify-center rounded text-ink-muted hover:text-ink-primary hover:bg-elevated cursor-pointer"
               aria-label="Fechar"
             >
               <X className="w-4 h-4" />
@@ -70,7 +82,7 @@ export function BottomNav() {
                   href={item.href}
                   onClick={() => setIsMoreOpen(false)}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-sm text-xs font-medium transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 min-h-[40px] rounded-sm text-xs font-medium transition-colors",
                     isActive
                       ? "bg-elevated text-accent font-semibold border-l-2 border-accent"
                       : "text-ink-secondary hover:bg-elevated hover:text-ink-primary"
@@ -87,8 +99,10 @@ export function BottomNav() {
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <button
+                type="button"
                 onClick={toggleZenMode}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xs border border-line-subtle text-[11px] font-mono-lab text-ink-secondary hover:text-ink-primary"
+                aria-pressed={isZenMode}
+                className="flex items-center gap-1 min-h-[38px] px-3 py-1.5 rounded-xs border border-line-subtle text-[11px] font-mono-lab text-ink-secondary hover:text-ink-primary cursor-pointer"
               >
                 {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 <span>{isZenMode ? "Sair Zen" : "Zen"}</span>
@@ -96,12 +110,13 @@ export function BottomNav() {
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setIsMoreOpen(false);
                 setIsOfflineOpen(true);
               }}
               className={clsx(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xs border text-[11px] font-mono-lab font-semibold",
+                "flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-xs border text-[11px] font-mono-lab font-semibold cursor-pointer",
                 isOffline || forcedOffline
                   ? "bg-warning/15 border-warning/40 text-warning"
                   : "border-line-subtle text-ink-secondary hover:text-ink-primary"

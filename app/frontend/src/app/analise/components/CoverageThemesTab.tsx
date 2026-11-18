@@ -420,7 +420,7 @@ export function CoverageThemesTab({
             aria-label="Buscar tema ou módulo"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-canvas border border-line-subtle rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full pl-9 pr-3 py-2 bg-canvas border border-line-subtle rounded-md text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
@@ -439,10 +439,10 @@ export function CoverageThemesTab({
                 onClick={() => setStatusFilter(value as StatusFilter)}
                 aria-pressed={isSelected}
                 className={clsx(
-                  "px-3 py-1.5 min-h-[34px] rounded-md text-xs font-semibold transition-colors shrink-0 inline-flex items-center justify-center cursor-pointer border",
+                  "px-3 py-1.5 min-h-[38px] rounded-md text-xs font-semibold transition-colors shrink-0 inline-flex items-center justify-center cursor-pointer border",
                   isSelected
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-surface-subtle hover:bg-muted text-muted-foreground border-line-subtle"
+                    : "bg-elevated/60 hover:bg-elevated text-ink-secondary border-line-subtle"
                 )}
               >
                 {label}
@@ -455,7 +455,7 @@ export function CoverageThemesTab({
             disabled={isRefreshing}
             aria-label="Atualizar dados de cobertura"
             title="Atualizar dados de cobertura"
-            className="p-2 min-h-[34px] min-w-[34px] rounded-md bg-surface-subtle border border-line-subtle hover:bg-muted text-muted-foreground transition-colors shrink-0 inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+            className="p-2 min-h-[38px] min-w-[38px] rounded-md bg-elevated/60 border border-line-subtle hover:bg-elevated text-ink-secondary transition-colors shrink-0 inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
           >
             <RefreshCcw
               size={14}
@@ -491,7 +491,7 @@ export function CoverageThemesTab({
                   type="button"
                   onClick={() => toggleArea(area.area)}
                   aria-expanded={isExpanded}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-5 hover:bg-surface-subtle/50 transition-colors gap-4 text-left cursor-pointer"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-5 hover:bg-elevated/40 transition-colors gap-4 text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-3.5">
                     <div
@@ -501,10 +501,10 @@ export function CoverageThemesTab({
                       )}
                     />
                     <div>
-                      <h3 className="text-base font-bold text-foreground">
+                      <h3 className="text-base font-bold text-ink-primary">
                         {area.area}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5 font-mono-lab tabular-nums">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted mt-0.5 font-mono-lab tabular-nums">
                         <span>{area.n_subtemas} módulos</span>
                         <span>·</span>
                         <span>{area.n_questions} questões</span>
@@ -519,15 +519,15 @@ export function CoverageThemesTab({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-5 sm:min-w-[340px]">
+                  <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto sm:min-w-[320px]">
                     <div className="flex-1">
                       <div className="flex justify-between text-[11px] uppercase tracking-wider mb-1.5 font-semibold">
-                        <span className="text-muted-foreground">Cobertura</span>
-                        <span className="text-foreground font-mono-lab tabular-nums">
+                        <span className="text-ink-muted">Cobertura</span>
+                        <span className="text-ink-primary font-mono-lab tabular-nums">
                           {coveragePct.toFixed(1)}%
                         </span>
                       </div>
-                      <div className="h-2 w-full bg-surface-subtle rounded-xs overflow-hidden">
+                      <div className="h-2 w-full bg-elevated rounded-xs overflow-hidden">
                         <div
                           className="h-full bg-success transition-all duration-300"
                           style={{ width: `${coveragePct}%` }}
@@ -535,14 +535,14 @@ export function CoverageThemesTab({
                       </div>
                     </div>
                     <div className="flex flex-col items-end border-l border-line-subtle pl-4">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
+                      <span className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold mb-0.5">
                         Consolidados
                       </span>
-                      <span className="text-lg font-mono-lab tabular-nums font-bold text-foreground leading-none">
+                      <span className="text-lg font-mono-lab tabular-nums font-bold text-ink-primary leading-none">
                         {area.mastered}/{area.n_subtemas}
                       </span>
                     </div>
-                    <div className="text-muted-foreground">
+                    <div className="text-ink-muted">
                       {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </div>
                   </div>
@@ -553,7 +553,7 @@ export function CoverageThemesTab({
                     {/* Slimmed 6-Column Desktop Table */}
                     <div className="hidden md:block overflow-x-auto rounded-md border border-line-subtle bg-surface">
                       <table className="w-full text-sm text-left">
-                        <thead className="text-[11px] text-muted-foreground uppercase tracking-wider bg-surface-subtle border-b border-line-subtle">
+                        <thead className="text-[11px] text-ink-muted uppercase tracking-wider bg-elevated/60 border-b border-line-subtle">
                           <tr>
                             <th className="px-4 py-3 font-semibold">Módulo / Tema</th>
                             <th className="px-3 py-3 font-semibold text-center">Teoria</th>
@@ -570,9 +570,9 @@ export function CoverageThemesTab({
                             return (
                               <tr
                                 key={sub.subtema}
-                                className="hover:bg-surface-subtle/40 transition-colors"
+                                className="hover:bg-elevated/40 transition-colors"
                               >
-                                <td className="px-4 py-3 font-medium text-foreground">
+                                <td className="px-4 py-3 font-medium text-ink-primary">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <button
                                       type="button"
@@ -588,9 +588,9 @@ export function CoverageThemesTab({
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 py-3 text-center text-xs text-muted-foreground font-mono-lab whitespace-nowrap">
+                                <td className="px-3 py-3 text-center text-xs text-ink-muted font-mono-lab whitespace-nowrap">
                                   {sub.theory_hours ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-surface-subtle border border-line-subtle">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-elevated/60 border border-line-subtle">
                                       <Clock size={11} /> {sub.theory_hours}h
                                     </span>
                                   ) : (
@@ -599,15 +599,15 @@ export function CoverageThemesTab({
                                 </td>
                                 <td className="px-3 py-3 text-right whitespace-nowrap">
                                   <div className="flex flex-col items-end">
-                                    <span className="text-xs font-mono-lab tabular-nums font-semibold text-foreground">
+                                    <span className="text-xs font-mono-lab tabular-nums font-semibold text-ink-primary">
                                       {formatCoverage(sub)}
                                     </span>
-                                    <span className="text-[11px] font-mono-lab tabular-nums text-muted-foreground">
+                                    <span className="text-[11px] font-mono-lab tabular-nums text-ink-muted">
                                       {sub.attempts} tent.
                                     </span>
                                   </div>
                                 </td>
-                                <td className="px-3 py-3 text-right font-mono-lab tabular-nums font-bold text-foreground whitespace-nowrap">
+                                <td className="px-3 py-3 text-right font-mono-lab tabular-nums font-bold text-ink-primary whitespace-nowrap">
                                   {sub.accuracy != null
                                     ? `${(sub.accuracy * 100).toFixed(0)}%`
                                     : "—"}
@@ -620,7 +620,7 @@ export function CoverageThemesTab({
                                     <button
                                       type="button"
                                       onClick={() => openSubtemaDrawer(sub.subtema)}
-                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-foreground bg-surface-subtle hover:bg-muted border border-line-subtle rounded-xs cursor-pointer"
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-ink-primary bg-elevated/60 hover:bg-elevated border border-line-subtle rounded-xs cursor-pointer"
                                       aria-label={`Ver detalhes de ${sub.subtema}`}
                                     >
                                       Detalhes
@@ -662,7 +662,7 @@ export function CoverageThemesTab({
                               <button
                                 type="button"
                                 onClick={() => openSubtemaDrawer(sub.subtema)}
-                                className="font-semibold text-sm text-foreground text-left hover:text-primary"
+                                className="font-semibold text-sm text-ink-primary text-left hover:text-primary"
                               >
                                 {sub.subtema}
                               </button>
@@ -676,7 +676,7 @@ export function CoverageThemesTab({
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               {getStatusTag(sub.status)}
                               {sub.theory_hours ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-surface-subtle text-[11px] font-mono-lab text-muted-foreground">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-elevated/60 text-[11px] font-mono-lab text-ink-muted">
                                   <Clock size={11} /> {sub.theory_hours}h
                                 </span>
                               ) : null}
@@ -684,21 +684,21 @@ export function CoverageThemesTab({
 
                             <div className="bg-canvas rounded-xs p-2.5 flex flex-col gap-1.5 border border-line-subtle">
                               <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Cobertura:</span>
-                                <span className="font-mono-lab tabular-nums font-semibold text-foreground">
+                                <span className="text-ink-muted">Cobertura:</span>
+                                <span className="font-mono-lab tabular-nums font-semibold text-ink-primary">
                                   {formatCoverage(sub)}
                                 </span>
                               </div>
-                              <div className="h-1.5 w-full bg-surface-subtle rounded-xs overflow-hidden">
+                              <div className="h-1.5 w-full bg-elevated rounded-xs overflow-hidden">
                                 <div
                                   className="h-full bg-success"
                                   style={{ width: `${subCovPct}%` }}
                                 />
                               </div>
-                              <div className="flex justify-between text-xs pt-1 border-t border-line-subtle font-mono-lab tabular-nums">
+                              <div className="flex justify-between text-xs pt-1 border-t border-line-subtle font-mono-lab tabular-nums text-ink-secondary">
                                 <span>
                                   Acurácia:{" "}
-                                  <strong>
+                                  <strong className="text-ink-primary">
                                     {sub.accuracy != null
                                       ? `${(sub.accuracy * 100).toFixed(0)}%`
                                       : "—"}
@@ -712,7 +712,7 @@ export function CoverageThemesTab({
                               <button
                                 type="button"
                                 onClick={() => openSubtemaDrawer(sub.subtema)}
-                                className="px-3 py-2 text-xs font-semibold border border-line-subtle rounded-md bg-surface-subtle text-foreground cursor-pointer"
+                                className="min-h-[38px] px-3 py-2 text-xs font-semibold border border-line-subtle rounded-md bg-elevated/60 text-ink-primary cursor-pointer"
                               >
                                 Detalhes
                               </button>
@@ -739,11 +739,11 @@ export function CoverageThemesTab({
         </div>
       ) : (
         <div className="bg-surface border border-dashed border-line-subtle rounded-lg p-10 text-center flex flex-col items-center justify-center gap-3">
-          <Search size={22} className="text-muted-foreground" />
-          <h3 className="font-bold text-sm text-foreground">
+          <Search size={22} className="text-ink-muted" />
+          <h3 className="font-bold text-sm text-ink-primary">
             Nenhum módulo encontrado
           </h3>
-          <p className="text-xs text-muted-foreground max-w-sm">
+          <p className="text-xs text-ink-muted max-w-sm">
             Nenhum módulo corresponde aos filtros selecionados.
           </p>
           <button
@@ -752,7 +752,7 @@ export function CoverageThemesTab({
               setSearchQuery("");
               setStatusFilter("all");
             }}
-            className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md cursor-pointer"
+            className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 min-h-[38px] px-3 py-1.5 rounded-md cursor-pointer"
           >
             Limpar filtros
           </button>

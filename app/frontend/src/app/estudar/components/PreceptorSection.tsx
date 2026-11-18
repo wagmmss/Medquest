@@ -118,6 +118,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
         </h4>
         {messages.length > 0 && (
           <button
+            type="button"
             onClick={() => {
               setLocalInput("");
               onClearChat();
@@ -158,6 +159,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
           </div>
 
           <textarea
+            aria-label="Pergunta ou hipótese clínica para o Preceptor IA"
             className="w-full bg-canvas border border-line-subtle rounded-md p-3 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none min-h-[85px] mt-1"
             placeholder="Qual conduta você tem dúvida? Ex: 'Por que a alternativa D está errada?' ou aperte Enter..."
             value={localInput}
@@ -166,9 +168,10 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
           />
           <div className="flex justify-end">
             <button
+              type="button"
               onClick={() => triggerSend()}
               disabled={askingPreceptor || !localInput.trim()}
-              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md shadow-2xs transition-colors flex items-center gap-2 text-xs cursor-pointer disabled:cursor-not-allowed"
+              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold py-2 px-4 min-h-[38px] rounded-md shadow-2xs transition-colors flex items-center gap-2 text-xs cursor-pointer disabled:cursor-not-allowed"
             >
               {askingPreceptor ? (
                 <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -345,6 +348,7 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
 
           <div className="flex gap-2">
             <textarea
+              aria-label="Réplica ou dúvida adicional para o Preceptor IA"
               className="flex-1 bg-canvas border border-line-subtle rounded-md p-2.5 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none min-h-[44px] max-h-[120px]"
               placeholder={(() => {
                 const lastMsg = messages[messages.length - 1];
@@ -365,9 +369,11 @@ export const PreceptorSection: React.FC<PreceptorSectionProps> = React.memo(({
               onKeyDown={handleKeyDown}
             />
             <button
+              type="button"
               onClick={() => triggerSend()}
               disabled={askingPreceptor || !localInput.trim()}
-              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold px-3.5 rounded-md shadow-2xs transition-colors flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
+              aria-label="Enviar mensagem ao Preceptor IA"
+              className="bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-semibold px-3.5 min-w-[44px] min-h-[44px] rounded-md shadow-2xs transition-colors flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
               title="Enviar réplica"
             >
               <Send size={15} />

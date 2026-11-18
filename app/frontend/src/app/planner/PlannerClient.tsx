@@ -553,24 +553,24 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             <CalendarDays className="text-accent" size={28} />
             Seu Cronograma de Estudos
           </h2>
-          <p className="text-muted-foreground text-sm">Cronograma estruturado por carga, cobertura e temas de alta incidência. Arraste matérias para mover entre semanas.</p>
+          <p className="text-ink-secondary text-sm">Cronograma estruturado por carga, cobertura e temas de alta incidência. Arraste matérias para mover entre semanas.</p>
           {config?.target_institution && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-ink-secondary mt-1.5 flex-wrap">
               {config.target_institution.split(",").map((instName, idx) => (
-                <span key={idx} className="font-bold text-foreground bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md">
+                <span key={idx} className="font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md">
                   {instName.trim()}
                 </span>
               ))}
               {config.target_specialty && (
                 <>
                   <span>•</span>
-                  <span><strong className="text-foreground">Especialidade:</strong> {config.target_specialty}</span>
+                  <span><strong className="text-ink-primary">Especialidade:</strong> {config.target_specialty}</span>
                 </>
               )}
               {config.target_score && (
                 <>
                   <span>•</span>
-                  <span><strong className="text-foreground">Meta:</strong> {config.target_score}%</span>
+                  <span><strong className="text-ink-primary">Meta:</strong> {config.target_score}%</span>
                 </>
               )}
               {config.days_per_week && config.hours_per_day && (
@@ -585,10 +585,10 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
         <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto flex-wrap justify-between sm:justify-end">
           <div className="flex-1 sm:w-44">
             <div className="flex justify-between text-[11px] uppercase tracking-wider font-semibold mb-1">
-              <span className="text-muted-foreground">Temas concluídos</span>
+              <span className="text-ink-muted">Temas concluídos</span>
               <span className="text-primary">{completedTopics} / {totalTopics}</span>
             </div>
-            <div className="h-2 w-full bg-muted rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
+            <div className="h-2 w-full bg-elevated rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
               <div 
                 className="h-full bg-primary transition-all duration-500 shadow-inner" 
                 style={{ width: `${(completedTopics / Math.max(1, totalTopics)) * 100}%` }}
@@ -600,40 +600,43 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             onClick={handleToggleIntensive}
             aria-pressed={isIntensive}
             title="Filtrar o cronograma para exibir apenas temas prioritários de alta incidência"
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors shadow-sm cursor-pointer ${
+            className={`flex items-center gap-1.5 min-h-[38px] text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors shadow-sm cursor-pointer ${
               isIntensive
                 ? "bg-warning/15 text-warning border-warning/40"
-                : "bg-surface text-foreground border-border hover:bg-muted"
+                : "bg-surface text-ink-primary border-line-subtle hover:bg-elevated"
             }`}
           >
             <Zap size={15} />
             {isIntensive ? "Reta Final: Ativa" : "Modo Reta Final"}
           </button>
           <button 
+            type="button"
             onClick={() => setShowSettingsModal(true)}
             aria-haspopup="dialog"
             aria-expanded={showSettingsModal}
-            className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+            className="flex items-center gap-1.5 min-h-[38px] text-xs sm:text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer"
           >
             <Settings2 size={15} />
             Calibrar Perfil
           </button>
           <button 
+            type="button"
             onClick={() => setShowCalendarModal(true)}
             aria-haspopup="dialog"
             aria-expanded={showCalendarModal}
-            className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-foreground bg-muted hover:bg-muted/80 px-2.5 py-1.5 rounded-lg border border-border transition-colors shadow-sm"
+            className="flex items-center gap-1.5 min-h-[38px] text-xs sm:text-sm font-medium text-ink-primary bg-elevated hover:bg-elevated/80 px-2.5 py-1.5 rounded-lg border border-line-subtle transition-colors shadow-sm cursor-pointer"
             title="Sincronizar cronograma com Google Agenda, Apple Calendar ou baixar arquivo .ics"
           >
             <CalendarDays size={15} className="text-primary" />
             Sincronizar com Agenda
           </button>
           <button 
+            type="button"
             onClick={() => setShowResetConfirm(true)}
             disabled={loadingAction === "reset"}
             aria-haspopup="dialog"
             aria-expanded={showResetConfirm}
-            className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 px-2.5 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 min-h-[38px] text-xs sm:text-sm font-medium text-ink-secondary hover:text-ink-primary bg-elevated hover:bg-elevated/80 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
           >
             {loadingAction === "reset" ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
             Refazer
@@ -657,9 +660,9 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               onDragOver={(e) => handleWeekDragOver(e, week.week)}
               onDrop={(e) => handleWeekDrop(e, week.week)}
               className={clsx(
-                "bg-card border rounded-xl overflow-hidden shadow-1 flex flex-col md:flex-row transition-all",
+                "bg-surface border rounded-xl overflow-hidden shadow-1 flex flex-col md:flex-row transition-all",
                 isOverDropWeek ? "border-primary ring-2 ring-primary/40 bg-primary/[0.02]" :
-                isCurrentWeek ? "border-primary ring-1 ring-primary/20" : "border-border",
+                isCurrentWeek ? "border-primary ring-1 ring-primary/20" : "border-line-subtle",
                 weekProgress.studied ? "opacity-75" : "opacity-100"
               )}
             >
@@ -667,16 +670,16 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               <div className="p-5 flex-1 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-md">
+                    <span className="text-sm font-bold text-ink-secondary bg-elevated px-2.5 py-1 rounded-md">
                       Semana {week.week}
                     </span>
-                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                    <span className="text-sm text-ink-secondary flex items-center gap-2">
                       {weekDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                       <span className={clsx(
                         "text-xs px-2 py-0.5 rounded-full font-medium transition-colors",
                         isOverloaded 
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" 
-                          : "bg-secondary/50 text-secondary-foreground"
+                          : "bg-elevated text-ink-secondary"
                       )}>
                        {week.allocated_hours}h / {week.recommended_hours}h
                       </span>
@@ -686,7 +689,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                         <Activity size={12} /> Atual
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground">{completedInWeek}/{week.topics.length} temas</span>
+                    <span className="text-xs text-ink-muted">{completedInWeek}/{week.topics.length} temas</span>
                   </div>
                 </div>
 
@@ -715,7 +718,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                         "py-7 px-4 border-2 border-dashed rounded-xl text-center transition-all flex flex-col items-center justify-center gap-1.5",
                         isOverDropWeek 
                           ? "border-primary bg-primary/10 text-primary scale-[1.01]" 
-                          : "border-border text-muted-foreground bg-muted/10 hover:border-primary/40"
+                          : "border-line-subtle text-ink-muted bg-elevated/10 hover:border-primary/40"
                       )}
                     >
                       <CalendarDays size={20} className="opacity-60" />
@@ -727,15 +730,15 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               </div>
 
               {/* Right Column (Checklist) */}
-              <div className="bg-card-2 p-5 border-t md:border-t-0 md:border-l border-border md:w-72 shrink-0 flex flex-col justify-center">
-                <h3 className="text-sm font-semibold text-foreground mb-2 uppercase tracking-wider">Status da semana</h3>
-                <p className="text-xs text-muted-foreground mb-4">As revisões espaçadas de questões são gerenciadas pelo FSRS.</p>
+              <div className="bg-canvas/60 p-5 border-t md:border-t-0 md:border-l border-line-subtle md:w-72 shrink-0 flex flex-col justify-center">
+                <h3 className="text-sm font-semibold text-ink-primary mb-2 uppercase tracking-wider">Status da semana</h3>
+                <p className="text-xs text-ink-muted mb-4">As revisões espaçadas de questões são gerenciadas pelo FSRS.</p>
                 <div className="flex flex-col gap-3">
                   
                   {/* Master Study Checkbox */}
                   <label className={clsx(
-                    "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors border",
-                    weekProgress.studied ? "bg-primary/10 border-primary/20" : "bg-card border-border hover:bg-muted"
+                    "flex items-center gap-3 p-2.5 min-h-[38px] rounded-lg cursor-pointer transition-colors border",
+                    weekProgress.studied ? "bg-primary/10 border-primary/20" : "bg-surface border-line-subtle hover:bg-elevated"
                   )}>
                     <div className="relative flex items-center">
                       <input 
@@ -746,7 +749,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                         disabled={loadingAction === `study-${week.week}`}
                         aria-label={`Concluir semana ${week.week}`}
                       />
-                      <div className="w-5 h-5 border-2 border-muted-foreground rounded transition-colors peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-ink-muted rounded transition-colors peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center">
                         {loadingAction === `study-${week.week}` ? (
                           <Loader2 size={12} className="text-primary-foreground animate-spin" />
                         ) : (
@@ -754,7 +757,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                         )}
                       </div>
                     </div>
-                    <span className={clsx("text-sm font-medium select-none", weekProgress.studied ? "text-primary" : "text-foreground")}>
+                    <span className={clsx("text-sm font-medium select-none", weekProgress.studied ? "text-primary" : "text-ink-primary")}>
                       Fechar semana
                     </span>
                   </label>
@@ -776,12 +779,13 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="reset-modal-title"
-            className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
+            className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
           >
             <button 
+              type="button"
               onClick={() => setShowResetConfirm(false)} 
               aria-label="Fechar modal de confirmação"
-              className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+              className="absolute top-3.5 right-3.5 p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-full hover:bg-elevated transition-colors text-ink-muted cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -789,11 +793,11 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               <div className="p-3 bg-destructive/10 rounded-full">
                 <AlertTriangle size={28} className="text-destructive" />
               </div>
-              <h3 id="reset-modal-title" className="text-lg font-bold text-foreground">Resetar Progresso do Planner?</h3>
-              <p className="text-sm text-muted-foreground">Isso apagará TODO o seu progresso no planner. Esta ação não pode ser desfeita.</p>
+              <h3 id="reset-modal-title" className="text-lg font-bold text-ink-primary">Resetar Progresso do Planner?</h3>
+              <p className="text-sm text-ink-secondary">Isso apagará TODO o seu progresso no planner. Esta ação não pode ser desfeita.</p>
               <div className="flex gap-3 w-full mt-2">
-                <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-2.5 px-4 rounded-xl border border-border text-foreground hover:bg-muted transition-colors font-medium text-sm">Cancelar</button>
-                <button onClick={handleResetConfig} className="flex-1 py-2.5 px-4 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-bold text-sm">Sim, Apagar Tudo</button>
+                <button type="button" onClick={() => setShowResetConfirm(false)} className="flex-1 py-2.5 px-4 min-h-[38px] rounded-xl border border-line-subtle text-ink-primary hover:bg-elevated transition-colors font-medium text-sm cursor-pointer">Cancelar</button>
+                <button type="button" onClick={handleResetConfig} className="flex-1 py-2.5 px-4 min-h-[38px] rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-bold text-sm cursor-pointer">Sim, Apagar Tudo</button>
               </div>
             </div>
           </div>
@@ -808,7 +812,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             role="dialog" 
             aria-modal="true" 
             aria-label="Calibrar Perfil de Estudos"
-            className="relative z-10 max-h-[90vh] overflow-y-auto w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="relative z-10 max-h-[90dvh] overflow-y-auto w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200"
           >
             <PlannerWizard
               initialConfig={config}
@@ -827,12 +831,13 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="calendar-modal-title"
-            className="relative bg-surface border border-line-subtle rounded-lg shadow-2xl p-6 max-w-lg w-full z-10"
+            className="relative bg-surface border border-line-subtle rounded-lg shadow-2xl p-6 max-w-lg w-full max-h-[90dvh] overflow-y-auto z-10"
           >
             <button 
+              type="button"
               onClick={() => setShowCalendarModal(false)} 
               aria-label="Fechar modal de exportação"
-              className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+              className="absolute top-3.5 right-3.5 p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-md hover:bg-elevated transition-colors text-ink-muted cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -842,22 +847,22 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                 <CalendarDays size={20} />
               </div>
               <div>
-                <h3 id="calendar-modal-title" className="text-lg font-bold text-foreground">Exportar Cronograma (.ics)</h3>
-                <p className="text-xs text-muted-foreground">Compatível com Google Agenda, Apple Calendar e Outlook.</p>
+                <h3 id="calendar-modal-title" className="text-lg font-bold text-ink-primary">Exportar Cronograma (.ics)</h3>
+                <p className="text-xs text-ink-secondary">Compatível com Google Agenda, Apple Calendar e Outlook.</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="border border-line-subtle bg-canvas rounded-lg p-4 space-y-3">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Baixe o arquivo padrão <strong className="text-foreground">.ics</strong> com todos os blocos semanais de estudo e importe diretamente no aplicativo de agenda da sua preferência.
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Baixe o arquivo padrão <strong className="text-ink-primary">.ics</strong> com todos os blocos semanais de estudo e importe diretamente no aplicativo de agenda da sua preferência.
                 </p>
 
                 <button
                   type="button"
                   onClick={handleExportIcs}
                   disabled={exportingIcs}
-                  className="w-full bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 px-4 rounded-md transition-colors flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+                  className="w-full bg-accent hover:bg-accent/90 text-white font-semibold py-2.5 px-4 min-h-[38px] rounded-md transition-colors flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
                 >
                   {exportingIcs ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                   {exportingIcs ? "Gerando arquivo .ics..." : "Baixar Arquivo .ics do Cronograma"}
@@ -865,21 +870,22 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               </div>
 
               <div className="border border-line-subtle bg-canvas rounded-lg p-4 space-y-2.5">
-                <div className="text-xs font-bold text-foreground">Assinatura Automática (Feed iCalendar)</div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                <div className="text-xs font-bold text-ink-primary">Assinatura Automática (Feed iCalendar)</div>
+                <p className="text-[11px] text-ink-secondary leading-relaxed">
                   Copie a URL do feed para assinar seu cronograma por link no Apple Calendar, Outlook ou Google Agenda.
                 </p>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
+                    aria-label="URL do feed iCalendar"
                     value={api.planner.getCalendarFeedUrl()}
-                    className="flex-1 bg-surface border border-line-subtle rounded-md px-2.5 py-1.5 text-[11px] font-mono-lab text-muted-foreground focus:outline-none"
+                    className="flex-1 bg-surface border border-line-subtle rounded-md px-2.5 py-1.5 text-[11px] font-mono-lab text-ink-muted focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={handleCopyFeedUrl}
-                    className="px-3 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                    className="px-3 py-1.5 min-h-[36px] rounded-md border border-line-subtle bg-surface hover:bg-elevated text-xs font-semibold text-ink-primary inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                   >
                     {copiedFeed ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                     {copiedFeed ? "Copiado" : "Copiar"}
@@ -888,7 +894,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               </div>
             </div>
 
-            <div className="mt-4 text-[11px] text-muted-foreground flex items-start gap-2 bg-canvas p-3 rounded-md border border-line-subtle">
+            <div className="mt-4 text-[11px] text-ink-secondary flex items-start gap-2 bg-canvas p-3 rounded-md border border-line-subtle">
               <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
               <span>
                 Após importar o arquivo <strong>.ics</strong> na sua agenda, os eventos passam a ser 100% editáveis no seu calendário pessoal.
@@ -906,12 +912,13 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="move-modal-title"
-            className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm w-full z-10 animate-in fade-in zoom-in-95 duration-200"
+            className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-sm w-full z-10 animate-in fade-in zoom-in-95 duration-200"
           >
             <button 
+              type="button"
               onClick={() => setMoveModalTopic(null)} 
               aria-label="Fechar"
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+              className="absolute top-3.5 right-3.5 p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-full hover:bg-elevated transition-colors text-ink-muted cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -921,29 +928,29 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                   <ArrowUpDown size={20} />
                 </div>
                 <div>
-                  <h3 id="move-modal-title" className="text-base font-bold text-foreground">Mover Tema</h3>
-                  <p className="text-xs text-muted-foreground">Escolha a semana de destino</p>
+                  <h3 id="move-modal-title" className="text-base font-bold text-ink-primary">Mover Tema</h3>
+                  <p className="text-xs text-ink-secondary">Escolha a semana de destino</p>
                 </div>
               </div>
 
-              <div className="bg-muted/40 border border-border/60 rounded-xl p-3">
-                <span className="text-xs font-semibold text-foreground block truncate" title={moveModalTopic.subtema}>
+              <div className="bg-elevated/40 border border-line-subtle rounded-xl p-3">
+                <span className="text-xs font-semibold text-ink-primary block truncate" title={moveModalTopic.subtema}>
                   {moveModalTopic.subtema}
                 </span>
-                <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                  Semana atual: <strong className="text-foreground">Semana {moveModalTopic.currentWeek}</strong>
+                <span className="text-[11px] text-ink-secondary mt-0.5 block">
+                  Semana atual: <strong className="text-ink-primary">Semana {moveModalTopic.currentWeek}</strong>
                 </span>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="target-week-select" className="text-xs font-semibold text-foreground">
+                <label htmlFor="target-week-select" className="text-xs font-semibold text-ink-primary">
                   Mover para:
                 </label>
                 <select
                   id="target-week-select"
                   value={moveModalTopic.targetWeek}
                   onChange={(e) => setMoveModalTopic(prev => prev ? { ...prev, targetWeek: Number(e.target.value) } : null)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                  className="w-full bg-canvas border border-line-subtle rounded-xl px-3 py-2.5 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
                 >
                   {currentPlan.map((w) => {
                     const wDate = new Date(`${w.date.slice(0, 10)}T12:00:00`);
@@ -960,7 +967,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                 <button 
                   type="button"
                   onClick={() => setMoveModalTopic(null)} 
-                  className="flex-1 py-2 px-3 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-medium transition-colors"
+                  className="flex-1 py-2 px-3 min-h-[38px] rounded-xl border border-line-subtle text-ink-primary hover:bg-elevated text-xs font-medium transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -972,7 +979,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
                     setMoveModalTopic(null);
                     await handleMoveTopic(subtema, currentWeek, targetWeek);
                   }} 
-                  className="flex-1 py-2 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                  className="flex-1 py-2 px-3 min-h-[38px] rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {isMoving ? <Loader2 size={13} className="animate-spin" /> : <ArrowRight size={13} />}
                   Confirmar

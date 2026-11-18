@@ -135,10 +135,17 @@ export function SearchClient({
   // Atalho de teclado: '/' foca no campo de busca
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
       if (
         e.key === "/" &&
-        document.activeElement !== inputRef.current &&
-        !(document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement)
+        active !== inputRef.current &&
+        !(
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement ||
+          active?.isContentEditable
+        ) &&
+        !document.querySelector('[role="dialog"][aria-modal="true"]')
       ) {
         e.preventDefault();
         inputRef.current?.focus();
@@ -258,6 +265,7 @@ export function SearchClient({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Pesquisar questões por síndromes, condutas ou bancas"
           placeholder="Ex: infarto com supra, cetoacidose, sinal de Cullen, apendicite, pré-eclâmpsia..."
           className="w-full h-12 pl-10 pr-20 rounded-2xl bg-surface border border-line-subtle text-ink-primary placeholder:text-ink-muted text-sm shadow-2xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
         />
@@ -310,7 +318,7 @@ export function SearchClient({
             id="area-filter"
             value={selectedArea}
             onChange={(e) => setSelectedArea(e.target.value)}
-            className="h-8 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
+            className="h-9 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
           >
             {areaOptions.map((a) => (
               <option key={a} value={a}>{a}</option>
@@ -325,7 +333,7 @@ export function SearchClient({
             id="institution-filter"
             value={selectedInstitution}
             onChange={(e) => setSelectedInstitution(e.target.value)}
-            className="h-8 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
+            className="h-9 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
           >
             {institutionOptions.map((inst) => (
               <option key={inst.code} value={inst.code}>{inst.label}</option>
@@ -340,7 +348,7 @@ export function SearchClient({
             id="year-filter"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="h-8 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-mono-lab font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
+            className="h-9 px-2.5 rounded-md bg-canvas border border-line-subtle text-ink-primary font-mono-lab font-medium text-xs focus:ring-1 focus:ring-accent cursor-pointer"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -352,8 +360,9 @@ export function SearchClient({
         <button
           type="button"
           onClick={() => setOnlyWithImage(!onlyWithImage)}
+          aria-pressed={onlyWithImage}
           className={clsx(
-            "flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border transition-colors cursor-pointer ml-auto sm:ml-0",
+            "flex items-center gap-1.5 min-h-[38px] px-3 rounded-md text-xs font-medium border transition-colors cursor-pointer ml-auto sm:ml-0",
             onlyWithImage
               ? "bg-accent text-white border-accent shadow-2xs"
               : "bg-canvas text-ink-secondary border-line-subtle hover:bg-elevated hover:text-ink-primary"

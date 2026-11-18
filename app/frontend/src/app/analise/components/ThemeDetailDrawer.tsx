@@ -138,14 +138,14 @@ export function ThemeDetailDrawer({
       aria-labelledby="theme-drawer-title"
     >
       <div
-        className="w-full max-w-2xl bg-surface border-l border-line-subtle h-full overflow-y-auto p-6 md:p-7 flex flex-col gap-6 shadow-xl"
+        className="w-full max-w-2xl bg-surface border-l border-line-subtle h-full overflow-y-auto p-4 sm:p-6 md:p-7 flex flex-col gap-5 sm:gap-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-line-subtle pb-4">
+        <div className="flex items-start justify-between gap-3 sm:gap-4 border-b border-line-subtle pb-4">
           <div className="space-y-1.5 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-surface-subtle text-muted-foreground border border-line-subtle">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle">
                 {areaLabel}
               </span>
               {isHighYield && (
@@ -156,7 +156,7 @@ export function ThemeDetailDrawer({
             </div>
             <h2
               id="theme-drawer-title"
-              className="text-xl font-bold text-foreground tracking-tight"
+              className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight break-words"
             >
               {subtema}
             </h2>
@@ -166,7 +166,7 @@ export function ThemeDetailDrawer({
             {available > 0 && (
               <Link
                 href={urls.practice(10)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
               >
                 <Zap size={13} />
                 Treinar (10q)
@@ -176,7 +176,7 @@ export function ThemeDetailDrawer({
               type="button"
               onClick={onClose}
               aria-label="Fechar detalhes do tema"
-              className="p-2 rounded-md border border-line-subtle bg-canvas text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+              className="min-w-[38px] min-h-[38px] flex items-center justify-center p-2 rounded-md border border-line-subtle bg-canvas text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <X size={18} />
             </button>
@@ -186,14 +186,14 @@ export function ThemeDetailDrawer({
         {/* Edital Details */}
         {details.length > 0 && (
           <div className="rounded-md border border-line-subtle bg-canvas p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-2">
               Pontos-chave do edital
             </p>
             <ul className="flex flex-wrap gap-1.5 text-xs">
               {details.map((detail) => (
                 <li
                   key={detail}
-                  className="px-2 py-1 rounded-xs bg-surface-subtle text-foreground border border-line-subtle"
+                  className="px-2 py-1 rounded-xs bg-surface text-ink-primary border border-line-subtle"
                 >
                   {detail}
                 </li>
@@ -204,76 +204,76 @@ export function ThemeDetailDrawer({
 
         {/* 4 KPIs */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-md border border-line-subtle bg-canvas p-4">
-            <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+          <div className="rounded-md border border-line-subtle bg-canvas p-3.5 sm:p-4">
+            <div className="flex items-center justify-between text-ink-secondary mb-1.5">
               <span className="text-xs font-medium">Cobertura</span>
               <Target size={15} />
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-mono-lab tabular-nums font-bold text-foreground">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-xl sm:text-2xl font-mono-lab tabular-nums font-bold text-ink-primary">
                 {answered}
               </span>
-              <span className="text-xs font-mono-lab text-muted-foreground">/ {available} q</span>
+              <span className="text-xs font-mono-lab text-ink-muted">/ {available} q</span>
               <span className="ml-auto text-xs font-mono-lab font-semibold px-1.5 py-0.5 rounded-xs bg-primary/10 text-primary">
                 {coveragePct}%
               </span>
             </div>
-            <div className="w-full bg-surface-subtle rounded-xs h-1.5 mt-2.5 overflow-hidden">
+            <div className="w-full bg-elevated rounded-xs h-1.5 mt-2.5 overflow-hidden">
               <div className="bg-primary h-full" style={{ width: `${coveragePct}%` }} />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 font-mono-lab tabular-nums">
+            <p className="text-[11px] text-ink-muted mt-2 font-mono-lab tabular-nums">
               {attempts} {attempts === 1 ? "tentativa total" : "tentativas no total"}
             </p>
           </div>
 
-          <div className="rounded-md border border-line-subtle bg-canvas p-4 flex flex-col justify-between">
+          <div className="rounded-md border border-line-subtle bg-canvas p-3.5 sm:p-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+              <div className="flex items-center justify-between text-ink-secondary mb-1.5">
                 <span className="text-xs font-medium">Acurácia Geral</span>
                 <Zap size={15} />
               </div>
-              <p className="text-2xl font-mono-lab tabular-nums font-bold text-foreground">
+              <p className="text-xl sm:text-2xl font-mono-lab tabular-nums font-bold text-ink-primary">
                 {accuracy != null ? `${Math.round(accuracy * 100)}%` : "—"}
               </p>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 font-mono-lab tabular-nums">
+            <p className="text-[11px] text-ink-muted mt-2 font-mono-lab tabular-nums">
               {attempts > 0 ? `${correct} acertos em ${attempts} tent.` : "Sem respostas"}
             </p>
           </div>
 
-          <div className="rounded-md border border-line-subtle bg-canvas p-4 flex flex-col justify-between">
+          <div className="rounded-md border border-line-subtle bg-canvas p-3.5 sm:p-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+              <div className="flex items-center justify-between text-ink-secondary mb-1.5">
                 <span className="text-xs font-medium">Retenção FSRS</span>
                 <Brain size={15} />
               </div>
-              <p className="text-2xl font-mono-lab tabular-nums font-bold text-foreground">
+              <p className="text-xl sm:text-2xl font-mono-lab tabular-nums font-bold text-ink-primary">
                 {retrievability != null ? `${Math.round(retrievability * 100)}%` : "—"}
               </p>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
+            <p className="text-[11px] text-ink-muted mt-2">
               {retrievability != null ? "Recordação estimada" : "Estimada após revisões"}
             </p>
           </div>
 
           <div
             className={clsx(
-              "rounded-md border p-4 flex flex-col justify-between",
+              "rounded-md border p-3.5 sm:p-4 flex flex-col justify-between",
               dueCount > 0
                 ? "border-warning/40 bg-warning/5"
                 : "border-line-subtle bg-canvas"
             )}
           >
             <div>
-              <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+              <div className="flex items-center justify-between text-ink-secondary mb-1.5">
                 <span className="text-xs font-medium">FSRS Vencidas</span>
                 <Clock size={15} className={dueCount > 0 ? "text-warning" : undefined} />
               </div>
               <div className="flex items-baseline gap-2">
                 <span
                   className={clsx(
-                    "text-2xl font-mono-lab tabular-nums font-bold",
-                    dueCount > 0 ? "text-warning" : "text-foreground"
+                    "text-xl sm:text-2xl font-mono-lab tabular-nums font-bold",
+                    dueCount > 0 ? "text-warning" : "text-ink-primary"
                   )}
                 >
                   {dueCount}
@@ -288,7 +288,7 @@ export function ThemeDetailDrawer({
                 </span>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
+            <p className="text-[11px] text-ink-muted mt-2">
               {dueCount > 0 ? "Aguardando repetição espaçada" : "Nenhuma questão vencida"}
             </p>
           </div>
@@ -296,16 +296,17 @@ export function ThemeDetailDrawer({
 
         {/* Theory Progress Controls */}
         <div className="rounded-md border border-line-subtle bg-canvas p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Progresso Teórico & Trilha</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-sm font-semibold text-ink-primary">Progresso Teórico & Trilha</h3>
+              <p className="text-xs text-ink-secondary">
                 Marque a leitura teórica e ajuste o ritmo de prática recomendado.
               </p>
             </div>
             <button
               type="button"
               disabled={savingProgress}
+              aria-pressed={Boolean(activeProgress?.theory_completed)}
               onClick={() =>
                 handleSaveProgress(
                   !(activeProgress?.theory_completed ?? false),
@@ -313,10 +314,10 @@ export function ThemeDetailDrawer({
                 )
               }
               className={clsx(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors cursor-pointer",
+                "inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors cursor-pointer shrink-0",
                 activeProgress?.theory_completed
                   ? "bg-success/10 text-success border-success/30"
-                  : "bg-surface text-foreground border-line-subtle hover:bg-surface-subtle"
+                  : "bg-surface text-ink-primary border-line-subtle hover:bg-elevated"
               )}
             >
               <CheckCircle2 size={14} />
@@ -324,8 +325,8 @@ export function ThemeDetailDrawer({
             </button>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">Trilha:</span>
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
+            <span className="text-xs text-ink-secondary">Trilha:</span>
             {(["essential", "complete"] as const).map((path) => {
               const active = (activeProgress?.study_path ?? "complete") === path;
               return (
@@ -333,14 +334,15 @@ export function ThemeDetailDrawer({
                   key={path}
                   type="button"
                   disabled={savingProgress}
+                  aria-pressed={active}
                   onClick={() =>
                     handleSaveProgress(activeProgress?.theory_completed ?? false, path)
                   }
                   className={clsx(
-                    "px-2.5 py-1 rounded-xs text-xs font-semibold border cursor-pointer transition-colors",
+                    "min-h-[36px] px-3 py-1 rounded-xs text-xs font-semibold border cursor-pointer transition-colors",
                     active
                       ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-surface text-muted-foreground border-line-subtle hover:text-foreground"
+                      : "bg-surface text-ink-secondary border-line-subtle hover:text-ink-primary"
                   )}
                 >
                   {path === "essential" ? "Essencial (10q)" : "Completa (20q)"}
@@ -355,20 +357,20 @@ export function ThemeDetailDrawer({
           <div className="rounded-md border border-line-subtle bg-canvas p-4 flex flex-col justify-between gap-4">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <RotateCcw size={17} className={dueCount > 0 ? "text-warning" : "text-muted-foreground"} />
-                <span className="text-xs font-mono-lab text-muted-foreground">
+                <RotateCcw size={17} className={dueCount > 0 ? "text-warning" : "text-ink-muted"} />
+                <span className="text-xs font-mono-lab text-ink-muted">
                   {dueCount} pendentes
                 </span>
               </div>
-              <h3 className="text-sm font-bold text-foreground">Revisar Vencidas (FSRS)</h3>
-              <p className="text-xs text-muted-foreground mt-1">
+              <h3 className="text-sm font-bold text-ink-primary">Revisar Vencidas (FSRS)</h3>
+              <p className="text-xs text-ink-secondary mt-1">
                 Repita questões no intervalo calculado pelo algoritmo para consolidar retenção.
               </p>
             </div>
             {dueCount > 0 ? (
               <Link
                 href={urls.review}
-                className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md bg-warning text-white font-semibold text-xs hover:opacity-90 transition-opacity"
+                className="w-full inline-flex items-center justify-center gap-2 min-h-[38px] py-2 px-3 rounded-md bg-warning text-white font-semibold text-xs hover:opacity-90 transition-opacity"
               >
                 Revisar Agora ({dueCount}) <ArrowRight size={14} />
               </Link>
@@ -376,7 +378,7 @@ export function ThemeDetailDrawer({
               <button
                 type="button"
                 disabled
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-surface-subtle text-muted-foreground font-medium text-xs cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-1.5 min-h-[38px] py-2 px-3 rounded-md bg-elevated text-ink-muted font-medium text-xs cursor-not-allowed"
               >
                 <CheckCircle2 size={14} className="text-success" />
                 Nenhuma revisão pendente
@@ -390,18 +392,19 @@ export function ThemeDetailDrawer({
                 <Zap size={17} className="text-primary" />
                 <span className="text-[11px] font-semibold text-primary">Recomendado</span>
               </div>
-              <h3 className="text-sm font-bold text-foreground">Praticar Adaptativo</h3>
+              <h3 className="text-sm font-bold text-ink-primary">Praticar Adaptativo</h3>
               <div className="grid grid-cols-3 gap-1.5 mt-3">
                 {([10, 20, 30] as const).map((count) => (
                   <button
                     key={count}
                     type="button"
+                    aria-pressed={practiceLimit === count}
                     onClick={() => setPracticeLimit(count)}
                     className={clsx(
-                      "py-1 px-2 rounded-xs text-xs font-mono-lab font-semibold border cursor-pointer transition-colors",
+                      "min-h-[36px] py-1 px-2 rounded-xs text-xs font-mono-lab font-semibold border cursor-pointer transition-colors",
                       practiceLimit === count
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-surface-subtle text-muted-foreground border-line-subtle hover:text-foreground"
+                        : "bg-surface text-ink-secondary border-line-subtle hover:text-ink-primary"
                     )}
                   >
                     {count}q
@@ -413,7 +416,7 @@ export function ThemeDetailDrawer({
             {available > 0 ? (
               <Link
                 href={urls.practice(practiceLimit)}
-                className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 min-h-[38px] py-2 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-colors"
               >
                 Treinar ({practiceLimit}q) <ArrowRight size={14} />
               </Link>
@@ -421,7 +424,7 @@ export function ThemeDetailDrawer({
               <button
                 type="button"
                 disabled
-                className="w-full inline-flex items-center justify-center py-2 px-3 rounded-md bg-surface-subtle text-muted-foreground text-xs cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center min-h-[38px] py-2 px-3 rounded-md bg-elevated text-ink-muted text-xs cursor-not-allowed"
               >
                 Sem questões disponíveis
               </button>
@@ -429,14 +432,14 @@ export function ThemeDetailDrawer({
           </div>
         </div>
 
-        <div className="pt-2 border-t border-line-subtle flex items-center justify-between text-xs text-muted-foreground">
+        <div className="pt-2 border-t border-line-subtle flex items-center justify-between text-xs text-ink-secondary">
           <Link href="/planner" className="hover:text-primary transition-colors">
             Abrir Planner semanal →
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="text-foreground font-semibold hover:underline cursor-pointer"
+            className="text-ink-primary font-semibold hover:underline cursor-pointer min-h-[36px] px-2"
           >
             Fechar painel
           </button>

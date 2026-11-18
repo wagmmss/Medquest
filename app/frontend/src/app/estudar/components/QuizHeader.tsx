@@ -65,11 +65,12 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
   }, [shortcutsOpen]);
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 bg-surface/90 backdrop-blur-md border border-line-subtle rounded-md px-4 py-2.5 shadow-2xs relative z-20">
-      <div className="flex items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 bg-surface/90 backdrop-blur-md border border-line-subtle rounded-md px-3 sm:px-4 py-2 sm:py-2.5 shadow-2xs relative z-20">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
+          type="button"
           onClick={onBackToFilters}
-          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted hover:text-ink-primary transition-colors cursor-pointer min-h-[36px] px-2.5 -ml-1 rounded-xs hover:bg-elevated/60 border border-transparent hover:border-line-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted hover:text-ink-primary transition-colors cursor-pointer min-h-[38px] px-2.5 -ml-1 rounded-xs hover:bg-elevated/60 border border-transparent hover:border-line-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
         >
           <ClinicalIcon name="arrowLeft" size={14} />
           <span>Filtros</span>
@@ -87,9 +88,10 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
             type="button"
             onClick={() => setShortcutsOpen((prev) => !prev)}
             aria-expanded={shortcutsOpen}
+            aria-haspopup="dialog"
             aria-label="Ver atalhos de teclado"
             className={clsx(
-              "flex items-center gap-1.5 px-2 py-1 rounded-xs border text-[11px] font-mono-lab transition-colors cursor-pointer",
+              "flex items-center gap-1.5 min-h-[38px] px-2.5 py-1 rounded-xs border text-[11px] font-mono-lab transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
               shortcutsOpen
                 ? "bg-accent/10 border-accent/30 text-accent"
                 : "bg-canvas/70 border-line-subtle text-ink-muted hover:text-ink-primary hover:bg-elevated"
@@ -100,7 +102,11 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
           </button>
 
           {shortcutsOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-64 rounded-md border border-line-subtle bg-surface shadow-xl p-3 z-30 flex flex-col gap-2 text-xs font-mono-lab">
+            <div
+              role="dialog"
+              aria-label="Atalhos de teclado do estudo"
+              className="absolute left-0 top-full mt-1.5 w-64 rounded-md border border-line-subtle bg-surface shadow-xl p-3 z-30 flex flex-col gap-2 text-xs font-mono-lab"
+            >
               <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-line-subtle pb-1.5">
                 Atalhos do Estudo
               </p>
@@ -129,12 +135,12 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
         {onOpenLabs && (
           <button
             type="button"
             onClick={onOpenLabs}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-secondary hover:text-accent rounded-xs transition-colors border border-line-subtle text-xs font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-secondary hover:text-accent rounded-xs transition-colors border border-line-subtle text-xs font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             title="Valores de Referência Laboratoriais"
             aria-label="Abrir valores de referência laboratoriais"
           >
@@ -147,7 +153,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
           <button
             type="button"
             onClick={onCycleFontSize}
-            className="flex items-center justify-center px-2 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-mono-lab font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="flex items-center justify-center min-h-[38px] min-w-[38px] px-2 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-mono-lab font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             title={`Tamanho do texto: ${stemFontSize === "sm" ? "Compacto" : stemFontSize === "lg" ? "Ampliado" : "Padrão"} (clique para alternar)`}
             aria-label="Alternar tamanho da fonte do enunciado"
           >
@@ -158,7 +164,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
         <button
           type="button"
           onClick={onRequestFinish}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30 rounded-xs transition-colors text-xs font-bold cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="flex items-center gap-1.5 min-h-[38px] px-2.5 sm:px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30 rounded-xs transition-colors text-xs font-bold cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           title="Finalizar sessão agora e ver seu desempenho"
         >
           <ClinicalIcon name="checkCircle" size={13} />
@@ -167,8 +173,10 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
         </button>
 
         <button
+          type="button"
           onClick={onToggleZenMode}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          aria-pressed={zenMode}
+          className="flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] px-2.5 py-1.5 bg-surface hover:bg-elevated text-ink-muted hover:text-ink-primary rounded-xs transition-colors border border-line-subtle text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           title={zenMode ? "Sair do Modo Zen (Tecla Z)" : "Entrar no Modo Zen - Foco Clínico Máximo (Tecla Z)"}
           aria-label={zenMode ? "Sair do Modo Zen" : "Entrar no Modo Zen"}
         >
@@ -182,7 +190,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
             </>
           )}
         </button>
-        <div className="px-2 py-1 bg-canvas border border-line-subtle rounded-xs">
+        <div className="min-h-[38px] px-2 py-1 bg-canvas border border-line-subtle rounded-xs flex items-center">
           <QuizTimer
             ref={quizTimerRef}
             isRunning={isTimerRunning}
@@ -192,9 +200,10 @@ export const QuizHeader: React.FC<QuizHeaderProps> = React.memo(({
         </div>
         {hasQuestion && onToggleFavorite && (
           <button
+            type="button"
             onClick={onToggleFavorite}
             className={clsx(
-              "w-8 h-8 flex items-center justify-center rounded-xs transition-colors border cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+              "min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xs transition-colors border cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
               isFavorite
                 ? "bg-critical/10 text-critical border-critical/30"
                 : "bg-surface text-ink-muted hover:text-ink-primary hover:bg-elevated border-line-subtle"

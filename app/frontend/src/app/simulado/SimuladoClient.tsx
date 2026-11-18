@@ -882,11 +882,25 @@ export function SimuladoClient({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (isClassificationModalOpen || enlargedImage) return;
 
       if (showAreaSummary) {
         if (e.key === "Escape") setShowAreaSummary(false);
+        return;
+      }
+
+      if (typeof document !== "undefined" && document.querySelector('[role="dialog"][aria-modal="true"]')) {
         return;
       }
 
@@ -939,7 +953,7 @@ export function SimuladoClient({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, currentIndex, queue, detailsCache, handleSelect, toggleEliminate, toggleFlag, showAreaSummary, navigateTo]);
+  }, [state, currentIndex, queue, detailsCache, handleSelect, toggleEliminate, toggleFlag, showAreaSummary, navigateTo, isClassificationModalOpen, enlargedImage]);
 
 
 
@@ -1018,7 +1032,7 @@ export function SimuladoClient({
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <p className="text-muted-foreground font-medium text-lg">
+        <p className="text-ink-secondary font-medium text-lg">
           {state === "LOADING" ? "Gerando cadernos e balanceando questões..." : "Corrigindo gabarito e calculando SRS..."}
         </p>
       </div>
@@ -1032,11 +1046,11 @@ export function SimuladoClient({
           <CloudOff size={24} />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">Simulado Salvo Offline</h2>
-          <p className="text-muted-foreground text-base">
-            Todas as suas <span className="font-mono-lab tabular-nums font-bold text-foreground">{Object.keys(answers).length}</span> respostas foram salvas com segurança neste dispositivo.
+          <h2 className="text-2xl font-bold text-ink-primary">Simulado Salvo Offline</h2>
+          <p className="text-ink-secondary text-base">
+            Todas as suas <span className="font-mono-lab tabular-nums font-bold text-ink-primary">{Object.keys(answers).length}</span> respostas foram salvas com segurança neste dispositivo.
           </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p className="text-sm text-ink-secondary leading-relaxed">
             A correção oficial, gabarito e atualização do seu algoritmo de repetição espaçada (FSRS) serão processados automaticamente assim que sua conexão com a internet for restabelecida.
           </p>
         </div>
@@ -1064,7 +1078,7 @@ export function SimuladoClient({
               setHasSavedState(false);
               setState("START");
             }}
-            className="flex-1 bg-muted hover:bg-muted/80 text-foreground font-semibold px-5 py-3 rounded-md transition-colors text-sm cursor-pointer"
+            className="flex-1 bg-elevated hover:bg-elevated/80 text-ink-primary font-semibold px-5 py-3 rounded-md transition-colors text-sm cursor-pointer"
           >
             Concluir e Voltar ao Início
           </button>
@@ -1112,10 +1126,10 @@ export function SimuladoClient({
             initialInstitution={customConfig.institutions?.[0] || queue[0]?.institution_code || "ENARE"}
           />
         ) : detailError ? (
-          <div className="bg-card border border-border shadow-1 rounded-xl p-8 flex-1 flex flex-col gap-4 items-center justify-center">
+          <div className="bg-surface border border-line-subtle shadow-1 rounded-xl p-8 flex-1 flex flex-col gap-4 items-center justify-center">
             <AlertCircle className="text-destructive w-10 h-10" />
-            <p className="text-foreground font-semibold">Erro ao carregar a questão</p>
-            <p className="text-muted-foreground text-sm text-center">Não foi possível carregar os detalhes desta questão. Verifique sua conexão.</p>
+            <p className="text-ink-primary font-semibold">Erro ao carregar a questão</p>
+            <p className="text-ink-secondary text-sm text-center">Não foi possível carregar os detalhes desta questão. Verifique sua conexão.</p>
             <button
               onClick={() => {
                 if (queue[currentIndex]) {
@@ -1130,12 +1144,12 @@ export function SimuladoClient({
             </button>
           </div>
         ) : loadingDetail || !qDetail ? (
-          <div className="bg-card border border-border shadow-1 rounded-xl p-8 flex-1 flex flex-col gap-6 animate-pulse">
-             <div className="h-6 w-32 bg-muted rounded" />
-             <div className="h-40 bg-muted rounded-xl" />
-             <div className="h-12 bg-muted rounded-xl" />
-             <div className="h-12 bg-muted rounded-xl" />
-             <div className="h-12 bg-muted rounded-xl" />
+          <div className="bg-surface border border-line-subtle shadow-1 rounded-xl p-8 flex-1 flex flex-col gap-6 animate-pulse">
+             <div className="h-6 w-32 bg-elevated rounded" />
+             <div className="h-40 bg-elevated rounded-xl" />
+             <div className="h-12 bg-elevated rounded-xl" />
+             <div className="h-12 bg-elevated rounded-xl" />
+             <div className="h-12 bg-elevated rounded-xl" />
           </div>
         ) : (
           <div className="flex flex-col h-full gap-4">
@@ -1151,7 +1165,7 @@ export function SimuladoClient({
               onNavigateNext={() => navigateTo(currentIndex + 1)}
             />
 
-            <div className="bg-card border border-border shadow-1 rounded-xl p-6 md:p-8 flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar relative">
+            <div className="bg-surface border border-line-subtle shadow-1 rounded-xl p-6 md:p-8 flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar relative">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentIndex}
@@ -1162,7 +1176,7 @@ export function SimuladoClient({
                   className="w-full"
                 >
                   {qDetail.technical_note && (
-                <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-xl p-5 flex gap-4 text-foreground mb-6 shadow-sm">
+                <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-xl p-5 flex gap-4 text-ink-primary mb-6 shadow-sm">
                   <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={24} />
                   <div className="text-sm">
                     <p className="font-bold text-amber-600 dark:text-amber-500 mb-1 text-base uppercase tracking-wider">Atenção: Questão Histórica / Desatualizada</p>
@@ -1176,18 +1190,18 @@ export function SimuladoClient({
                 isOpen={!!enlargedImage}
                 onClose={() => setEnlargedImage(null)}
               />
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-6">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink-muted uppercase tracking-wider mb-6">
                 {qDetail.is_verified && (
                   <span className="bg-success/15 text-success border border-success/30 px-2 py-1 rounded flex items-center gap-1" title={qDetail.last_updated_at ? `Revisado em ${qDetail.last_updated_at}` : "Revisado por um médico"}>
                     <ShieldCheck size={14} className="shrink-0 text-success" /> Revisado
                   </span>
                 )}
-                <span className="bg-muted px-2 py-1 rounded">{qDetail.institution_code}{qDetail.is_autoral ? " (A)" : ""} {qDetail.year}</span>
+                <span className="bg-elevated px-2 py-1 rounded">{qDetail.institution_code}{qDetail.is_autoral ? " (A)" : ""} {qDetail.year}</span>
                 {(qDetail.area || qDetail.subtema) && (
                   <button
                     type="button"
                     onClick={toggleTopic}
-                    className="bg-muted px-2 py-1 rounded flex items-center gap-1.5 transition-colors hover:bg-muted/80 cursor-pointer text-left"
+                    className="bg-elevated px-2 py-1 rounded flex items-center gap-1.5 transition-colors hover:bg-elevated/80 cursor-pointer text-left"
                     title={showTopic ? "Ocultar Tema" : "Mostrar Tema"}
                   >
                     {showTopic ? (
@@ -1197,12 +1211,12 @@ export function SimuladoClient({
                           {qDetail.area && qDetail.subtema && <span>&bull;</span>}
                           {qDetail.subtema && <span>{qDetail.subtema}</span>}
                         </span>
-                        <EyeOff size={13} className="text-muted-foreground ml-0.5" />
+                        <EyeOff size={13} className="text-ink-muted ml-0.5" />
                       </>
                     ) : (
                       <>
                         <span>Tema Oculto</span>
-                        <Eye size={13} className="text-muted-foreground ml-0.5" />
+                        <Eye size={13} className="text-ink-muted ml-0.5" />
                       </>
                     )}
                   </button>
@@ -1221,19 +1235,19 @@ export function SimuladoClient({
 
               {/* Clinical Case */}
               {qDetail.clinical_case && (
-                <div className="bg-muted/30 border-l-4 border-primary rounded-r-xl p-5 mb-6">
+                <div className="bg-elevated/30 border-l-4 border-primary rounded-r-xl p-5 mb-6">
                   <h4 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Caso Clínico</h4>
                   <FormattedContent
                     content={qDetail.clinical_case.stem}
                     onImageClick={setEnlargedImage}
-                    className="text-foreground text-lg leading-relaxed"
+                    className="text-ink-primary text-lg leading-relaxed"
                   />
                   {extraCaseImages.length > 0 && (
                     <div className="flex flex-col sm:flex-row flex-wrap gap-4 mt-4">
                       {extraCaseImages.map((img, i) => (
                         <div
                           key={i}
-                          className="relative group rounded-lg overflow-hidden border border-border bg-muted/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-xs"
+                          className="relative group rounded-lg overflow-hidden border border-line-subtle bg-elevated/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-xs"
                           onClick={() => setEnlargedImage(img)}
                         >
                           <Image
@@ -1254,7 +1268,7 @@ export function SimuladoClient({
               <FormattedContent
                 content={qDetail.stem}
                 onImageClick={setEnlargedImage}
-                className="text-foreground text-lg leading-relaxed mb-8"
+                className="text-ink-primary text-lg leading-relaxed mb-8"
               />
 
               {extraStemImages.length > 0 && (
@@ -1262,7 +1276,7 @@ export function SimuladoClient({
                   {extraStemImages.map((img, i) => (
                     <div
                       key={i}
-                      className="relative group rounded-lg overflow-hidden border border-border bg-muted/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-sm"
+                      className="relative group rounded-lg overflow-hidden border border-line-subtle bg-elevated/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-sm"
                       onClick={() => setEnlargedImage(img)}
                     >
                       <Image
@@ -1285,10 +1299,10 @@ export function SimuladoClient({
                   const isEliminated = (eliminatedMap[qDetail.id] || []).includes(alt.letter);
                   const isQuestionResolved = isReview || (feedbackMode === "practice" && Boolean(res));
 
-                  let altClass = "bg-card border-border hover:bg-muted/50 cursor-pointer";
+                  let altClass = "bg-surface border-line-subtle hover:bg-elevated/50 cursor-pointer";
 
                   if (isQuestionResolved) {
-                    altClass = "bg-card border-border opacity-70 cursor-default";
+                    altClass = "bg-surface border-line-subtle opacity-70 cursor-default";
 
                     if (res) {
                       if (alt.letter === res.correct_letter) {
@@ -1301,7 +1315,7 @@ export function SimuladoClient({
                     }
                   } else {
                     if (isSelected) altClass = "bg-primary/10 border-primary cursor-pointer ring-1 ring-primary";
-                    else if (isEliminated) altClass = "bg-muted/20 border-border/60 opacity-60 hover:opacity-85 cursor-pointer shadow-none";
+                    else if (isEliminated) altClass = "bg-elevated/20 border-line-subtle/60 opacity-60 hover:opacity-85 cursor-pointer shadow-none";
                   }
 
                   return (
@@ -1345,13 +1359,13 @@ export function SimuladoClient({
                             "w-6 h-8 shrink-0 flex items-center justify-center rounded-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                             isEliminated
                               ? "opacity-100 text-destructive hover:scale-110"
-                              : "opacity-0 group-hover:opacity-80 hover:opacity-100 hover:text-primary max-md:opacity-40 text-muted-foreground"
+                              : "opacity-0 group-hover:opacity-80 hover:opacity-100 hover:text-primary max-md:opacity-40 text-ink-muted"
                           )}
                         >
                           <Scissors size={15} className={clsx("transition-transform duration-150", isEliminated && "rotate-45")} />
                         </button>
                       ) : (
-                        <div className="w-6 h-8 shrink-0 flex items-center justify-center text-muted-foreground/40">
+                        <div className="w-6 h-8 shrink-0 flex items-center justify-center text-ink-muted/40">
                           {isEliminated && res && alt.letter !== res.correct_letter && (
                             <Scissors size={13} className="opacity-40 rotate-45 text-destructive" />
                           )}
@@ -1363,14 +1377,14 @@ export function SimuladoClient({
                         isQuestionResolved && alt.letter === res?.correct_letter ? "bg-success text-success-foreground" :
                         isQuestionResolved && isSelected && !res?.is_correct ? "bg-destructive text-destructive-foreground" :
                         isSelected && !isQuestionResolved ? "bg-primary text-primary-foreground" :
-                        isEliminated && !isQuestionResolved ? "bg-muted/40 text-muted-foreground/60 border-border/50" :
-                        "bg-muted text-muted-foreground"
+                        isEliminated && !isQuestionResolved ? "bg-elevated/40 text-ink-muted/60 border-line-subtle/50" :
+                        "bg-elevated text-ink-muted"
                       )}>
                         {alt.letter}
                       </div>
                       <div className={clsx(
-                        "pt-1 text-foreground leading-relaxed flex-1 transition-all",
-                        isEliminated && (!isQuestionResolved || alt.letter !== res?.correct_letter) && "line-through text-muted-foreground/75 decoration-muted-foreground/60"
+                        "pt-1 text-ink-primary leading-relaxed flex-1 transition-all",
+                        isEliminated && (!isQuestionResolved || alt.letter !== res?.correct_letter) && "line-through text-ink-muted/75 decoration-ink-muted/60"
                       )}>
                         {!isQuestionResolved && (qDetail.is_discursive || (qDetail.alternatives || []).length <= 1) ? (
                           "Confirmar resposta da questão discursiva"
@@ -1390,9 +1404,9 @@ export function SimuladoClient({
               {/* Review Explanation */}
               {(isReview || (feedbackMode === "practice" && resultsMap[qDetail.id])) && resultsMap[qDetail.id] && (
                 <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in duration-300">
-                  <div className="rounded-xl border shadow-1 overflow-hidden bg-card">
+                  <div className="rounded-xl border border-line-subtle shadow-1 overflow-hidden bg-surface">
                     <div className="p-6 md:p-8">
-                      <h3 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-ink-primary mb-5 flex items-center gap-2">
                         <BookOpen size={20} className="text-primary" />
                         Comentário do Professor
                       </h3>
@@ -1423,40 +1437,40 @@ export function SimuladoClient({
       </div>
 
       {showAreaSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 backdrop-blur-sm p-4">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="simulado-submit-title"
-            className="bg-card border border-border shadow-lg rounded-xl p-6 max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200"
+            className="bg-surface border border-line-subtle shadow-lg rounded-xl p-6 max-w-md w-full max-h-[85dvh] overflow-y-auto flex flex-col gap-4 animate-in zoom-in-95 duration-200"
           >
-            <h3 id="simulado-submit-title" className="font-bold text-lg text-foreground">Resumo por Área</h3>
+            <h3 id="simulado-submit-title" className="font-bold text-lg text-ink-primary">Resumo por Área</h3>
 
-            <div className="border border-border rounded-lg overflow-hidden">
+            <div className="border border-line-subtle rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50">
+                <thead className="bg-elevated/50">
                   <tr>
-                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Área</th>
-                    <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Resp.</th>
-                    <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Branco</th>
+                    <th className="text-left px-3 py-2 font-semibold text-ink-secondary">Área</th>
+                    <th className="text-center px-3 py-2 font-semibold text-ink-secondary">Resp.</th>
+                    <th className="text-center px-3 py-2 font-semibold text-ink-secondary">Branco</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-line-subtle">
                   {areaSummary.map(row => (
                     <tr key={row.area}>
-                      <td className="px-3 py-2 text-foreground font-medium">{row.area}</td>
+                      <td className="px-3 py-2 text-ink-primary font-medium">{row.area}</td>
                       <td className="px-3 py-2 text-center text-success font-semibold">{row.answered}</td>
-                      <td className={clsx("px-3 py-2 text-center font-semibold", row.blank > 0 ? "text-destructive" : "text-muted-foreground")}>
+                      <td className={clsx("px-3 py-2 text-center font-semibold", row.blank > 0 ? "text-destructive" : "text-ink-muted")}>
                         {row.blank}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-muted/30 border-t border-border">
+                <tfoot className="bg-elevated/30 border-t border-line-subtle">
                   <tr>
-                    <td className="px-3 py-2 font-bold text-foreground">Total</td>
+                    <td className="px-3 py-2 font-bold text-ink-primary">Total</td>
                     <td className="px-3 py-2 text-center font-bold text-success">{Object.keys(answers).length}</td>
-                    <td className={clsx("px-3 py-2 text-center font-bold", unansweredCount > 0 ? "text-destructive" : "text-muted-foreground")}>
+                    <td className={clsx("px-3 py-2 text-center font-bold", unansweredCount > 0 ? "text-destructive" : "text-ink-muted")}>
                       {unansweredCount}
                     </td>
                   </tr>

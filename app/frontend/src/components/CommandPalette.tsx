@@ -7,7 +7,7 @@ import { Search, X, FileText, StickyNote, ArrowRight, Compass } from "lucide-rea
 import { api } from "@/lib/api";
 
 const QUICK_ROUTES = [
-  { label: "Estudar Questões (Montar Bateria)", href: "/estudar", tag: "QBank" },
+  { label: "Estudar Questões (Montar Bateria)", href: "/estudar", tag: "Questões" },
   { label: "Caderno Inteligente (Meus Macetes)", href: "/caderno", tag: "Caderno" },
   { label: "Provas na Íntegra & Simulados", href: "/simulado", tag: "Provas" },
   { label: "Raio-X Sniper & Domínio de Focos", href: "/analise?tab=sniper", tag: "Sniper" },
@@ -120,23 +120,24 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-start justify-center pt-16 sm:pt-24 px-3"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-start justify-center pt-4 sm:pt-20 px-2.5 sm:px-4"
       onClick={() => setIsOpen(false)}
       role="dialog"
       aria-modal="true"
       aria-label="Busca Global Inteligente"
     >
       <div
-        className="w-full max-w-2xl bg-surface border border-line-subtle rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[78vh]"
+        className="w-full max-w-2xl bg-surface border border-line-subtle rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-line-subtle">
-          <Search className="w-4 h-4 text-accent shrink-0" />
+        <div className="flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 border-b border-line-subtle">
+          <Search className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Buscar provas, macetes, temas ou questões"
             placeholder="Buscar provas (ex: USP 2025), macetes do caderno, temas ou questões..."
             className="flex-1 bg-transparent text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none"
           />
@@ -144,7 +145,7 @@ export function CommandPalette() {
             type="button"
             onClick={() => setIsOpen(false)}
             aria-label="Fechar busca"
-            className="p-1 rounded-xs text-ink-muted hover:text-ink-primary hover:bg-elevated cursor-pointer"
+            className="min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xs text-ink-muted hover:text-ink-primary hover:bg-elevated cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X className="w-4 h-4" />
           </button>

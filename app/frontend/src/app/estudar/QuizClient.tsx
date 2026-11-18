@@ -1444,7 +1444,7 @@ export function QuizClient({
     navigateQuestion,
     selectAlternative,
     toggleEliminate: toggleEliminateAlternative,
-    disabled: Boolean(showFinishModal || isClassificationModalOpen || enlargedImage)
+    disabled: Boolean(showFinishModal || isClassificationModalOpen || enlargedImage || labsOpen)
   });
 
   if (state === "FILTERS") {
@@ -1715,9 +1715,10 @@ export function QuizClient({
                 
                 <div className="flex items-center gap-1 bg-canvas px-1.5 py-0.5 rounded-xs border border-line-subtle">
                   <button 
+                    type="button"
                     onClick={() => navigateQuestion("previous")}
                     disabled={currentIndex === 0 || loadingDetail}
-                    className="p-1 min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-elevated rounded-xs transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent text-ink-muted hover:text-ink"
+                    className="p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center hover:bg-elevated rounded-xs transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent text-ink-muted hover:text-ink"
                     title="Questão Anterior (Seta Esquerda)"
                     aria-label="Questão Anterior"
                   >
@@ -1727,9 +1728,10 @@ export function QuizClient({
                     {currentIndex + 1} / {queue.length}
                   </span>
                   <button 
+                    type="button"
                     onClick={() => navigateQuestion("next")}
                     disabled={loadingDetail}
-                    className="p-1 min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-elevated rounded-xs transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent text-ink-muted hover:text-ink"
+                    className="p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center hover:bg-elevated rounded-xs transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent text-ink-muted hover:text-ink"
                     title="Próxima questão (Seta Direita)"
                     aria-label="Próxima Questão"
                   >

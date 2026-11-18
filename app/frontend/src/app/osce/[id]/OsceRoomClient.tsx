@@ -1195,18 +1195,18 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       {phase === "finished" && report && (
         <div className="flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full space-y-6 pb-32 animate-in fade-in duration-300 print:p-0 print:m-0 print:max-w-full print:pb-0 print:space-y-4">
           {/* Cabeçalho Institucional Formal Exclusivo para Impressão / PDF */}
-          <div className="hidden print:block border-b-2 border-black pb-4 text-black">
+          <div className="hidden print:block border-b-2 border-line-strong pb-4 text-ink-primary">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-xl font-black uppercase tracking-wider">MedQuest • Prova Prática Beira-Leito (OSCE)</h1>
-                <p className="text-xs font-bold text-gray-700">Comitê de Avaliação de 2ª Fase Presencial • Parecer Oficial da Banca</p>
+                <p className="text-xs font-bold text-ink-secondary">Comitê de Avaliação de 2ª Fase Presencial • Parecer Oficial da Banca</p>
               </div>
-              <div className="text-right text-xs text-gray-600 font-mono">
+              <div className="text-right text-xs text-ink-muted font-mono">
                 <div>Data: {new Date().toLocaleDateString("pt-BR")}</div>
                 <div>Banca: {station.institution || "USP-RP"}</div>
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-gray-300 flex justify-between text-xs">
+            <div className="mt-3 pt-2 border-t border-line-subtle flex justify-between text-xs">
               <span><strong>Estação:</strong> {station.title}</span>
               <span><strong>Grande Área:</strong> {station.area}</span>
               <span><strong>Subtema:</strong> {station.subtema}</span>

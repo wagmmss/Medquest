@@ -72,6 +72,7 @@ export function CadernoClient() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Buscar em macetes, grifos ou subtemas"
             placeholder="Buscar em macetes, grifos ou subtemas..."
             className="w-full pl-10 pr-3 py-2.5 text-xs bg-surface border border-line-subtle rounded-xl text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent shadow-2xs"
           />
@@ -146,7 +147,7 @@ export function CadernoClient() {
                   <button
                     type="button"
                     onClick={() => deleteMutation.mutate(note.question_id)}
-                    className="p-1 rounded-xs text-ink-muted hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xs text-ink-muted hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                     title="Excluir anotação"
                     aria-label={`Excluir anotação da questão ${note.question_id}`}
                   >

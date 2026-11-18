@@ -120,7 +120,7 @@ export const LabValuesModal: React.FC<LabValuesModalProps> = ({ open, onClose })
       aria-label="Valores de Referência Laboratoriais"
     >
       <div
-        className="w-full max-w-2xl max-h-[85vh] bg-surface border border-line-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-2xl max-h-[85dvh] bg-surface border border-line-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-line-subtle flex items-center justify-between gap-3 bg-canvas/50">
@@ -137,7 +137,7 @@ export const LabValuesModal: React.FC<LabValuesModalProps> = ({ open, onClose })
             type="button"
             onClick={onClose}
             aria-label="Fechar valores de referência"
-            className="p-1.5 rounded-xl text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
+            className="min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X size={18} />
           </button>
@@ -145,12 +145,13 @@ export const LabValuesModal: React.FC<LabValuesModalProps> = ({ open, onClose })
 
         <div className="p-4 border-b border-line-subtle space-y-3">
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
+              aria-label="Buscar exame laboratorial por nome ou sigla"
               placeholder="Buscar exame (ex: sódio, pH, troponina, líquor, VCM)..."
               className="w-full pl-9 pr-3 py-2 text-sm bg-canvas border border-line-subtle rounded-xl text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent"
             />
@@ -164,7 +165,8 @@ export const LabValuesModal: React.FC<LabValuesModalProps> = ({ open, onClose })
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                  aria-pressed={active}
+                  className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                     active
                       ? "bg-accent text-white"
                       : "bg-canvas text-ink-secondary hover:text-ink-primary border border-line-subtle"

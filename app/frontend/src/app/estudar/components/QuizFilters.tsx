@@ -588,9 +588,10 @@ export const QuizFilters = React.memo(function QuizFilters({
               <button
                 key={key}
                 type="button"
+                aria-pressed={adaptiveFocus === key}
                 onClick={() => setAdaptiveFocus(key)}
                 className={clsx(
-                  "py-1 px-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer",
+                  "py-1.5 px-1 min-h-[32px] text-[11px] font-semibold rounded-md transition-colors cursor-pointer",
                   adaptiveFocus === key ? "bg-accent text-white" : "text-ink-secondary hover:text-ink-primary"
                 )}
               >
@@ -669,6 +670,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                     <button
                       key={areaCfg.label}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => {
                         setFilters((prev) => {
                           const next = { ...prev };
@@ -719,6 +721,7 @@ export const QuizFilters = React.memo(function QuizFilters({
               <div className="pt-2 border-t border-line-subtle">
                 <button
                   type="button"
+                  aria-expanded={showTopicTree}
                   onClick={() => setShowTopicTree((value) => !value)}
                   className="text-xs font-semibold text-accent hover:underline cursor-pointer"
                 >
@@ -864,9 +867,10 @@ export const QuizFilters = React.memo(function QuizFilters({
                           <button
                             key={opt.token}
                             type="button"
+                            aria-pressed={active}
                             onClick={() => toggleStatusToken(opt.token)}
                             className={clsx(
-                              "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
+                              "px-3 py-1.5 min-h-[32px] rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
                               active
                                 ? "bg-accent/15 border-accent text-accent font-semibold"
                                 : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
@@ -878,6 +882,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                       })}
                       <button
                         type="button"
+                        aria-pressed={filters.has_images === "1"}
                         onClick={() =>
                           setFilters((prev) => {
                             const next = { ...prev };
@@ -887,7 +892,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                           })
                         }
                         className={clsx(
-                          "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
+                          "px-3 py-1.5 min-h-[32px] rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
                           filters.has_images === "1"
                             ? "bg-accent/15 border-accent text-accent font-semibold"
                             : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
@@ -897,6 +902,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                       </button>
                       <button
                         type="button"
+                        aria-pressed={filters.exclude_annulled === "1"}
                         onClick={() =>
                           setFilters((prev) => {
                             const next = { ...prev };
@@ -906,7 +912,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                           })
                         }
                         className={clsx(
-                          "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
+                          "px-3 py-1.5 min-h-[32px] rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
                           filters.exclude_annulled === "1"
                             ? "bg-accent/15 border-accent text-accent font-semibold"
                             : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
@@ -931,6 +937,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                     type="text"
                     value={presetName}
                     onChange={(e) => setPresetName(e.target.value)}
+                    aria-label="Nome da configuração de preset"
                     placeholder="Nome da configuração..."
                     className="flex-1 bg-canvas border border-line-subtle rounded-xl px-3 py-1.5 text-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
                   />
@@ -992,7 +999,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                   type="button"
                   onClick={() => stepLimit(-5)}
                   aria-label="Diminuir quantidade"
-                  className="p-1.5 rounded-lg hover:bg-elevated text-ink-secondary cursor-pointer"
+                  className="p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-lg hover:bg-elevated text-ink-secondary cursor-pointer"
                 >
                   <Minus size={14} />
                 </button>
@@ -1013,7 +1020,7 @@ export const QuizFilters = React.memo(function QuizFilters({
                   type="button"
                   onClick={() => stepLimit(5)}
                   aria-label="Aumentar quantidade"
-                  className="p-1.5 rounded-lg hover:bg-elevated text-ink-secondary cursor-pointer"
+                  className="p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-lg hover:bg-elevated text-ink-secondary cursor-pointer"
                 >
                   <Plus size={14} />
                 </button>
@@ -1021,7 +1028,7 @@ export const QuizFilters = React.memo(function QuizFilters({
 
               <button
                 type="submit"
-                className="bg-primary hover:bg-primary/90 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs text-xs cursor-pointer"
+                className="bg-primary hover:bg-primary/90 text-white font-semibold px-5 py-2.5 min-h-[38px] rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs text-xs cursor-pointer"
               >
                 <Play size={14} fill="currentColor" />
                 Iniciar bateria

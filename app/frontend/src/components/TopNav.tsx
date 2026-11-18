@@ -41,8 +41,17 @@ export default function TopNav() {
         return;
       }
 
-      const tag = (event.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable ||
+        document.querySelector('[role="dialog"][aria-modal="true"]')
+      ) {
+        return;
+      }
       if (event.key.toLowerCase() === "z" && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
         toggleZenMode();
@@ -134,7 +143,7 @@ export default function TopNav() {
         </div>
       </header>
 
-      <header className="app-top-nav md:hidden flex justify-between items-center w-full px-3.5 sm:px-4 py-2 h-14 bg-surface border-b border-line-subtle z-10 sticky top-0 transition-colors max-w-full overflow-hidden select-none">
+      <header className="app-top-nav md:hidden flex justify-between items-center w-full px-3 sm:px-4 py-2 h-14 bg-surface border-b border-line-subtle z-10 sticky top-0 transition-colors max-w-full overflow-hidden select-none">
         <h1 className="font-semibold text-base text-ink-primary tracking-tight flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-xs bg-ink-primary text-surface flex items-center justify-center shadow-2xs shrink-0">
             <ClinicalIcon name="local_hospital" className="w-3.5 h-3.5 text-canvas" strokeWidth={2.2} />
@@ -144,8 +153,9 @@ export default function TopNav() {
         <div className="flex items-center gap-1.5 shrink-0">
           {isInstallable && (
             <button
+              type="button"
               onClick={() => void installApp()}
-              className="flex items-center justify-center p-1.5 rounded-xs text-accent hover:bg-elevated transition-colors cursor-pointer shrink-0"
+              className="flex items-center justify-center min-w-[38px] min-h-[38px] p-1.5 rounded-xs text-accent hover:bg-elevated transition-colors cursor-pointer shrink-0"
               title="Instalar MedQuest no Android"
               aria-label="Instalar MedQuest no dispositivo"
             >
@@ -153,9 +163,10 @@ export default function TopNav() {
             </button>
           )}
           <button
+            type="button"
             onClick={() => setIsOfflineOpen(true)}
             className={clsx(
-              "flex items-center gap-1 px-2 py-1 rounded-xs text-xs font-mono-lab font-semibold transition-colors cursor-pointer shrink-0 border",
+              "flex items-center justify-center gap-1 min-h-[38px] px-2.5 py-1 rounded-xs text-xs font-mono-lab font-semibold transition-colors cursor-pointer shrink-0 border",
               isOffline || forcedOffline
                 ? "bg-warning/20 border-warning/40 text-warning"
                 : "border-line-subtle text-ink-secondary hover:bg-elevated hover:text-ink-primary"
@@ -167,9 +178,10 @@ export default function TopNav() {
             <span className="text-[11px] hidden min-[360px]:inline">{forcedOffline ? "Plantão" : isOffline ? "Offline" : "Plantão"}</span>
           </button>
           <button 
+            type="button"
             ref={menuButtonRef}
             onClick={() => setIsMobileMenuOpen(true)}
-            className="text-ink-secondary hover:bg-elevated rounded-xs p-1.5 transition-colors flex items-center justify-center cursor-pointer shrink-0 border border-line-subtle"
+            className="text-ink-secondary hover:bg-elevated rounded-xs min-w-[38px] min-h-[38px] p-1.5 transition-colors flex items-center justify-center cursor-pointer shrink-0 border border-line-subtle"
             aria-label="Abrir menu principal"
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-navigation-drawer"
@@ -177,14 +189,15 @@ export default function TopNav() {
             <ClinicalIcon name="menu" className="w-4 h-4" />
           </button>
           <button 
+            type="button"
             onClick={() => setIsModalOpen(true)}
-            className="relative w-7 h-7 rounded-full bg-elevated border border-line-subtle overflow-hidden shadow-2xs flex items-center justify-center cursor-pointer hover:opacity-85 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent shrink-0 ml-0.5"
+            className="relative min-w-[38px] min-h-[38px] rounded-full bg-elevated border border-line-subtle overflow-hidden shadow-2xs flex items-center justify-center cursor-pointer hover:opacity-85 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent shrink-0 ml-0.5"
             aria-label="Abrir minha conta"
           >
             {isLoaded && user?.imageUrl ? (
-              <Image src={user.imageUrl} alt="Avatar" fill sizes="28px" className="object-cover" />
+              <Image src={user.imageUrl} alt="Avatar" fill sizes="38px" className="object-cover" />
             ) : (
-              <ClinicalIcon name="person" className="w-3.5 h-3.5 text-ink-muted" />
+              <ClinicalIcon name="person" className="w-4 h-4 text-ink-muted" />
             )}
           </button>
         </div>
