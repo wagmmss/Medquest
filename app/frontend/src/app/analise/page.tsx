@@ -1,4 +1,3 @@
-import { isDynamicServerUsageError, serverApi } from "@/lib/server-api";
 import type { AnalysisSummaryResponse } from "@/types/api";
 import dynamic from "next/dynamic";
 import type { AnalysisTabKey } from "./AnalysisClient";
@@ -150,19 +149,6 @@ export default async function AnalisePage({
       ? "prontidao"
       : "desempenho";
 
-  let summary = EMPTY_SUMMARY;
-  let initialError: string | null = null;
-
-  try {
-    summary = await serverApi.stats.getAnalysisSummary(rawInst, rawCompare);
-  } catch (err: unknown) {
-    if (isDynamicServerUsageError(err)) {
-      throw err;
-    }
-    initialError =
-      "Não foi possível carregar o relatório inicial do servidor. Tentando recuperar via cliente.";
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <section className="bg-surface border border-line-subtle rounded-lg p-6 md:p-7">
@@ -180,11 +166,12 @@ export default async function AnalisePage({
       </section>
 
       <AnalysisClient
-        initialSummary={summary}
+        initialSummary={EMPTY_SUMMARY}
         institutionOptions={ALLOWED_INSTITUTIONS}
         initialTab={initialTab}
         initialSubtema={rawSubtema}
-        initialError={initialError}
+        initialInstitution={rawInst}
+        initialCompare={rawCompare}
       />
     </div>
   );

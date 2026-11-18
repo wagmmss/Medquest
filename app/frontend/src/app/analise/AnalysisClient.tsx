@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { BarChart3, Crosshair, Layers, ShieldCheck } from "lucide-react";
 import type {
@@ -48,6 +49,8 @@ interface AnalysisClientProps {
   institutionOptions: { key: string; label: string }[];
   initialTab?: AnalysisTabKey;
   initialSubtema?: string | null;
+  initialInstitution?: string;
+  initialCompare?: string;
   initialError?: string | null;
 }
 
@@ -82,6 +85,8 @@ export function AnalysisClient({
   institutionOptions,
   initialTab = "desempenho",
   initialSubtema = null,
+  initialInstitution,
+  initialCompare,
   initialError = null,
 }: AnalysisClientProps) {
   const availableInstitutions = useMemo(
@@ -91,22 +96,17 @@ export function AnalysisClient({
 
   const [activeTab, setActiveTab] = useState<AnalysisTabKey>(initialTab);
   const [selectedSubtema, setSelectedSubtema] = useState<string | null>(initialSubtema);
-  const [summary, setSummary] = useState<AnalysisSummaryResponse>(initialSummary);
-  const [summaryError, setSummaryError] = useState<string | null>(initialError);
+  const [manualSummaryError, setManualSummaryError] = useState<string | null>(null);
 
   const [selectedInstitution, setSelectedInstitution] = useState<string>(
-    initialSummary.exam_readiness?.institution || "USP-SP"
+    initialInstitution || initialSummary.exam_readiness?.institution || "USP-SP"
   );
-  const [localReadiness, setLocalReadiness] = useState<ExamReadiness>(
-    initialSummary.exam_readiness
-  );
+  const [readinessOverride, setReadinessOverride] = useState<ExamReadiness | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
   const [readinessError, setReadinessError] = useState<string | null>(null);
   const [readinessRetry, setReadinessRetry] = useState(0);
 
-  const [timeline180, setTimeline180] = useState<TimelineStat[]>(
-    initialSummary.timeline_180 || []
-  );
+  const [timelineOverride, setTimelineOverride] = useState<TimelineStat[] | null>(null);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [timelineRetry, setTimelineRetry] = useState(0);
@@ -145,58 +145,45 @@ export function AnalysisClient({
     syncUrlParams("cobertura", subtema);
   };
 
+  const {
+    data: cachedSummary,
+    isError: isSummaryQueryError,
+    refetch: refetchSummary,
+  } = useQuery({
+    queryKey: ["analysis-summary", selectedInstitution || "USP-SP", initialCompare || ""],
+    queryFn: () =>
+      api.stats.getAnalysisSummary(
+        selectedInstitution || undefined,
+        initialCompare || undefined
+      ),
+    staleTime: 60_000,
+  });
+
+  const summary = useMemo(
+    () => (cachedSummary ? mergeSummary(initialSummary, cachedSummary) : initialSummary),
+    [initialSummary, cachedSummary]
+  );
+
+  const localReadiness = readinessOverride ?? summary.exam_readiness;
+  const timeline180 = timelineOverride ?? summary.timeline_180 ?? [];
+
+  const summaryError =
+    manualSummaryError ??
+    (isSummaryQueryError
+      ? "Falha ao atualizar o painel analítico. Tente novamente."
+      : initialError);
+
   const handleRefreshAll = useCallback(async () => {
-    setSummaryError(null);
-    try {
-      const fresh = await api.stats.getAnalysisSummary(
-        selectedInstitution || undefined
-      );
-      setSummary((prev) => mergeSummary(prev, fresh));
-      if (fresh?.exam_readiness) {
-        setLocalReadiness(fresh.exam_readiness);
-        setReadinessError(null);
-      }
-      if (Array.isArray(fresh?.timeline_180)) {
-        setTimeline180(fresh.timeline_180);
-        setTimelineError(null);
-      }
-    } catch {
-      setSummaryError(
+    setManualSummaryError(null);
+    setReadinessOverride(null);
+    setTimelineOverride(null);
+    const result = await refetchSummary();
+    if (result.isError) {
+      setManualSummaryError(
         "Falha ao atualizar o painel analítico. Tente novamente."
       );
     }
-  }, [selectedInstitution]);
-
-  useEffect(() => {
-    if (!initialError) return;
-    let cancelled = false;
-    api.stats
-      .getAnalysisSummary(selectedInstitution || undefined)
-      .then((fresh) => {
-        if (cancelled) return;
-        setSummaryError(null);
-        setSummary((prev) => mergeSummary(prev, fresh));
-        if (fresh?.exam_readiness) {
-          setLocalReadiness(fresh.exam_readiness);
-          setReadinessError(null);
-        }
-        if (Array.isArray(fresh?.timeline_180)) {
-          setTimeline180(fresh.timeline_180);
-          setTimelineError(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSummaryError(
-            "Falha ao atualizar o painel analítico. Tente novamente."
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refetchSummary]);
 
   useEffect(() => {
     if (isFirstReadinessMount.current) {
@@ -210,7 +197,7 @@ export function AnalysisClient({
       .getExamReadiness(selectedInstitution || undefined, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) {
-          setLocalReadiness(data);
+          setReadinessOverride(data);
           setReadinessError(null);
         }
       })
@@ -237,7 +224,7 @@ export function AnalysisClient({
       .getTimeline(180, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) {
-          setTimeline180(data);
+          setTimelineOverride(data);
           setTimelineError(null);
         }
       })

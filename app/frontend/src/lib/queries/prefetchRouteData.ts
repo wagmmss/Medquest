@@ -42,5 +42,26 @@ export function prefetchRouteIntent(
       queryFn: () => api.questions.getMeta({}),
       staleTime: 60_000,
     });
+  } else if (href === "/caderno") {
+    prefetchedQueries.set(href, now);
+    void queryClient.prefetchQuery({
+      queryKey: ["smart-notebook", "", ""],
+      queryFn: () => api.notes.list({}),
+      staleTime: 60_000,
+    });
+  } else if (href === "/osce") {
+    prefetchedQueries.set(href, now);
+    void queryClient.prefetchQuery({
+      queryKey: ["osce-stations"],
+      queryFn: () => api.osce.getStations(),
+      staleTime: 120_000,
+    });
+  } else if (href === "/analise") {
+    prefetchedQueries.set(href, now);
+    void queryClient.prefetchQuery({
+      queryKey: ["analysis-summary", "USP-SP", ""],
+      queryFn: () => api.stats.getAnalysisSummary("USP-SP"),
+      staleTime: 60_000,
+    });
   }
 }

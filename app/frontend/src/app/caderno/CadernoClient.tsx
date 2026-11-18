@@ -25,7 +25,7 @@ export function CadernoClient() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["smart-notebook", areaFilter, searchTerm],
     queryFn: () => api.notes.list({ area: areaFilter || undefined, q: searchTerm || undefined }),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 
   const deleteMutation = useMutation({

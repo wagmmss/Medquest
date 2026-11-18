@@ -55,4 +55,5 @@ export function useDashboardSummaryQuery(
 export function invalidateStudyCaches(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
   void queryClient.invalidateQueries({ queryKey: ["question-meta"] });
+  void queryClient.invalidateQueries({ queryKey: ["analysis-summary"] });
 }

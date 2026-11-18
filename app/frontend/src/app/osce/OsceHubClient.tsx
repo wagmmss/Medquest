@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Stethoscope, Clock, Award, AlertCircle, 
   CheckCircle2, ChevronRight, Play, Sparkles, Filter,
@@ -12,7 +13,7 @@ import { OsceStation } from "@/types/api";
 import { api } from "@/lib/api";
 
 interface OsceHubClientProps {
-  initialStations: OsceStation[];
+  initialStations?: OsceStation[];
 }
 
 const INSTITUTIONS = [
@@ -34,9 +35,15 @@ const AREAS = [
   "Medicina Preventiva"
 ];
 
-export function OsceHubClient({ initialStations }: OsceHubClientProps) {
+export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
   const router = useRouter();
-  const [stations] = useState<OsceStation[]>(initialStations);
+  const { data: stationsData, isLoading: isLoadingStations } = useQuery({
+    queryKey: ["osce-stations"],
+    queryFn: () => api.osce.getStations(),
+    initialData: initialStations.length > 0 ? { stations: initialStations, count: initialStations.length } : undefined,
+    staleTime: 120_000,
+  });
+  const stations = useMemo(() => stationsData?.stations ?? initialStations, [stationsData, initialStations]);
   const [selectedInst, setSelectedInst] = useState<string>("Todas as Bancas");
   const [selectedArea, setSelectedArea] = useState<string>("Todas as Áreas");
   const [activeTab, setActiveTab] = useState<"avulso" | "circuito">("avulso");
@@ -233,6 +240,20 @@ export function OsceHubClient({ initialStations }: OsceHubClientProps) {
       </div>
 
       {/* Grid de Estações */}
+      {isLoadingStations && stations.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true" aria-label="Carregando estações OSCE">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="h-48 rounded-lg border border-line-subtle bg-surface animate-pulse p-4 space-y-3"
+            >
+              <div className="h-5 w-24 rounded bg-surface-subtle" />
+              <div className="h-5 w-3/4 rounded bg-surface-subtle" />
+              <div className="h-4 w-1/2 rounded bg-surface-subtle" />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredStations.map((station) => {
           const isPassed = station.best_score !== null && station.best_score >= 7.0;
@@ -294,8 +315,9 @@ export function OsceHubClient({ initialStations }: OsceHubClientProps) {
           );
         })}
       </div>
+      )}
 
-      {filteredStations.length === 0 && (
+      {!isLoadingStations && filteredStations.length === 0 && (
         <div className="text-center py-12 border border-dashed border-line-subtle rounded-sm p-6 bg-surface">
           <AlertCircle className="w-8 h-8 text-ink-tertiary mx-auto mb-2" />
           <h3 className="text-sm font-semibold text-ink-primary font-mono-lab">Nenhuma estação encontrada</h3>
