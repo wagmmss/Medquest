@@ -28,7 +28,7 @@ export const SimuladoResultsView: React.FC<SimuladoResultsViewProps> = ({
   onStartReview,
   initialInstitution = "ENARE",
 }) => {
-  const correctCount = Object.values(resultsMap).filter(r => r.is_correct).length;
+  const correctCount = queue.filter(q => Boolean(resultsMap[q.id]?.is_correct)).length;
   const percentage = queue.length > 0 ? Math.round((correctCount / queue.length) * 100) : 0;
 
   return (

@@ -946,8 +946,9 @@ def finish_osce_session(
     - Prescrição de Remediação no MedQuest
     """
     sess = db.execute("""
-        SELECT s.id, s.station_id, s.user_id, s.start_time, s.elapsed_seconds,
-               s.transcript_json, s.actions_taken_json,
+        SELECT s.id, s.station_id, s.user_id, s.status, s.start_time, s.elapsed_seconds,
+               s.final_score, s.transcript_json, s.actions_taken_json,
+               s.checklist_evaluation_json, s.preceptor_feedback_json,
                st.title, st.area, st.subtema, st.institution, st.year,
                st.checklist_barema_json
         FROM osce_sessions s
@@ -964,10 +965,39 @@ def finish_osce_session(
     checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
     critical_errors = barema_raw.get("critical_errors", []) if isinstance(barema_raw, dict) else []
 
-    if conduct_notes and conduct_notes.strip():
+    normalized_conduct = conduct_notes.strip() if conduct_notes and conduct_notes.strip() else ""
+    conduct_msg = f"Conduta e Prescrição Verbalizada: {normalized_conduct}" if normalized_conduct else ""
+    already_has_conduct = bool(
+        conduct_msg and any(str(t.get("message") or "") == conduct_msg for t in transcript)
+    )
+
+    if sess["status"] == "completed" and sess["preceptor_feedback_json"] and (not normalized_conduct or already_has_conduct):
+        existing_fb = json.loads(sess["preceptor_feedback_json"] or "{}")
+        existing_eval = json.loads(sess["checklist_evaluation_json"] or "{}")
+        if existing_fb.get("headline_verdict") and "evaluated_items" in existing_fb:
+            return {
+                "session_id": session_id,
+                "final_score": existing_fb.get("final_score", sess["final_score"] or 0.0),
+                "raw_score": existing_fb.get("raw_score", sess["final_score"] or 0.0),
+                "penalty_deduction": existing_fb.get("penalty_deduction", 0.0),
+                "headline_verdict": existing_fb.get("headline_verdict", "REPROVADO POR TÉCNICA"),
+                "approved": bool(existing_fb.get("approved", False)),
+                "status": "completed",
+                "evaluated_items": existing_fb.get("evaluated_items", existing_eval.get("items", [])),
+                "red_flags_triggered": existing_fb.get("red_flags_triggered", existing_eval.get("red_flags", [])),
+                "preceptor_feedback": existing_fb,
+                "chief_preceptor_review": existing_fb.get("chief_preceptor_review", {}),
+                "competency_radar_5d": existing_fb.get("competency_radar_5d", {}),
+                "medquest_remediation": existing_fb.get("medquest_remediation", {}),
+                "elapsed_seconds": sess["elapsed_seconds"],
+                "timeline_post_mortem": existing_fb.get("timeline_post_mortem", {}),
+                "competency_radar": existing_fb.get("competency_radar", {}),
+            }
+
+    if normalized_conduct and not already_has_conduct:
         transcript.append({
             "sender": "candidato",
-            "message": f"Conduta e Prescrição Verbalizada: {conduct_notes.strip()}",
+            "message": conduct_msg,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "elapsed_seconds": int(sess["elapsed_seconds"] or 0)
         })
@@ -1196,6 +1226,10 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
     transcript = json.loads(row["transcript_json"] or "[]")
     actions = json.loads(row["actions_taken_json"] or "[]")
 
+    evaluated_items = feedback.get("evaluated_items") or evaluation.get("items", [])
+    red_flags = feedback.get("red_flags_triggered") or evaluation.get("red_flags", [])
+    final_score_val = float(row["final_score"] if row["final_score"] is not None else feedback.get("final_score", 0.0))
+
     timeline_data = feedback.get("timeline_post_mortem")
     radar_data = feedback.get("competency_radar")
 
@@ -1204,17 +1238,58 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
             station_meta=dict(row),
             transcript=transcript,
             actions=actions,
-            evaluated_items=evaluation.get("items", []),
+            evaluated_items=evaluated_items,
             elapsed_seconds=row["elapsed_seconds"]
         )
         radar_data = generate_competency_radar(
             station_meta=dict(row),
-            evaluated_items=evaluation.get("items", []),
+            evaluated_items=evaluated_items,
             actions=actions,
             transcript=transcript,
             elapsed_seconds=row["elapsed_seconds"],
             critical_warnings=evaluation.get("critical_warnings", [])
         )
+
+    radar_5d = feedback.get("competency_radar_5d") or compute_competency_radar_5d(
+        station_meta=dict(row),
+        evaluated_items=evaluated_items,
+        actions=actions,
+        transcript=transcript,
+        elapsed_seconds=row["elapsed_seconds"],
+        red_flags=red_flags
+    )
+
+    chief_review = feedback.get("chief_preceptor_review") or build_chief_preceptor_review(
+        station_meta=dict(row),
+        evaluated_items=evaluated_items,
+        red_flags=red_flags,
+        final_score=final_score_val
+    )
+
+    medquest_remediation = feedback.get("medquest_remediation") or build_medquest_remediation(
+        station_meta=dict(row),
+        weaknesses=radar_data.get("weaknesses", [])
+    )
+
+    # Garante que preceptor_feedback possua todos os campos esperados pelo espelho StationResultMirror
+    feedback.setdefault("headline_verdict", "APROVADO COM DISTINÇÃO" if final_score_val >= 8.5 else ("APROVADO NO LIMITE" if final_score_val >= 7.0 else "REPROVADO POR TÉCNICA"))
+    feedback.setdefault("raw_score", final_score_val)
+    feedback.setdefault("penalty_deduction", 0.0)
+    feedback.setdefault("final_score", final_score_val)
+    feedback.setdefault("cutoff_score", 7.0)
+    feedback.setdefault("max_score", 10.0)
+    feedback.setdefault("approved", final_score_val >= 7.0 and feedback.get("headline_verdict") != "ELIMINADO POR IATROGENIA")
+    feedback.setdefault("station_title", row["title"])
+    feedback.setdefault("institution", row["institution"])
+    feedback.setdefault("summary", chief_review.get("executive_summary", ""))
+    feedback.setdefault("competency_radar_5d", radar_5d)
+    feedback.setdefault("competency_radar", radar_data)
+    feedback.setdefault("evaluated_items", evaluated_items)
+    feedback.setdefault("red_flags_triggered", red_flags)
+    feedback.setdefault("critical_warnings", evaluation.get("critical_warnings", []))
+    feedback.setdefault("chief_preceptor_review", chief_review)
+    feedback.setdefault("medquest_remediation", medquest_remediation)
+    feedback.setdefault("timeline_post_mortem", timeline_data)
 
     return {
         "session_id": row["id"],
@@ -1230,11 +1305,20 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
         "end_time": row["end_time"],
         "elapsed_seconds": row["elapsed_seconds"],
         "duration_seconds": row["duration_seconds"],
-        "final_score": row["final_score"],
+        "final_score": final_score_val,
+        "raw_score": feedback["raw_score"],
+        "penalty_deduction": feedback["penalty_deduction"],
+        "headline_verdict": feedback["headline_verdict"],
+        "approved": feedback["approved"],
         "scenario_door_markdown": row["scenario_door_markdown"],
-        "checklist_evaluation": evaluation.get("items", []),
+        "checklist_evaluation": evaluated_items,
+        "evaluated_items": evaluated_items,
+        "red_flags_triggered": red_flags,
         "critical_warnings": evaluation.get("critical_warnings", []),
         "preceptor_feedback": feedback,
+        "chief_preceptor_review": chief_review,
+        "competency_radar_5d": radar_5d,
+        "medquest_remediation": medquest_remediation,
         "transcript": transcript,
         "timeline_post_mortem": timeline_data,
         "competency_radar": radar_data

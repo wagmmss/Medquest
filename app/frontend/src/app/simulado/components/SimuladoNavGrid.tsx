@@ -24,6 +24,92 @@ export interface SimuladoNavGridProps {
   onFinishSimulado: () => void;
 }
 
+interface SimuladoNavCellProps {
+  columnCount: number;
+  gap: number;
+  filteredIndices: number[];
+  queue: QuestionListItem[];
+  currentIndex: number;
+  answers: Record<number, string>;
+  resultsMap: Record<number, BatchAttemptResultItem>;
+  flagged: Record<number, boolean>;
+  isReview: boolean;
+  onNavigateTo: (index: number) => void;
+}
+
+const SimuladoNavCell = ({
+  columnIndex,
+  rowIndex,
+  style,
+  ariaAttributes,
+  columnCount,
+  gap,
+  filteredIndices,
+  queue,
+  currentIndex,
+  answers,
+  resultsMap,
+  flagged,
+  isReview,
+  onNavigateTo,
+}: CellComponentProps<SimuladoNavCellProps>) => {
+  const index = rowIndex * columnCount + columnIndex;
+  if (index >= filteredIndices.length) return null;
+
+  const idx = filteredIndices[index];
+  const q = queue[idx];
+  if (!q) return null;
+  const isCurrent = idx === currentIndex;
+  const answeredLetter = answers[q.id];
+  const res = resultsMap[q.id];
+  const isFlagged = flagged[q.id];
+
+  let btnClass = "bg-muted text-muted-foreground hover:bg-muted/80";
+
+  if (isReview) {
+    if (res?.is_correct) btnClass = "bg-success text-success-foreground font-bold";
+    else if (res && !res.is_correct) btnClass = "bg-destructive text-destructive-foreground font-bold";
+    else btnClass = "bg-card border border-dashed border-muted-foreground text-muted-foreground";
+  } else {
+    if (answeredLetter) btnClass = "bg-primary/20 text-primary font-bold";
+  }
+
+  if (isCurrent) {
+    btnClass += " ring-2 ring-foreground ring-offset-2 ring-offset-background";
+  }
+
+  const cellStyle = {
+    ...style,
+    left: Number(style.left) + gap / 2,
+    top: Number(style.top) + gap / 2,
+    width: Number(style.width) - gap,
+    height: Number(style.height) - gap,
+  };
+
+  return (
+    <div {...ariaAttributes} style={cellStyle}>
+      <button
+        type="button"
+        onClick={() => onNavigateTo(idx)}
+        aria-label={`Ir para questão ${idx + 1}${answeredLetter ? `, resposta ${answeredLetter}` : ", em branco"}${isFlagged ? ", marcada para revisão" : ""}`}
+        aria-current={isCurrent ? "step" : undefined}
+        className={clsx(
+          "w-full h-full rounded flex flex-col items-center justify-center text-xs transition-all relative cursor-pointer",
+          btnClass
+        )}
+      >
+        {isFlagged && (
+          <span className="absolute -top-0.5 -right-0.5 text-warning">
+            <Flag size={8} fill="currentColor" />
+          </span>
+        )}
+        <span className={clsx(!isReview && answeredLetter ? "text-[10px]" : "text-xs")}>{idx + 1}</span>
+        {!isReview && answeredLetter && <span className="text-[14px] leading-none">{answeredLetter}</span>}
+      </button>
+    </div>
+  );
+};
+
 export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
   isReview,
   resultsMap,
@@ -50,6 +136,20 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
     });
   }, [queue, sidebarFilter, answers, flagged]);
 
+  const correctCount = useMemo(
+    () => queue.filter(q => Boolean(resultsMap[q.id]?.is_correct)).length,
+    [queue, resultsMap]
+  );
+  const accuracyPct = queue.length > 0 ? Math.round((correctCount / queue.length) * 100) : 0;
+  const answeredCount = useMemo(
+    () => queue.filter(q => Boolean(answers[q.id])).length,
+    [queue, answers]
+  );
+  const flaggedCount = useMemo(
+    () => queue.filter(q => Boolean(flagged[q.id])).length,
+    [queue, flagged]
+  );
+
   return (
     <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 order-1 lg:order-1 h-auto lg:h-full lg:sticky lg:top-4 z-10 bg-surface lg:bg-transparent p-2 lg:p-0 rounded-lg mb-4 lg:mb-0 border lg:border-0 border-line-subtle">
       {/* Timer Box */}
@@ -58,10 +158,10 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
           <>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nota Final</span>
             <div className="text-2xl lg:text-4xl font-bold text-foreground font-mono-lab tabular-nums">
-              {Object.values(resultsMap).filter(r => r.is_correct).length} <span className="text-sm lg:text-lg text-muted-foreground">/ {queue.length}</span>
+              {correctCount} <span className="text-sm lg:text-lg text-muted-foreground">/ {queue.length}</span>
             </div>
             <div className="text-sm font-medium text-accent mt-1 font-mono-lab tabular-nums">
-              {Math.round((Object.values(resultsMap).filter(r => r.is_correct).length / queue.length) * 100)}% de Acerto
+              {accuracyPct}% de Acerto
             </div>
             {showResultsSummary && (
               <button
@@ -95,10 +195,10 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
           <h3 className="font-bold text-foreground text-sm">Cartão Resposta</h3>
           {!isReview && (
             <p className="text-xs text-muted-foreground mt-1 font-mono-lab tabular-nums">
-              {Object.keys(answers).length} respondidas · {queue.length - Object.keys(answers).length} em branco
-              {Object.values(flagged).filter(Boolean).length > 0 && (
+              {answeredCount} respondidas · {Math.max(0, queue.length - answeredCount)} em branco
+              {flaggedCount > 0 && (
                 <span className="text-warning ml-1">
-                  · {Object.values(flagged).filter(Boolean).length} marcada(s)
+                  · {flaggedCount} marcada(s)
                 </span>
               )}
             </p>
@@ -160,71 +260,25 @@ export const SimuladoNavGrid: React.FC<SimuladoNavGridProps> = ({
               const rowHeight = columnWidth;
               const rowCount = Math.ceil(filteredIndices.length / columnCount);
 
-              const Cell = ({ columnIndex, rowIndex, style, ariaAttributes }: CellComponentProps) => {
-                const index = rowIndex * columnCount + columnIndex;
-                if (index >= filteredIndices.length) return null;
-
-                const idx = filteredIndices[index];
-                const q = queue[idx];
-                const isCurrent = idx === currentIndex;
-                const answeredLetter = answers[q.id];
-                const res = resultsMap[q.id];
-                const isFlagged = flagged[q.id];
-
-                let btnClass = "bg-muted text-muted-foreground hover:bg-muted/80";
-
-                if (isReview) {
-                  if (res?.is_correct) btnClass = "bg-success text-success-foreground font-bold";
-                  else if (res && !res.is_correct) btnClass = "bg-destructive text-destructive-foreground font-bold";
-                  else btnClass = "bg-card border border-dashed border-muted-foreground text-muted-foreground";
-                } else {
-                  if (answeredLetter) btnClass = "bg-primary/20 text-primary font-bold";
-                }
-
-                if (isCurrent) {
-                  btnClass += " ring-2 ring-foreground ring-offset-2 ring-offset-background";
-                }
-
-                const cellStyle = {
-                  ...style,
-                  left: Number(style.left) + gap / 2,
-                  top: Number(style.top) + gap / 2,
-                  width: Number(style.width) - gap,
-                  height: Number(style.height) - gap
-                };
-
-                return (
-                  <div {...ariaAttributes} style={cellStyle}>
-                    <button
-                      key={q.id}
-                      onClick={() => onNavigateTo(idx)}
-                      aria-label={`Ir para questão ${idx + 1}${answeredLetter ? `, resposta ${answeredLetter}` : ", em branco"}${isFlagged ? ", marcada para revisão" : ""}`}
-                      aria-current={isCurrent ? "step" : undefined}
-                      className={clsx(
-                        "w-full h-full rounded flex flex-col items-center justify-center text-xs transition-all relative cursor-pointer",
-                        btnClass
-                      )}
-                    >
-                      {isFlagged && (
-                        <span className="absolute -top-0.5 -right-0.5 text-warning">
-                          <Flag size={8} fill="currentColor" />
-                        </span>
-                      )}
-                      <span className={clsx(!isReview && answeredLetter ? "text-[10px]" : "text-xs")}>{idx + 1}</span>
-                      {!isReview && answeredLetter && <span className="text-[14px] leading-none">{answeredLetter}</span>}
-                    </button>
-                  </div>
-                );
-              };
-
               return (
                 <FixedSizeGrid
                   columnCount={columnCount}
                   columnWidth={columnWidth + gap}
                   rowCount={rowCount}
                   rowHeight={rowHeight + gap}
-                  cellComponent={Cell}
-                  cellProps={{}}
+                  cellComponent={SimuladoNavCell}
+                  cellProps={{
+                    columnCount,
+                    gap,
+                    filteredIndices,
+                    queue,
+                    currentIndex,
+                    answers,
+                    resultsMap,
+                    flagged,
+                    isReview,
+                    onNavigateTo,
+                  }}
                   style={{ overflowX: "hidden", height, width }}
                 />
               );

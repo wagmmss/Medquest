@@ -106,3 +106,45 @@ def test_stats_tri_readiness_endpoint(client):
     assert "projected_score" in data
     assert "national_percentile" in data
     assert "specialty_cutoffs" in data
+
+
+def test_simulado_tri_evaluation_frontend_contract_and_institution_aliases(client):
+    """Garante que o contrato real do frontend ({ responses, institution_code }) e aliases ('USP', 'USP-RP') funcionam."""
+    payload = {
+        "institution_code": "USP",
+        "responses": [
+            {"question_id": 1, "is_correct": True},
+            {"question_id": 2, "is_correct": True},
+            {"question_id": 3, "is_correct": False},
+        ],
+    }
+    res = client.post("/api/simulado/tri-evaluation", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["institution_code"] == "USP-SP"
+    assert data["raw_score_pct"] == 66.7
+    assert data["projected_score"] > 0
+
+    res_rp = client.post(
+        "/api/simulado/tri-evaluation",
+        json={"institution_code": "USP-RP", "responses": payload["responses"]},
+    )
+    assert res_rp.status_code == 200
+    assert res_rp.get_json()["institution_code"] == "USP-RP"
+
+
+def test_estimate_theta_eap_ignores_discursive_and_annulled_items():
+    """Garante que questões anuladas ou discursivas sem nota objetiva não causam divisão por zero nem distorcem theta."""
+    item_params = {
+        1: {"a": 1.2, "b": 0.0, "c": 0.2},
+        2: {"a": 1.2, "b": 0.5, "c": 0.2},
+    }
+    only_discursive = [
+        {"question_id": 1, "is_discursive": True, "is_correct": None},
+        {"question_id": 2, "is_annulled": True, "is_correct": False},
+    ]
+    theta, se, coherence = estimate_theta_eap(item_params, only_discursive)
+    assert theta == 0.0
+    assert se == 1.0
+    assert coherence == 100.0
+

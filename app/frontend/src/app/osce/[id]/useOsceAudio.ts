@@ -94,6 +94,12 @@ export function useOsceAudio({
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const safetyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bellAudioCtxRef = useRef<AudioContext | null>(null);
+  const permStatusRef = useRef<PermissionStatus | null>(null);
+  const phaseRef = useRef(phase);
+  const handsFreeModeRef = useRef(handsFreeMode);
   const isAudioSpeakingRef = useRef<boolean>(false);
   const startListeningRef = useRef<(userTriggered?: boolean) => Promise<void>>(async () => {});
   const onDispatchSpeechRef = useRef(onDispatchSpeech);
@@ -103,10 +109,43 @@ export function useOsceAudio({
   }, [onDispatchSpeech]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || isOperaBrowser()) return;
+    handsFreeModeRef.current = handsFreeMode;
+  }, [handsFreeMode]);
 
-    if (navigator.permissions && navigator.permissions.query) {
+  useEffect(() => {
+    phaseRef.current = phase;
+    if (phase !== "exam") {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+        recognitionRef.current = null;
+      }
+      isAudioSpeakingRef.current = false;
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!isOperaBrowser() && navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: "microphone" as PermissionName }).then((status) => {
+        permStatusRef.current = status;
         const applyState = (state: PermissionState) => {
           if (state === "granted") {
             setMicPermission("granted");
@@ -122,11 +161,56 @@ export function useOsceAudio({
         status.onchange = () => applyState(status.state);
       }).catch(() => {});
     }
+
+    return () => {
+      if (permStatusRef.current) {
+        permStatusRef.current.onchange = null;
+        permStatusRef.current = null;
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+        recognitionRef.current = null;
+      }
+      isAudioSpeakingRef.current = false;
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (bellAudioCtxRef.current) {
+        try {
+          if (bellAudioCtxRef.current.state !== "closed") {
+            void bellAudioCtxRef.current.close();
+          }
+        } catch {}
+        bellAudioCtxRef.current = null;
+      }
+    };
   }, []);
 
   const playExamBell = useCallback((type: "warning" | "finish" | "start") => {
     try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!bellAudioCtxRef.current || bellAudioCtxRef.current.state === "closed") {
+        bellAudioCtxRef.current = new AudioCtx();
+      }
+      const audioCtx = bellAudioCtxRef.current;
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -157,7 +241,14 @@ export function useOsceAudio({
   }, []);
 
   const stopRecognition = useCallback(() => {
-    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
@@ -171,7 +262,12 @@ export function useOsceAudio({
   const speakSpokenQueue = useCallback((queue: OsceSpokenQueueItem[]) => {
     if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window) || queue.length === 0) {
       if (handsFreeMode && phase === "exam") {
-        setTimeout(() => startListeningRef.current(false), 300);
+        if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = setTimeout(() => {
+          if (phaseRef.current === "exam" && handsFreeModeRef.current) {
+            void startListeningRef.current(false);
+          }
+        }, 300);
       }
       return;
     }
@@ -185,28 +281,33 @@ export function useOsceAudio({
       }
       setIsListening(false);
 
+      if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
       const safetyTimeout = setTimeout(() => {
         if (isAudioSpeakingRef.current) {
           isAudioSpeakingRef.current = false;
           setActiveSpeaker(null);
-          if (handsFreeMode && phase === "exam") {
-            startListeningRef.current(false);
+          if (handsFreeModeRef.current && phaseRef.current === "exam") {
+            void startListeningRef.current(false);
           }
         }
       }, 9000);
+      safetyTimeoutRef.current = safetyTimeout;
 
       const voices = window.speechSynthesis.getVoices();
       const ptVoices = voices.filter(v => v.lang.startsWith("pt"));
 
       let idx = 0;
       const playNext = () => {
-        if (idx >= queue.length) {
+        if (idx >= queue.length || phaseRef.current !== "exam") {
           clearTimeout(safetyTimeout);
           setActiveSpeaker(null);
           isAudioSpeakingRef.current = false;
-          if (handsFreeMode && phase === "exam") {
-            setTimeout(() => {
-              startListeningRef.current(false);
+          if (handsFreeModeRef.current && phaseRef.current === "exam") {
+            if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+            restartTimeoutRef.current = setTimeout(() => {
+              if (phaseRef.current === "exam" && handsFreeModeRef.current) {
+                void startListeningRef.current(false);
+              }
             }, 300);
           }
           return;
@@ -250,7 +351,9 @@ export function useOsceAudio({
     } catch {
       setActiveSpeaker(null);
       isAudioSpeakingRef.current = false;
-      if (handsFreeMode && phase === "exam") startListeningRef.current(false);
+      if (handsFreeModeRef.current && phaseRef.current === "exam") {
+        void startListeningRef.current(false);
+      }
     }
   }, [voiceEnabled, handsFreeMode, phase, patientGender]);
 

@@ -416,9 +416,11 @@ def save_simulado_session():
 def simulado_tri_evaluation():
     db = get_db()
     data = request.get_json(force=True) or {}
-    attempts = data.get("attempts", [])
-    institution = data.get("institution", "ENARE")
-    return jsonify(evaluate_tri_performance(db, attempts, institution_code=institution))
+    attempts = data.get("responses") if "responses" in data else data.get("attempts", [])
+    if not isinstance(attempts, list):
+        attempts = []
+    institution = data.get("institution_code") or data.get("institution") or "ENARE"
+    return jsonify(evaluate_tri_performance(db, attempts, institution_code=str(institution)))
 
 
 @bp.route("/search")

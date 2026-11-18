@@ -28,7 +28,7 @@ interface MultiparameterMonitorProps {
   onExecuteCardioversion?: (sync: boolean, joules: number) => void;
 }
 
-export function MultiparameterMonitor({
+export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
   vitals,
   isMonitored,
   displayedNibp,
@@ -45,6 +45,7 @@ export function MultiparameterMonitor({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastBeepTimeRef = useRef<number>(0);
+  const pulseGlowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pulseGlow, setPulseGlow] = useState(false);
   const [showDefibModal, setShowDefibModal] = useState(false);
   const [defibSync, setDefibSync] = useState(true);
@@ -53,7 +54,7 @@ export function MultiparameterMonitor({
   // Inicializa Web Audio API de forma segura
   const getAudioContext = useCallback((): AudioContext | null => {
     if (typeof window === "undefined") return null;
-    if (!audioCtxRef.current) {
+    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         audioCtxRef.current = new AudioCtx();
@@ -92,6 +93,41 @@ export function MultiparameterMonitor({
       // AudioContext bloqueado pelo navegador até o primeiro clique
     }
   }, [isAudioMuted, getAudioContext]);
+
+  const vitalsRef = useRef(vitals);
+  const isMonitoredRef = useRef(isMonitored);
+  const playQrsBeepRef = useRef(playQrsBeep);
+
+  useEffect(() => {
+    vitalsRef.current = vitals;
+  }, [vitals]);
+
+  useEffect(() => {
+    isMonitoredRef.current = isMonitored;
+  }, [isMonitored]);
+
+  useEffect(() => {
+    playQrsBeepRef.current = playQrsBeep;
+  }, [playQrsBeep]);
+
+  useEffect(() => {
+    return () => {
+      if (pulseGlowTimeoutRef.current) {
+        clearTimeout(pulseGlowTimeoutRef.current);
+        pulseGlowTimeoutRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        try {
+          if (audioCtxRef.current.state !== "closed") {
+            void audioCtxRef.current.close();
+          }
+        } catch {
+          // Ignora erro ao fechar AudioContext
+        }
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
 
   // Sintetizador de Alarme IEC (Sequência de 5 bips para alarme vermelho)
   const playAlarmTone = useCallback(() => {
@@ -132,7 +168,7 @@ export function MultiparameterMonitor({
     return () => clearInterval(interval);
   }, [activeAlarms, isAlarmSilenced, isAudioMuted, playAlarmTone]);
 
-  // Loop de Renderização das Ondas no Canvas a 60 FPS
+  // Loop de Renderização das Ondas no Canvas a 60 FPS (desacoplado de re-renders de 1Hz via refs)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -150,6 +186,8 @@ export function MultiparameterMonitor({
     const render = () => {
       const width = canvas.width;
       const height = canvas.height;
+      const currVitals = vitalsRef.current;
+      const currMonitored = isMonitoredRef.current;
 
       // Zonas verticais do canvas: Canal 1 (ECG: 0 a 55%), Canal 2 (Pleth: 55 a 85%), Canal 3 (EtCO2: 85 a 100%)
       const ecgMidY = height * 0.28;
@@ -176,12 +214,12 @@ export function MultiparameterMonitor({
       // =========================================================================
       // CANAL 1: ONDA DE ECG DII (Verde #22c55e)
       // =========================================================================
-      if (isMonitored.ecg) {
+      if (currMonitored.ecg) {
         ctx.strokeStyle = "#22c55e";
         ctx.lineWidth = 2.2;
         ctx.lineJoin = "round";
 
-        const hr = Math.max(20, Math.min(260, vitals.hr));
+        const hr = Math.max(20, Math.min(260, currVitals.hr));
         const beatsPerSec = hr / 60;
         const cycleLength = (60 / beatsPerSec) * (60 / speed); // duração do ciclo em pixels
 
@@ -189,7 +227,7 @@ export function MultiparameterMonitor({
         const normalizedCycle = ecgPhase / cycleLength; // 0.0 a 1.0
 
         let ecgOffset = 0;
-        const rhythm = vitals.rhythm;
+        const rhythm = currVitals.rhythm;
 
         if (rhythm === "VENTRICULAR_FIBRILLATION") {
           // Caos fibrilatório irregular
@@ -198,7 +236,7 @@ export function MultiparameterMonitor({
           // Ondas sinusóides largas sem P
           const tvPhase = (sweepX * 0.15) % (Math.PI * 2);
           ecgOffset = Math.sin(tvPhase) * 1.1 + Math.sin(tvPhase * 2) * 0.25;
-        } else if (rhythm === "ASYSTOLE" || vitals.hr <= 20) {
+        } else if (rhythm === "ASYSTOLE" || currVitals.hr <= 20) {
           // Linha isoelétrica com mínimo ruído
           ecgOffset = (Math.random() - 0.5) * 0.04;
         } else {
@@ -219,9 +257,12 @@ export function MultiparameterMonitor({
             const now = Date.now();
             if (now - lastBeepTimeRef.current > (50 / hr) * 1000) {
               lastBeepTimeRef.current = now;
-              playQrsBeep(vitals.spo2);
+              playQrsBeepRef.current(currVitals.spo2);
               setPulseGlow(true);
-              setTimeout(() => setPulseGlow(false), 90);
+              if (pulseGlowTimeoutRef.current) {
+                clearTimeout(pulseGlowTimeoutRef.current);
+              }
+              pulseGlowTimeoutRef.current = setTimeout(() => setPulseGlow(false), 90);
             }
           } else if (normalizedCycle >= 0.25 && normalizedCycle < 0.28) {
             // Onda S (descida)
@@ -256,11 +297,11 @@ export function MultiparameterMonitor({
       // =========================================================================
       // CANAL 2: ONDA DE OXIMETRIA / PLETH (Ciano #06b6d4)
       // =========================================================================
-      if (isMonitored.spo2) {
+      if (currMonitored.spo2) {
         ctx.strokeStyle = "#06b6d4";
         ctx.lineWidth = 2.0;
 
-        const hr = Math.max(30, Math.min(220, vitals.hr));
+        const hr = Math.max(30, Math.min(220, currVitals.hr));
         const beatsPerSec = hr / 60;
         const cycleLength = (60 / beatsPerSec) * (60 / speed);
 
@@ -283,7 +324,7 @@ export function MultiparameterMonitor({
         }
 
         // Modula pela perfusão periférica
-        const perfusionScale = Math.min(1.0, Math.max(0.2, (vitals.sbp - 40) / 80));
+        const perfusionScale = Math.min(1.0, Math.max(0.2, (currVitals.sbp - 40) / 80));
         const yPleth = plethMidY - plethOffset * plethAmp * perfusionScale;
 
         ctx.beginPath();
@@ -306,7 +347,7 @@ export function MultiparameterMonitor({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [vitals, isMonitored, playQrsBeep]);
+  }, []);
 
   // Label do Ritmo Eletrocardiográfico
   const rhythmLabel = {
@@ -655,4 +696,4 @@ export function MultiparameterMonitor({
       )}
     </div>
   );
-}
+});

@@ -104,9 +104,40 @@ INSTITUTION_TRI_SCALES = {
             "Medicina de Família": 63.5,
         },
     },
+    "USP-RP": {
+        "label": "USP - Ribeirão Preto",
+        "mean": 63.0,
+        "std": 11.6,
+        "max_score": 100.0,
+        "cutoffs": {
+            "Clínica Médica": 77.5,
+            "Cirurgia Geral": 79.5,
+            "Pediatria": 72.0,
+            "Ginecologia e Obstetrícia": 73.5,
+            "Anestesiologia": 81.5,
+            "Dermatologia": 86.5,
+            "Ortopedia": 75.0,
+            "Medicina de Família": 64.5,
+        },
+    },
+}
+
+INSTITUTION_TRI_ALIASES = {
+    "USP": "USP-SP",
+    "FMRP": "USP-RP",
+    "SUS": "SUS-SP",
+    "EPM": "UNIFESP",
 }
 
 DEFAULT_SCALE = INSTITUTION_TRI_SCALES["ENARE"]
+
+
+def _resolve_tri_institution(institution_code: Optional[str]) -> Tuple[str, Dict[str, Any]]:
+    raw = (institution_code or "ENARE").strip().upper()
+    canon = INSTITUTION_TRI_ALIASES.get(raw, raw)
+    if canon in INSTITUTION_TRI_SCALES:
+        return canon, INSTITUTION_TRI_SCALES[canon]
+    return raw or "ENARE", DEFAULT_SCALE
 
 
 def calibrate_item_parameters(db, question_ids: List[int]) -> Dict[int, Dict[str, float]]:
@@ -203,6 +234,12 @@ def estimate_theta_eap(
     valid_items = []
 
     for resp in responses:
+        if not isinstance(resp, dict):
+            continue
+        if resp.get("is_discursive") and resp.get("is_correct") is None:
+            continue
+        if resp.get("is_annulled"):
+            continue
         qid = resp.get("question_id") or resp.get("id")
         is_corr = bool(resp.get("is_correct"))
         params = item_params.get(qid, {"a": 1.2, "b": 0.0, "c": 0.2})
@@ -215,6 +252,9 @@ def estimate_theta_eap(
                 log_lik[j] += math.log(p)
             else:
                 log_lik[j] += math.log(1.0 - p)
+
+    if not valid_items:
+        return 0.0, 1.0, 100.0
 
     # Subtrair o máximo para evitar overflow na exponenciação
     max_log = max(log_lik)
@@ -262,36 +302,41 @@ def evaluate_tri_performance(
     institution_code: Optional[str] = "ENARE",
 ) -> Dict[str, Any]:
     """Avaliação psicométrica completa da prova ou histórico com projeção de corte por especialidades."""
-    if not responses:
+    target_code, scale_config = _resolve_tri_institution(institution_code)
+
+    scorable_responses = [
+        r for r in (responses or [])
+        if isinstance(r, dict)
+        and not r.get("is_annulled")
+        and not (r.get("is_discursive") and r.get("is_correct") is None)
+    ]
+
+    if not scorable_responses:
         return {
             "theta": 0.0,
             "standard_error": 1.0,
             "pedagogical_coherence_pct": 100.0,
             "coherence_label": "Sem dados",
-            "institution_code": institution_code or "ENARE",
-            "institution_label": INSTITUTION_TRI_SCALES.get(institution_code or "ENARE", DEFAULT_SCALE)["label"],
+            "institution_code": target_code,
+            "institution_label": scale_config["label"],
             "projected_score": 0.0,
             "raw_score_pct": 0.0,
             "national_percentile": 50.0,
             "specialty_cutoffs": [],
         }
 
-    q_ids = [r.get("question_id") or r.get("id") for r in responses if r.get("question_id") or r.get("id")]
+    q_ids = [r.get("question_id") or r.get("id") for r in scorable_responses if r.get("question_id") or r.get("id")]
     item_params = calibrate_item_parameters(db, q_ids)
 
-    theta, se, coherence = estimate_theta_eap(item_params, responses)
-
-    # Identificar escala da instituição
-    target_code = (institution_code or "ENARE").strip().upper()
-    scale_config = INSTITUTION_TRI_SCALES.get(target_code, DEFAULT_SCALE)
+    theta, se, coherence = estimate_theta_eap(item_params, scorable_responses)
 
     # Projeção de nota TRI na escala da banca (0 a 100)
     raw_projected = scale_config["mean"] + scale_config["std"] * theta
     projected_score = round(max(0.0, min(scale_config["max_score"], raw_projected)), 1)
 
     # Percentual de acertos brutos
-    correct_count = sum(1 for r in responses if r.get("is_correct"))
-    raw_score_pct = round((correct_count / len(responses)) * 100.0, 1)
+    correct_count = sum(1 for r in scorable_responses if r.get("is_correct"))
+    raw_score_pct = round((correct_count / len(scorable_responses)) * 100.0, 1)
 
     # Percentil nacional: Phi(theta) * 100
     national_percentile = round(_normal_cdf(theta) * 100.0, 1)

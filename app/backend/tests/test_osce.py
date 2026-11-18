@@ -1231,4 +1231,39 @@ class TestOsceStage4EvaluationAndMirror:
             assert report["status"] == "completed"
             assert "preceptor_feedback" in report
             assert "checklist_evaluation" in report
+            assert "evaluated_items" in report
+            assert "evaluated_items" in report["preceptor_feedback"]
+            assert "competency_radar_5d" in report["preceptor_feedback"]
+            assert "chief_preceptor_review" in report["preceptor_feedback"]
+
+    def test_finish_osce_session_idempotent_double_submit(self, app):
+        """Garante que chamadas repetidas a finish_osce_session (ex.: auto-expire + clique manual) são idempotentes."""
+        with app.app_context():
+            db = get_db()
+            osce.seed_osce_stations(db)
+            st = db.execute("SELECT id FROM osce_stations LIMIT 1").fetchone()
+            session_id = osce.start_osce_session(db, st["id"], "user_stage4_idem")["session_id"]
+
+            res1 = osce.finish_osce_session(
+                db, session_id, "user_stage4_idem",
+                conduct_notes="Solicito ECG 12 derivações, AAS 300mg e Ticagrelor 180mg."
+            )
+            res2 = osce.finish_osce_session(
+                db, session_id, "user_stage4_idem",
+                conduct_notes="Solicito ECG 12 derivações, AAS 300mg e Ticagrelor 180mg."
+            )
+            res3 = osce.finish_osce_session(
+                db, session_id, "user_stage4_idem",
+                conduct_notes=""
+            )
+
+            assert res1["final_score"] == res2["final_score"] == res3["final_score"]
+            row = db.execute("SELECT transcript_json FROM osce_sessions WHERE id = ?", (session_id,)).fetchone()
+            transcript = json.loads(row["transcript_json"] or "[]")
+            conduct_entries = [
+                m for m in transcript
+                if m.get("sender") == "candidato" and str(m.get("message", "")).startswith("Conduta e Prescrição Verbalizada:")
+            ]
+            assert len(conduct_entries) == 1
+
 

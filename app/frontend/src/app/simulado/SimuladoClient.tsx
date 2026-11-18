@@ -313,6 +313,9 @@ export function SimuladoClient({
       if (saved.state === "PLAYING" && remainingSeconds === 0) {
         hasAutoSubmittedRef.current = true;
         setShowAreaSummary(true);
+        setTimeout(() => {
+          submitSimuladoRef.current();
+        }, 0);
       } else {
         hasAutoSubmittedRef.current = false;
       }
@@ -974,17 +977,18 @@ export function SimuladoClient({
   useEffect(() => {
     if (state !== "RESULTS" || !sessionId || queue.length === 0 || summarySavedRef.current.has(sessionId)) return;
     summarySavedRef.current.add(sessionId);
-    const correctCount = Object.values(resultsMap).filter(result => result.is_correct).length;
+    const correctCount = queue.filter(q => Boolean(resultsMap[q.id]?.is_correct)).length;
+    const answeredCount = queue.filter(q => Boolean(answers[q.id])).length;
     const elapsedSeconds = Math.max(0, plannedDurationSeconds - remainingAtSubmitRef.current);
     void api.questions.saveSimuladoSession({
       client_session_id: sessionId,
       planned_duration_seconds: plannedDurationSeconds || 1,
       elapsed_seconds: elapsedSeconds,
       total_questions: queue.length,
-      answered_count: Object.keys(answers).length,
+      answered_count: answeredCount,
       correct_count: correctCount,
       filters: hasCustomFilters ? initialFilters : activeConfigRef.current,
-      area_results: areaSummary.map(row => ({ ...row, correct: queue.filter(question => question.area === row.area && resultsMap[question.id]?.is_correct).length })),
+      area_results: areaSummary,
     }).catch(error => {
       if (error instanceof OfflineQueuedError) return;
       summarySavedRef.current.delete(sessionId);

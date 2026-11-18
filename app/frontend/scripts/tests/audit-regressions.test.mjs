@@ -362,3 +362,36 @@ test('api.questions.getBatch and getSimuladoUSP respect Modo Plantão Forçado (
   assert.equal(networkCalls, 0);
 });
 
+test('MultiparameterMonitor keeps 60fps canvas RAF loop decoupled from 1Hz vitals updates and cleans up AudioContext on unmount', () => {
+  const monitorSource = readFileSync(
+    new URL('../../src/app/osce/[id]/MultiparameterMonitor.tsx', import.meta.url),
+    'utf8'
+  );
+  assert.match(monitorSource, /vitalsRef\.current\s*=\s*vitals/);
+  assert.match(monitorSource, /isMonitoredRef\.current\s*=\s*isMonitored/);
+  assert.match(monitorSource, /audioCtxRef\.current\.close\(\)/);
+  assert.match(monitorSource, /React\.memo\(function MultiparameterMonitor/);
+});
+
+test('useOsceAudio reuses bellAudioCtxRef and cleans up speech synthesis, recognition, and timers when leaving exam phase', () => {
+  const audioHookSource = readFileSync(
+    new URL('../../src/app/osce/[id]/useOsceAudio.ts', import.meta.url),
+    'utf8'
+  );
+  assert.match(audioHookSource, /bellAudioCtxRef/);
+  assert.match(audioHookSource, /permStatusRef\.current\.onchange\s*=\s*null/);
+  assert.match(audioHookSource, /window\.speechSynthesis\.cancel\(\)/);
+});
+
+test('SimuladoNavGrid hoists SimuladoNavCell outside AutoSizer renderProp and guards division by zero on empty queue', () => {
+  const navGridSource = readFileSync(
+    new URL('../../src/app/simulado/components/SimuladoNavGrid.tsx', import.meta.url),
+    'utf8'
+  );
+  const autoSizerIdx = navGridSource.indexOf('<AutoSizer');
+  const cellDefIdx = navGridSource.indexOf('const SimuladoNavCell =');
+  assert.ok(cellDefIdx > 0 && cellDefIdx < autoSizerIdx, 'SimuladoNavCell must be defined at module level before AutoSizer');
+  assert.match(navGridSource, /queue\.length\s*>\s*0\s*\?\s*Math\.round\(\(correctCount\s*\/\s*queue\.length\)\s*\*\s*100\)\s*:\s*0/);
+});
+
+

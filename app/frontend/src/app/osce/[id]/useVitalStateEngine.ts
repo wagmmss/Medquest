@@ -133,6 +133,20 @@ export function useVitalStateEngine({
   const [isAlarmSilenced, setIsAlarmSilenced] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const nibpTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      if (nibpTimerRef.current) {
+        clearTimeout(nibpTimerRef.current);
+        nibpTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Histórico para pós-morte
   const [vitalsHistory, setVitalsHistory] = useState<
@@ -156,7 +170,10 @@ export function useVitalStateEngine({
     if (isMeasuringNibp) return;
     setIsMeasuringNibp(true);
 
-    setTimeout(() => {
+    if (nibpTimerRef.current) {
+      clearTimeout(nibpTimerRef.current);
+    }
+    nibpTimerRef.current = setTimeout(() => {
       const elapsedNow = getElapsedSecondsRef.current();
       setVitals((curr) => {
         const pam = Math.round((curr.sbp + 2 * curr.dbp) / 3);

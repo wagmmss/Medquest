@@ -21,11 +21,22 @@ import { QuestionListItem, BatchAttemptResultItem, TriEvaluationResponse, Specia
 
 const AVAILABLE_INSTITUTIONS = [
   { code: "ENARE", label: "ENARE (Exame Nacional de Residência)" },
-  { code: "USP", label: "USP-SP (Faculdade de Medicina da USP)" },
+  { code: "USP-SP", label: "USP-SP (Faculdade de Medicina da USP)" },
+  { code: "USP-RP", label: "USP-RP (FMRP Ribeirão Preto)" },
   { code: "SUS-SP", label: "SUS-SP (Secretaria de Saúde de SP)" },
   { code: "UNIFESP", label: "UNIFESP (Escola Paulista de Medicina)" },
   { code: "UNICAMP", label: "UNICAMP (Campinas)" },
 ];
+
+function normalizeInstitutionCode(code?: string): string {
+  const upper = (code || "ENARE").trim().toUpperCase();
+  if (upper === "USP" || upper === "FMUSP") return "USP-SP";
+  if (upper === "FMRP") return "USP-RP";
+  if (upper === "SUS") return "SUS-SP";
+  if (upper === "EPM") return "UNIFESP";
+  if (AVAILABLE_INSTITUTIONS.some((inst) => inst.code === upper)) return upper;
+  return "ENARE";
+}
 
 export interface SimuladoTriScorecardProps {
   queue: QuestionListItem[];
@@ -38,27 +49,31 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
   resultsMap,
   initialInstitution = "ENARE",
 }) => {
-  const [selectedInst, setSelectedInst] = useState<string>(initialInstitution);
+  const [selectedInst, setSelectedInst] = useState<string>(() =>
+    normalizeInstitutionCode(initialInstitution)
+  );
   const [triData, setTriData] = useState<TriEvaluationResponse | null>(null);
   const [showMethodology, setShowMethodology] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Prepara respostas do simulado de forma memorizada
+  // Prepara respostas do simulado de forma memorizada (excluindo questões discursivas não avaliadas objetivamente)
   const responses = useMemo(() => {
-    return queue.map((q) => {
-      const res = resultsMap[q.id];
-      return {
-        question_id: q.id,
-        is_correct: Boolean(res?.is_correct),
-      };
-    });
+    return queue
+      .filter((q) => !resultsMap[q.id]?.is_discursive)
+      .map((q) => {
+        const res = resultsMap[q.id];
+        return {
+          question_id: q.id,
+          is_correct: Boolean(res?.is_correct),
+        };
+      });
   }, [queue, resultsMap]);
 
   const hasResponses = responses.length > 0;
   const [loading, setLoading] = useState<boolean>(hasResponses);
 
   const handleInstitutionChange = (newInst: string) => {
-    setSelectedInst(newInst);
+    setSelectedInst(normalizeInstitutionCode(newInst));
     setLoading(true);
     setFetchError(null);
   };
@@ -101,14 +116,14 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
     switch (status) {
       case "HIGH_PROBABILITY":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-success/10 text-success border border-success/30">
             <CheckCircle2 size={13} className="shrink-0" />
             Alta Probabilidade
           </span>
         );
       case "COMPETITIVE":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-warning/10 text-warning border border-warning/30">
             <AlertCircle size={13} className="shrink-0" />
             Zona de Corte
           </span>
@@ -116,7 +131,7 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
       case "NEEDS_IMPROVEMENT":
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/30">
             <Minus size={13} className="shrink-0" />
             Abaixo do Corte
           </span>
@@ -125,14 +140,15 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
   };
 
   const getDiffBadge = (diff: number) => {
-    if (diff > 0) {
+    const safeDiff = Number.isFinite(diff) ? diff : 0;
+    if (safeDiff > 0) {
       return (
-        <span className="inline-flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono-lab tabular-nums">
-          <ArrowUpRight size={14} />+{diff.toFixed(1)} pts
+        <span className="inline-flex items-center text-xs font-bold text-success font-mono-lab tabular-nums">
+          <ArrowUpRight size={14} />+{safeDiff.toFixed(1)} pts
         </span>
       );
     }
-    if (diff === 0) {
+    if (safeDiff === 0) {
       return (
         <span className="inline-flex items-center text-xs font-bold text-muted-foreground">
           No corte exato
@@ -140,11 +156,24 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
       );
     }
     return (
-      <span className="inline-flex items-center text-xs font-bold text-rose-600 dark:text-rose-400 font-mono-lab tabular-nums">
-        <ArrowDownRight size={14} />{diff.toFixed(1)} pts
+      <span className="inline-flex items-center text-xs font-bold text-destructive font-mono-lab tabular-nums">
+        <ArrowDownRight size={14} />{safeDiff.toFixed(1)} pts
       </span>
     );
   };
+
+  const safeProjectedScore = Number.isFinite(Number(triData?.projected_score))
+    ? Number(triData?.projected_score)
+    : 0;
+  const safePercentile = Number.isFinite(Number(triData?.national_percentile))
+    ? Number(triData?.national_percentile)
+    : 0;
+  const safeCoherence = Number.isFinite(Number(triData?.pedagogical_coherence_pct))
+    ? Number(triData?.pedagogical_coherence_pct)
+    : 0;
+  const safeRawScorePct = Number.isFinite(Number(triData?.raw_score_pct))
+    ? Number(triData?.raw_score_pct)
+    : 0;
 
   return (
     <div className="w-full max-w-3xl bg-surface border border-line-subtle rounded-lg p-5 sm:p-6 mb-6 text-left">
@@ -208,12 +237,12 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
               </div>
               <div className="my-2 font-mono-lab tabular-nums">
                 <span className="text-2xl font-bold text-foreground">
-                  {triData.projected_score.toFixed(1)}
+                  {safeProjectedScore.toFixed(1)}
                 </span>
                 <span className="text-xs text-muted-foreground ml-1.5 font-semibold">/ 100</span>
               </div>
               <div className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
-                Acerto bruto: <strong className="text-foreground">{triData.raw_score_pct}%</strong> ({queue.filter(q => resultsMap[q.id]?.is_correct).length}/{queue.length})
+                Acerto bruto: <strong className="text-foreground">{safeRawScorePct}%</strong> ({queue.filter(q => resultsMap[q.id]?.is_correct).length}/{queue.length})
               </div>
             </div>
 
@@ -221,17 +250,17 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
             <div className="bg-canvas border border-line-subtle rounded-md p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Percentil Nacional</span>
-                <Compass size={15} className="text-emerald-500" />
+                <Compass size={15} className="text-success" />
               </div>
               <div className="my-2 font-mono-lab tabular-nums">
-                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {triData.national_percentile >= 50
-                    ? `Top ${(100 - triData.national_percentile).toFixed(1)}%`
-                    : `${triData.national_percentile.toFixed(1)}º Perc.`}
+                <span className="text-2xl font-bold text-success">
+                  {safePercentile >= 50
+                    ? `Top ${(100 - safePercentile).toFixed(1)}%`
+                    : `${safePercentile.toFixed(1)}º Perc.`}
                 </span>
               </div>
               <div className="text-[11px] text-muted-foreground font-mono-lab tabular-nums">
-                Acima de <strong className="text-foreground">{triData.national_percentile}%</strong> dos concorrentes.
+                Acima de <strong className="text-foreground">{safePercentile}%</strong> dos concorrentes.
               </div>
             </div>
 
@@ -239,12 +268,12 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
             <div className="bg-canvas border border-line-subtle rounded-md p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Coerência Pedagógica</span>
-                <ShieldCheck size={15} className="text-blue-500" />
+                <ShieldCheck size={15} className="text-primary" />
               </div>
               <div className="my-2">
                 <div className="flex items-baseline gap-1 font-mono-lab tabular-nums">
                   <span className="text-2xl font-bold text-foreground">
-                    {triData.pedagogical_coherence_pct.toFixed(0)}%
+                    {safeCoherence.toFixed(0)}%
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground">índice</span>
                 </div>
@@ -253,19 +282,19 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
                 <div
                   className={clsx(
                     "h-full rounded-full transition-all duration-500",
-                    triData.pedagogical_coherence_pct >= 85
-                      ? "bg-emerald-500"
-                      : triData.pedagogical_coherence_pct >= 70
-                      ? "bg-amber-500"
-                      : "bg-rose-500"
+                    safeCoherence >= 85
+                      ? "bg-success"
+                      : safeCoherence >= 70
+                      ? "bg-warning"
+                      : "bg-destructive"
                   )}
-                  style={{ width: `${triData.pedagogical_coherence_pct}%` }}
+                  style={{ width: `${Math.max(0, Math.min(100, safeCoherence))}%` }}
                 />
               </div>
               <div className="text-[10px] text-muted-foreground truncate" title={triData.coherence_label}>
-                {triData.pedagogical_coherence_pct >= 85
+                {safeCoherence >= 85
                   ? "Consistência sólida"
-                  : triData.pedagogical_coherence_pct >= 70
+                  : safeCoherence >= 70
                   ? "Distribuição balanceada"
                   : "Oscilações por chute"}
               </div>
@@ -293,33 +322,38 @@ export const SimuladoTriScorecard: React.FC<SimuladoTriScorecardProps> = ({
             </div>
 
             <div className="border border-border rounded-xl overflow-hidden divide-y divide-border">
-              {triData.specialty_cutoffs.map((spec) => (
-                <div
-                  key={spec.specialty}
-                  className="p-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-sm text-foreground">
-                      {spec.specialty}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4 sm:gap-6 self-end sm:self-auto">
-                    <div className="text-right">
-                      <div className="text-xs font-semibold text-foreground">
-                        Nota de Corte: {spec.cutoff_score.toFixed(1)}
-                      </div>
-                      <div className="text-[11px]">
-                        {getDiffBadge(spec.difference)}
-                      </div>
+              {(triData.specialty_cutoffs || []).map((spec) => {
+                const safeSpecCutoff = Number.isFinite(Number(spec.cutoff_score))
+                  ? Number(spec.cutoff_score)
+                  : 0;
+                return (
+                  <div
+                    key={spec.specialty}
+                    className="p-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-sm text-foreground">
+                        {spec.specialty}
+                      </span>
                     </div>
 
-                    <div className="min-w-[150px] text-right">
-                      {getStatusBadge(spec.status)}
+                    <div className="flex items-center gap-4 sm:gap-6 self-end sm:self-auto">
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-foreground font-mono-lab tabular-nums">
+                          Nota de Corte: {safeSpecCutoff.toFixed(1)}
+                        </div>
+                        <div className="text-[11px]">
+                          {getDiffBadge(spec.difference)}
+                        </div>
+                      </div>
+
+                      <div className="min-w-[150px] text-right">
+                        {getStatusBadge(spec.status)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

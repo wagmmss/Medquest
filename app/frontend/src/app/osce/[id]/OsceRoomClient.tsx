@@ -38,6 +38,10 @@ const StationResultMirror = dynamic(
   () => import("./StationResultMirror").then((m) => m.StationResultMirror),
   { ssr: false }
 );
+const OscePostMortemAndRadar = dynamic(
+  () => import("./OscePostMortemAndRadar").then((m) => m.OscePostMortemAndRadar),
+  { ssr: false }
+);
 const MultiparameterMonitor = dynamic(
   () => import("./MultiparameterMonitor").then((m) => m.MultiparameterMonitor),
   { ssr: false }
@@ -136,6 +140,8 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   };
 
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const startingRef = useRef(false);
+  const finishingRef = useRef(false);
   const handleDispatchSpeechRef = useRef<(spokenText: string) => Promise<void>>(async () => {});
   const dispatchSpeechViaRef = useCallback(
     (spokenText: string) => handleDispatchSpeechRef.current(spokenText),
@@ -249,6 +255,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
   // Iniciar sessão
   const handleStartExam = async () => {
+    if (startingRef.current || isLoading) return;
+    startingRef.current = true;
+    finishingRef.current = false;
     setIsLoading(true);
     try {
       const res = await api.osce.startSession(station.id, circuitId, selectedMode);
@@ -280,14 +289,17 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       }
     } catch (err) {
       console.error("Falha ao iniciar estação:", err);
+      toast.error("Não foi possível iniciar a estação OSCE. Tente novamente.");
     } finally {
+      startingRef.current = false;
       setIsLoading(false);
     }
   };
 
   // Finalizar sessão
   const handleFinishExam = useCallback(async () => {
-    if (!sessionId || isLoading) return;
+    if (!sessionId || finishingRef.current) return;
+    finishingRef.current = true;
     setFinalElapsedSeconds(getElapsedSeconds());
     stopRecognition();
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -301,11 +313,13 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       setReport(res);
       setPhase("finished");
     } catch (err) {
+      finishingRef.current = false;
       console.error("Erro ao finalizar sessão:", err);
+      toast.error("Não foi possível finalizar a avaliação da estação. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, conductText, isLoading, getElapsedSeconds, playExamBell, stopRecognition]);
+  }, [sessionId, conductText, getElapsedSeconds, playExamBell, stopRecognition]);
 
   const timerMilestones = useMemo(
     () => ({
@@ -1224,6 +1238,14 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             onRetryStation={() => window.location.reload()}
             onGoBack={() => router.push("/osce")}
           />
+
+          {/* Linha do Tempo Beira-Leito (Post-Mortem) & Radar 6D */}
+          <div className="max-w-5xl mx-auto w-full px-4 md:px-6">
+            <OscePostMortemAndRadar
+              timeline={report.timeline_post_mortem}
+              radar={report.competency_radar}
+            />
+          </div>
 
           {/* Navegação Final & Ações */}
           <div className="flex items-center justify-between pt-4 border-t border-border print:hidden">
