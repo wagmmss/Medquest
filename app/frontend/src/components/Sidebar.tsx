@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useAppUser } from "@/lib/auth-client";
 import { AccountModal } from "./AccountModal";
@@ -35,6 +35,7 @@ function getSidebarCollapsedSnapshot(): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isLoaded } = useAppUser();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOfflineOpen, setIsOfflineOpen] = useState(false);
@@ -112,6 +113,8 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onMouseEnter={() => router.prefetch(item.href)}
+                onFocus={() => router.prefetch(item.href)}
                 title={isCollapsed ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
