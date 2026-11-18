@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchRouteIntent } from "@/lib/queries/prefetchRouteData";
 import clsx from "clsx";
 import {
   Menu as MenuIcon,
@@ -25,6 +27,8 @@ import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isOfflineOpen, setIsOfflineOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -80,6 +84,8 @@ export function BottomNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onTouchStart={() => prefetchRouteIntent(item.href, router, queryClient)}
+                  onFocus={() => prefetchRouteIntent(item.href, router, queryClient)}
                   onClick={() => setIsMoreOpen(false)}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2.5 min-h-[40px] rounded-sm text-xs font-medium transition-colors",
@@ -141,6 +147,8 @@ export function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                onTouchStart={() => prefetchRouteIntent(item.href, router, queryClient)}
+                onFocus={() => prefetchRouteIntent(item.href, router, queryClient)}
                 className={clsx(
                   "flex flex-col items-center justify-center flex-1 h-full py-1 gap-0.5 text-[10px] font-medium transition-colors relative",
                   isActive

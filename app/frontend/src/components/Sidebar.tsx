@@ -3,6 +3,8 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchRouteIntent } from "@/lib/queries/prefetchRouteData";
 import clsx from "clsx";
 import { useAppUser } from "@/lib/auth-client";
 import { AccountModal } from "./AccountModal";
@@ -36,6 +38,7 @@ function getSidebarCollapsedSnapshot(): boolean {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, isLoaded } = useAppUser();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOfflineOpen, setIsOfflineOpen] = useState(false);
@@ -113,8 +116,8 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                onMouseEnter={() => router.prefetch(item.href)}
-                onFocus={() => router.prefetch(item.href)}
+                onMouseEnter={() => prefetchRouteIntent(item.href, router, queryClient)}
+                onFocus={() => prefetchRouteIntent(item.href, router, queryClient)}
                 title={isCollapsed ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
