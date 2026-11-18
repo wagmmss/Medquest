@@ -35,3 +35,22 @@ test("parseNaturalSessionPrompt returns isValid=false on empty prompt", () => {
   assert.equal(res.isValid, false);
   assert.equal(res.chips.length, 0);
 });
+
+test("parseNaturalSessionPrompt matches partial clinical topics against catalog subtemas and SCMSP", () => {
+  const catalog = [
+    "Pneumonia Adquirida na Comunidade (PAC)",
+    "Asma Brônquica",
+    "Abdome Agudo Inflamatório",
+  ];
+  const res = parseNaturalSessionPrompt("pneumonia na Santa Casa", catalog);
+  assert.equal(res.isValid, true);
+  assert.equal(res.filters.institution, "SCMSP");
+  assert.equal(res.filters.subtema, "Pneumonia Adquirida na Comunidade (PAC)");
+});
+
+test("parseNaturalSessionPrompt maps discursivas to backend question_type discursiva", () => {
+  const res = parseNaturalSessionPrompt("discursivas de pediatria");
+  assert.equal(res.isValid, true);
+  assert.equal(res.filters.area, "Pediatria");
+  assert.equal(res.filters.question_type, "discursiva");
+});

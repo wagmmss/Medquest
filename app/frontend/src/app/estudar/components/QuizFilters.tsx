@@ -165,7 +165,6 @@ export const QuizFilters = React.memo(function QuizFilters({
   const [presetName, setPresetName] = useState("");
   const [naturalPrompt, setNaturalPrompt] = useState("");
   const deferredSubtemaSearch = useDeferredValue(subtemaSearch);
-  const deferredNaturalPrompt = useDeferredValue(naturalPrompt);
 
   const { data: overviewData } = useQuery({
     queryKey: ["estudar-overview-counts"],
@@ -339,8 +338,8 @@ export const QuizFilters = React.memo(function QuizFilters({
   );
 
   const parsedNaturalSession = useMemo(
-    () => parseNaturalSessionPrompt(deferredNaturalPrompt, availableSubtemaNames),
-    [deferredNaturalPrompt, availableSubtemaNames]
+    () => parseNaturalSessionPrompt(naturalPrompt, availableSubtemaNames),
+    [naturalPrompt, availableSubtemaNames]
   );
 
   const handleApplyNaturalSession = useCallback(
@@ -455,6 +454,10 @@ export const QuizFilters = React.memo(function QuizFilters({
                   {chip.label}
                 </span>
               ))}
+            </div>
+          ) : naturalPrompt.trim().length >= 2 ? (
+            <div className="text-[11px] text-ink-muted">
+              Nenhum filtro reconhecido ainda — inclua tema (ex.: pneumonia, trauma, apendicite), área (GO, clínica, pediatria) ou banca (USP-SP, UNICAMP, ENARE).
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">

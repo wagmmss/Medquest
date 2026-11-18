@@ -35,9 +35,17 @@ const INSTITUTION_ALIASES: Array<{ code: string; label: string; patterns: RegExp
   { code: "EINSTEIN", label: "Einstein", patterns: [/\beinstein\b/i, /\bhiae\b/i] },
   { code: "HSL", label: "Sírio-Libanês", patterns: [/\bs[ií]rio\b/i, /\bhsl\b/i] },
   { code: "IAMSPE", label: "IAMSPE", patterns: [/\biamspe\b/i, /\bservidor\s+estadual\b/i] },
-  { code: "SCM-SP", label: "Santa Casa SP", patterns: [/\bsanta\s+casa\b/i, /\bscm[\s-]*sp\b/i] },
+  { code: "SCMSP", label: "Santa Casa SP", patterns: [/\bsanta\s+casa\b/i, /\bscm[\s-]*sp\b/i, /\bscmsp\b/i] },
   { code: "FAMEMA", label: "FAMEMA", patterns: [/\bfamema\b/i] },
   { code: "FAMERP", label: "FAMERP", patterns: [/\bfamerp\b/i] },
+  { code: "SES-PE", label: "SES-PE", patterns: [/\bses[\s-]*pe\b/i] },
+  { code: "AMRIGS", label: "AMRIGS", patterns: [/\bamrigs\b/i] },
+  { code: "INEP", label: "INEP / Revalida", patterns: [/\binep\b/i, /\brevalida\b/i] },
+  { code: "FMABC", label: "FMABC", patterns: [/\bfmabc\b/i, /\babc\b/i] },
+  { code: "UFCSPA", label: "UFCSPA", patterns: [/\bufcspa\b/i] },
+  { code: "PUC", label: "PUC", patterns: [/\bpuc\b/i] },
+  { code: "FMJ", label: "FMJ", patterns: [/\bfmj\b/i] },
+  { code: "AMP", label: "AMP", patterns: [/\bamp\b/i] },
 ];
 
 const AREA_ALIASES: Array<{ area: string; patterns: RegExp[] }> = [
@@ -228,6 +236,43 @@ export function parseNaturalSessionPrompt(
     }
   }
 
+  // Fallback por tokens clínicos contra o catálogo real de subtemas (ex.: "pneumonia", "apendicite", "hipertensao")
+  if (matchedSubtemas.length === 0 && availableSubtemas.length > 0) {
+    const STOPWORDS = new Set([
+      "questoes", "questao", "itens", "casos", "bloco", "sobre", "para", "com", "sem",
+      "errei", "erradas", "errado", "erros", "pendentes", "resolvidas", "revisao", "revisoes",
+      "vencidas", "vencida", "favoritas", "favoritos", "salvas", "ineditas", "novas", "nunca",
+      "todas", "qualquer", "status", "adaptativo", "adaptativa", "inteligente",
+      "discursivas", "discursiva", "abertas", "aberta", "imagens", "imagem", "laudos",
+      "clinica", "medica", "cirurgia", "geral", "ginecologia", "obstetricia", "pediatria",
+      "preventiva", "saude", "coletiva", "epidemiologia",
+    ]);
+    const instStop = new Set(matchedInstitutions.map((c) => normalize(c)));
+    const tokens = norm
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 4 && !/^\d+$/.test(t) && !STOPWORDS.has(t) && !instStop.has(t));
+
+    if (tokens.length > 0) {
+      const scored = availableSubtemas
+        .map((item) => {
+          const sNorm = normalize(item.subtema);
+          const hits = tokens.filter((t) => sNorm.includes(t)).length;
+          return { subtema: item.subtema, hits };
+        })
+        .filter((x) => x.hits > 0)
+        .sort((a, b) => b.hits - a.hits);
+
+      const bestHits = scored[0]?.hits ?? 0;
+      if (bestHits > 0) {
+        for (const cand of scored.filter((x) => x.hits === bestHits).slice(0, 3)) {
+          if (!matchedSubtemas.includes(cand.subtema)) {
+            matchedSubtemas.push(cand.subtema);
+          }
+        }
+      }
+    }
+  }
+
   if (matchedAreas.length > 0) {
     nextFilters.area = matchedAreas.length === 1 ? matchedAreas[0] : matchedAreas;
     for (const a of matchedAreas) {
@@ -273,7 +318,7 @@ export function parseNaturalSessionPrompt(
   }
 
   if (/\b(discursivas?|abertas?)\b/i.test(norm)) {
-    nextFilters.question_type = "discursive";
+    nextFilters.question_type = "discursiva";
     chips.push({
       key: "extra:discursive",
       label: "Discursivas",
