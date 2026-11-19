@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
-from api.gemini_pool import gemini_pool, generate_content_with_fallback
+from api.gemini_pool import generate_content_with_fallback
 from .adaptive_tools import format_student_diagnostic_block, get_student_weak_topics
 from .knowledge import (
     format_grounding_block,
@@ -473,7 +473,7 @@ ALTERNATIVAS:
             if p.strip()
         ]
         min_chars = 15 if mode == "dica" else 50
-        req_timeout = 8 if mode == "dica" else 12
+        req_timeout = 14 if mode == "dica" else 18
         resp = generate_content_with_fallback(
             prompt=prompt,
             system_instruction=(
@@ -531,11 +531,11 @@ ALTERNATIVAS:
         )
     elif mode == "caso":
         fallback_response = (
-            f"📋 **Desafio Clínico Correlato**:\n"
-            f"Considere o mesmo cenário deste paciente, mas agora apresentando piora hemodinâmica súbita refratária à conduta inicial.\n"
-            f"Qual seria o próximo passo imediato no manejo?\n"
-            f"A) Manter observação clínica\nB) Repetir a droga de primeira linha e suporte avançado\nC) Aguardar exames laboratoriais\nD) Alta precoce\n\n"
-            f"Qual a sua resposta? Digite a letra para discutir!"
+            "📋 **Desafio Clínico Correlato**:\n"
+            "Considere o mesmo cenário deste paciente, mas agora apresentando piora hemodinâmica súbita refratária à conduta inicial.\n"
+            "Qual seria o próximo passo imediato no manejo?\n"
+            "A) Manter observação clínica\nB) Repetir a droga de primeira linha e suporte avançado\nC) Aguardar exames laboratoriais\nD) Alta precoce\n\n"
+            "Qual a sua resposta? Digite a letra para discutir!"
         )
     elif mode == "foco":
         fallback_response = (
@@ -633,7 +633,7 @@ DIRETRIZES OBRIGATÓRIAS DO PARECER DE DASHBOARD:
         resp = generate_content_with_fallback(
             prompt=prompt,
             system_instruction=system_instruction,
-            timeout=12
+            timeout=18
         )
         text = resp.get("text", "").strip()
         if text:
