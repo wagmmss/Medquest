@@ -439,10 +439,17 @@ def _create_planner_tables(db):
         user_id TEXT PRIMARY KEY, exam_date TEXT, start_date TEXT,
         days_per_week INTEGER DEFAULT 6, questions_per_day INTEGER DEFAULT 30, hours_per_day INTEGER DEFAULT 4, target_score REAL,
         target_institution TEXT, target_specialty TEXT,
+        organization_mode TEXT DEFAULT 'geral', internato_blocks TEXT,
         updated_at TEXT)''')
     db.execute('''CREATE TABLE IF NOT EXISTS planner_schedule (
         user_id TEXT NOT NULL,
-        mode TEXT NOT NULL DEFAULT 'standard' CHECK (mode IN ('standard', 'intensive')),
+        mode TEXT NOT NULL DEFAULT 'geral_standard' CHECK (
+            mode IN (
+                'standard', 'intensive',
+                'geral_standard', 'geral_intensive',
+                'internato_standard', 'internato_intensive'
+            )
+        ),
         week INTEGER NOT NULL,
         subtema TEXT NOT NULL,
         display_order INTEGER NOT NULL,
@@ -539,6 +546,10 @@ def _migrate_legacy_columns(db):
         db.execute("ALTER TABLE planner_config ADD COLUMN target_specialty TEXT")
     if "hours_per_day" not in existing_pc_cols:
         db.execute("ALTER TABLE planner_config ADD COLUMN hours_per_day INTEGER DEFAULT 4")
+    if "organization_mode" not in existing_pc_cols:
+        db.execute("ALTER TABLE planner_config ADD COLUMN organization_mode TEXT DEFAULT 'geral'")
+    if "internato_blocks" not in existing_pc_cols:
+        db.execute("ALTER TABLE planner_config ADD COLUMN internato_blocks TEXT")
 
     existing_cols = _table_cols(db, "idempotency_keys")
     if "status" not in existing_cols:

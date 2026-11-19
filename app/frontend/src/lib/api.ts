@@ -1,6 +1,7 @@
 import {
   ThemeProgress, OverviewStats, CoverageResponse, TimelineStat, WeakTopic, Recommendation,
   BreakdownStat, DistractorStat, PlannerConfig, PlannerProgressMap, PlannerTopicProgressMap, PlannerPlanResponse,
+  PlannerOrganizationMode, PlannerScheduleMode, PlannerMoveTopicPayload, InternatoBlock,
   QuestionMeta, SubtemaItem, QuestionListItem, QuestionDetail, AttemptResult, SearchResult, SearchFilterOptions,
   BatchAttemptItem, BatchAttemptResult, BatchDetailResponse,
   AtRiskTopic, LearningProfile, ExamReadiness,
@@ -308,12 +309,26 @@ export const api = {
         });
       }
     },
-    resetConfig: () => apiFetch<{success: boolean}>("/api/planner/config/reset", {
-      method: "POST",
-    }),
+    resetConfig: (payload?: { scope?: "schedule" | "progress" | "all"; mode?: PlannerScheduleMode }) =>
+      apiFetch<{success: boolean; scope?: string}>("/api/planner/config/reset", {
+        method: "POST",
+        body: payload ? JSON.stringify(payload) : undefined,
+      }),
+    saveInternatoBlocks: (blocks: InternatoBlock[]) =>
+      apiFetch<{success: boolean; internato_blocks: InternatoBlock[]}>("/api/planner/internato-blocks", {
+        method: "PUT",
+        body: JSON.stringify({ blocks }),
+      }),
     getProgress: () => apiFetch<PlannerProgressMap>("/api/planner", { cache: 'no-store' }),
     getTopicProgress: () => apiFetch<PlannerTopicProgressMap>("/api/planner/topics", { cache: 'no-store' }),
-    generatePlan: (data: { start_date?: string; exam_date: string; hours_per_week: number; intensive?: boolean }) =>
+    generatePlan: (data: {
+      start_date?: string;
+      exam_date: string;
+      hours_per_week: number;
+      intensive?: boolean;
+      organization?: PlannerOrganizationMode;
+      regenerate?: boolean;
+    }) =>
       apiFetch<PlannerPlanResponse>("/api/generate_plan", {
         method: "POST",
         body: JSON.stringify(data),
@@ -328,7 +343,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ subtema, completed }),
       }),
-    moveTopic: (data: { subtema: string; source_week: number; target_week: number; target_index?: number; mode?: "standard" | "intensive" }) =>
+    moveTopic: (data: PlannerMoveTopicPayload) =>
       apiFetch<{
         success: boolean;
         subtema: string;

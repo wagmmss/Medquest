@@ -779,6 +779,80 @@ def test_build_learning_profile_stale_fallback_em_desconexao():
     assert profile["topics"][0]["topic"] == "Cardiologia"
 
 
+def test_organization_modes_geral_vs_internato_and_completed_preservation(client):
+    start_date = "2027-01-26"
+    exam_date = "2027-06-26"
+
+    # Configura planner
+    r = client.post("/api/planner/config", json={
+        "start_date": start_date,
+        "exam_date": exam_date,
+        "days_per_week": 5,
+        "hours_per_day": 4,
+        "organization_mode": "internato",
+    })
+    assert r.status_code == 200
+
+    # Bloco customizado colocando Pediatria nas primeiras 4 semanas
+    r = client.put("/api/planner/internato-blocks", json={
+        "blocks": [
+            {"start": "2027-01-26", "end": "2027-02-23", "area": "Pediatria"},
+        ]
+    })
+    assert r.status_code == 200
+
+    # Gera plano no modo internato
+    r_int = client.post("/api/generate_plan", json={
+        "start_date": start_date,
+        "exam_date": exam_date,
+        "hours_per_week": 20,
+        "intensive": False,
+        "organization": "internato",
+    })
+    assert r_int.status_code == 200
+    plan_int = r_int.get_json()["plan"]
+    week1_areas = [t["area"] for t in plan_int[0]["topics"]]
+    assert week1_areas and week1_areas[0] == "Pediatria"
+    assert sum(1 for a in week1_areas if a == "Pediatria") >= 2
+
+    # Marca a primeira aula de Pediatria como concluída
+    done_subtema = plan_int[0]["topics"][0]["subtema"]
+    r_mark = client.post("/api/planner/1/topic", json={"subtema": done_subtema, "completed": True})
+    assert r_mark.status_code == 200
+
+    # Troca para modo geral -> aula concluída continua marcada e não consome horas pendentes
+    r_ger = client.post("/api/generate_plan", json={
+        "start_date": start_date,
+        "exam_date": exam_date,
+        "hours_per_week": 20,
+        "intensive": False,
+        "organization": "geral",
+        "regenerate": True,
+    })
+    assert r_ger.status_code == 200
+    plan_ger = r_ger.get_json()["plan"]
+    all_ger_topics = [t for w in plan_ger for t in w["topics"]]
+    matched = [t for t in all_ger_topics if t["subtema"] == done_subtema]
+    assert len(matched) == 1
+    assert matched[0]["completed"] is True
+
+    # Verifica que /api/planner/topics continua com o tema marcado
+    r_topics = client.get("/api/planner/topics")
+    assert r_topics.status_code == 200
+    assert r_topics.get_json().get(done_subtema) is True
+
+    # Reset apenas do schedule preserva aulas feitas
+    r_reset_sched = client.post("/api/planner/config/reset", json={"scope": "schedule"})
+    assert r_reset_sched.status_code == 200
+    assert client.get("/api/planner/topics").get_json().get(done_subtema) is True
+
+    # Reset de progresso apaga aulas feitas, mas preserva config
+    r_reset_prog = client.post("/api/planner/config/reset", json={"scope": "progress"})
+    assert r_reset_prog.status_code == 200
+    assert client.get("/api/planner/topics").get_json().get(done_subtema) is None
+    assert client.get("/api/planner/config").get_json().get("exam_date") == exam_date
+
+
 
 
 

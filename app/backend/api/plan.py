@@ -1,9 +1,11 @@
+import json
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, Response, g, jsonify, request
 
 from .adaptive import get_adaptive_signals_by_topic
+from .internato_config import RODIZIOS_TURMA_J
 # planner service — geração do plano anual por pesos históricos USP
 from .services.planner import generate_annual_plan, build_plan_from_schedule
 
@@ -12,8 +14,10 @@ from .observability import record_domain_event
 from .questions import invalidate_user_caches
 from .schemas import (
     GeneratePlanIn,
+    InternatoBlocksUpdateIn,
     PlannerConfigIn,
     PlannerMoveTopicIn,
+    PlannerResetIn,
     PlannerRevisionIn,
     PlannerStudyIn,
     PlannerTopicProgressIn,
@@ -24,16 +28,94 @@ from .schemas import (
 bp = Blueprint("plan", __name__)
 
 
+def _resolve_schedule_mode(organization: str, intensive: bool) -> str:
+    org = "internato" if organization == "internato" else "geral"
+    return f"{org}_{'intensive' if intensive else 'standard'}"
+
+
+def _parse_mode_parts(mode: str) -> tuple[str, bool]:
+    if mode in ("internato_standard", "internato_intensive"):
+        return "internato", mode.endswith("_intensive")
+    return "geral", mode.endswith("intensive")
+
+
+def _get_completed_subtemas(db, user_id: str) -> set[str]:
+    rows = db.execute(
+        "SELECT DISTINCT subtema FROM planner_topic_progress WHERE user_id = ? AND completed = 1",
+        (user_id,),
+    ).fetchall()
+    return {r["subtema"] for r in rows}
+
+
+def _get_user_internato_blocks(db, user_id: str) -> list[dict]:
+    row = db.execute("SELECT internato_blocks FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
+    if row and row["internato_blocks"]:
+        try:
+            parsed = json.loads(row["internato_blocks"])
+            if isinstance(parsed, list) and parsed:
+                return parsed
+        except (ValueError, TypeError):
+            pass
+    return [dict(b) for b in RODIZIOS_TURMA_J]
+
+
 @bp.route("/planner/config/reset", methods=["POST"])
 def planner_config_reset():
+    raw_body = request.get_json(silent=True) or {}
+    try:
+        data = PlannerResetIn.model_validate(raw_body)
+    except ValidationError as e:
+        return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
+
     db = get_db()
     with db_transaction(db, immediate=True):
-        db.execute("DELETE FROM planner_config WHERE user_id = ?", (g.user_id,))
-        db.execute("DELETE FROM planner_progress WHERE user_id = ?", (g.user_id,))
-        db.execute("DELETE FROM planner_topic_progress WHERE user_id = ?", (g.user_id,))
-        db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
+        if data.scope == "schedule":
+            if data.mode:
+                db.execute("DELETE FROM planner_schedule WHERE user_id = ? AND mode = ?", (g.user_id, data.mode))
+            else:
+                db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
+        elif data.scope == "progress":
+            db.execute("DELETE FROM planner_progress WHERE user_id = ?", (g.user_id,))
+            db.execute("DELETE FROM planner_topic_progress WHERE user_id = ?", (g.user_id,))
+            db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
+        else:
+            db.execute("DELETE FROM planner_config WHERE user_id = ?", (g.user_id,))
+            db.execute("DELETE FROM planner_progress WHERE user_id = ?", (g.user_id,))
+            db.execute("DELETE FROM planner_topic_progress WHERE user_id = ?", (g.user_id,))
+            db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
     invalidate_user_caches(g.user_id)
-    return jsonify({"success": True})
+    return jsonify({"success": True, "scope": data.scope})
+
+
+@bp.route("/planner/internato-blocks", methods=["PUT", "POST"])
+def planner_internato_blocks():
+    try:
+        data = InternatoBlocksUpdateIn.model_validate(request.get_json(force=True) or {})
+    except ValidationError as e:
+        return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
+
+    blocks_payload = [b.model_dump() for b in data.blocks]
+    blocks_json = json.dumps(blocks_payload, ensure_ascii=False)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    db = get_db()
+    with db_transaction(db, immediate=True):
+        existing = db.execute("SELECT user_id FROM planner_config WHERE user_id = ?", (g.user_id,)).fetchone()
+        if existing:
+            db.execute(
+                "UPDATE planner_config SET internato_blocks = ?, updated_at = ? WHERE user_id = ?",
+                (blocks_json, now_iso, g.user_id),
+            )
+        else:
+            db.execute(
+                "INSERT INTO planner_config (user_id, internato_blocks, updated_at) VALUES (?, ?, ?)",
+                (g.user_id, blocks_json, now_iso),
+            )
+        db.execute(
+            "DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'",
+            (g.user_id,),
+        )
+    invalidate_user_caches(g.user_id)
+    return jsonify({"success": True, "internato_blocks": blocks_payload})
 
 
 @bp.route("/planner/config", methods=["GET", "POST"])
@@ -49,50 +131,50 @@ def planner_config():
         if not target_inst and cfg.target_institutions:
             target_inst = ", ".join(cfg.target_institutions)
 
+        existing_row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (g.user_id,)).fetchone()
+        existing_keys = existing_row.keys() if existing_row and hasattr(existing_row, "keys") else []
+        org_mode = cfg.organization_mode or (
+            existing_row["organization_mode"] if existing_row and "organization_mode" in existing_keys and existing_row["organization_mode"] else "geral"
+        )
+        blocks_json = (
+            json.dumps([b.model_dump() for b in cfg.internato_blocks], ensure_ascii=False)
+            if cfg.internato_blocks is not None
+            else (existing_row["internato_blocks"] if existing_row and "internato_blocks" in existing_keys else None)
+        )
+
+        # Só limpa planner_schedule se parâmetros estruturais de tempo/data ou blocos mudarem
+        timing_changed = (
+            not existing_row
+            or existing_row["exam_date"] != cfg.exam_date
+            or existing_row["start_date"] != cfg.start_date
+            or existing_row["days_per_week"] != cfg.days_per_week
+            or (existing_row["hours_per_day"] if "hours_per_day" in existing_keys else None) != cfg.hours_per_day
+        )
+
         with db_transaction(db, immediate=True):
-            db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
-            try:
-                db.execute("""
-                    INSERT INTO planner_config (user_id, exam_date, start_date, days_per_week, questions_per_day, hours_per_day, updated_at, target_score, target_institution, target_specialty)
-                    VALUES (?, ?, ?, ?, 30, ?, ?, ?, ?, ?)
-                    ON CONFLICT(user_id) DO UPDATE SET
-                        exam_date = excluded.exam_date, start_date = excluded.start_date,
-                        days_per_week = excluded.days_per_week, hours_per_day = excluded.hours_per_day,
-                        updated_at = excluded.updated_at, target_score = excluded.target_score,
-                        target_institution = excluded.target_institution, target_specialty = excluded.target_specialty
-                """, (g.user_id, cfg.exam_date, cfg.start_date, cfg.days_per_week, cfg.hours_per_day,
-                      datetime.now(timezone.utc).isoformat(), cfg.target_score, target_inst, cfg.target_specialty))
-            except Exception as e:
-                err_msg = str(e).lower()
-                if any(k in err_msg for k in ("target_score", "target_institution", "target_specialty", "hours_per_day", "has no column", "no such column")):
-                    try:
-                        db.execute("ALTER TABLE planner_config ADD COLUMN target_score REAL")
-                    except Exception:
-                        pass
-                    try:
-                        db.execute("ALTER TABLE planner_config ADD COLUMN target_institution TEXT")
-                    except Exception:
-                        pass
-                    try:
-                        db.execute("ALTER TABLE planner_config ADD COLUMN target_specialty TEXT")
-                    except Exception:
-                        pass
-                    try:
-                        db.execute("ALTER TABLE planner_config ADD COLUMN hours_per_day INTEGER DEFAULT 4")
-                    except Exception:
-                        pass
-                    db.execute("""
-                        INSERT INTO planner_config (user_id, exam_date, start_date, days_per_week, questions_per_day, hours_per_day, updated_at, target_score, target_institution, target_specialty)
-                        VALUES (?, ?, ?, ?, 30, ?, ?, ?, ?, ?)
-                        ON CONFLICT(user_id) DO UPDATE SET
-                            exam_date = excluded.exam_date, start_date = excluded.start_date,
-                            days_per_week = excluded.days_per_week, hours_per_day = excluded.hours_per_day,
-                            updated_at = excluded.updated_at, target_score = excluded.target_score,
-                            target_institution = excluded.target_institution, target_specialty = excluded.target_specialty
-                    """, (g.user_id, cfg.exam_date, cfg.start_date, cfg.days_per_week, cfg.hours_per_day,
-                          datetime.now(timezone.utc).isoformat(), cfg.target_score, target_inst, cfg.target_specialty))
-                else:
-                    raise e
+            if timing_changed:
+                db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
+            elif cfg.internato_blocks is not None:
+                db.execute("DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'", (g.user_id,))
+
+            db.execute("""
+                INSERT INTO planner_config (
+                    user_id, exam_date, start_date, days_per_week, questions_per_day,
+                    hours_per_day, updated_at, target_score, target_institution,
+                    target_specialty, organization_mode, internato_blocks
+                )
+                VALUES (?, ?, ?, ?, 30, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    exam_date = excluded.exam_date, start_date = excluded.start_date,
+                    days_per_week = excluded.days_per_week, hours_per_day = excluded.hours_per_day,
+                    updated_at = excluded.updated_at, target_score = excluded.target_score,
+                    target_institution = excluded.target_institution, target_specialty = excluded.target_specialty,
+                    organization_mode = excluded.organization_mode, internato_blocks = excluded.internato_blocks
+            """, (
+                g.user_id, cfg.exam_date, cfg.start_date, cfg.days_per_week, cfg.hours_per_day,
+                datetime.now(timezone.utc).isoformat(), cfg.target_score, target_inst,
+                cfg.target_specialty, org_mode, blocks_json,
+            ))
         invalidate_user_caches(g.user_id)
         return jsonify({"success": True})
 
@@ -110,6 +192,16 @@ def get_planner_config_data(db, user_id: str) -> dict | None:
     if inst_list and inst_list[0] not in ("Todas as Bancas", "TODAS"):
         primary_inst = inst_list[0]
 
+    org_mode = row["organization_mode"] if "organization_mode" in row_keys and row["organization_mode"] else "geral"
+    internato_blocks = [dict(b) for b in RODIZIOS_TURMA_J]
+    if "internato_blocks" in row_keys and row["internato_blocks"]:
+        try:
+            parsed = json.loads(row["internato_blocks"])
+            if isinstance(parsed, list) and parsed:
+                internato_blocks = parsed
+        except (ValueError, TypeError):
+            pass
+
     return {
         "exam_date": row["exam_date"],
         "start_date": row["start_date"],
@@ -120,6 +212,8 @@ def get_planner_config_data(db, user_id: str) -> dict | None:
         "target_institutions": inst_list,
         "primary_institution": primary_inst,
         "target_specialty": row["target_specialty"] if "target_specialty" in row_keys else None,
+        "organization_mode": org_mode,
+        "internato_blocks": internato_blocks,
     }
 
 
@@ -164,10 +258,17 @@ def planner_topic(week):
     completed_at = datetime.now(timezone.utc).isoformat() if completed else None
     db = get_db()
     with db_transaction(db, immediate=True):
-        db.execute("""INSERT INTO planner_topic_progress (week, subtema, completed, completed_at, user_id)
-                      VALUES (?, ?, ?, ?, ?)
-                      ON CONFLICT(week, subtema, user_id) DO UPDATE SET completed = excluded.completed, completed_at = excluded.completed_at""",
-                   (week, data.subtema, completed, completed_at, g.user_id))
+        if completed:
+            db.execute("""INSERT INTO planner_topic_progress (week, subtema, completed, completed_at, user_id)
+                          VALUES (?, ?, ?, ?, ?)
+                          ON CONFLICT(week, subtema, user_id) DO UPDATE SET completed = excluded.completed, completed_at = excluded.completed_at""",
+                       (week, data.subtema, completed, completed_at, g.user_id))
+        else:
+            # Desmarcar apaga/desmarca em todas as semanas para manter consistência global entre modos
+            db.execute(
+                "DELETE FROM planner_topic_progress WHERE user_id = ? AND subtema = ?",
+                (g.user_id, data.subtema),
+            )
     invalidate_user_caches(g.user_id)
     if completed:
         record_domain_event("planner_topic_completed", user_id=g.user_id, week=week, subtema=data.subtema)
@@ -194,10 +295,16 @@ def planner_move_topic():
         start_date, exam_date, days, hours_per_week = _get_planner_config(db, g.user_id)
         rows, answered_map = _fetch_plan_data(db, g.user_id)
         adaptive_signals = get_adaptive_signals_by_topic(db, g.user_id)
+        completed_subtemas = _get_completed_subtemas(db, g.user_id)
+        internato_blocks = _get_user_internato_blocks(db, g.user_id)
+        org_mode, is_intensive = _parse_mode_parts(data.mode)
         plan = generate_annual_plan(
             rows, start_date, exam_date, hours_per_week,
-            intensive=(data.mode == "intensive"), user_progress=answered_map,
-            adaptive_signals=adaptive_signals
+            intensive=is_intensive, user_progress=answered_map,
+            adaptive_signals=adaptive_signals,
+            organization=org_mode,
+            internato_blocks=internato_blocks,
+            completed_subtemas=completed_subtemas,
         )
         if isinstance(plan, dict) and plan.get("plan"):
             insert_records = []
@@ -351,11 +458,13 @@ def generate_plan():
     except ValidationError as e:
         return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
     start_date = data.start_date or datetime.now(timezone.utc).isoformat()
-    mode = "intensive" if data.intensive else "standard"
-    
+    mode = _resolve_schedule_mode(data.organization, data.intensive)
+
     db = get_db()
     rows, answered_map = _fetch_plan_data(db, g.user_id)
     adaptive_signals = get_adaptive_signals_by_topic(db, g.user_id)
+    completed_subtemas = _get_completed_subtemas(db, g.user_id)
+    internato_blocks = _get_user_internato_blocks(db, g.user_id)
 
     if not data.regenerate:
         schedule_rows = db.execute(
@@ -367,15 +476,19 @@ def generate_plan():
                 schedule_rows, start_date, data.hours_per_week,
                 exam_date_str=data.exam_date,
                 rows=rows, user_progress=answered_map,
-                adaptive_signals=adaptive_signals, intensive=data.intensive
+                adaptive_signals=adaptive_signals, intensive=data.intensive,
+                completed_subtemas=completed_subtemas,
             )
             if plan:
                 return jsonify(plan)
-    
+
     plan = generate_annual_plan(
-        rows, start_date, data.exam_date, data.hours_per_week, 
+        rows, start_date, data.exam_date, data.hours_per_week,
         intensive=data.intensive, user_progress=answered_map,
-        adaptive_signals=adaptive_signals
+        adaptive_signals=adaptive_signals,
+        organization=data.organization,
+        internato_blocks=internato_blocks,
+        completed_subtemas=completed_subtemas,
     )
 
     if isinstance(plan, dict) and plan.get("plan"):
@@ -465,23 +578,32 @@ def _generate_calendar_ics_content(db, user_id):
     start_date, exam_date, days, hours_per_week = _get_planner_config(db, user_id)
     rows, answered_map = _fetch_plan_data(db, user_id)
     adaptive_signals = get_adaptive_signals_by_topic(db, user_id)
+    completed_subtemas = _get_completed_subtemas(db, user_id)
+    internato_blocks = _get_user_internato_blocks(db, user_id)
+    cfg_data = get_planner_config_data(db, user_id) or {}
+    org_mode = cfg_data.get("organization_mode") or "geral"
+    schedule_mode = _resolve_schedule_mode(org_mode, intensive=False)
 
     schedule_rows = db.execute(
-        "SELECT week, subtema, display_order FROM planner_schedule WHERE user_id = ? AND mode = 'standard' ORDER BY week ASC, display_order ASC",
-        (user_id,)
+        "SELECT week, subtema, display_order FROM planner_schedule WHERE user_id = ? AND mode = ? ORDER BY week ASC, display_order ASC",
+        (user_id, schedule_mode)
     ).fetchall()
     if schedule_rows:
         plan_result = build_plan_from_schedule(
             schedule_rows, start_date, hours_per_week,
             exam_date_str=exam_date,
             rows=rows, user_progress=answered_map,
-            adaptive_signals=adaptive_signals, intensive=False
+            adaptive_signals=adaptive_signals, intensive=False,
+            completed_subtemas=completed_subtemas,
         ) or {}
     else:
         plan_result = generate_annual_plan(
-            rows, start_date, exam_date, hours_per_week, 
+            rows, start_date, exam_date, hours_per_week,
             intensive=False, user_progress=answered_map,
-            adaptive_signals=adaptive_signals
+            adaptive_signals=adaptive_signals,
+            organization=org_mode,
+            internato_blocks=internato_blocks,
+            completed_subtemas=completed_subtemas,
         )
 
     plan_weeks = plan_result.get("plan", [])

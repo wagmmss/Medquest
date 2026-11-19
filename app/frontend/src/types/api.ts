@@ -286,6 +286,22 @@ export interface AtRiskTopic {
   retrievability?: number;
 }
 
+export type PlannerOrganizationMode = "geral" | "internato";
+
+export type PlannerScheduleMode =
+  | "standard"
+  | "intensive"
+  | "geral_standard"
+  | "geral_intensive"
+  | "internato_standard"
+  | "internato_intensive";
+
+export interface InternatoBlock {
+  start: string;
+  end: string;
+  area: string;
+}
+
 export interface PlannerConfig {
   exam_date?: string;
   start_date?: string;
@@ -296,6 +312,8 @@ export interface PlannerConfig {
   target_institutions?: string[];
   primary_institution?: string;
   target_specialty?: string;
+  organization_mode?: PlannerOrganizationMode;
+  internato_blocks?: InternatoBlock[];
 }
 
 export interface PlannerTopic {
@@ -312,6 +330,7 @@ export interface PlannerTopic {
   priority_reasons?: string[];
   priority_tier?: string;
   priority_explanation?: string;
+  completed?: boolean;
 }
 
 export interface PlannerWeek {
@@ -350,7 +369,7 @@ export interface PlannerMoveTopicPayload {
   source_week: number;
   target_week: number;
   target_index?: number;
-  mode?: "standard" | "intensive";
+  mode?: PlannerScheduleMode;
 }
 
 export interface QuestionMeta {

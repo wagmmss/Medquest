@@ -4,11 +4,21 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { PlannerWeek, PlannerProgressMap, PlannerTopic, PlannerConfig, PlannerTopicProgressMap } from "@/types/api";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  PlannerWeek,
+  PlannerProgressMap,
+  PlannerTopic,
+  PlannerConfig,
+  PlannerTopicProgressMap,
+  PlannerOrganizationMode,
+  PlannerScheduleMode,
+} from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
-import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb } from "lucide-react";
+import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
+import { InternatoBlocksModal } from "./InternatoBlocksModal";
 
 const PlannerWizard = dynamic(
   () => import("./PlannerWizard").then((m) => m.PlannerWizard),
@@ -180,11 +190,21 @@ interface PlannerClientProps {
   initialTopicProgress: PlannerTopicProgressMap;
   warning?: string;
   isIntensive?: boolean;
+  organizationMode?: PlannerOrganizationMode;
   config?: PlannerConfig | null;
 }
 
-export function PlannerClient({ plan, initialProgress, initialTopicProgress, warning, isIntensive, config }: PlannerClientProps) {
+export function PlannerClient({
+  plan,
+  initialProgress,
+  initialTopicProgress,
+  warning,
+  isIntensive,
+  organizationMode = "geral",
+  config,
+}: PlannerClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [currentPlan, setCurrentPlan] = useState<PlannerWeek[]>(plan);
   const [progress, setProgress] = useState<PlannerProgressMap>(initialProgress);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -192,8 +212,12 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showInternatoModal, setShowInternatoModal] = useState(false);
+  const [switchingOrg, setSwitchingOrg] = useState(false);
   const [exportingIcs, setExportingIcs] = useState(false);
   const [copiedFeed, setCopiedFeed] = useState(false);
+
+  const scheduleMode: PlannerScheduleMode = `${organizationMode === "internato" ? "internato" : "geral"}_${isIntensive ? "intensive" : "standard"}`;
 
   // Estados para Drag & Drop e reordenação entre semanas
   const [draggedTopic, setDraggedTopic] = useState<{ week: number; subtema: string; index: number } | null>(null);
@@ -251,12 +275,13 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
         if (showResetConfirm) setShowResetConfirm(false);
         if (showSettingsModal) setShowSettingsModal(false);
         if (showCalendarModal) setShowCalendarModal(false);
+        if (showInternatoModal) setShowInternatoModal(false);
         if (moveModalTopic) setMoveModalTopic(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showResetConfirm, showSettingsModal, showCalendarModal, moveModalTopic]);
+  }, [showResetConfirm, showSettingsModal, showCalendarModal, showInternatoModal, moveModalTopic]);
 
   useEffect(() => {
     const synced = (event: Event) => {
@@ -347,7 +372,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
         source_week: sourceWeek,
         target_week: targetWeek,
         target_index: targetIndex,
-        mode: isIntensive ? "intensive" : "standard"
+        mode: scheduleMode
       });
       toast.success(`"${subtema}" movido para a Semana ${targetWeek}!`);
     } catch (error) {
@@ -360,7 +385,7 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
     } finally {
       setIsMoving(false);
     }
-  }, [currentPlan, isIntensive]);
+  }, [currentPlan, scheduleMode]);
 
   const handleDragStart = (week: number, subtema: string, index: number, e: React.DragEvent) => {
     e.dataTransfer.setData("application/json", JSON.stringify({ week, subtema, index }));
@@ -431,9 +456,23 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
   const toggleTopic = async (week: number, subtema: string, currentStatus: boolean) => {
     const key = `${week}:${subtema}`;
     const completed = !currentStatus;
-    setTopicProgress(prev => ({ ...prev, [key]: completed, [subtema]: completed }));
+    setTopicProgress(prev => {
+      if (completed) {
+        return { ...prev, [key]: true, [subtema]: true };
+      }
+      const next: PlannerTopicProgressMap = { ...prev };
+      delete next[key];
+      delete next[subtema];
+      for (const k of Object.keys(next)) {
+        if (k.endsWith(`:${subtema}`)) {
+          delete next[k];
+        }
+      }
+      return next;
+    });
     try {
       await api.planner.markTopic(week, subtema, completed);
+      void queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
     } catch (error) {
       if (error instanceof OfflineQueuedError) {
         toast("Alteração salva offline. Sincronizará ao reconectar.", { icon: "📶" });
@@ -444,25 +483,58 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
     }
   };
 
-  const handleResetConfig = async () => {
+  const handleResetScope = async (scope: "schedule" | "progress" | "all") => {
     setShowResetConfirm(false);
     setLoadingAction("reset");
     try {
-      await api.planner.resetConfig();
-      toast.success("Progresso reiniciado com sucesso.");
+      await api.planner.resetConfig({
+        scope,
+        mode: scope === "schedule" ? scheduleMode : undefined,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
+      if (scope === "schedule") {
+        toast.success("Cronograma reorganizado mantendo suas aulas feitas!");
+      } else if (scope === "progress") {
+        toast.success("Aulas concluídas zeradas com sucesso.");
+      } else {
+        toast.success("Planner reiniciado por completo.");
+      }
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro ao reiniciar progresso.";
+      const message = err instanceof Error ? err.message : "Erro ao reiniciar planner.";
       toast.error(message);
+    } finally {
       setLoadingAction(null);
     }
   };
 
+  const buildPlannerUrl = (intensiveVal: boolean, orgVal: PlannerOrganizationMode) => {
+    const params = new URLSearchParams();
+    if (intensiveVal) params.set("intensive", "true");
+    params.set("org", orgVal);
+    return `/planner?${params.toString()}`;
+  };
+
   const handleToggleIntensive = () => {
-    if (isIntensive) {
-      router.push("/planner");
-    } else {
-      router.push("/planner?intensive=true");
+    router.push(buildPlannerUrl(!isIntensive, organizationMode));
+  };
+
+  const handleSwitchOrganization = async (nextOrg: PlannerOrganizationMode) => {
+    if (nextOrg === organizationMode || switchingOrg) return;
+    setSwitchingOrg(true);
+    try {
+      if (config) {
+        await api.planner.saveConfig({
+          ...config,
+          organization_mode: nextOrg,
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
+      router.push(buildPlannerUrl(Boolean(isIntensive), nextOrg));
+    } catch {
+      toast.error("Erro ao trocar modo de organização.");
+    } finally {
+      setSwitchingOrg(false);
     }
   };
 
@@ -595,6 +667,55 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
               />
             </div>
           </div>
+          <div
+            role="group"
+            aria-label="Organização do cronograma"
+            className="inline-flex items-center rounded-lg border border-line-subtle bg-elevated p-0.5 shadow-sm"
+          >
+            <button
+              type="button"
+              disabled={switchingOrg}
+              onClick={() => void handleSwitchOrganization("geral")}
+              aria-pressed={organizationMode === "geral"}
+              className={clsx(
+                "flex items-center gap-1.5 min-h-[34px] text-xs font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+                organizationMode === "geral"
+                  ? "bg-surface text-primary shadow-2xs"
+                  : "text-ink-secondary hover:text-ink-primary"
+              )}
+            >
+              <Layers size={14} />
+              Geral (Misturado)
+            </button>
+            <button
+              type="button"
+              disabled={switchingOrg}
+              onClick={() => void handleSwitchOrganization("internato")}
+              aria-pressed={organizationMode === "internato"}
+              className={clsx(
+                "flex items-center gap-1.5 min-h-[34px] text-xs font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+                organizationMode === "internato"
+                  ? "bg-surface text-primary shadow-2xs"
+                  : "text-ink-secondary hover:text-ink-primary"
+              )}
+            >
+              <CalendarRange size={14} />
+              Por Bloco do Internato
+            </button>
+          </div>
+          {organizationMode === "internato" && (
+            <button
+              type="button"
+              onClick={() => setShowInternatoModal(true)}
+              aria-haspopup="dialog"
+              aria-expanded={showInternatoModal}
+              className="flex items-center gap-1.5 min-h-[38px] text-xs sm:text-sm font-semibold text-ink-primary bg-surface hover:bg-elevated border border-line-subtle px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+              title="Editar datas e áreas dos rodízios do internato"
+            >
+              <CalendarRange size={15} className="text-primary" />
+              Blocos
+            </button>
+          )}
           <button
             type="button"
             onClick={handleToggleIntensive}
@@ -773,13 +894,13 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
 
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowResetConfirm(false)} />
           <div 
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="reset-modal-title"
-            className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
+            className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200 z-10"
           >
             <button 
               type="button"
@@ -789,19 +910,73 @@ export function PlannerClient({ plan, initialProgress, initialTopicProgress, war
             >
               <X size={18} />
             </button>
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-3 bg-destructive/10 rounded-full">
-                <AlertTriangle size={28} className="text-destructive" />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500/10 rounded-full shrink-0">
+                  <RotateCcw size={22} className="text-amber-500" />
+                </div>
+                <div>
+                  <h3 id="reset-modal-title" className="text-lg font-bold text-ink-primary">Refazer ou Resetar Planner</h3>
+                  <p className="text-xs text-ink-secondary">Escolha o que deseja reiniciar:</p>
+                </div>
               </div>
-              <h3 id="reset-modal-title" className="text-lg font-bold text-ink-primary">Resetar Progresso do Planner?</h3>
-              <p className="text-sm text-ink-secondary">Isso apagará TODO o seu progresso no planner. Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3 w-full mt-2">
-                <button type="button" onClick={() => setShowResetConfirm(false)} className="flex-1 py-2.5 px-4 min-h-[38px] rounded-xl border border-line-subtle text-ink-primary hover:bg-elevated transition-colors font-medium text-sm cursor-pointer">Cancelar</button>
-                <button type="button" onClick={handleResetConfig} className="flex-1 py-2.5 px-4 min-h-[38px] rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-bold text-sm cursor-pointer">Sim, Apagar Tudo</button>
+
+              <div className="flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => void handleResetScope("schedule")}
+                  className="w-full text-left p-3.5 rounded-xl border border-line-subtle bg-elevated/60 hover:bg-elevated hover:border-primary/40 transition-colors cursor-pointer"
+                >
+                  <p className="text-sm font-bold text-ink-primary">Reorganizar cronograma atual</p>
+                  <p className="text-xs text-ink-secondary mt-0.5">
+                    Recalcula a distribuição das semanas mantendo todas as aulas já marcadas como feitas.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleResetScope("progress")}
+                  className="w-full text-left p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                >
+                  <p className="text-sm font-bold text-amber-600 dark:text-amber-400">Zerar aulas concluídas</p>
+                  <p className="text-xs text-ink-secondary mt-0.5">
+                    Desmarca todas as aulas feitas e revisões, mantendo suas datas, horas e blocos do internato.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleResetScope("all")}
+                  className="w-full text-left p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors cursor-pointer"
+                >
+                  <p className="text-sm font-bold text-destructive">Reset completo</p>
+                  <p className="text-xs text-ink-secondary mt-0.5">
+                    Apaga configurações, blocos e todo o progresso para recomeçar do zero.
+                  </p>
+                </button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="w-full py-2.5 px-4 min-h-[38px] rounded-xl border border-line-subtle text-ink-primary hover:bg-elevated transition-colors font-medium text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {showInternatoModal && (
+        <InternatoBlocksModal
+          initialBlocks={config?.internato_blocks || []}
+          onClose={() => setShowInternatoModal(false)}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
+            router.refresh();
+          }}
+        />
       )}
 
       {/* Settings / Calibration Modal */}

@@ -75,6 +75,12 @@ class ReviewIn(APIInput):
     assisted: bool | None = None
 
 
+class InternatoBlockIn(APIInput):
+    start: str = Field(min_length=10, max_length=10)
+    end: str = Field(min_length=10, max_length=10)
+    area: str = Field(min_length=1, max_length=100)
+
+
 class PlannerConfigIn(APIInput):
     exam_date: str | None = None
     start_date: str | None = None
@@ -84,6 +90,24 @@ class PlannerConfigIn(APIInput):
     target_institution: str | None = Field(default=None, max_length=500)
     target_institutions: list[str] | None = Field(default=None, max_length=50)
     target_specialty: str | None = Field(default=None, max_length=100)
+    organization_mode: Literal["geral", "internato"] | None = None
+    internato_blocks: list[InternatoBlockIn] | None = None
+
+
+class InternatoBlocksUpdateIn(APIInput):
+    blocks: list[InternatoBlockIn] = Field(default_factory=list, max_length=50)
+
+
+class PlannerResetIn(APIInput):
+    scope: Literal["schedule", "progress", "all"] = "all"
+    mode: Literal[
+        "standard",
+        "intensive",
+        "geral_standard",
+        "geral_intensive",
+        "internato_standard",
+        "internato_intensive",
+    ] | None = None
 
 
 
@@ -101,7 +125,14 @@ class PlannerMoveTopicIn(APIInput):
     source_week: int = Field(ge=1, le=100)
     target_week: int = Field(ge=1, le=100)
     target_index: int | None = Field(default=None, ge=0)
-    mode: Literal["standard", "intensive"] = "standard"
+    mode: Literal[
+        "standard",
+        "intensive",
+        "geral_standard",
+        "geral_intensive",
+        "internato_standard",
+        "internato_intensive",
+    ] = "geral_standard"
 
 
 class PlannerRevisionIn(APIInput):
@@ -114,6 +145,7 @@ class GeneratePlanIn(APIInput):
     start_date: str | None = None
     hours_per_week: int = Field(default=20, ge=1, le=168)
     intensive: bool = False
+    organization: Literal["geral", "internato"] = "geral"
     regenerate: bool = False
 
 

@@ -2,13 +2,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlannerBundle } from "@/lib/queries/plannerBundle";
+import type { PlannerOrganizationMode } from "@/types/api";
 import { PlannerWizard } from "./PlannerWizard";
 import { PlannerClient } from "./PlannerClient";
 
-export function PlannerShell({ isIntensive }: { isIntensive: boolean }) {
+export function PlannerShell({
+  isIntensive,
+  initialOrganization,
+}: {
+  isIntensive: boolean;
+  initialOrganization?: PlannerOrganizationMode;
+}) {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["planner-bundle", isIntensive],
-    queryFn: () => fetchPlannerBundle(isIntensive),
+    queryKey: ["planner-bundle", isIntensive, initialOrganization ?? "default"],
+    queryFn: () => fetchPlannerBundle(isIntensive, initialOrganization),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -88,6 +95,7 @@ export function PlannerShell({ isIntensive }: { isIntensive: boolean }) {
         initialTopicProgress={data?.topicProgressMap ?? {}}
         warning={planResponse.warning}
         isIntensive={isIntensive}
+        organizationMode={data?.organization ?? "geral"}
         config={config}
       />
     </div>
