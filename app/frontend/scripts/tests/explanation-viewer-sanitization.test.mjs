@@ -196,3 +196,40 @@ Critérios esperados pela banca:
   assert.ok(!parsed.padraoResposta.startsWith(':'));
   assert.equal(parsed.distratores, undefined);
 });
+
+test('parseExplanation: normaliza Letra [B], remove prefixos redundantes, cacoetes de cursinho e ** desbalanceado', () => {
+  const { parseExplanation } = loadExplanationViewerModule();
+
+  const messy = `
+**Gabarito**: Letra A
+
+**Pulo do Gato**:
+Visão do aprovado:
+
+Galera, a histerometria mede a cavidade uterina.
+
+**Raciocínio Clínico**:
+Fala, pessoal.
+
+O procedimento exige pinça de Pozzi e histerômetro.
+
+Vamos avaliar as alternativas:
+
+**Por que a Letra A é a Correta?**:
+**Correto.** A imagem da Letra A exibe o histerômetro.
+
+**Análise dos Distratores**:
+- **Letra [B]**: **B- Incorreta.** Pinça hemostática de Kelly.
+- **Letra [C]**: **Alternativa C:** "Tesoura cirúrgica" usada para corte com **colo
+`;
+
+  const { parsed } = parseExplanation(messy);
+
+  assert.equal(parsed.gabarito, 'Letra A');
+  assert.ok(parsed.puloDoGato?.startsWith('A histerometria mede'), `Deveria remover Visão do aprovado/Galera: ${parsed.puloDoGato}`);
+  assert.equal(parsed.raciocinioClinico, 'O procedimento exige pinça de Pozzi e histerômetro.');
+  assert.equal(parsed.alternativaCorreta?.text, 'A imagem da Letra A exibe o histerômetro.');
+  assert.equal(JSON.stringify(parsed.distratores?.map(d => d.letter)), JSON.stringify(['B', 'C']));
+  assert.equal(parsed.distratores?.[0].text, 'Pinça hemostática de Kelly.');
+  assert.equal(parsed.distratores?.[1].text, '"Tesoura cirúrgica" usada para corte com colo');
+});

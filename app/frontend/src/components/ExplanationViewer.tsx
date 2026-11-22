@@ -8,6 +8,8 @@ import {
   XCircle, 
   Award,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
   X
 } from "lucide-react";
 import { FormattedContent, preprocessMarkdown } from "@/components/FormattedContent";
@@ -79,6 +81,61 @@ export function cleanSectionDelimiters(text: string | null | undefined): string 
 }
 
 /**
+ * Remove saudações informais de cursinho e frases de transição órfãs apenas nas bordas da seção,
+ * sem alterar conteúdo clínico nem quebrar assertivas existentes.
+ */
+function stripEditorialNoise(text: string): string {
+  if (!text) return "";
+  let out = text.trim();
+
+  // Saudação em linha isolada no topo (ex: "Fala, pessoal.", "Fala, turma!**", "Visão do aprovado:", "Olá, pessoal!")
+  out = out.replace(
+    /^(?:\*\*|__)?(?:vis[aã]o do aprovado|fala,?\s+(?:pessoal|turma|galera)|ol[aá],?\s+(?:pessoal|turma|colegas|futuros residentes)|salve,?\s*(?:salve)?|e\s+a[ií],?\s+(?:pessoal|turma)|prezados\s+futuros\s+residentes)(?:\*\*|__)?[!:.,]?(?:\*\*|__)?\s*(?:\n+|$)/i,
+    ""
+  ).trim();
+
+  // "Galera, via de regra..." / "Turma, para..." -> "Via de regra..." / "Para..."
+  out = out.replace(/^(?:galera|pessoal|turma)[,!.]\s+([a-zà-ÿ])/i, (_, firstChar: string) => firstChar.toUpperCase());
+
+  // Transição órfã ao final do bloco (ex: "Vamos avaliar as alternativas:", "Vamos, então, às alternativas!")
+  out = out.replace(
+    /(?:\n+|^)\s*(?:\*\*)?(?:vamos(?:\s*,\s*ent[aã]o\s*,?)?\s+(?:avaliar|analisar|olhar|conferir)?\s*[àa]s\s+alternativas|vamos\s+l[aá]\??)(?:\*\*)?[:!.]?\s*$/i,
+    ""
+  ).trim();
+
+  // Fecha ou limpa ** desbalanceado no final de frase truncada (ex: "...com **colo" -> "...com colo")
+  const boldMarkers = out.match(/\*\*/g);
+  if (boldMarkers && boldMarkers.length % 2 === 1) {
+    const lastIdx = out.lastIndexOf("**");
+    if (lastIdx !== -1) {
+      out = out.slice(0, lastIdx) + out.slice(lastIdx + 2);
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Remove prefixos redundantes de letra/status dentro dos cards de Alternativa Correta e Distratores
+ * (onde a UI já exibe o badge da letra e o card colorido), preservando frases completas como
+ * "Incorreta devido à..." ou o texto literal "Incorreta.".
+ */
+function stripRedundantOptionPrefix(text: string): string {
+  let out = text.trim();
+  // Ex: "**Alternativa B:** ..." ou "**Alternativa B**: ..." ou "**A- Incorreta.** ..." ou "**B- Correta.** ..."
+  out = out.replace(
+    /^(?:\*\*|__)?\s*(?:Alternativa\s+[A-E]|[A-E]\s*[-–:])\s*(?:(?:Incorreta|Correta|Correto|Falsa|Verdadeira)\.?)?\s*(?::\s*(?:\*\*|__)?|(?:\*\*|__)\s*:?)\s*/i,
+    ""
+  );
+  // Ex: "**Correto.** A introdução..." ou "Incorreta. Na taquicardia..." (apenas se seguido de nova frase maiúscula/aspas)
+  out = out.replace(
+    /^(?:\*\*|__)?\s*(?:Incorreta|Correta|Correto|Inadequada|Inadequado|Falsa|Verdadeira)\.?\s*(?:\*\*|__)?\s*(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ"“])/u,
+    ""
+  );
+  return out.trim();
+}
+
+/**
  * Parses structured markdown explanations into distinct semantic sections with defensive sanitization
  */
 export function parseExplanation(raw: string | null | undefined, isDiscursive?: boolean): { parsed: ParsedSection; isDiscursiveDetected: boolean } {
@@ -134,19 +191,19 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
       const rawDistratores = cleanSectionDelimiters(clean.slice(distMatch.index + distMatch[0].length));
       const isDummyDist = /^[-•*\s]*Revise os critérios que diferenciam as alternativas\.?$/i.test(rawDistratores);
       if (!isDummyDist) {
-        const distratorLines = rawDistratores.split(/\n(?=(?:[-•*]\s*(?:\*\*)?Letra\s+[A-E]|(?:\*\*)?Letra\s+[A-E]))/i);
+        const distratorLines = rawDistratores.split(/\n(?=(?:[-•*]\s*(?:\*\*)?Letra\s+\[?[A-E]\]?|(?:\*\*)?Letra\s+\[?[A-E]\]?))/i);
 
         const distratoresList: Array<{ letter: string; text: string }> = [];
         for (const rawItem of distratorLines) {
           const item = rawItem.trim();
           if (!item || /^[*_:\-–—•\s]+$/.test(item)) continue;
 
-          const m1 = item.match(/^(?:[-•*]\s*)?(?:\*\*)?Letra\s+([A-E](?:\s*(?:,|e)\s*[A-E])?)(?:\*\*)?(?:\s*(\([^)]+\)))?(?:\*{0,2}\s*:\s*\*{0,2}|\*{1,2}|:\s*\*{0,2}|:)?\s*([\s\S]*)$/i);
+          const m1 = item.match(/^(?:[-•*]\s*)?(?:\*\*)?Letra\s+\[?([A-E](?:\s*(?:,|e)\s*[A-E])?)\]?(?:\*\*)?(?:\s*(\([^)]+\)))?(?:\*{0,2}\s*:\s*\*{0,2}|\*{1,2}|:\s*\*{0,2}|:)?\s*([\s\S]*)$/i);
 
           if (m1) {
             const letter = m1[1].trim();
             const note = m1[2] ? `**${m1[2].replace(/^[*_()]+|[*_()]+$/g, "")}**: ` : "";
-            const text = cleanSectionDelimiters(m1[3]);
+            const text = stripEditorialNoise(stripRedundantOptionPrefix(cleanSectionDelimiters(m1[3])));
             if (text) {
               distratoresList.push({
                 letter,
@@ -154,7 +211,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
               });
             }
           } else if (item.trim() && !/^[-•*\s]*Revise os critérios/i.test(item.trim())) {
-            const text = cleanSectionDelimiters(item.replace(/^[-•*]\s*/, ""));
+            const text = stripEditorialNoise(stripRedundantOptionPrefix(cleanSectionDelimiters(item.replace(/^[-•*]\s*/, ""))));
             if (text) {
               distratoresList.push({
                 letter: "•",
@@ -174,7 +231,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
       const endIdx = distMatch && distMatch.index !== undefined && distMatch.index > corrMatch.index ? distMatch.index : clean.length;
       let rawCorr = clean.slice(corrMatch.index + corrMatch[0].length, endIdx).trim();
       rawCorr = rawCorr.replace(/(?:\n|^)\s*(?:[-*+]\s+)?(?:#{1,6}\s+)?\*{0,2}(?:Análise d[oa]s Distratores|Distratores|Alternativas Incorretas)[\s\S]*$/i, "").trim();
-      rawCorr = cleanSectionDelimiters(rawCorr);
+      rawCorr = stripEditorialNoise(stripRedundantOptionPrefix(cleanSectionDelimiters(rawCorr)));
       const isDummyCorr = /Anote sua principal hipótese|Questão dissertativa|Alternativa indicada no gabarito oficial/i.test(rawCorr);
       if (!isDummyCorr && rawCorr) {
         const letterMatch = corrMatch[0].match(/(?:Letra|\()\s*([A-E](?:\s*(?:,|e)\s*[A-E])*)\b/i) || corrMatch[0].match(/Alternativa\s+Correta\s*([A-E](?:\s*(?:,|e)\s*[A-E])*)\b/i);
@@ -196,7 +253,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
         endIdx = Math.min(...nextCandidates);
       }
       let padraoText = clean.slice(pIdx + padraoMatch[0].length, endIdx).trim();
-      padraoText = cleanSectionDelimiters(padraoText);
+      padraoText = stripEditorialNoise(cleanSectionDelimiters(padraoText));
       if (padraoText) {
         parsed.padraoResposta = padraoText;
       }
@@ -216,7 +273,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
       }
       let racText = clean.slice(rIdx + racMatch[0].length, endIdx).trim();
       racText = racText.replace(/(?:\n|^)\s*(?:[-*+]\s+)?(?:#{1,6}\s+)?\*{0,2}(?:Por que a Letra [^\n*:]+|Alternativa Correta(?:\s*\([A-E]\))?|Resposta Correta[^\n*:]*|Análise d[oa]s Distratores(?:[^\n*:]*)?|Distratores|Alternativas Incorretas|Padrão de Resposta(?:[^\n*:]*)?)[\s\S]*$/i, "").trim();
-      racText = cleanSectionDelimiters(racText);
+      racText = stripEditorialNoise(cleanSectionDelimiters(racText));
       if (racText) {
         parsed.raciocinioClinico = racText;
       }
@@ -236,7 +293,7 @@ export function parseExplanation(raw: string | null | undefined, isDiscursive?: 
         endIdx = Math.min(...nextCandidates);
       }
       let puloText = clean.slice(puIdx + puloMatch[0].length, endIdx).trim();
-      puloText = cleanSectionDelimiters(puloText);
+      puloText = stripEditorialNoise(cleanSectionDelimiters(puloText));
       if (puloText) {
         parsed.puloDoGato = puloText;
       }
@@ -272,6 +329,8 @@ function ExplanationViewerBase({
   isDiscursive,
 }: ExplanationViewerProps) {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [collapsedFor, setCollapsedFor] = useState<string | null>(null);
+  const isRacCollapsed = Boolean(explanation && collapsedFor === explanation);
 
   const { parsed, isDiscursiveDetected } = useMemo(() => {
     if (!explanation) return { parsed: null, isDiscursiveDetected: Boolean(isDiscursive) };
@@ -374,13 +433,35 @@ function ExplanationViewerBase({
         {/* 3. RACIOCÍNIO CLÍNICO / RESOLUÇÃO DETALHADA */}
         {parsed.raciocinioClinico && (
           <div className="rounded-2xl bg-blue-500/10 border border-blue-500/20 p-5 md:p-6 text-ink-primary">
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-sm md:text-base uppercase tracking-wider mb-2">
-              <Stethoscope size={18} aria-hidden="true" className="shrink-0" />
-              <span>{isDiscursiveDetected ? "Padrão de Resposta da Banca & Comentário" : "Raciocínio Clínico"}</span>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-sm md:text-base uppercase tracking-wider">
+                <Stethoscope size={18} aria-hidden="true" className="shrink-0" />
+                <span>{isDiscursiveDetected ? "Padrão de Resposta da Banca & Comentário" : "Raciocínio Clínico"}</span>
+              </div>
+              {parsed.raciocinioClinico.length > 1600 && (
+                <button
+                  type="button"
+                  onClick={() => setCollapsedFor(isRacCollapsed ? null : (explanation || null))}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+                  aria-expanded={!isRacCollapsed}
+                >
+                  {isRacCollapsed ? (
+                    <>Expandir <ChevronDown size={14} aria-hidden="true" /></>
+                  ) : (
+                    <>Recolher <ChevronUp size={14} aria-hidden="true" /></>
+                  )}
+                </button>
+              )}
             </div>
-            <div className="text-ink-primary text-sm md:text-base leading-relaxed">
-              <FormattedContent content={parsed.raciocinioClinico} onImageClick={setEnlargedImage} />
-            </div>
+            {!isRacCollapsed ? (
+              <div className="text-ink-primary text-sm md:text-base leading-relaxed max-w-[76ch]">
+                <FormattedContent content={parsed.raciocinioClinico} onImageClick={setEnlargedImage} />
+              </div>
+            ) : (
+              <p className="text-xs text-ink-muted italic">
+                Raciocínio clínico recolhido ({Math.max(1, Math.round(parsed.raciocinioClinico.length / 900))} min de leitura). Clique em Expandir para visualizar.
+              </p>
+            )}
           </div>
         )}
 

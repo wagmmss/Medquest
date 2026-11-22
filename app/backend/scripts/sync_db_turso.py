@@ -148,6 +148,9 @@ def sync_database(verbose: bool = True) -> bool:
     local_deleted_ids = {r[0] for r in cur.execute("SELECT question_id FROM deleted_questions").fetchall()}
 
     # Aplicar exclusões remotas no banco local
+    has_local_flashcards = bool(
+        cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='flashcards'").fetchone()
+    )
     to_delete_locally = [
         qid for qid in remote_deleted_ids
         if qid not in local_deleted_ids or cur.execute("SELECT 1 FROM questions WHERE id = ?", (qid,)).fetchone()
@@ -162,7 +165,8 @@ def sync_database(verbose: bool = True) -> bool:
             cur.execute("DELETE FROM attempts WHERE question_id = ?", (qid,))
             cur.execute("DELETE FROM favorites WHERE question_id = ?", (qid,))
             cur.execute("DELETE FROM spaced_repetition WHERE question_id = ?", (qid,))
-            cur.execute("UPDATE flashcards SET question_id = NULL WHERE question_id = ?", (qid,))
+            if has_local_flashcards:
+                cur.execute("UPDATE flashcards SET question_id = NULL WHERE question_id = ?", (qid,))
             cur.execute("DELETE FROM questions WHERE id = ?", (qid,))
             cur.execute(
                 "INSERT OR REPLACE INTO deleted_questions (question_id, deleted_at, deleted_by) VALUES (?, datetime('now'), 'turso_sync')",
@@ -176,6 +180,16 @@ def sync_database(verbose: bool = True) -> bool:
     if to_delete_remotely:
         if verbose:
             print(f"  [-] Propagando {len(to_delete_remotely)} exclusões locais para o Turso Cloud...")
+        has_remote_flashcards = False
+        try:
+            fc_probe = execute_turso_pipeline(url, token, [{
+                "type": "execute",
+                "stmt": {"sql": "SELECT 1 FROM sqlite_master WHERE type='table' AND name='flashcards'"}
+            }], timeout=30)
+            has_remote_flashcards = bool(fc_probe["results"][0]["response"]["result"]["rows"])
+        except Exception:
+            has_remote_flashcards = False
+
         del_batch_size = 100
         for i in range(0, len(to_delete_remotely), del_batch_size):
             chunk = to_delete_remotely[i:i + del_batch_size]
@@ -189,9 +203,10 @@ def sync_database(verbose: bool = True) -> bool:
                 {"type": "execute", "stmt": {"sql": f"DELETE FROM attempts WHERE question_id IN ({ph})", "args": del_args}},
                 {"type": "execute", "stmt": {"sql": f"DELETE FROM favorites WHERE question_id IN ({ph})", "args": del_args}},
                 {"type": "execute", "stmt": {"sql": f"DELETE FROM spaced_repetition WHERE question_id IN ({ph})", "args": del_args}},
-                {"type": "execute", "stmt": {"sql": f"UPDATE flashcards SET question_id = NULL WHERE question_id IN ({ph})", "args": del_args}},
-                {"type": "execute", "stmt": {"sql": f"DELETE FROM questions WHERE id IN ({ph})", "args": del_args}},
             ]
+            if has_remote_flashcards:
+                del_reqs.append({"type": "execute", "stmt": {"sql": f"UPDATE flashcards SET question_id = NULL WHERE question_id IN ({ph})", "args": del_args}})
+            del_reqs.append({"type": "execute", "stmt": {"sql": f"DELETE FROM questions WHERE id IN ({ph})", "args": del_args}})
             for qid in chunk:
                 del_reqs.append({
                     "type": "execute",

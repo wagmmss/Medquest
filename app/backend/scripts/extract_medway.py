@@ -11,11 +11,11 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import html
 import json
-import os
 import re
 import sqlite3
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -27,7 +27,7 @@ DEFAULT_OUTPUT_DIR = BACKEND_DIR / "data" / "medway_extracted"
 
 # Add scripts directory to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from medway_client import MedwayClient
+from medway_client import MedwayClient  # noqa: E402
 
 # Institutions registry
 INSTITUTIONS = {
@@ -72,11 +72,18 @@ def clean_html_to_markdown(raw_html: Any) -> str:
     """Converts HTML formatting into clean GitHub-flavored markdown with embedded images."""
     if not isinstance(raw_html, str) or not raw_html.strip():
         return ""
-    txt = html.unescape(raw_html)
+    txt = raw_html
 
-    # Standardize paragraph breaks and line breaks
+    # Protect any unescaped non-tag '<' (e.g. "pH < 4,5") before tag stripping;
+    # escaped "&lt;" stays protected until html.unescape() runs after tag removal.
+    txt = re.sub(r"<(?![a-zA-Z/!])", "&lt;", txt)
+
+    # Standardize paragraph breaks, line breaks, and HTML lists
     txt = re.sub(r"</p>\s*<p[^>]*>", "\n\n", txt, flags=re.IGNORECASE)
     txt = re.sub(r"<br\s*/?>", "\n", txt, flags=re.IGNORECASE)
+    txt = re.sub(r"<li\b[^>]*>\s*", "\n- ", txt, flags=re.IGNORECASE)
+    txt = re.sub(r"</li>", "", txt, flags=re.IGNORECASE)
+    txt = re.sub(r"</?(?:ul|ol)\b[^>]*>", "\n", txt, flags=re.IGNORECASE)
 
     # Bold and italic
     txt = re.sub(r"<(strong|b)[^>]*>(.*?)</\1>", r"**\2**", txt, flags=re.DOTALL | re.IGNORECASE)
@@ -88,8 +95,14 @@ def clean_html_to_markdown(raw_html: Any) -> str:
     # 2. Convert <a href="image_url">...</a> to ![imagem](image_url)
     txt = re.sub(r'<a\b[^>]*\bhref=["\'](https?://[^"\']+\.(?:png|jpe?g|gif|webp|svg)(?:\?[^"\']*)?)["\'][^>]*>.*?</a>', r"\n\n![imagem](\1)\n\n", txt, flags=re.IGNORECASE)
 
-    # Strip remaining HTML tags
-    txt = re.sub(r"<[^>]+>", " ", txt)
+    # Strip remaining real HTML tags only (never match mathematical "<" or "&lt;")
+    txt = re.sub(r"</?[a-zA-Z][^>]*>|<!--[\s\S]*?-->", " ", txt)
+
+    # Unescape HTML entities AFTER stripping tags so &lt; / < inequalities remain intact
+    txt = html.unescape(txt).replace("\xa0", " ")
+
+    # Drop empty bold placeholders produced by <strong>&nbsp;</strong>
+    txt = re.sub(r"\*\*[^\S\r\n]*\*\*", "", txt)
 
     # 3. Convert markdown links pointing to images missing leading !: [text](url.png) -> ![imagem](url.png)
     txt = re.sub(r'(?<!!)(?:\[([^\]]*)\])\((https?://[^\)]+\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\)]*)?)\)', r'![imagem](\2)', txt, flags=re.IGNORECASE)
@@ -103,8 +116,6 @@ def clean_html_to_markdown(raw_html: Any) -> str:
     txt = re.sub(r"\n{3,}", "\n\n", txt)
     return txt.strip()
 
-
-import unicodedata
 
 def normalize_text(s: str) -> str:
     """Normalizes text by stripping accents and special characters."""
@@ -464,7 +475,7 @@ class MedwayExtractor:
             except Exception:
                 pass
 
-        print(f"\n=======================================================")
+        print("\n=======================================================")
         print(f"[EXTRACTING] Track ID: {track_id}")
 
         track_fast = self.client.get_track_fast(track_id)
@@ -476,14 +487,14 @@ class MedwayExtractor:
         q_list = self.client.get_track_questions(track_id)
         total_q = len(q_list)
         print(f"Total questions to fetch: {total_q} (using {workers} workers)")
-        print(f"=======================================================")
+        print("=======================================================")
 
         def _fetch_one(q_meta: Dict[str, Any]) -> Dict[str, Any]:
             qid = q_meta["id"]
             q_detail = {}
             try:
                 q_detail = self.client.get_question_detail(qid, track_id=track_id)
-            except Exception as e:
+            except Exception:
                 q_detail = {}
 
             if delay > 0:
@@ -492,7 +503,7 @@ class MedwayExtractor:
             exp_detail = {}
             try:
                 exp_detail = self.client.get_question_explanation(qid, track_id=track_id)
-            except Exception as e:
+            except Exception:
                 exp_detail = {}
 
             if delay > 0:
@@ -934,7 +945,7 @@ def main() -> None:
 
         total_matching = len(filtered)
         print("=" * 65)
-        print(f"Catalog Extraction Run:")
+        print("Catalog Extraction Run:")
         print(f"  Tier: {args.tier} | Years: {args.min_year}-{args.max_year}")
         if args.institutions:
             print(f"  Institutions: {args.institutions}")

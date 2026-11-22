@@ -87,14 +87,53 @@ export function filterExtraImages(images: string[] | null | undefined, text: str
 }
 
 /**
- * Parses inline formatting: bold (**text**), italic (*text*), math ($math$), links ([text](url)), and inline images.
+ * Converts simple LaTeX medical notation (e.g. \le, CO_2, PaO_2, HCO_3^-) into clean Unicode/sub/sup nodes.
+ */
+function renderMathContent(expr: string, keyPrefix: string): React.ReactNode {
+  const normalized = expr
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "($1)/($2)")
+    .replace(/\\leq?/g, "≤")
+    .replace(/\\geq?/g, "≥")
+    .replace(/\\approx/g, "≈")
+    .replace(/\\times/g, "×")
+    .replace(/\\pm/g, "±")
+    .replace(/\\(?:rightarrow|to)/g, "→")
+    .replace(/\\alpha/g, "α")
+    .replace(/\\beta/g, "β")
+    .replace(/\\mu/g, "μ")
+    .replace(/\\\s+/g, " ")
+    .replace(/\\([a-zA-Z]+)/g, "$1");
+
+  const subSupParts = normalized.split(/(_\{[^}]+\}|_[A-Za-z0-9+-]+|\^\{[^}]+\}|\^[A-Za-z0-9+-]+)/g);
+  return subSupParts.map((seg, i) => {
+    if (!seg) return null;
+    if (seg.startsWith("_")) {
+      const inner = seg.startsWith("_{") && seg.endsWith("}") ? seg.slice(2, -1) : seg.slice(1);
+      return <sub key={`${keyPrefix}-sub-${i}`} className="text-[0.75em] leading-none">{inner}</sub>;
+    }
+    if (seg.startsWith("^")) {
+      const inner = seg.startsWith("^{") && seg.endsWith("}") ? seg.slice(2, -1) : seg.slice(1);
+      return <sup key={`${keyPrefix}-sup-${i}`} className="text-[0.75em] leading-none">{inner}</sup>;
+    }
+    return <React.Fragment key={`${keyPrefix}-t-${i}`}>{seg}</React.Fragment>;
+  });
+}
+
+/**
+ * Parses inline formatting: bold (**text**), italic (*text*), bold+italic (***text***),
+ * inline code (`code`), math ($math$), links ([text](url)), and inline images.
  */
 function renderInline(
   text: string,
-  onImageClick?: (url: string) => void
+  onImageClick?: (url: string) => void,
+  depth = 0
 ): React.ReactNode {
-  // Regex to match images, bold, math, links
-  const tokenRegex = /(!\[.*?\]\(.*?\)|<img\b[^>]*\bsrc\s*=\s*['"][^'"]+['"][^>]*>|\*\*.*?\*\*|\$[^\$]+\$|\[.*?\]\(.*?\))/g;
+  if (!text) return null;
+  if (depth > 4) return <React.Fragment>{text}</React.Fragment>;
+
+  // Order matters: images/links/code/math first, then ***bold+italic***, *italic wrapping **bold***, **bold**, *italic*.
+  const tokenRegex = /(!\[[^\]]*\]\([^)\n]+\)|<img\b[^>]*\bsrc\s*=\s*['"][^'"]+['"][^>]*>|\[[^\]\n]+\]\([^)\n]+\)|`[^`\n]+`|(?<![A-Za-z])\$(?!\s)(?:\\.|[^$\n]){1,80}?(?<!\s)\$|\*\*\*(?!\s)(?:(?!\*\*\*).)+?(?<!\s)\*\*\*|\*(?=\*\*[^*\n]+\*\*)(?:(?:\*\*[^*\n]+\*\*|[^*\n])+?)(?<!\s)\*(?!\*)|\*\*(?!\s)(?:(?!\*\*).)+?(?<!\s)\*\*|(?<!\*|\d)\*(?!\*|\s)[^*\n]+?(?<!\s|\*)\*(?!\*|\d))/g;
   const parts = text.split(tokenRegex);
 
   return parts.map((part, idx) => {
@@ -180,30 +219,7 @@ function renderInline(
       );
     }
 
-    // 3. Bold: **text**
-    if (part.startsWith("**") && part.endsWith("**")) {
-      const inner = part.slice(2, -2);
-      // If bold wraps an image, recurse to render the image properly
-      if (inner.includes("![") || inner.includes("<img")) {
-        return <React.Fragment key={idx}>{renderInline(inner, onImageClick)}</React.Fragment>;
-      }
-      return (
-        <strong key={idx} className="font-bold text-foreground">
-          {inner}
-        </strong>
-      );
-    }
-
-    // 4. Math: $math$
-    if (part.startsWith("$") && part.endsWith("$")) {
-      return (
-        <span key={idx} className="font-mono italic px-1 bg-muted/60 rounded text-sm text-primary">
-          {part.slice(1, -1)}
-        </span>
-      );
-    }
-
-    // 5. Link: [text](url)
+    // 3. Link: [text](url)
     const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
     if (linkMatch) {
       return (
@@ -214,8 +230,59 @@ function renderInline(
           rel="noopener noreferrer" 
           className="text-primary underline hover:text-primary/80 transition-colors"
         >
-          {linkMatch[1]}
+          {renderInline(linkMatch[1], onImageClick, depth + 1)}
         </a>
+      );
+    }
+
+    // 4. Inline code: `code`
+    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+      return (
+        <code key={idx} className="font-mono text-[0.9em] px-1.5 py-0.5 rounded bg-muted/70 text-foreground">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // 5. Math: $math$
+    if (part.startsWith("$") && part.endsWith("$") && part.length >= 2) {
+      return (
+        <span key={idx} className="font-mono px-1 bg-muted/60 rounded text-[0.92em] text-primary">
+          {renderMathContent(part.slice(1, -1), `m-${idx}`)}
+        </span>
+      );
+    }
+
+    // 6. Bold + Italic: ***text***
+    if (part.startsWith("***") && part.endsWith("***") && part.length > 6) {
+      const inner = part.slice(3, -3);
+      return (
+        <strong key={idx} className="font-bold italic text-foreground">
+          {renderInline(inner, onImageClick, depth + 1)}
+        </strong>
+      );
+    }
+
+    // 7. Bold: **text** (supports nested *italic* inside)
+    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+      const inner = part.slice(2, -2);
+      if (inner.includes("![") || inner.includes("<img")) {
+        return <React.Fragment key={idx}>{renderInline(inner, onImageClick, depth + 1)}</React.Fragment>;
+      }
+      return (
+        <strong key={idx} className="font-bold text-foreground">
+          {renderInline(inner, onImageClick, depth + 1)}
+        </strong>
+      );
+    }
+
+    // 8. Italic: *text* (supports nested **bold** inside, e.g. ***Header:** text*)
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      const inner = part.slice(1, -1);
+      return (
+        <em key={idx} className="italic">
+          {renderInline(inner, onImageClick, depth + 1)}
+        </em>
       );
     }
 
@@ -225,7 +292,7 @@ function renderInline(
 
 export function preprocessMarkdown(content: string): string {
   if (!content) return "";
-  let raw = content.replace(/\\n/g, "\n");
+  let raw = content.replace(/\\n/g, "\n").replace(/\u00A0/g, " ");
   // Unwrap **![]()** or **<img>**
   raw = raw.replace(/\*\*(!\[.*?\]\(.*?\))\*\*/g, "\n\n$1\n\n");
   raw = raw.replace(/\*\*(<img\b[^>]*>)\*\*/g, "\n\n$1\n\n");
@@ -262,9 +329,12 @@ export function preprocessMarkdown(content: string): string {
   raw = raw.replace(/Normal\s*\n+\s*0\s*\n+(?:false\s*\n+)?(?:\d+\s*\n+)?(?:false\s*\n+)+[A-Z]{2}-[A-Z]{2}\s*\n+X-NONE\s*\n+X-NONE/gi, "");
   raw = raw.replace(/\b(?:PT-BR|EN-US)\s*\n+X-NONE\s*\n+X-NONE\b/gi, "");
 
-  // 3. Convert HTML tables if any exist
+  // 3. Convert HTML tables if any exist (flatten <br>/<p> inside cells before building Markdown rows)
   raw = raw.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, (tableHtml) => {
-    const t = tableHtml.replace(/<\/?(?:table|tbody|thead)[^>]*>/gi, "");
+    const t = tableHtml
+      .replace(/<\/?(?:table|tbody|thead)[^>]*>/gi, "")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/?p\b[^>]*>/gi, " ");
     const trMatches = Array.from(t.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi));
     const rows: string[] = [];
     if (trMatches.length > 0) {
@@ -308,7 +378,7 @@ export function preprocessMarkdown(content: string): string {
   raw = raw.replace(/<br\s*\/?>/gi, "\n");
   raw = raw.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, "\n* $1");
   raw = raw.replace(/<\/?(?:ul|ol)\b[^>]*>/gi, "\n");
-  raw = raw.replace(/<\/?(?:span|div|section|article|font|center)\b[^>]*>/gi, "");
+  raw = raw.replace(/<\/?(?:span|div|section|article|font|center|u)\b[^>]*>/gi, "");
 
   // 6. HTML Entities
   raw = raw
@@ -322,10 +392,36 @@ export function preprocessMarkdown(content: string): string {
   // 7. Clean up boilerplate greetings
   raw = raw.replace(/Bons estudos!Com carinho,\s*equipe pedag[oó]gica/gi, "");
 
-  // 8. Normalize distractor letter header spacing if preceding content was stripped
-  raw = raw.replace(/(- \*\*Letra [A-E]\*\*):?\s*\n+/gi, "$1: ");
+  // 8. Token-lock images/links/URLs before cleaning prose whitespace & empty bold artifacts
+  const lockedTokens: string[] = [];
+  raw = raw.replace(/(!\[[^\]]*\]\([^)\n]+\)|<img\b[^>]*>|\[[^\]\n]+\]\([^)\n]+\)|https?:\/\/[^\s)>"']+)/gi, (m) => {
+    lockedTokens.push(m);
+    return `__MQ_LOCK_${lockedTokens.length - 1}__`;
+  });
 
-  // 9. Collapse excessive blank lines
+  // Remove empty bold/italic placeholders (e.g. "** **" or standalone "***" lines)
+  raw = raw.replace(/\*\*[^\S\r\n]*\*\*/g, "");
+  raw = raw.replace(/(?<!\*)\*[^\S\r\n]+\*(?!\*)/g, " ");
+  raw = raw.replace(/^\s*\*{1,3}\s*$/gm, "");
+
+  // Remove orphan trailing spaces before punctuation (e.g. "dentes de serra , logo" -> "dentes de serra, logo")
+  raw = raw.replace(/([A-Za-zÀ-ÿ0-9)"'”’\]*%])[^\S\r\n]+([,;?!])(?=\s|$|\)|\*|")/g, "$1$2");
+  raw = raw.replace(/([A-Za-zÀ-ÿ0-9)"'”’\]*%])[^\S\r\n]+\.(?=\s|$|\)|\*|")/g, "$1.");
+  raw = raw.replace(/([^\S\r\n]{2,})/g, " ");
+  raw = raw.replace(/[^\S\r\n]+$/gm, "");
+
+  // Separate trailing inline editorial subheadings (e.g. "...torna-se prioritária. **Pistas-chave:**")
+  raw = raw.replace(/([.!?])\s+(\*\*(?:Pistas-chave|Pegadinhas de prova|Como cai|Pontos-chave|Resumo prático)\s*:\*\*)\s*$/gim, "$1\n\n$2");
+
+  // Rehydrate locked tokens
+  for (let i = 0; i < lockedTokens.length; i++) {
+    raw = raw.replace(`__MQ_LOCK_${i}__`, lockedTokens[i]);
+  }
+
+  // 9. Normalize distractor letter header spacing if preceding content was stripped
+  raw = raw.replace(/(- \*\*Letra \[?[A-E]\]?\*\*):?\s*\n+/gi, "$1: ");
+
+  // 10. Collapse excessive blank lines
   raw = raw.replace(/\n{3,}/g, "\n\n").trim();
 
   return raw;
@@ -346,17 +442,92 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
   let tableHasHeader = false;
   let listItems: string[] = [];
   let listType: "ul" | "ol" | null = null;
+  let afterSectionLabel = false;
+
+  const isKeyValueLine = (l: string) => /^\*\*[^*\n]{2,55}:\*\*\s+\S/.test(l.trim());
+  const isStandaloneBoldLabel = (l: string) => /^\*\*[^*\n]{2,55}:\*\*$/.test(l.trim());
+
+  const renderLinesWithBreaks = (paraLines: string[]) =>
+    paraLines.map((ln, idx) => (
+      <React.Fragment key={idx}>
+        {idx > 0 && <br />}
+        {renderInline(ln.trim(), onImageClick)}
+      </React.Fragment>
+    ));
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
-      const text = currentParagraph.join("\n").trim();
-      if (text) {
-        blocks.push(
-          <p key={`p-${blocks.length}`} className="leading-relaxed">
-            {renderInline(text, onImageClick)}
-          </p>
-        );
+      const cleanedLines = currentParagraph.map(l => l.trim()).filter(Boolean);
+      if (cleanedLines.length === 0) {
+        currentParagraph = [];
+        return;
       }
+
+      // Single standalone bold label ending in ":" -> crisp subheading (e.g. **Pistas-chave:**)
+      if (cleanedLines.length === 1 && isStandaloneBoldLabel(cleanedLines[0])) {
+        const labelText = cleanedLines[0].slice(2, -2);
+        blocks.push(
+          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1">
+            {labelText}
+          </h4>
+        );
+        afterSectionLabel = true;
+        currentParagraph = [];
+        return;
+      }
+
+      // Multi-line block where line 0 is a plain title followed by **Key:** value lines (e.g. "Características do Estudo Transversal")
+      if (
+        cleanedLines.length >= 3 &&
+        !isKeyValueLine(cleanedLines[0]) &&
+        cleanedLines[0].length <= 80 &&
+        cleanedLines.slice(1).filter(isKeyValueLine).length >= 2
+      ) {
+        blocks.push(
+          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1">
+            {renderInline(cleanedLines[0], onImageClick)}
+          </h4>
+        );
+        blocks.push(
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
+            {cleanedLines.slice(1).map((item, idx) => (
+              <li key={idx}>{renderInline(item, onImageClick)}</li>
+            ))}
+          </ul>
+        );
+        afterSectionLabel = false;
+        currentParagraph = [];
+        return;
+      }
+
+      // Multi-line **Key:** value list or bulletless items right after a section label (e.g. **Pistas-chave:**)
+      const kvCount = cleanedLines.filter(isKeyValueLine).length;
+      const isBulletlessItemBlock =
+        cleanedLines.length >= 2 &&
+        (kvCount >= 2 ||
+          (afterSectionLabel && cleanedLines.every(l => l.length <= 260)));
+
+      if (isBulletlessItemBlock) {
+        blocks.push(
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
+            {cleanedLines.map((item, idx) => (
+              <li key={idx}>{renderInline(item, onImageClick)}</li>
+            ))}
+          </ul>
+        );
+        afterSectionLabel = false;
+        currentParagraph = [];
+        return;
+      }
+
+      blocks.push(
+        <p key={`p-${blocks.length}`} className="leading-relaxed">
+          {cleanedLines.length === 1
+            ? renderInline(cleanedLines[0], onImageClick)
+            : renderLinesWithBreaks(cleanedLines)}
+        </p>
+      );
+      afterSectionLabel = false;
       currentParagraph = [];
     }
   };
@@ -367,13 +538,13 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       const isOrdered = listType === "ol";
       blocks.push(
         isOrdered ? (
-          <ol key={`list-${blocks.length}`} className="list-decimal pl-5 space-y-1 leading-relaxed">
+          <ol key={`list-${blocks.length}`} className="list-decimal pl-5 space-y-1.5 leading-relaxed">
             {items.map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
           </ol>
         ) : (
-          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1 leading-relaxed">
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
             {items.map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
@@ -382,6 +553,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       );
       listItems = [];
       listType = null;
+      afterSectionLabel = false;
     }
   };
 
@@ -421,6 +593,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       );
       tableRows = [];
       tableHasHeader = false;
+      afterSectionLabel = false;
     }
   };
 
@@ -432,6 +605,16 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       flushParagraph();
       flushList();
       flushTable();
+      continue;
+    }
+
+    // 0. Horizontal Rule: --- or *** or ___
+    if (/^[-*_]{3,}$/.test(line)) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      blocks.push(<hr key={`hr-${blocks.length}`} className="my-3 border-line-subtle" />);
+      afterSectionLabel = false;
       continue;
     }
 
@@ -462,6 +645,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
     if (headingMatch) {
       flushParagraph();
       flushList();
+      afterSectionLabel = false;
       const level = headingMatch[1].length;
       const text = headingMatch[2];
       const Tag = level === 1 ? "h2" : level === 2 ? "h3" : "h4";
@@ -502,6 +686,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
     if (quoteMatch) {
       flushParagraph();
       flushList();
+      afterSectionLabel = false;
       blocks.push(
         <blockquote key={`quote-${blocks.length}`} className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-2">
           {renderInline(quoteMatch[1], onImageClick)}
@@ -519,5 +704,5 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
   flushList();
   flushTable();
 
-  return <div className={`space-y-3 ${className}`}>{blocks}</div>;
+  return <div className={`space-y-3 text-left ${className}`}>{blocks}</div>;
 }

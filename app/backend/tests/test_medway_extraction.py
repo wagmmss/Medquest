@@ -1,22 +1,15 @@
-import os
-import re
-import sqlite3
 import sys
 from pathlib import Path
-
-import pytest
 
 # Ensure scripts dir is on sys.path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = BACKEND_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from build_medway_catalog import detect_institution, normalize_text
-from extract_medway import (
+from build_medway_catalog import detect_institution, normalize_text  # noqa: E402
+from extract_medway import (  # noqa: E402
     clean_html_to_markdown,
-    extract_gabarito,
     format_medway_golden_explanation,
-    TaxonomyMapper,
 )
 
 
@@ -52,6 +45,21 @@ class TestImageAndMarkdownFormatting:
         assert "![imagem](https://cdn.medway.com.br/media/valid.png)" in out
         assert "![" in out
         assert "!![" not in out
+
+    def test_preserves_lt_inequalities_and_html_lists(self):
+        html_input = (
+            "<p>Quando RR &gt; 1 há aumento. Se RR &lt; 1, temos fator de proteção.</p>"
+            "<p>Com <strong>colo &lt;25 mm</strong> e pH &lt; 4,5:</p>"
+            "<ul><li>Plaquetopenia &lt; 150 mil</li><li>Ascite discreta</li></ul>"
+            "<p><strong>\xa0</strong></p>"
+        )
+        out = clean_html_to_markdown(html_input)
+        assert "Se RR < 1, temos fator de proteção." in out
+        assert "**colo <25 mm**" in out
+        assert "pH < 4,5:" in out
+        assert "- Plaquetopenia < 150 mil" in out
+        assert "- Ascite discreta" in out
+        assert "** **" not in out
 
 
 class TestInstitutionDetectionAndTiers:
