@@ -312,35 +312,35 @@ export const api = {
   planner: {
     getConfig: () => apiFetch<PlannerConfig>("/api/planner/config", { cache: 'no-store' }),
     saveConfig: async (config: PlannerConfig) => {
-      try {
-        return await apiFetch<{success: boolean}>("/api/planner/config", {
-          method: "POST",
-          body: JSON.stringify(config),
-        });
-      } catch (error) {
-        const usesProfileFields = config.target_institution !== undefined ||
-          config.target_institutions !== undefined ||
-          config.target_specialty !== undefined;
-
-        // Older API instances only accept the original planner fields. Retry
-        // without the optional profile metadata so they do not block the user
-        // from creating a study plan during a rolling deployment.
-        if (!usesProfileFields || !(error instanceof Error) || !error.message.includes("400")) {
-          throw error;
-        }
-
-        const legacyConfig: PlannerConfig = {
-          exam_date: config.exam_date,
-          start_date: config.start_date,
-          days_per_week: config.days_per_week,
-          hours_per_day: config.hours_per_day,
-          target_score: config.target_score,
-        };
-        return apiFetch<{success: boolean}>("/api/planner/config", {
-          method: "POST",
-          body: JSON.stringify(legacyConfig),
-        });
+      // Sanitiza campos derivados/somente-leitura (ex.: primary_institution) que não fazem parte do payload de escrita
+      const payload: Record<string, unknown> = {
+        exam_date: config.exam_date,
+        start_date: config.start_date,
+        days_per_week: config.days_per_week,
+        hours_per_day: config.hours_per_day,
+        target_score: config.target_score,
+        target_institution: config.target_institution,
+        target_institutions: config.target_institutions,
+        target_specialty: config.target_specialty,
+        organization_mode: config.organization_mode,
+      };
+      if (config.internato_blocks !== undefined) {
+        payload.internato_blocks = config.internato_blocks.map((b) => ({
+          start: b.start,
+          end: b.end,
+          area: b.area,
+          ...(b.label ? { label: b.label } : {}),
+          ...(b.hours_per_week != null ? { hours_per_week: b.hours_per_week } : {}),
+        }));
       }
+      // Remove chaves undefined para não poluir a validação estrita do Pydantic
+      Object.keys(payload).forEach((k) => {
+        if (payload[k] === undefined) delete payload[k];
+      });
+      return apiFetch<{success: boolean}>("/api/planner/config", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
     },
     resetConfig: (payload?: { scope?: "schedule" | "progress" | "all"; mode?: PlannerScheduleMode }) =>
       apiFetch<{success: boolean; scope?: string}>("/api/planner/config/reset", {

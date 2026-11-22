@@ -91,6 +91,7 @@ export function PlannerShell({
     <div className="animate-in fade-in duration-500">
       <PlannerClient
         plan={planResponse.plan}
+        completedTopicsOutside={planResponse.completed_topics ?? []}
         initialProgress={data?.progressMap ?? {}}
         initialTopicProgress={data?.topicProgressMap ?? {}}
         warning={planResponse.warning}

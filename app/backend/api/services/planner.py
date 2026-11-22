@@ -282,17 +282,27 @@ def _prepare_topics(
     return all_topics, total_required_hours, pending_required_hours
 
 
+WEEK_OVERFLOW_TOLERANCE_HOURS = 1.0
+INTERNATO_ANCHOR_RATIO = 0.70
+
+
 def _normalize_internato_area(raw_area):
     if not raw_area:
         return None
-    lower = raw_area.lower()
-    if "intensiva" in lower or "especialidades" in lower:
+    lower = raw_area.lower().strip()
+    if lower in ("geral", "equilibrado", "férias", "ferias", "misto", "todas"):
+        return None
+    if "intensiva" in lower or "anestes" in lower or "especialidades" in lower or "oftalmo" in lower or "orl" in lower:
         return "Clínica Médica"
+    if "mfc" in lower:
+        return "Preventiva"
+    if "emerg" in lower or "trauma" in lower:
+        return "Cirurgia"
     norm = get_normalized_area(raw_area)
     return None if norm == "Outros" else norm
 
 
-def get_area_for_date(date_obj, internato_blocks=None):
+def get_block_for_date(date_obj, internato_blocks=None):
     blocks = internato_blocks if internato_blocks is not None else RODIZIOS_TURMA_J
     for bloco in blocks:
         try:
@@ -301,53 +311,144 @@ def get_area_for_date(date_obj, internato_blocks=None):
         except (KeyError, ValueError, TypeError):
             continue
         if inicio <= date_obj <= fim:
-            return _normalize_internato_area(bloco.get("area"))
+            raw_area = bloco.get("area")
+            norm_area = _normalize_internato_area(raw_area)
+            raw_hours = bloco.get("hours_per_week")
+            block_hours = None
+            if raw_hours is not None:
+                try:
+                    val = float(raw_hours)
+                    if 1.0 <= val <= 168.0:
+                        block_hours = val
+                except (TypeError, ValueError):
+                    pass
+            return {
+                "area": norm_area,
+                "raw_area": raw_area,
+                "label": bloco.get("label") or raw_area,
+                "hours_per_week": block_hours,
+            }
     return None
 
 
-def _pick_first_fitting_topic(area_topics, current_week_hours, hours_per_week):
-    for idx, t in enumerate(area_topics):
-        if current_week_hours == 0 or (current_week_hours + t["estimated_hours"]) <= (hours_per_week + 1.0):
-            return idx
-    return -1
+def get_area_for_date(date_obj, internato_blocks=None):
+    block = get_block_for_date(date_obj, internato_blocks)
+    return block["area"] if block else None
 
 
-def _distribute_completed_topics(plan, completed_topics, organization, internato_blocks, hours_per_week):
-    """Insere aulas já concluídas nas semanas sem consumir horas pendentes."""
-    if not plan or not completed_topics:
-        return
+def _pick_best_fitting_topic(area_topics, current_week_hours, target_hours, max_week_hours):
+    """Escolhe o tópico ideal da área respeitando prioridade e fechando perto da meta sem passar do teto."""
+    if not area_topics:
+        return -1
 
-    num_weeks = len(plan)
-    completed_hours_per_week = [0.0] * num_weeks
+    # Primeiro tópico da semana: sempre prioriza o mais importante disponível
+    if current_week_hours == 0:
+        return 0
 
-    # No modo internato, tenta posicionar cada aula concluída em uma semana cujo bloco corresponda à sua área
-    week_area_cache = [
-        get_area_for_date(datetime.fromisoformat(w["date"]), internato_blocks)
-        if organization == "internato" else None
-        for w in plan
+    remaining_to_max = max_week_hours - current_week_hours
+    fitting = [
+        (idx, t)
+        for idx, t in enumerate(area_topics)
+        if t["estimated_hours"] <= remaining_to_max + 1e-6
     ]
+    if not fitting:
+        return -1
 
-    for idx_t, topic in enumerate(completed_topics):
-        target_week_idx = None
+    # Se ainda cabe folgado mais de um tópico médio depois deste, mantém a ordem de prioridade
+    first_idx, first_topic = fitting[0]
+    if (current_week_hours + first_topic["estimated_hours"]) < (target_hours - 2.25):
+        return first_idx
 
-        if organization == "internato":
-            matching_indices = [i for i, a in enumerate(week_area_cache) if a == topic["area"]]
-            if matching_indices:
-                # Escolhe a semana do bloco com menor carga de concluídos até agora
-                target_week_idx = min(matching_indices, key=lambda i: (completed_hours_per_week[i], i))
+    # Perto de fechar a semana: faz best-fit para atingir [target_hours - 0.5, max_week_hours]
+    # evitando semanas curtas (8h-9h) enquanto respeita prioridade entre candidatos equivalentes.
+    def _fit_score(item):
+        idx, t = item
+        new_total = current_week_hours + t["estimated_hours"]
+        # Penaliza ficar muito abaixo da meta quando há alternativas que fecham melhor
+        in_sweet_spot = 1 if (target_hours - 0.5) <= new_total <= (max_week_hours + 1e-6) else 0
+        # Dentro da faixa boa, prefere o mais próximo de target_hours..max_week_hours e maior prioridade
+        # Fora da faixa boa (ainda abaixo), prefere preencher mais horas
+        if in_sweet_spot:
+            # Preferência leve por ficar próximo da meta (ex.: 12.0h-12.8h)
+            distance_penalty = abs(new_total - (target_hours + 0.3))
+            priority_bonus = t["priority"] / 500.0
+            return (2, -distance_penalty + priority_bonus, -idx)
+        # Se nenhum atinge a faixa ideal em um único passo, prefere o que melhor preenche ou permite próximo encaixe
+        leaves_room_for_more = 1 if (max_week_hours - new_total) >= 2.25 else 0
+        return (1 if leaves_room_for_more else 0, new_total, t["priority"], -idx)
 
-        if target_week_idx is None:
-            # Distribuição equilibrada pelas semanas (preferindo semanas abaixo da carga e com menos concluídos)
-            start_cursor = idx_t % num_weeks
-            ordered_indices = [
-                (start_cursor + offset) % num_weeks for offset in range(num_weeks)
-            ]
-            under_cap = [i for i in ordered_indices if completed_hours_per_week[i] < hours_per_week]
-            candidates = under_cap if under_cap else ordered_indices
-            target_week_idx = min(candidates, key=lambda i: completed_hours_per_week[i])
+    best_idx, _ = max(fitting, key=_fit_score)
+    return best_idx
 
-        plan[target_week_idx]["topics"].append(topic)
-        completed_hours_per_week[target_week_idx] += topic["estimated_hours"]
+
+def _rank_balanced_areas(active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=None):
+    """Ordena áreas de forma equilibrada proporcionalmente ao restante, evitando repetir área na semana."""
+    pool = [a for a in active_areas if a != exclude_area]
+    if not pool:
+        pool = list(active_areas)
+
+    def _area_key(area):
+        remaining = len(topics_by_area[area])
+        initial = max(1, initial_counts.get(area, remaining))
+        ratio = remaining / initial
+        used_this_week = week_area_counts.get(area, 0)
+        top_priority = topics_by_area[area][0]["priority"] if topics_by_area[area] else 0.0
+        # 1) Áreas ainda não usadas nesta semana primeiro
+        # 2) Maior fração ainda pendente (mantém todas as 5 áreas evoluindo juntas do início ao fim)
+        # 3) Maior prioridade do próximo tópico
+        # 4) Peso da área
+        return (
+            -used_this_week,
+            round(ratio, 3),
+            1 if top_priority >= 100 else 0,
+            USP_WEIGHTS.get(area, 0.1),
+            remaining,
+        )
+
+    return sorted(pool, key=_area_key, reverse=True)
+
+
+def _try_improve_underfilled_week(
+    week_topics,
+    current_week_hours,
+    topics_by_area,
+    target_hours,
+    max_week_hours,
+    preferred_area=None,
+):
+    """Se a semana fechou curta (< target - 1.0h), tenta trocar o último tópico para fechar em [target-0.5, max]."""
+    if not week_topics or current_week_hours >= (target_hours - 1.0):
+        return current_week_hours
+
+    last_topic = week_topics[-1]
+    base_hours = current_week_hours - last_topic["estimated_hours"]
+    best_swap = None
+
+    # Procura um tópico único mais longo ou um par de tópicos curtos que feche melhor a semana
+    candidate_areas = [a for a, lst in topics_by_area.items() if lst]
+    if preferred_area and preferred_area in candidate_areas:
+        candidate_areas = [preferred_area] + [a for a in candidate_areas if a != preferred_area]
+
+    # 1) Tenta substituir o último tópico por um mais longo (priorizando mesma área)
+    search_areas = [last_topic["area"]] + [a for a in candidate_areas if a != last_topic["area"]]
+    for area in search_areas:
+        for idx, cand in enumerate(topics_by_area.get(area, [])):
+            new_h = base_hours + cand["estimated_hours"]
+            if current_week_hours + 0.3 < new_h <= max_week_hours + 1e-6:
+                same_area_bonus = 1 if area == last_topic["area"] else 0
+                score = (same_area_bonus, new_h, cand["priority"])
+                if best_swap is None or score > best_swap[0]:
+                    best_swap = (score, "single", area, idx)
+
+    if best_swap is not None:
+        _, _, swap_area, swap_idx = best_swap
+        replacement = topics_by_area[swap_area].pop(swap_idx)
+        topics_by_area.setdefault(last_topic["area"], []).append(last_topic)
+        topics_by_area[last_topic["area"]].sort(key=lambda x: x["priority"], reverse=True)
+        week_topics[-1] = replacement
+        return base_hours + replacement["estimated_hours"]
+
+    return current_week_hours
 
 
 def _build_weekly_plan(
@@ -365,71 +466,122 @@ def _build_weekly_plan(
     for t in pending_topics:
         topics_by_area.setdefault(t["area"], []).append(t)
 
+    initial_counts = {area: len(lst) for area, lst in topics_by_area.items()}
     plan = []
-    area_rotation_cursor = 0
 
     for week in range(1, total_weeks + 1):
         week_topics = []
         current_week_hours = 0.0
+        week_area_counts = {}
         week_date = start_date + timedelta(weeks=week - 1)
 
-        area_foco = (
-            get_area_for_date(week_date, internato_blocks)
+        block_info = (
+            get_block_for_date(week_date, internato_blocks)
             if organization == "internato"
             else None
         )
+        area_foco = block_info["area"] if block_info else None
+        week_target_hours = (
+            block_info["hours_per_week"]
+            if block_info and block_info.get("hours_per_week") is not None
+            else float(hours_per_week)
+        )
+        max_week_hours = week_target_hours + WEEK_OVERFLOW_TOLERANCE_HOURS
+        anchor_target_hours = week_target_hours * INTERNATO_ANCHOR_RATIO
+        anchor_hours_allocated = 0.0
 
-        while current_week_hours < hours_per_week:
+        while current_week_hours < (week_target_hours - 0.5):
             active_areas = [a for a, t_list in topics_by_area.items() if len(t_list) > 0]
             if not active_areas:
                 break
 
-            selected_area = None
+            ordered_areas = []
             if organization == "internato" and area_foco and area_foco in active_areas:
-                selected_area = area_foco
+                other_areas = [a for a in active_areas if a != area_foco]
+                # Híbrido 70/30: garante ~70% com o rodízio-âncora e ~30% com a trilha paralela.
+                # Coloca 2 temas da âncora e então 1 da trilha paralela (repetindo a proporção em semanas maiores).
+                parallel_hours_allocated = current_week_hours - anchor_hours_allocated
+                parallel_target_hours = week_target_hours * (1.0 - INTERNATO_ANCHOR_RATIO)
+                anchor_count_week = week_area_counts.get(area_foco, 0)
+                parallel_count_week = len(week_topics) - anchor_count_week
+                need_parallel_now = (
+                    bool(other_areas)
+                    and anchor_count_week >= 2
+                    and (
+                        parallel_count_week == 0
+                        or (
+                            anchor_hours_allocated >= anchor_target_hours
+                            and parallel_hours_allocated < parallel_target_hours
+                        )
+                    )
+                )
+                need_anchor = not need_parallel_now and (
+                    anchor_hours_allocated == 0.0
+                    or anchor_hours_allocated < anchor_target_hours
+                    or not other_areas
+                )
+                if need_anchor:
+                    ordered_areas = [area_foco] + _rank_balanced_areas(
+                        active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=area_foco
+                    )
+                else:
+                    ordered_areas = _rank_balanced_areas(
+                        active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=area_foco
+                    ) + [area_foco]
             else:
-                # Modo geral (ou fallback sem bloco): intercala áreas proporcionalmente ao volume pendente,
-                # priorizando áreas com tópicos de alto rendimento para evitar concentração no fim.
-                hy_active_areas = [a for a in active_areas if topics_by_area[a][0]["priority"] >= 100]
-                candidates = hy_active_areas if hy_active_areas else active_areas
-                candidates.sort(key=lambda a: len(topics_by_area[a]), reverse=True)
-                selected_area = candidates[0]
+                ordered_areas = _rank_balanced_areas(
+                    active_areas, topics_by_area, initial_counts, week_area_counts
+                )
 
             candidate_area = None
-            candidate_idx = _pick_first_fitting_topic(
-                topics_by_area[selected_area], current_week_hours, hours_per_week
-            )
-            if candidate_idx != -1:
-                candidate_area = selected_area
-            else:
-                for a in active_areas:
-                    if a == selected_area:
-                        continue
-                    idx = _pick_first_fitting_topic(
-                        topics_by_area[a], current_week_hours, hours_per_week
-                    )
-                    if idx != -1:
-                        candidate_area = a
-                        candidate_idx = idx
-                        break
+            candidate_idx = -1
+            for area in ordered_areas:
+                idx = _pick_best_fitting_topic(
+                    topics_by_area[area],
+                    current_week_hours,
+                    week_target_hours,
+                    max_week_hours,
+                )
+                if idx != -1:
+                    candidate_area = area
+                    candidate_idx = idx
+                    break
 
             if candidate_area is not None:
                 topic = topics_by_area[candidate_area].pop(candidate_idx)
                 week_topics.append(topic)
                 current_week_hours += topic["estimated_hours"]
+                week_area_counts[candidate_area] = week_area_counts.get(candidate_area, 0) + 1
+                if candidate_area == area_foco:
+                    anchor_hours_allocated += topic["estimated_hours"]
             else:
                 break
 
-        plan.append({
+        # Passo de refinamento: se ainda houver temas pendentes e a semana fechou curta (< meta - 1h), tenta swap
+        has_remaining = any(len(lst) > 0 for lst in topics_by_area.values())
+        if has_remaining and current_week_hours < (week_target_hours - 1.0):
+            current_week_hours = _try_improve_underfilled_week(
+                week_topics,
+                current_week_hours,
+                topics_by_area,
+                week_target_hours,
+                max_week_hours,
+                preferred_area=area_foco,
+            )
+
+        week_entry = {
             "week": week,
             "date": week_date.isoformat(),
             "topics": week_topics,
-            "recommended_hours": hours_per_week,
+            "recommended_hours": round(week_target_hours, 1) if week_target_hours % 1 else int(week_target_hours),
             "allocated_hours": round(current_week_hours, 1),
-        })
+        }
+        if organization == "internato" and block_info:
+            week_entry["internato_block_label"] = block_info["label"]
+            week_entry["internato_block_area"] = block_info["area"] or block_info["raw_area"]
+        plan.append(week_entry)
 
-    _distribute_completed_topics(plan, completed_topics, organization, internato_blocks, hours_per_week)
-    return plan
+    return plan, completed_topics
 
 
 def generate_annual_plan(
@@ -467,7 +619,7 @@ def generate_annual_plan(
         completed_subtemas=completed_subtemas,
     )
 
-    plan = _build_weekly_plan(
+    plan, completed_topics = _build_weekly_plan(
         all_topics,
         start_date,
         total_weeks,
@@ -476,16 +628,16 @@ def generate_annual_plan(
         internato_blocks=internato_blocks,
     )
 
-    total_available_hours = total_weeks * hours_per_week
+    total_available_hours = sum(float(w["recommended_hours"]) for w in plan)
     scheduled_pending_count = sum(
         1 for w in plan for t in w.get("topics", []) if not t.get("completed")
     )
     target_pending_count = sum(1 for t in all_topics if not t.get("completed"))
     warning_msg = None
     if scheduled_pending_count < target_pending_count and pending_required_hours > total_available_hours:
-        warning_msg = f"Você tem {total_available_hours} horas disponíveis, mas precisa de {round(pending_required_hours)} horas para cobrir {'este plano' if intensive else 'todo o edital'}."
+        warning_msg = f"Você tem {round(total_available_hours)} horas disponíveis, mas precisa de {round(pending_required_hours)} horas para cobrir {'este plano' if intensive else 'todo o edital'}."
 
-    result = {"plan": plan}
+    result = {"plan": plan, "completed_topics": completed_topics}
     if warning_msg:
         result["warning"] = warning_msg
         result["total_required_hours"] = round(pending_required_hours)
@@ -504,6 +656,8 @@ def build_plan_from_schedule(
     adaptive_signals=None,
     intensive=False,
     completed_subtemas=None,
+    organization="geral",
+    internato_blocks=None,
 ):
     """
     Reconstrói a estrutura semanal do plano a partir do cronograma congelado em banco,
@@ -538,9 +692,11 @@ def build_plan_from_schedule(
     )
 
     weeks_map = {}
+    scheduled_subtemas = set()
     for r in schedule_rows:
         w_num = int(r["week"])
         weeks_map.setdefault(w_num, []).append(r["subtema"])
+        scheduled_subtemas.add(r["subtema"])
 
     total_weeks = None
     if exam_date_str:
@@ -557,6 +713,17 @@ def build_plan_from_schedule(
     for week_num in all_week_numbers:
         week_topics = []
         current_week_hours = 0.0
+        week_date = start_date + timedelta(weeks=week_num - 1)
+        block_info = (
+            get_block_for_date(week_date, internato_blocks)
+            if organization == "internato"
+            else None
+        )
+        week_target_hours = (
+            block_info["hours_per_week"]
+            if block_info and block_info.get("hours_per_week") is not None
+            else float(hours_per_week)
+        )
         for subtema in weeks_map.get(week_num, []):
             meta = meta_dict.get(subtema)
             if not meta:
@@ -576,21 +743,24 @@ def build_plan_from_schedule(
                 current_week_hours += topic_hours
             week_topics.append(topic_obj)
 
-        plan.append({
+        week_entry = {
             "week": week_num,
-            "date": (start_date + timedelta(weeks=week_num - 1)).isoformat(),
+            "date": week_date.isoformat(),
             "topics": week_topics,
-            "recommended_hours": hours_per_week,
+            "recommended_hours": round(week_target_hours, 1) if week_target_hours % 1 else int(week_target_hours),
             "allocated_hours": round(current_week_hours, 1),
-        })
+        }
+        if organization == "internato" and block_info:
+            week_entry["internato_block_label"] = block_info["label"]
+            week_entry["internato_block_area"] = block_info["area"] or block_info["raw_area"]
+        plan.append(week_entry)
 
-    total_available_hours = None
-    if exam_date_str:
-        _, total_weeks, err = _parse_dates_and_weeks(start_date_str, exam_date_str)
-        if not err and total_weeks:
-            total_available_hours = total_weeks * hours_per_week
-    if total_available_hours is None:
-        total_available_hours = len(plan) * hours_per_week
+    # Tópicos concluídos que não estão alocados em nenhuma semana da grade
+    completed_outside_schedule = [
+        t for t in all_topics if t.get("completed") and t["subtema"] not in scheduled_subtemas
+    ]
+
+    total_available_hours = sum(float(w["recommended_hours"]) for w in plan)
 
     scheduled_pending_count = sum(
         1 for w in plan for t in w.get("topics", []) if not t.get("completed")
@@ -598,9 +768,9 @@ def build_plan_from_schedule(
     target_pending_count = sum(1 for t in all_topics if not t.get("completed"))
     warning_msg = None
     if scheduled_pending_count < target_pending_count and pending_required_hours > total_available_hours:
-        warning_msg = f"Você tem {total_available_hours} horas disponíveis, mas precisa de {round(pending_required_hours)} horas para cobrir {'este plano' if intensive else 'todo o edital'}."
+        warning_msg = f"Você tem {round(total_available_hours)} horas disponíveis, mas precisa de {round(pending_required_hours)} horas para cobrir {'este plano' if intensive else 'todo o edital'}."
 
-    result = {"plan": plan}
+    result = {"plan": plan, "completed_topics": completed_outside_schedule}
     if warning_msg:
         result["warning"] = warning_msg
         result["total_required_hours"] = round(pending_required_hours)

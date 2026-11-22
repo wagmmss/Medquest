@@ -79,6 +79,8 @@ class InternatoBlockIn(APIInput):
     start: str = Field(min_length=10, max_length=10)
     end: str = Field(min_length=10, max_length=10)
     area: str = Field(min_length=1, max_length=100)
+    label: str | None = Field(default=None, max_length=100)
+    hours_per_week: float | None = Field(default=None, ge=1, le=168)
 
 
 class PlannerConfigIn(APIInput):
@@ -89,6 +91,7 @@ class PlannerConfigIn(APIInput):
     target_score: float | None = Field(default=None, ge=0, le=100)
     target_institution: str | None = Field(default=None, max_length=500)
     target_institutions: list[str] | None = Field(default=None, max_length=50)
+    primary_institution: str | None = Field(default=None, max_length=100)
     target_specialty: str | None = Field(default=None, max_length=100)
     organization_mode: Literal["geral", "internato"] | None = None
     internato_blocks: list[InternatoBlockIn] | None = None

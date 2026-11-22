@@ -820,7 +820,7 @@ def test_organization_modes_geral_vs_internato_and_completed_preservation(client
     r_mark = client.post("/api/planner/1/topic", json={"subtema": done_subtema, "completed": True})
     assert r_mark.status_code == 200
 
-    # Troca para modo geral -> aula concluída continua marcada e não consome horas pendentes
+    # Troca para modo geral -> aula concluída continua marcada e fica separada em completed_topics
     r_ger = client.post("/api/generate_plan", json={
         "start_date": start_date,
         "exam_date": exam_date,
@@ -830,9 +830,11 @@ def test_organization_modes_geral_vs_internato_and_completed_preservation(client
         "regenerate": True,
     })
     assert r_ger.status_code == 200
-    plan_ger = r_ger.get_json()["plan"]
+    ger_body = r_ger.get_json()
+    plan_ger = ger_body["plan"]
     all_ger_topics = [t for w in plan_ger for t in w["topics"]]
-    matched = [t for t in all_ger_topics if t["subtema"] == done_subtema]
+    assert all(t["subtema"] != done_subtema for t in all_ger_topics)
+    matched = [t for t in ger_body.get("completed_topics", []) if t["subtema"] == done_subtema]
     assert len(matched) == 1
     assert matched[0]["completed"] is True
 
@@ -851,6 +853,74 @@ def test_organization_modes_geral_vs_internato_and_completed_preservation(client
     assert r_reset_prog.status_code == 200
     assert client.get("/api/planner/topics").get_json().get(done_subtema) is None
     assert client.get("/api/planner/config").get_json().get("exam_date") == exam_date
+
+
+def test_switch_organization_mode_accepts_get_config_payload_with_primary_institution(client):
+    user_id = "user_org_switch_roundtrip"
+    headers = {"X-User-ID": user_id}
+
+    r_init = client.post("/api/planner/config", json={
+        "start_date": "2026-11-30T12:00:00Z",
+        "exam_date": "2027-11-15T12:00:00Z",
+        "days_per_week": 6,
+        "hours_per_day": 2,
+        "target_institution": "USP-SP, USP-RP",
+        "target_institutions": ["USP-SP", "USP-RP"],
+        "target_specialty": "Psiquiatria",
+        "organization_mode": "geral",
+    }, headers=headers)
+    assert r_init.status_code == 200
+
+    cfg = client.get("/api/planner/config", headers=headers).get_json()
+    assert cfg["primary_institution"] == "USP-SP"
+    assert cfg["organization_mode"] == "geral"
+
+    # Reenviar o payload retornado pelo GET (incluindo primary_institution) não pode falhar com 400
+    r_switch = client.post(
+        "/api/planner/config",
+        json={**cfg, "organization_mode": "internato"},
+        headers=headers,
+    )
+    assert r_switch.status_code == 200
+
+    cfg_after = client.get("/api/planner/config", headers=headers).get_json()
+    assert cfg_after["organization_mode"] == "internato"
+    assert cfg_after["target_institution"] == "USP-SP, USP-RP"
+    assert cfg_after["target_specialty"] == "Psiquiatria"
+
+
+def test_best_fit_packing_respects_13h_cap_and_avoids_short_weeks_and_hybrid_internato():
+    blocks = [
+        {"start": "2026-11-30", "end": "2027-01-24", "area": "Geral", "label": "Férias", "hours_per_week": 16},
+        {"start": "2027-01-25", "end": "2027-02-21", "area": "Cirurgia", "label": "Cirurgia Geral", "hours_per_week": 12},
+        {"start": "2027-02-22", "end": "2027-03-21", "area": "Medicina Intensiva", "label": "Anestesio / CTI"},
+    ]
+
+    # 1) Modo Geral com meta 12h: nenhuma semana > 13h e corpo sem semanas curtas (< 10.5h), intercalando áreas
+    res_geral = generate_annual_plan([], "2026-11-30", "2027-11-15", hours_per_week=12, organization="geral")
+    non_empty_g = [w for w in res_geral["plan"] if w["topics"]]
+    assert all(w["allocated_hours"] <= 13.0 for w in non_empty_g)
+    assert all(w["allocated_hours"] >= 10.5 for w in non_empty_g[:-1])
+    week1_areas = {t["area"] for t in non_empty_g[0]["topics"]}
+    assert len(week1_areas) >= 3
+
+    # 2) Modo Internato Híbrido 70/30 com carga customizada por bloco
+    res_int = generate_annual_plan(
+        [], "2026-11-30", "2027-11-15", hours_per_week=12, organization="internato", internato_blocks=blocks
+    )
+    non_empty_i = [w for w in res_int["plan"] if w["topics"]]
+    for w in non_empty_i:
+        assert w["allocated_hours"] <= w["recommended_hours"] + 1.0
+    # Semana 1 cai em Férias (16h customizadas e área Geral equilibrada)
+    assert non_empty_i[0]["recommended_hours"] == 16
+    assert non_empty_i[0]["internato_block_label"] == "Férias"
+    assert non_empty_i[0]["allocated_hours"] >= 15.0
+    # Semana 9 cai em Cirurgia Geral (12h, híbrido: maioria Cirurgia + trilha paralela)
+    week_cir = next(w for w in non_empty_i if w.get("internato_block_label") == "Cirurgia Geral")
+    cir_areas = [t["area"] for t in week_cir["topics"]]
+    assert cir_areas.count("Cirurgia") >= 2
+    assert any(a != "Cirurgia" for a in cir_areas)
+
 
 
 

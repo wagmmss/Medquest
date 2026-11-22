@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 
 const INTERNATO_AREA_OPTIONS = [
+  "Geral",
   "Clínica Médica",
   "Cirurgia",
   "Ginecologia e Obstetrícia",
@@ -18,23 +19,29 @@ const INTERNATO_AREA_OPTIONS = [
 
 interface InternatoBlocksModalProps {
   initialBlocks: InternatoBlock[];
+  defaultWeeklyHours?: number;
   onClose: () => void;
   onSaved: (blocks: InternatoBlock[]) => void;
 }
 
 export function InternatoBlocksModal({
   initialBlocks,
+  defaultWeeklyHours = 12,
   onClose,
   onSaved,
 }: InternatoBlocksModalProps) {
   const [blocks, setBlocks] = useState<InternatoBlock[]>(() =>
     initialBlocks.length > 0
       ? initialBlocks.map((b) => ({ ...b }))
-      : [{ start: "2027-01-26", end: "2027-02-22", area: "Cirurgia" }]
+      : [{ start: "2027-01-25", end: "2027-02-21", area: "Cirurgia", label: "Cirurgia Geral" }]
   );
   const [saving, setSaving] = useState(false);
 
-  const handleUpdateBlock = (index: number, field: keyof InternatoBlock, value: string) => {
+  const handleUpdateBlock = (
+    index: number,
+    field: keyof InternatoBlock,
+    value: string | number | null
+  ) => {
     setBlocks((prev) =>
       prev.map((block, idx) => (idx === index ? { ...block, [field]: value } : block))
     );
@@ -45,7 +52,7 @@ export function InternatoBlocksModal({
     const defaultStart = last?.end || new Date().toISOString().slice(0, 10);
     setBlocks((prev) => [
       ...prev,
-      { start: defaultStart, end: defaultStart, area: "Clínica Médica" },
+      { start: defaultStart, end: defaultStart, area: "Clínica Médica", label: "" },
     ]);
   };
 
@@ -60,11 +67,26 @@ export function InternatoBlocksModal({
       return;
     }
 
+    const sanitized: InternatoBlock[] = blocks.map((b) => {
+      const item: InternatoBlock = {
+        start: b.start,
+        end: b.end,
+        area: b.area,
+      };
+      if (b.label && b.label.trim()) {
+        item.label = b.label.trim();
+      }
+      if (b.hours_per_week != null && Number.isFinite(Number(b.hours_per_week)) && Number(b.hours_per_week) >= 1) {
+        item.hours_per_week = Number(b.hours_per_week);
+      }
+      return item;
+    });
+
     setSaving(true);
     try {
-      const res = await api.planner.saveInternatoBlocks(blocks);
+      const res = await api.planner.saveInternatoBlocks(sanitized);
       toast.success("Blocos do internato atualizados! Cronograma recalculado mantendo aulas feitas.");
-      onSaved(res.internato_blocks || blocks);
+      onSaved(res.internato_blocks || sanitized);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar blocos do internato.");
@@ -80,7 +102,7 @@ export function InternatoBlocksModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="internato-blocks-modal-title"
-        className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[88dvh] flex flex-col z-10 animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface border border-line-subtle rounded-2xl shadow-2xl p-6 max-w-4xl w-full max-h-[88dvh] flex flex-col z-10 animate-in fade-in zoom-in-95 duration-200"
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-2.5">
@@ -92,7 +114,7 @@ export function InternatoBlocksModal({
                 Blocos do Internato
               </h3>
               <p className="text-xs text-ink-secondary">
-                Defina as datas e grandes áreas de cada rodízio. As aulas já marcadas como feitas serão preservadas.
+                Defina datas, área-âncora (~70% da semana + ~30% trilha paralela) e carga opcional por bloco. Deixe h/sem vazio para usar a meta global ({defaultWeeklyHours}h).
               </p>
             </div>
           </div>
@@ -110,7 +132,7 @@ export function InternatoBlocksModal({
           {blocks.map((block, index) => (
             <div
               key={index}
-              className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-center p-3 rounded-xl bg-elevated/60 border border-line-subtle"
+              className="grid grid-cols-1 sm:grid-cols-[0.95fr_0.95fr_1.15fr_1fr_0.65fr_auto] gap-2 items-center p-3 rounded-xl bg-elevated/60 border border-line-subtle"
             >
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
@@ -120,7 +142,7 @@ export function InternatoBlocksModal({
                   type="date"
                   value={block.start}
                   onChange={(e) => handleUpdateBlock(index, "start", e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
+                  className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
                 />
               </div>
               <div>
@@ -131,24 +153,54 @@ export function InternatoBlocksModal({
                   type="date"
                   value={block.end}
                   onChange={(e) => handleUpdateBlock(index, "end", e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
+                  className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
-                  Grande Área
+                  Área-Âncora
                 </label>
                 <select
                   value={block.area}
                   onChange={(e) => handleUpdateBlock(index, "area", e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
+                  className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
                 >
                   {INTERNATO_AREA_OPTIONS.map((area) => (
                     <option key={area} value={area}>
-                      {area}
+                      {area === "Geral" ? "Geral (Equilibrado)" : area}
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
+                  Rótulo
+                </label>
+                <input
+                  type="text"
+                  placeholder={block.area}
+                  value={block.label ?? ""}
+                  onChange={(e) => handleUpdateBlock(index, "label", e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
+                  h/sem
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={80}
+                  step={1}
+                  placeholder={`${defaultWeeklyHours}h`}
+                  value={block.hours_per_week ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    handleUpdateBlock(index, "hours_per_week", val === "" ? null : Number(val));
+                  }}
+                  className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface border border-line-subtle text-ink-primary"
+                />
               </div>
               <button
                 type="button"

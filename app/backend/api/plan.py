@@ -94,7 +94,7 @@ def planner_internato_blocks():
     except ValidationError as e:
         return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
 
-    blocks_payload = [b.model_dump() for b in data.blocks]
+    blocks_payload = [b.model_dump(exclude_none=True) for b in data.blocks]
     blocks_json = json.dumps(blocks_payload, ensure_ascii=False)
     now_iso = datetime.now(timezone.utc).isoformat()
     db = get_db()
@@ -136,13 +136,16 @@ def planner_config():
         org_mode = cfg.organization_mode or (
             existing_row["organization_mode"] if existing_row and "organization_mode" in existing_keys and existing_row["organization_mode"] else "geral"
         )
+        existing_blocks_json = (
+            existing_row["internato_blocks"] if existing_row and "internato_blocks" in existing_keys else None
+        )
         blocks_json = (
-            json.dumps([b.model_dump() for b in cfg.internato_blocks], ensure_ascii=False)
+            json.dumps([b.model_dump(exclude_none=True) for b in cfg.internato_blocks], ensure_ascii=False)
             if cfg.internato_blocks is not None
-            else (existing_row["internato_blocks"] if existing_row and "internato_blocks" in existing_keys else None)
+            else existing_blocks_json
         )
 
-        # Só limpa planner_schedule se parâmetros estruturais de tempo/data ou blocos mudarem
+        # Só limpa planner_schedule se parâmetros estruturais de tempo/data ou blocos realmente mudarem
         timing_changed = (
             not existing_row
             or existing_row["exam_date"] != cfg.exam_date
@@ -150,11 +153,12 @@ def planner_config():
             or existing_row["days_per_week"] != cfg.days_per_week
             or (existing_row["hours_per_day"] if "hours_per_day" in existing_keys else None) != cfg.hours_per_day
         )
+        blocks_changed = cfg.internato_blocks is not None and blocks_json != existing_blocks_json
 
         with db_transaction(db, immediate=True):
             if timing_changed:
                 db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
-            elif cfg.internato_blocks is not None:
+            elif blocks_changed:
                 db.execute("DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'", (g.user_id,))
 
             db.execute("""
@@ -478,6 +482,8 @@ def generate_plan():
                 rows=rows, user_progress=answered_map,
                 adaptive_signals=adaptive_signals, intensive=data.intensive,
                 completed_subtemas=completed_subtemas,
+                organization=data.organization,
+                internato_blocks=internato_blocks,
             )
             if plan:
                 return jsonify(plan)
@@ -595,6 +601,8 @@ def _generate_calendar_ics_content(db, user_id):
             rows=rows, user_progress=answered_map,
             adaptive_signals=adaptive_signals, intensive=False,
             completed_subtemas=completed_subtemas,
+            organization=org_mode,
+            internato_blocks=internato_blocks,
         ) or {}
     else:
         plan_result = generate_annual_plan(

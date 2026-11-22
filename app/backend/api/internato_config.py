@@ -2,30 +2,29 @@ from datetime import datetime
 
 # Áreas reconhecidas pelo banco de dados do MedQuest
 AREAS_MEDQUEST = [
-    "Preventiva", 
-    "Ginecologia e Obstetrícia", 
-    "Cirurgia", 
-    "Medicina Intensiva", 
-    "Clínica Médica", 
-    "Pediatria", 
-    "Especialidades"
+    "Geral",
+    "Preventiva",
+    "Ginecologia e Obstetrícia",
+    "Cirurgia",
+    "Medicina Intensiva",
+    "Clínica Médica",
+    "Pediatria",
+    "Especialidades",
 ]
 
-# Configuração da Turma J - FMRP USP
+# Configuração padrão — Plano Mestre 6º Ano FMRP-USP (2026/2027)
 RODIZIOS_TURMA_J = [
-    # 5º Ano Atual (2026) - Atualizado
-    {"start": "2026-09-01", "end": "2026-11-26", "area": "Ginecologia e Obstetrícia"}, # GO nas próximas 9 semanas
-    {"start": "2026-11-27", "end": "2027-01-25", "area": "Preventiva"}, # Férias (dez-jan)
-    
-    # 6º Ano (2027) - Calendário Previsto
-    {"start": "2027-01-26", "end": "2027-02-22", "area": "Cirurgia"},
-    {"start": "2027-02-23", "end": "2027-03-22", "area": "Medicina Intensiva"},
-    {"start": "2027-03-23", "end": "2027-04-19", "area": "Ginecologia e Obstetrícia"},
-    {"start": "2027-04-20", "end": "2027-05-17", "area": "Especialidades"},
-    {"start": "2027-05-18", "end": "2027-06-14", "area": "Preventiva"},
-    {"start": "2027-06-15", "end": "2027-08-09", "area": "Clínica Médica"},
-    {"start": "2027-08-10", "end": "2027-09-13", "area": "Pediatria"},
-    {"start": "2027-09-14", "end": "2027-11-08", "area": "Cirurgia"}
+    # Pré-Temporada / Férias (base equilibrada entre as 5 áreas)
+    {"start": "2026-11-30", "end": "2027-01-24", "area": "Geral", "label": "Férias (Pré-Temporada)"},
+    # 6º Ano (2027) — Rodízios
+    {"start": "2027-01-25", "end": "2027-02-21", "area": "Cirurgia", "label": "Cirurgia Geral"},
+    {"start": "2027-02-22", "end": "2027-03-21", "area": "Medicina Intensiva", "label": "Anestesio / CTI"},
+    {"start": "2027-03-22", "end": "2027-05-02", "area": "Ginecologia e Obstetrícia", "label": "GO (6 sem)"},
+    {"start": "2027-05-03", "end": "2027-05-16", "area": "Especialidades", "label": "Oftalmo / ORL / CCP"},
+    {"start": "2027-05-17", "end": "2027-06-13", "area": "Preventiva", "label": "MFC / Preventiva"},
+    {"start": "2027-06-14", "end": "2027-07-11", "area": "Clínica Médica", "label": "Clínica Médica"},
+    {"start": "2027-07-12", "end": "2027-08-08", "area": "Pediatria", "label": "Pediatria"},
+    {"start": "2027-08-09", "end": "2027-10-03", "area": "Cirurgia", "label": "Emergência & Trauma"},
 ]
 
 def get_area_prioritaria_atual():

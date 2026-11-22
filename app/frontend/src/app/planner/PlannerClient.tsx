@@ -17,7 +17,7 @@ import {
 } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
-import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, PlayCircle, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange } from "lucide-react";
+import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, PlayCircle, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { InternatoBlocksModal } from "./InternatoBlocksModal";
@@ -236,6 +236,7 @@ TopicRow.displayName = "TopicRow";
 
 interface PlannerClientProps {
   plan: PlannerWeek[];
+  completedTopicsOutside?: PlannerTopic[];
   initialProgress: PlannerProgressMap;
   initialTopicProgress: PlannerTopicProgressMap;
   warning?: string;
@@ -246,6 +247,7 @@ interface PlannerClientProps {
 
 export function PlannerClient({
   plan,
+  completedTopicsOutside = [],
   initialProgress,
   initialTopicProgress,
   warning,
@@ -272,6 +274,7 @@ export function PlannerClient({
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showInternatoModal, setShowInternatoModal] = useState(false);
+  const [showCompletedOutside, setShowCompletedOutside] = useState(false);
   const [switchingOrg, setSwitchingOrg] = useState(false);
   const [exportingIcs, setExportingIcs] = useState(false);
   const [copiedFeed, setCopiedFeed] = useState(false);
@@ -584,7 +587,14 @@ export function PlannerClient({
     try {
       if (config) {
         await api.planner.saveConfig({
-          ...config,
+          exam_date: config.exam_date,
+          start_date: config.start_date,
+          days_per_week: config.days_per_week,
+          hours_per_day: config.hours_per_day,
+          target_score: config.target_score,
+          target_institution: config.target_institution,
+          target_institutions: config.target_institutions,
+          target_specialty: config.target_specialty,
           organization_mode: nextOrg,
         });
       }
@@ -632,8 +642,11 @@ export function PlannerClient({
   };
 
   const today = new Date();
-  const totalTopics = currentPlan.reduce((total, week) => total + week.topics.length, 0);
-  const completedTopics = currentPlan.reduce(
+  const visibleCompletedOutside = completedTopicsOutside.filter(
+    (t) => topicProgress[t.subtema] !== false
+  );
+  const scheduledTopicsCount = currentPlan.reduce((total, week) => total + week.topics.length, 0);
+  const completedInScheduleCount = currentPlan.reduce(
     (total, week) =>
       total +
       week.topics.filter(
@@ -641,6 +654,9 @@ export function PlannerClient({
       ).length,
     0
   );
+  const totalTopics = scheduledTopicsCount + visibleCompletedOutside.length;
+  const completedTopics = completedInScheduleCount + visibleCompletedOutside.length;
+  const defaultWeeklyHours = Math.min(168, (config?.days_per_week || 6) * (config?.hours_per_day || 2));
 
   return (
     <>
@@ -824,6 +840,57 @@ export function PlannerClient({
         </div>
       </div>
 
+      {visibleCompletedOutside.length > 0 && (
+        <div className="bg-surface border border-line-subtle rounded-xl overflow-hidden shadow-1">
+          <button
+            type="button"
+            onClick={() => setShowCompletedOutside((prev) => !prev)}
+            aria-expanded={showCompletedOutside}
+            className="w-full px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-elevated/50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <CheckCircle2 size={18} className="text-success shrink-0" />
+              <div>
+                <span className="text-sm font-bold text-ink-primary">
+                  Temas já concluídos ({visibleCompletedOutside.length})
+                </span>
+                <p className="text-xs text-ink-secondary">
+                  Mantidos fora das semanas futuras para não poluir sua carga semanal pendente.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-secondary shrink-0">
+              {showCompletedOutside ? "Recolher" : "Ver lista"}
+              {showCompletedOutside ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </span>
+          </button>
+          {showCompletedOutside && (
+            <div className="px-5 pb-4 pt-1 border-t border-line-subtle divide-y divide-line-subtle/60">
+              {visibleCompletedOutside.map((t) => (
+                <div key={t.subtema} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-muted-foreground line-through block truncate">
+                      {t.subtema}
+                    </span>
+                    <span className={clsx("text-xs font-medium", getAreaColorClass(t.area).split(" ")[1])}>
+                      {t.area}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void toggleTopic(0, t.subtema, true)}
+                    className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-md border border-line-subtle bg-elevated hover:bg-elevated/80 text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+                    title="Desmarcar conclusão (reorganize o cronograma para reagendar)"
+                  >
+                    Desmarcar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-4">
         {currentPlan.map((week) => {
           const weekProgress = progress[week.week.toString()] || { studied: false, rev24h: false, rev7d: false, rev30d: false };
@@ -831,7 +898,7 @@ export function PlannerClient({
           const weekDate = new Date(`${week.date.slice(0, 10)}T12:00:00`);
           // Highlight current week if it falls within this week's 7 days
           const isCurrentWeek = weekDate <= today && new Date(weekDate.getTime() + 7 * 24 * 60 * 60 * 1000) > today;
-          const isOverloaded = week.allocated_hours > week.recommended_hours;
+          const isOverloaded = week.allocated_hours > week.recommended_hours + 1.0;
           const isOverDropWeek = dragOverWeek === week.week;
 
           return (
@@ -853,6 +920,11 @@ export function PlannerClient({
                     <span className="text-sm font-bold text-ink-secondary bg-elevated px-2.5 py-1 rounded-md">
                       Semana {week.week}
                     </span>
+                    {organizationMode === "internato" && week.internato_block_label && (
+                      <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
+                        {week.internato_block_label}
+                      </span>
+                    )}
                     <span className="text-sm text-ink-secondary flex items-center gap-2">
                       {weekDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                       <span className={clsx(
@@ -1031,6 +1103,7 @@ export function PlannerClient({
       {showInternatoModal && (
         <InternatoBlocksModal
           initialBlocks={config?.internato_blocks || []}
+          defaultWeeklyHours={defaultWeeklyHours}
           onClose={() => setShowInternatoModal(false)}
           onSaved={() => {
             void queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });

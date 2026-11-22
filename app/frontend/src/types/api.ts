@@ -300,6 +300,8 @@ export interface InternatoBlock {
   start: string;
   end: string;
   area: string;
+  label?: string;
+  hours_per_week?: number | null;
 }
 
 export interface PlannerConfig {
@@ -339,10 +341,13 @@ export interface PlannerWeek {
   topics: PlannerTopic[];
   recommended_hours: number;
   allocated_hours: number;
+  internato_block_label?: string;
+  internato_block_area?: string;
 }
 
 export interface PlannerPlanResponse {
   plan: PlannerWeek[];
+  completed_topics?: PlannerTopic[];
   warning?: string;
   total_required_hours?: number;
   total_available_hours?: number;
