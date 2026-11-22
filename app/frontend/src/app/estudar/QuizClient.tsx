@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult } from "@/types/api";
+import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, HighlightColor } from "@/types/api";
 import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2, PlayCircle } from "lucide-react";
@@ -17,7 +17,9 @@ import { buildLessonReturnUrl } from "@/lib/themeJourney";
 import type { LessonCycleQuizContext } from "./components/QuizSessionReportModal";
 
 import dynamic from "next/dynamic";
-import { FormattedContent, normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
+import { normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
+import { HighlightableContent, HighlightToolbar } from "@/components/HighlightableContent";
+import { addOrMergeHighlight, type TextHighlight } from "@/lib/textHighlights";
 
 const ImageViewer = dynamic(
   () => import("@/components/ImageViewer").then((mod) => mod.ImageViewer),
@@ -69,6 +71,7 @@ import { useQuizKeyboard } from "./hooks/useQuizKeyboard";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 
 const EMPTY_ELIMINATED: string[] = [];
+const EMPTY_HIGHLIGHTS: TextHighlight[] = [];
 
 function warmQuestionImages(detail?: QuestionDetail | null): void {
   if (typeof window === "undefined" || !detail) return;
@@ -238,6 +241,10 @@ export function QuizClient({
   const prefetchingRef = useRef<Set<number>>(new Set());
 
   const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [stemHighlightsByQid, setStemHighlightsByQid] = useState<Record<number, TextHighlight[]>>({});
+  const [caseHighlightsByQid, setCaseHighlightsByQid] = useState<Record<number, TextHighlight[]>>({});
   const detailRequestRef = useRef(0);
   const queueRequestRef = useRef(0);
   // Envios de tentativa em voo, por questão. Um booleano global travava a sessão
@@ -1768,10 +1775,25 @@ export function QuizClient({
               <h4 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-2 font-mono-lab">
                 <BookOpen size={16} /> Caso Clínico Associado
               </h4>
-              <FormattedContent 
+              <HighlightableContent 
                 content={q.clinical_case.stem} 
                 onImageClick={setEnlargedImage} 
                 className="text-ink text-base md:text-lg leading-relaxed font-normal" 
+                highlights={caseHighlightsByQid[q.id] ?? EMPTY_HIGHLIGHTS}
+                activeColor={highlightColor}
+                enabled={highlightEnabled}
+                onAddHighlight={(range) =>
+                  setCaseHighlightsByQid((prev) => ({
+                    ...prev,
+                    [q.id]: addOrMergeHighlight(prev[q.id] ?? EMPTY_HIGHLIGHTS, range),
+                  }))
+                }
+                onRemoveHighlight={(id) =>
+                  setCaseHighlightsByQid((prev) => ({
+                    ...prev,
+                    [q.id]: (prev[q.id] ?? EMPTY_HIGHLIGHTS).filter((h) => h.id !== id),
+                  }))
+                }
               />
               {extraCaseImages.length > 0 && (
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-1">
@@ -1904,10 +1926,45 @@ export function QuizClient({
                 </div>
               </div>
 
-              <FormattedContent 
+              <HighlightToolbar
+                activeColor={highlightColor}
+                onChangeColor={setHighlightColor}
+                enabled={highlightEnabled}
+                onToggleEnabled={() => setHighlightEnabled((prev) => !prev)}
+                highlightCount={(stemHighlightsByQid[q.id]?.length ?? 0) + (caseHighlightsByQid[q.id]?.length ?? 0)}
+                onClearAll={() => {
+                  setStemHighlightsByQid((prev) => {
+                    const next = { ...prev };
+                    delete next[q.id];
+                    return next;
+                  });
+                  setCaseHighlightsByQid((prev) => {
+                    const next = { ...prev };
+                    delete next[q.id];
+                    return next;
+                  });
+                }}
+              />
+
+              <HighlightableContent 
                 content={q.stem} 
                 onImageClick={setEnlargedImage} 
                 className={`text-ink ${stemFontClass} leading-relaxed font-normal`} 
+                highlights={stemHighlightsByQid[q.id] ?? EMPTY_HIGHLIGHTS}
+                activeColor={highlightColor}
+                enabled={highlightEnabled}
+                onAddHighlight={(range) =>
+                  setStemHighlightsByQid((prev) => ({
+                    ...prev,
+                    [q.id]: addOrMergeHighlight(prev[q.id] ?? EMPTY_HIGHLIGHTS, range),
+                  }))
+                }
+                onRemoveHighlight={(id) =>
+                  setStemHighlightsByQid((prev) => ({
+                    ...prev,
+                    [q.id]: (prev[q.id] ?? EMPTY_HIGHLIGHTS).filter((h) => h.id !== id),
+                  }))
+                }
               />
 
               {extraStemImages.length > 0 && (
@@ -1957,7 +2014,7 @@ export function QuizClient({
                       ) : (
                         <Lightbulb size={14} />
                       )}
-                      {loadingTip ? "Gerando dica clínica..." : "Dica do Preceptor (sem spoiler)"}
+                      {loadingTip ? "Gerando dica clínica..." : "Dica do Preceptor"}
                     </button>
                   ) : (
                     <div className="p-3.5 rounded-2xl bg-amber-500/8 border border-amber-500/25 text-xs sm:text-sm text-ink-primary leading-relaxed flex items-start gap-2.5">

@@ -2,11 +2,14 @@
 
 import React from "react";
 import { Maximize } from "lucide-react";
+import { HIGHLIGHT_MARK_CLASSES, type TextHighlight } from "@/lib/textHighlights";
 
 interface FormattedContentProps {
   content: string;
   className?: string;
   onImageClick?: (url: string) => void;
+  highlights?: TextHighlight[];
+  onRemoveHighlight?: (id: string) => void;
 }
 
 export function normalizeImageSrc(url: string | null | undefined): string {
@@ -428,9 +431,123 @@ export function preprocessMarkdown(content: string): string {
 }
 
 /**
+ * Percorre a árvore de ReactNode gerada pelo FormattedContent e envolve os trechos
+ * cobertos por `highlights` (offsets de texto plano) em elementos `<mark>` clicáveis.
+ */
+function applyHighlightsToText(
+  text: string,
+  highlights: TextHighlight[],
+  cursor: { offset: number },
+  onRemoveHighlight?: (id: string) => void,
+  keyPrefix = "hl"
+): React.ReactNode {
+  const segStart = cursor.offset;
+  const segEnd = segStart + text.length;
+  cursor.offset = segEnd;
+
+  const overlapping = highlights.filter((h) => h.end > segStart && h.start < segEnd);
+  if (overlapping.length === 0) {
+    return text;
+  }
+
+  const parts: React.ReactNode[] = [];
+  let localPos = 0;
+
+  for (let i = 0; i < overlapping.length; i++) {
+    const hl = overlapping[i];
+    const relStart = Math.max(0, hl.start - segStart);
+    const relEnd = Math.min(text.length, hl.end - segStart);
+
+    if (relStart > localPos) {
+      parts.push(
+        <React.Fragment key={`${keyPrefix}-t-${i}`}>
+          {text.slice(localPos, relStart)}
+        </React.Fragment>
+      );
+    }
+
+    if (relEnd > relStart) {
+      parts.push(
+        <mark
+          key={`${keyPrefix}-m-${hl.id}-${i}`}
+          data-highlight-id={hl.id}
+          title="Clique para remover o grifo"
+          className={HIGHLIGHT_MARK_CLASSES[hl.color]}
+          onClick={(e) => {
+            if (!onRemoveHighlight) return;
+            const currentSelection = window.getSelection()?.toString().trim() || "";
+            if (currentSelection.length > 0) return;
+            e.stopPropagation();
+            onRemoveHighlight(hl.id);
+          }}
+        >
+          {text.slice(relStart, relEnd)}
+        </mark>
+      );
+    }
+
+    localPos = Math.max(localPos, relEnd);
+  }
+
+  if (localPos < text.length) {
+    parts.push(
+      <React.Fragment key={`${keyPrefix}-tail`}>
+        {text.slice(localPos)}
+      </React.Fragment>
+    );
+  }
+
+  return parts;
+}
+
+function applyHighlightsToNode(
+  node: React.ReactNode,
+  highlights: TextHighlight[],
+  cursor: { offset: number },
+  onRemoveHighlight?: (id: string) => void,
+  keyPath = "n"
+): React.ReactNode {
+  if (node === null || node === undefined || typeof node === "boolean") {
+    return node;
+  }
+  if (typeof node === "string") {
+    return applyHighlightsToText(node, highlights, cursor, onRemoveHighlight, keyPath);
+  }
+  if (typeof node === "number") {
+    return applyHighlightsToText(String(node), highlights, cursor, onRemoveHighlight, keyPath);
+  }
+  if (Array.isArray(node)) {
+    return node.map((child, idx) =>
+      applyHighlightsToNode(child, highlights, cursor, onRemoveHighlight, `${keyPath}-${idx}`)
+    );
+  }
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    const { children } = node.props;
+    if (children === undefined || children === null) {
+      return node;
+    }
+    const nextChildren = applyHighlightsToNode(
+      children,
+      highlights,
+      cursor,
+      onRemoveHighlight,
+      `${keyPath}-c`
+    );
+    return React.cloneElement(node, undefined, nextChildren);
+  }
+  return node;
+}
+
+/**
  * Robust markdown block parser supporting tables (Katomart-style), headings, lists, quotes, and paragraphs.
  */
-export function FormattedContent({ content, className = "", onImageClick }: FormattedContentProps) {
+export function FormattedContent({
+  content,
+  className = "",
+  onImageClick,
+  highlights,
+  onRemoveHighlight,
+}: FormattedContentProps) {
   if (!content) return null;
 
   const raw = preprocessMarkdown(content);
@@ -467,7 +584,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       if (cleanedLines.length === 1 && isStandaloneBoldLabel(cleanedLines[0])) {
         const labelText = cleanedLines[0].slice(2, -2);
         blocks.push(
-          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1">
+          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1 text-left">
             {labelText}
           </h4>
         );
@@ -484,12 +601,12 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
         cleanedLines.slice(1).filter(isKeyValueLine).length >= 2
       ) {
         blocks.push(
-          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1">
+          <h4 key={`sub-${blocks.length}`} className="font-bold text-foreground mt-3 mb-1 text-left">
             {renderInline(cleanedLines[0], onImageClick)}
           </h4>
         );
         blocks.push(
-          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed text-justify">
             {cleanedLines.slice(1).map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
@@ -509,7 +626,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
 
       if (isBulletlessItemBlock) {
         blocks.push(
-          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed text-justify">
             {cleanedLines.map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
@@ -521,7 +638,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       }
 
       blocks.push(
-        <p key={`p-${blocks.length}`} className="leading-relaxed">
+        <p key={`p-${blocks.length}`} className="leading-relaxed text-justify">
           {cleanedLines.length === 1
             ? renderInline(cleanedLines[0], onImageClick)
             : renderLinesWithBreaks(cleanedLines)}
@@ -538,13 +655,13 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       const isOrdered = listType === "ol";
       blocks.push(
         isOrdered ? (
-          <ol key={`list-${blocks.length}`} className="list-decimal pl-5 space-y-1.5 leading-relaxed">
+          <ol key={`list-${blocks.length}`} className="list-decimal pl-5 space-y-1.5 leading-relaxed text-justify">
             {items.map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
           </ol>
         ) : (
-          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed">
+          <ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5 leading-relaxed text-justify">
             {items.map((item, idx) => (
               <li key={idx}>{renderInline(item, onImageClick)}</li>
             ))}
@@ -650,7 +767,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       const text = headingMatch[2];
       const Tag = level === 1 ? "h2" : level === 2 ? "h3" : "h4";
       blocks.push(
-        <Tag key={`h-${blocks.length}`} className="font-bold text-foreground mt-4 mb-2">
+        <Tag key={`h-${blocks.length}`} className="font-bold text-foreground mt-4 mb-2 text-left">
           {renderInline(text, onImageClick)}
         </Tag>
       );
@@ -688,7 +805,7 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
       flushList();
       afterSectionLabel = false;
       blocks.push(
-        <blockquote key={`quote-${blocks.length}`} className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-2">
+        <blockquote key={`quote-${blocks.length}`} className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-2 text-justify">
           {renderInline(quoteMatch[1], onImageClick)}
         </blockquote>
       );
@@ -704,5 +821,10 @@ export function FormattedContent({ content, className = "", onImageClick }: Form
   flushList();
   flushTable();
 
-  return <div className={`space-y-3 text-left ${className}`}>{blocks}</div>;
+  const renderedBlocks =
+    highlights && highlights.length > 0
+      ? applyHighlightsToNode(blocks, highlights, { offset: 0 }, onRemoveHighlight)
+      : blocks;
+
+  return <div className={`space-y-3 text-justify ${className}`}>{renderedBlocks}</div>;
 }

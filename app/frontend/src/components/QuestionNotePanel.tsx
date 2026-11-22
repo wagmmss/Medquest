@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Highlighter, Save, StickyNote, X } from "lucide-react";
+import { Save, StickyNote, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { HighlightColor, QuestionHighlight } from "@/types/api";
@@ -19,7 +19,6 @@ function QuestionNotePanelInner({ questionId }: { questionId: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const [draftHighlights, setDraftHighlights] = useState<QuestionHighlight[] | null>(null);
-  const [activeColor, setActiveColor] = useState<HighlightColor>("yellow");
 
   const { data } = useQuery({
     queryKey: ["question-note", questionId],
@@ -45,25 +44,6 @@ function QuestionNotePanelInner({ questionId }: { questionId: number }) {
     },
   });
 
-  const handleHighlightSelection = () => {
-    const selected = window.getSelection()?.toString().trim() || "";
-    if (selected.length < 3) {
-      toast("Selecione um trecho do enunciado para grifar.");
-      return;
-    }
-    if (highlights.some((h) => h.text === selected)) {
-      toast("Esse trecho já está grifado.");
-      return;
-    }
-    const next: QuestionHighlight[] = [
-      ...highlights,
-      { id: `hl-${Date.now()}`, text: selected.slice(0, 500), color: activeColor },
-    ];
-    setDraftHighlights(next);
-    setIsOpen(true);
-    saveMutation.mutate({ highlights: next, note_text: noteText });
-  };
-
   const removeHighlight = (id: string) => {
     const next = highlights.filter((h) => h.id !== id);
     setDraftHighlights(next);
@@ -76,13 +56,7 @@ function QuestionNotePanelInner({ questionId }: { questionId: number }) {
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
         return;
       }
-      if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const selected = window.getSelection()?.toString().trim() || "";
-        if (selected.length >= 3) {
-          e.preventDefault();
-          handleHighlightSelection();
-        }
-      } else if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
@@ -103,43 +77,9 @@ function QuestionNotePanelInner({ questionId }: { questionId: number }) {
         >
           <StickyNote className="w-4 h-4 text-accent" />
           <span>
-            {hasSavedContent ? "Meu Macete & Grifos (Caderno)" : "Criar anotação / macete (N)"}
+            {hasSavedContent ? "Meu Macete (Caderno)" : "Criar anotação / macete (N)"}
           </span>
-          {highlights.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-xs bg-warning/20 text-[10px] font-mono-lab">
-              {highlights.length} grifo{highlights.length > 1 ? "s" : ""}
-            </span>
-          )}
         </button>
-
-        <div className="flex items-center gap-1.5">
-          {(["yellow", "green", "blue", "pink"] as HighlightColor[]).map((color) => (
-            <button
-              key={color}
-              type="button"
-              onClick={() => setActiveColor(color)}
-              aria-label={`Cor de grifo ${color}`}
-              className={`w-3.5 h-3.5 rounded-full border cursor-pointer transition-transform ${
-                color === "yellow"
-                  ? "bg-amber-300 border-amber-500"
-                  : color === "green"
-                  ? "bg-emerald-300 border-emerald-500"
-                  : color === "blue"
-                  ? "bg-sky-300 border-sky-500"
-                  : "bg-rose-300 border-rose-500"
-              } ${activeColor === color ? "scale-125 ring-1 ring-ink-primary" : "opacity-70"}`}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={handleHighlightSelection}
-            title="Selecione texto do enunciado e clique aqui (ou pressione M)"
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs border border-line-subtle bg-elevated hover:bg-canvas text-[11px] font-medium text-ink-primary transition-colors cursor-pointer"
-          >
-            <Highlighter className="w-3.5 h-3.5 text-warning" />
-            Grifar seleção (M)
-          </button>
-        </div>
       </div>
 
       {(isOpen || highlights.length > 0) && (

@@ -454,7 +454,7 @@ function ExplanationViewerBase({
               )}
             </div>
             {!isRacCollapsed ? (
-              <div className="text-ink-primary text-sm md:text-base leading-relaxed max-w-[76ch]">
+              <div className="text-ink-primary text-sm md:text-base leading-relaxed">
                 <FormattedContent content={parsed.raciocinioClinico} onImageClick={setEnlargedImage} />
               </div>
             ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, BatchAttemptItem, BatchAttemptResultItem } from "@/types/api";
+import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, BatchAttemptItem, BatchAttemptResultItem, HighlightColor } from "@/types/api";
 import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { localDb, getLocalOwnerId, isLocalIdentityReady, SimuladoPackage, isPackageValid, isDeviceOffline } from "@/lib/db";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
@@ -29,7 +29,9 @@ import { useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 import { LEARNING_SESSION_VERSION, readLearningSession, writeLearningSession, removeLearningSession, deadlineFromNow } from "@/lib/sessionState";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { FormattedContent, normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
+import { normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
+import { HighlightableContent, HighlightToolbar } from "@/components/HighlightableContent";
+import { addOrMergeHighlight, type TextHighlight } from "@/lib/textHighlights";
 import { AlternativeContent, getAlternativePlainText } from "@/components/AlternativeContent";
 import Image from "next/image";
 import { SimuladoStartScreen } from "./components/SimuladoStartScreen";
@@ -192,6 +194,10 @@ export function SimuladoClient({
 
   // Marcar para revisar
   const [flagged, setFlagged] = useState<Record<number, boolean>>({});
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [stemHighlightsByQid, setStemHighlightsByQid] = useState<Record<number, TextHighlight[]>>({});
+  const [caseHighlightsByQid, setCaseHighlightsByQid] = useState<Record<number, TextHighlight[]>>({});
 
   // Duração proporcional: 3 min/questão (120 Qs = 6h), arredondado
   const [deadlineAt, setDeadlineAt] = useState(0);
@@ -1589,14 +1595,51 @@ export function SimuladoClient({
                 )}
               </div>
 
+              <div className="mb-4">
+                <HighlightToolbar
+                  activeColor={highlightColor}
+                  onChangeColor={setHighlightColor}
+                  enabled={highlightEnabled}
+                  onToggleEnabled={() => setHighlightEnabled((prev) => !prev)}
+                  highlightCount={(stemHighlightsByQid[qDetail.id]?.length ?? 0) + (caseHighlightsByQid[qDetail.id]?.length ?? 0)}
+                  onClearAll={() => {
+                    setStemHighlightsByQid((prev) => {
+                      const next = { ...prev };
+                      delete next[qDetail.id];
+                      return next;
+                    });
+                    setCaseHighlightsByQid((prev) => {
+                      const next = { ...prev };
+                      delete next[qDetail.id];
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+
               {/* Clinical Case */}
               {qDetail.clinical_case && (
                 <div className="bg-elevated/30 border-l-4 border-primary rounded-r-xl p-5 mb-6">
                   <h4 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Caso Clínico</h4>
-                  <FormattedContent
+                  <HighlightableContent
                     content={qDetail.clinical_case.stem}
                     onImageClick={setEnlargedImage}
                     className="text-ink-primary text-lg leading-relaxed"
+                    highlights={caseHighlightsByQid[qDetail.id] ?? []}
+                    activeColor={highlightColor}
+                    enabled={highlightEnabled}
+                    onAddHighlight={(range) =>
+                      setCaseHighlightsByQid((prev) => ({
+                        ...prev,
+                        [qDetail.id]: addOrMergeHighlight(prev[qDetail.id] ?? [], range),
+                      }))
+                    }
+                    onRemoveHighlight={(id) =>
+                      setCaseHighlightsByQid((prev) => ({
+                        ...prev,
+                        [qDetail.id]: (prev[qDetail.id] ?? []).filter((h) => h.id !== id),
+                      }))
+                    }
                   />
                   {extraCaseImages.length > 0 && (
                     <div className="flex flex-col sm:flex-row flex-wrap gap-4 mt-4">
@@ -1621,10 +1664,25 @@ export function SimuladoClient({
                 </div>
               )}
 
-              <FormattedContent
+              <HighlightableContent
                 content={qDetail.stem}
                 onImageClick={setEnlargedImage}
                 className="text-ink-primary text-lg leading-relaxed mb-8"
+                highlights={stemHighlightsByQid[qDetail.id] ?? []}
+                activeColor={highlightColor}
+                enabled={highlightEnabled}
+                onAddHighlight={(range) =>
+                  setStemHighlightsByQid((prev) => ({
+                    ...prev,
+                    [qDetail.id]: addOrMergeHighlight(prev[qDetail.id] ?? [], range),
+                  }))
+                }
+                onRemoveHighlight={(id) =>
+                  setStemHighlightsByQid((prev) => ({
+                    ...prev,
+                    [qDetail.id]: (prev[qDetail.id] ?? []).filter((h) => h.id !== id),
+                  }))
+                }
               />
 
               {extraStemImages.length > 0 && (
