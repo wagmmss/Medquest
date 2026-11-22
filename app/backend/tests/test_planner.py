@@ -38,9 +38,9 @@ def test_plan_uses_curriculum_theory_duration_and_two_hour_practice_block():
 
     topics = [topic for week in result["plan"] for topic in week["topics"]]
     topic = next(topic for topic in topics if topic["subtema"] == "Hipertensão Arterial Sistêmica e Crises Hipertensivas")
-    assert topic["estimated_theory_hours"] == 2.81
+    assert topic["estimated_theory_hours"] == 1.95
     assert topic["estimated_practice_hours"] == 2.0
-    assert topic["estimated_hours"] == 4.81
+    assert topic["estimated_hours"] == 3.95
     assert topic["theory_source"] == "curriculum"
     assert topic["course_module"] == "Hipertensão Arterial Sistêmica e Crises Hipertensivas"
 
@@ -60,7 +60,7 @@ def test_plan_ignores_topics_outside_the_canonical_catalog():
 
     topics = [topic for week in result["plan"] for topic in week["topics"]]
     assert topics
-    assert result["total_required_hours"] == 610
+    assert result["total_required_hours"] == 563
 
 
 def test_go_focos_usp_are_high_yield():
@@ -492,12 +492,12 @@ def test_no_warning_when_all_topics_fit_or_weeks_sufficient():
 def test_warning_when_insufficient_time_and_schedule_reloaded():
     start = date(2026, 9, 7)
     exam = date(2026, 11, 16)  # 10 weeks away
-    # 10 weeks * 12h = 120h, curriculum needs ~610h -> genuine deficit
+    # 10 weeks * 12h = 120h, curriculum needs ~563h -> genuine deficit
     res = generate_annual_plan([], start.isoformat(), exam.isoformat(), hours_per_week=12)
     assert res.get("warning") is not None
     assert "120 horas disponíveis" in res["warning"]
     assert res.get("total_available_hours") == 120
-    assert res.get("total_required_hours") == 610
+    assert res.get("total_required_hours") == 563
 
     # Build schedule rows for the 10 weeks that could be planned
     schedule_rows = []
@@ -515,7 +515,7 @@ def test_warning_when_insufficient_time_and_schedule_reloaded():
     assert reloaded.get("warning") is not None
     assert "120 horas disponíveis" in reloaded["warning"]
     assert reloaded.get("total_available_hours") == 120
-    assert reloaded.get("total_required_hours") == 610
+    assert reloaded.get("total_required_hours") == 563
 
 
 def test_generate_plan_api_no_warning_on_reload_when_time_sufficient(client):

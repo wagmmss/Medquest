@@ -374,6 +374,7 @@ def lessons_summary_by_subtema():
         """
         SELECT
             l.id,
+            l.course_key,
             l.subtema,
             l.is_extra,
             l.is_essential,
@@ -394,6 +395,10 @@ def lessons_summary_by_subtema():
     theme_completed_map = {r["subtema"]: bool(r["theory_completed"]) for r in theme_rows}
 
     subtemas: dict[str, dict] = {}
+    fallback_next_any_main: dict[str, int] = {}
+    fallback_next_non_extra: dict[str, int] = {}
+    fallback_next_any: dict[str, int] = {}
+
     for row in rows:
         sub = row["subtema"]
         entry = subtemas.setdefault(sub, {
@@ -401,6 +406,8 @@ def lessons_summary_by_subtema():
             "completed": 0,
             "essential_total": 0,
             "essential_completed": 0,
+            "medway_optional_total": 0,
+            "medway_optional_completed": 0,
             "extra_total": 0,
             "extra_completed": 0,
             "total_duration_seconds": 0,
@@ -412,36 +419,50 @@ def lessons_summary_by_subtema():
         is_completed = row["progress_status"] == "completed"
         is_extra = bool(row["is_extra"])
         is_essential = bool(row["is_essential"])
+        is_medway = row["course_key"] == "medway_r1_2026"
+        is_medway_main = is_medway and is_essential
+        is_medway_optional = is_medway and not is_essential
         dur = int(row["duration_seconds"] or 0)
 
         entry["total"] += 1
         if is_completed:
             entry["completed"] += 1
-        elif entry["next_lesson_id"] is None and not is_extra:
-            entry["next_lesson_id"] = row["id"]
 
-        if is_extra:
+        if sub not in fallback_next_any:
+            fallback_next_any[sub] = row["id"]
+        if not is_extra and sub not in fallback_next_non_extra:
+            fallback_next_non_extra[sub] = row["id"]
+
+        if is_medway_main:
+            if sub not in fallback_next_any_main:
+                fallback_next_any_main[sub] = row["id"]
+            if not is_completed and entry["next_lesson_id"] is None:
+                entry["next_lesson_id"] = row["id"]
+            entry["essential_total"] += 1
+            entry["total_duration_seconds"] += dur
+            if is_completed:
+                entry["essential_completed"] += 1
+            else:
+                entry["remaining_duration_seconds"] += dur
+        elif is_medway_optional:
+            entry["medway_optional_total"] += 1
+            if is_completed:
+                entry["medway_optional_completed"] += 1
+        elif is_extra:
             entry["extra_total"] += 1
             if is_completed:
                 entry["extra_completed"] += 1
-        else:
-            entry["total_duration_seconds"] += dur
-            if not is_completed:
-                entry["remaining_duration_seconds"] += dur
-            if is_essential:
-                entry["essential_total"] += 1
-                if is_completed:
-                    entry["essential_completed"] += 1
 
     for sub, entry in subtemas.items():
         entry["essential_all_completed"] = bool(
             entry["essential_total"] > 0 and entry["essential_completed"] >= entry["essential_total"]
         )
-
-    for row in rows:
-        sub = row["subtema"]
-        if subtemas[sub]["next_lesson_id"] is None:
-            subtemas[sub]["next_lesson_id"] = row["id"]
+        if entry["next_lesson_id"] is None:
+            entry["next_lesson_id"] = (
+                fallback_next_any_main.get(sub)
+                or fallback_next_non_extra.get(sub)
+                or fallback_next_any.get(sub)
+            )
 
     return jsonify({"subtemas": subtemas})
 
@@ -469,7 +490,7 @@ def lessons_continue():
             SUM(CASE WHEN COALESCE(lp.status, 'not_started') != 'completed' THEN COALESCE(l.duration_seconds, 0) ELSE 0 END) AS primary_remaining_seconds
         FROM lessons l
         LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ?
-        WHERE l.active = 1 AND l.is_extra = 0
+        WHERE l.active = 1 AND l.course_key = 'medway_r1_2026' AND l.is_essential = 1
         """,
         (user_id,),
     ).fetchone()
@@ -599,12 +620,12 @@ def get_lesson_detail(lesson_id: int):
         return jsonify({"error": "Aula não encontrada."}), 404
 
     lesson = _serialize_lesson(row)
-    if not lesson["is_extra"] and lesson["subtema"]:
+    if lesson["subtema"]:
         sibling_rows = db.execute(
             _BASE_LESSON_SELECT
-            + " WHERE l.active = 1 AND l.course_key = ? AND l.subtema = ?"
-            + " ORDER BY l.module_order ASC, l.lesson_order ASC, l.id ASC",
-            (user_id, lesson["course_key"], lesson["subtema"]),
+            + " WHERE l.active = 1 AND l.subtema = ?"
+            + " ORDER BY l.is_extra ASC, l.is_essential DESC, l.module_order ASC, l.lesson_order ASC, l.id ASC",
+            (user_id, lesson["subtema"]),
         ).fetchall()
     else:
         sibling_rows = db.execute(

@@ -215,11 +215,18 @@ def test_lessons_listing_filters_and_progress_sync(client, seeded_lessons, monke
     assert "notes" not in first_item["progress"]
     assert first_item["progress"]["has_notes"] is False
 
-    # Detalhe completo traz preview_url, open_url e notes
+    # Detalhe completo traz preview_url, open_url e playlist completa do subtema (principais + opcionais + extras)
+    id4 = seeded_lessons["drive-id-4"]
     detail = client.get(f"/api/lessons/{id1}", headers=headers).get_json()
     assert detail["lesson"]["preview_url"] == "https://drive.google.com/file/d/drive-id-1/preview"
     assert detail["lesson"]["open_url"] == "https://drive.google.com/file/d/drive-id-1/view"
-    assert [item["id"] for item in detail["playlist"]] == [id1, id2, id3]
+    assert [item["id"] for item in detail["playlist"]] == [id1, id2, id3, id4]
+
+    # Continue contabiliza apenas as aulas principais da Medway (id1 + id2 = 2)
+    cont_before = client.get("/api/lessons/continue", headers=headers).get_json()
+    assert cont_before["stats"]["primary_total"] == 2
+    assert cont_before["stats"]["primary_completed"] == 0
+    assert cont_before["stats"]["primary_remaining_seconds"] == 3000
 
     # Concluir 1a aula essencial com nota e bookmark
     p1 = client.put(
@@ -260,12 +267,18 @@ def test_lessons_listing_filters_and_progress_sync(client, seeded_lessons, monke
     assert p2_edit_note.get_json()["theme_theory_completed"] is False
     assert client.get("/api/themes/progress", query_string={"subtema": THEME}, headers=headers).get_json()["theory_completed"] is False
 
-    # summary-by-subtema separa theory_completed (manual) de essential_all_completed (aulas)
+    # summary-by-subtema separa theory_completed (manual) de essential_all_completed (aulas),
+    # soma duração apenas das Principais Medway (1800 + 1200 = 3000s) e conta opcionais Medway separadamente
     summary = client.get("/api/lessons/summary-by-subtema", headers=headers).get_json()["subtemas"][THEME]
     assert summary["theory_completed"] is False
     assert summary["essential_all_completed"] is True
     assert summary["essential_total"] == 2
     assert summary["essential_completed"] == 2
+    assert summary["medway_optional_total"] == 1
+    assert summary["medway_optional_completed"] == 0
+    assert summary["extra_total"] == 1
+    assert summary["total_duration_seconds"] == 3000
+    assert summary["remaining_duration_seconds"] == 0
 
     # Validação de bookmark inválido
     assert client.put(f"/api/lessons/{id1}/progress", headers=headers, json={"bookmark_seconds": -5}).status_code == 400

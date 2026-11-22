@@ -708,6 +708,8 @@ export interface LessonsSummaryBySubtemaItem {
   completed: number;
   essential_total: number;
   essential_completed: number;
+  medway_optional_total?: number;
+  medway_optional_completed?: number;
   extra_total: number;
   extra_completed: number;
   total_duration_seconds?: number;

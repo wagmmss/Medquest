@@ -17,10 +17,11 @@ import {
   Clock,
   ExternalLink,
   Film,
-  Filter,
+  Layers,
   Lock,
   Maximize2,
   Minimize2,
+  Play,
   PlayCircle,
   Search,
   Sparkles,
@@ -37,24 +38,47 @@ import type {
   LessonsListResponse,
 } from "@/types/api";
 
-type CourseFilter =
-  | "medway_r1_2026"
-  | "medcof_r1_2026"
-  | "radiologia_2026"
+type ViewTab =
+  | "trilha_r1"
   | "medway_pratica_2026"
-  | "all";
+  | "radiologia_2026"
+  | "medcof_r1_2026";
 type StatusFilter = "all" | "pending" | "in_progress" | "completed";
 type MedcofGroupMode = "area_tema" | "bloco";
 
-const COURSE_TABS: ReadonlyArray<{ key: CourseFilter; label: string }> = [
-  { key: "medway_r1_2026", label: "Extensivo R1" },
-  { key: "medcof_r1_2026", label: "MedCof (Extras)" },
-  { key: "radiologia_2026", label: "Radiologia" },
+const VIEW_TABS: ReadonlyArray<{ key: ViewTab; label: string }> = [
+  { key: "trilha_r1", label: "Trilha R1 (Por Tema)" },
   { key: "medway_pratica_2026", label: "Prática / OSCE" },
-  { key: "all", label: "Todos" },
+  { key: "radiologia_2026", label: "Radiologia" },
+  { key: "medcof_r1_2026", label: "Acervo MedCof" },
 ];
 
-const VALID_COURSES = new Set<string>(COURSE_TABS.map((t) => t.key));
+const AREA_ORDER: Record<string, number> = {
+  "Clínica Médica": 1,
+  Cirurgia: 2,
+  "Ginecologia e Obstetrícia": 3,
+  Pediatria: 4,
+  Preventiva: 5,
+};
+
+function resolveViewTab(rawCourse: string | null): ViewTab {
+  if (
+    rawCourse === "medway_pratica_2026" ||
+    rawCourse === "radiologia_2026" ||
+    rawCourse === "medcof_r1_2026"
+  ) {
+    return rawCourse;
+  }
+  return "trilha_r1";
+}
+
+function isMedwayMain(lesson: LessonItem): boolean {
+  return lesson.course_key === "medway_r1_2026" && lesson.is_essential;
+}
+
+function isMedwayOptional(lesson: LessonItem): boolean {
+  return lesson.course_key === "medway_r1_2026" && !lesson.is_essential;
+}
 
 function formatDuration(seconds?: number | null): string {
   if (!seconds || seconds <= 0) return "";
@@ -133,6 +157,124 @@ function kindBadge(kind: string): { label: string; tone: "accent" | "primary" | 
   }
 }
 
+interface SubtemaGroup {
+  subtema: string;
+  area: string;
+  isCurrentWeek: boolean;
+  mainLessons: LessonItem[];
+  optionalMedwayLessons: LessonItem[];
+  extraMedcofLessons: LessonItem[];
+  mainTotal: number;
+  mainCompleted: number;
+  mainRemainingSeconds: number;
+  hasSecondaryMatch: boolean;
+}
+
+function LessonRowCompact({
+  item,
+  isActive,
+  savingProgress,
+  onSelect,
+  onToggleComplete,
+  showKindBadge = true,
+}: {
+  item: LessonItem;
+  isActive?: boolean;
+  savingProgress: boolean;
+  onSelect: (lesson: LessonItem) => void;
+  onToggleComplete: (lesson: LessonItem) => void;
+  showKindBadge?: boolean;
+}) {
+  const isDone = item.progress.status === "completed";
+  const isInProg = item.progress.status === "in_progress";
+  const badge = showKindBadge ? kindBadge(item.lesson_kind) : null;
+  const durLabel = formatDuration(item.duration_seconds);
+
+  return (
+    <div
+      className={clsx(
+        "flex items-start gap-2.5 px-3 py-2 rounded-sm transition-colors border",
+        isActive
+          ? "bg-accent/10 border-accent/40"
+          : "bg-canvas/50 border-transparent hover:bg-elevated/60 hover:border-line-subtle"
+      )}
+    >
+      <button
+        type="button"
+        title={isDone ? "Desmarcar conclusão" : "Marcar aula concluída"}
+        disabled={savingProgress}
+        onClick={() => onToggleComplete(item)}
+        className={clsx(
+          "mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors",
+          isDone
+            ? "bg-success border-success text-white"
+            : isInProg
+            ? "border-warning text-warning"
+            : "border-line-subtle hover:border-accent"
+        )}
+      >
+        {isDone && <CheckCircle2 className="w-3 h-3" />}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className="flex-1 min-w-0 text-left cursor-pointer group"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className={clsx(
+              "text-xs leading-snug break-words transition-colors",
+              isActive
+                ? "font-semibold text-accent"
+                : isDone
+                ? "text-ink-muted line-through"
+                : "text-ink-primary font-medium group-hover:text-primary"
+            )}
+          >
+            {item.title}
+          </p>
+          {durLabel ? (
+            <span className="text-[11px] font-mono-lab text-ink-muted shrink-0 tabular-nums">
+              {durLabel}
+            </span>
+          ) : item.size_bytes && item.size_bytes > 0 ? (
+            <span className="text-[11px] font-mono-lab text-ink-muted shrink-0">
+              {formatSize(item.size_bytes)}
+            </span>
+          ) : null}
+        </div>
+        {(badge || item.progress.bookmark_seconds > 0 || item.progress.has_notes) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] text-ink-muted">
+            {badge && (
+              <span
+                className={clsx(
+                  "px-1.5 py-0.2 rounded-xs border",
+                  badge.tone === "accent"
+                    ? "bg-accent/10 text-accent border-accent/25"
+                    : badge.tone === "primary"
+                    ? "bg-primary/10 text-primary border-primary/25"
+                    : "bg-elevated border-line-subtle text-ink-secondary"
+                )}
+              >
+                {badge.label}
+              </span>
+            )}
+            {item.progress.bookmark_seconds > 0 && (
+              <span className="font-mono-lab text-warning">
+                ⏱ {formatSecondsToMmSs(item.progress.bookmark_seconds)}
+              </span>
+            )}
+            {item.progress.has_notes && (
+              <span className="text-ink-secondary">• com notas</span>
+            )}
+          </div>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function LessonsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -144,22 +286,22 @@ export default function LessonsClient() {
   const paramSubtema = searchParams.get("subtema") || "";
   const paramCourse = searchParams.get("course");
 
-  const courseFilter: CourseFilter =
-    paramCourse && VALID_COURSES.has(paramCourse)
-      ? (paramCourse as CourseFilter)
-      : paramSubtema
-      ? "all"
-      : "medway_r1_2026";
+  const activeTab: ViewTab = resolveViewTab(paramCourse);
+  const isClassroomMode = paramLessonId !== null;
 
   const [areaFilter, setAreaFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [essentialOnly, setEssentialOnly] = useState<boolean>(false);
   const [onlyCurrentWeek, setOnlyCurrentWeek] = useState<boolean>(false);
   const [medcofGroupMode, setMedcofGroupMode] = useState<MedcofGroupMode>("area_tema");
   const [theaterMode, setTheaterMode] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>("");
   const deferredSearchText = useDeferredValue(searchText);
+
+  const [expandedAreas, setExpandedAreas] = useState<Record<string, boolean>>({});
+  const [expandedComplements, setExpandedComplements] = useState<Record<string, "optional" | "medcof" | null>>({});
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const [showSidebarExtras, setShowSidebarExtras] = useState<boolean>(false);
+
   const [draftEdit, setDraftEdit] = useState<{
     lessonId: number;
     bookmark: string;
@@ -167,9 +309,10 @@ export default function LessonsClient() {
   } | null>(null);
   const [savingProgress, setSavingProgress] = useState<boolean>(false);
 
-  // Atalho de teclado T para Modo Teatro
+  // Atalho de teclado T para Modo Teatro no Modo Sala de Aula
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!isClassroomMode) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) {
@@ -182,7 +325,7 @@ export default function LessonsClient() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isClassroomMode]);
 
   const { data: currentWeekData } = useQuery({
     queryKey: ["lessons-current-week"],
@@ -192,21 +335,26 @@ export default function LessonsClient() {
     retry: false,
   });
 
+  const { data: continueData } = useQuery({
+    queryKey: ["lessons-continue"],
+    queryFn: () => api.lessons.getContinue(),
+    enabled: canAccessLessons,
+    staleTime: 60_000,
+    retry: false,
+  });
+
   const currentWeekSubtemasSet = useMemo(
     () => new Set(currentWeekData?.subtemas ?? []),
     [currentWeekData]
   );
 
-  const effectiveCourse: CourseFilter =
-    onlyCurrentWeek && (courseFilter === "radiologia_2026" || courseFilter === "medway_pratica_2026")
-      ? "all"
-      : courseFilter;
+  const apiCourseQuery = activeTab === "trilha_r1" ? "all" : activeTab;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["lessons", effectiveCourse, paramSubtema],
+    queryKey: ["lessons", apiCourseQuery, paramSubtema],
     queryFn: () =>
       api.lessons.list({
-        course: effectiveCourse,
+        course: apiCourseQuery,
         subtema: paramSubtema || undefined,
       }),
     enabled: canAccessLessons,
@@ -214,33 +362,42 @@ export default function LessonsClient() {
   });
 
   const allFetchedLessons = useMemo(() => data?.lessons ?? [], [data]);
-  const summary = data?.summary;
+
+  // Escopo da aba atual (na Trilha R1 ficam Medway R1 + MedCof vinculados a subtemas canônicos)
+  const scopedLessons = useMemo(() => {
+    if (activeTab !== "trilha_r1") return allFetchedLessons;
+    return allFetchedLessons.filter((l) => {
+      if (paramSubtema) return l.subtema === paramSubtema;
+      return Boolean(l.subtema) && (l.course_key === "medway_r1_2026" || l.course_key === "medcof_r1_2026");
+    });
+  }, [allFetchedLessons, activeTab, paramSubtema]);
 
   const availableAreas = useMemo(() => {
     const set = new Set<string>();
-    for (const l of allFetchedLessons) {
+    for (const l of scopedLessons) {
       if (l.area) set.add(l.area);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [allFetchedLessons]);
+    return Array.from(set).sort(
+      (a, b) => (AREA_ORDER[a] ?? 99) - (AREA_ORDER[b] ?? 99) || a.localeCompare(b, "pt-BR")
+    );
+  }, [scopedLessons]);
 
   const searchHaystackById = useMemo(() => {
     const map = new Map<number, string>();
-    for (const l of allFetchedLessons) {
+    for (const l of scopedLessons) {
       map.set(
         l.id,
         normSearch(`${l.title} ${l.module_name} ${l.subtema || ""} ${l.specialty} ${l.area}`)
       );
     }
     return map;
-  }, [allFetchedLessons]);
+  }, [scopedLessons]);
 
-  const lessons = useMemo(() => {
+  const filteredLessons = useMemo(() => {
     const qNorm = normSearch(deferredSearchText);
-    return allFetchedLessons.filter((l) => {
+    return scopedLessons.filter((l) => {
       if (areaFilter && l.area !== areaFilter) return false;
-      if (essentialOnly && !l.is_essential) return false;
-      if (onlyCurrentWeek) {
+      if (activeTab === "trilha_r1" && onlyCurrentWeek) {
         if (!l.subtema || !currentWeekSubtemasSet.has(l.subtema)) return false;
       }
       if (statusFilter === "pending") {
@@ -255,9 +412,9 @@ export default function LessonsClient() {
       return true;
     });
   }, [
-    allFetchedLessons,
+    scopedLessons,
     areaFilter,
-    essentialOnly,
+    activeTab,
     onlyCurrentWeek,
     currentWeekSubtemasSet,
     statusFilter,
@@ -265,64 +422,136 @@ export default function LessonsClient() {
     searchHaystackById,
   ]);
 
-  // Aula ativa nunca muda durante digitação/filtro: paramLessonId explícito tem precedência total
-  const fallbackActiveLesson = useMemo(() => {
-    if (!allFetchedLessons.length) return null;
-    const inProg = allFetchedLessons.find((l) => l.progress.status === "in_progress");
-    if (inProg) return inProg;
-    const firstPending = allFetchedLessons.find((l) => l.progress.status !== "completed");
-    return firstPending || allFetchedLessons[0];
-  }, [allFetchedLessons]);
-
-  const activeLessonId = paramLessonId ?? fallbackActiveLesson?.id ?? null;
-
-  const {
-    data: detailData,
-    isError: isExplicitLessonError,
-    isLoading: isDetailLoading,
-  } = useQuery({
-    queryKey: ["lesson-detail", activeLessonId],
-    queryFn: () => api.lessons.get(activeLessonId!),
-    enabled: Boolean(canAccessLessons && activeLessonId),
-    staleTime: 60_000,
-    retry: false,
-  });
-
-  const listActiveLesson = useMemo(
-    () => (activeLessonId ? allFetchedLessons.find((l) => l.id === activeLessonId) ?? null : null),
-    [allFetchedLessons, activeLessonId]
-  );
-
-  // Se ?lesson=ID veio explícito e deu 404/erro, NÃO substituir silenciosamente por outra aula
-  const activeLesson: LessonItem | null =
-    paramLessonId && isExplicitLessonError
-      ? null
-      : detailData?.lesson ?? (paramLessonId ? null : fallbackActiveLesson) ?? listActiveLesson;
-
-  const activePlaylist = useMemo(() => {
-    if (detailData?.playlist && detailData.playlist.length > 0 && activeLesson?.id === detailData.lesson.id) {
-      return detailData.playlist;
+  // Métricas no cabeçalho: na Trilha R1 contabiliza exclusivamente as Aulas Principais da Medway
+  const headerStats = useMemo(() => {
+    const source =
+      activeTab === "trilha_r1"
+        ? filteredLessons.filter((l) => isMedwayMain(l))
+        : filteredLessons;
+    let completed = 0;
+    let remainingSeconds = 0;
+    for (const l of source) {
+      if (l.progress.status === "completed") {
+        completed += 1;
+      } else {
+        remainingSeconds += l.duration_seconds || 0;
+      }
     }
-    return null;
-  }, [detailData, activeLesson]);
+    return {
+      total: source.length,
+      completed,
+      remainingSeconds,
+      labelSuffix: activeTab === "trilha_r1" ? "principais Medway" : "aulas",
+    };
+  }, [activeTab, filteredLessons]);
 
-  const bookmarkInput =
-    activeLesson && draftEdit?.lessonId === activeLesson.id
-      ? draftEdit.bookmark
-      : activeLesson
-      ? formatSecondsToMmSs(activeLesson.progress.bookmark_seconds)
-      : "";
-  const notesInput =
-    activeLesson && draftEdit?.lessonId === activeLesson.id
-      ? draftEdit.notes
-      : activeLesson
-      ? activeLesson.progress.notes || ""
-      : "";
+  // Métrica rápida da Semana Atual do Planner (apenas Principais Medway)
+  const currentWeekMainStats = useMemo(() => {
+    if (!currentWeekSubtemasSet.size) return { total: 0, completed: 0, remainingSeconds: 0 };
+    let total = 0;
+    let completed = 0;
+    let remainingSeconds = 0;
+    for (const l of scopedLessons) {
+      if (!isMedwayMain(l) || !l.subtema || !currentWeekSubtemasSet.has(l.subtema)) continue;
+      total += 1;
+      if (l.progress.status === "completed") {
+        completed += 1;
+      } else {
+        remainingSeconds += l.duration_seconds || 0;
+      }
+    }
+    return { total, completed, remainingSeconds };
+  }, [scopedLessons, currentWeekSubtemasSet]);
 
+  // Agrupamento da aba Trilha R1: Grande Área -> Subtemas Canônicos
+  const areaSubtemaGroups = useMemo(() => {
+    if (activeTab !== "trilha_r1") return [];
+    const qNorm = normSearch(deferredSearchText);
+    const bySubtema = new Map<string, SubtemaGroup>();
+
+    for (const l of filteredLessons) {
+      const sub = l.subtema || "Outros temas";
+      let group = bySubtema.get(sub);
+      if (!group) {
+        group = {
+          subtema: sub,
+          area: l.area || "Outros",
+          isCurrentWeek: currentWeekSubtemasSet.has(sub),
+          mainLessons: [],
+          optionalMedwayLessons: [],
+          extraMedcofLessons: [],
+          mainTotal: 0,
+          mainCompleted: 0,
+          mainRemainingSeconds: 0,
+          hasSecondaryMatch: false,
+        };
+        bySubtema.set(sub, group);
+      }
+
+      if (isMedwayMain(l)) {
+        group.mainLessons.push(l);
+        group.mainTotal += 1;
+        if (l.progress.status === "completed") {
+          group.mainCompleted += 1;
+        } else {
+          group.mainRemainingSeconds += l.duration_seconds || 0;
+        }
+      } else if (isMedwayOptional(l)) {
+        group.optionalMedwayLessons.push(l);
+        if (qNorm.length >= 2) group.hasSecondaryMatch = true;
+      } else {
+        group.extraMedcofLessons.push(l);
+        if (qNorm.length >= 2) group.hasSecondaryMatch = true;
+      }
+    }
+
+    const byArea = new Map<
+      string,
+      {
+        area: string;
+        subtemas: SubtemaGroup[];
+        mainTotal: number;
+        mainCompleted: number;
+        mainRemainingSeconds: number;
+      }
+    >();
+
+    for (const g of bySubtema.values()) {
+      let areaEntry = byArea.get(g.area);
+      if (!areaEntry) {
+        areaEntry = {
+          area: g.area,
+          subtemas: [],
+          mainTotal: 0,
+          mainCompleted: 0,
+          mainRemainingSeconds: 0,
+        };
+        byArea.set(g.area, areaEntry);
+      }
+      areaEntry.subtemas.push(g);
+      areaEntry.mainTotal += g.mainTotal;
+      areaEntry.mainCompleted += g.mainCompleted;
+      areaEntry.mainRemainingSeconds += g.mainRemainingSeconds;
+    }
+
+    const areas = Array.from(byArea.values()).sort(
+      (a, b) => (AREA_ORDER[a.area] ?? 99) - (AREA_ORDER[b.area] ?? 99) || a.area.localeCompare(b.area, "pt-BR")
+    );
+    for (const a of areas) {
+      a.subtemas.sort((x, y) => {
+        if (x.isCurrentWeek !== y.isCurrentWeek) return x.isCurrentWeek ? -1 : 1;
+        return x.subtema.localeCompare(y.subtema, "pt-BR");
+      });
+    }
+    return areas;
+  }, [activeTab, filteredLessons, currentWeekSubtemasSet, deferredSearchText]);
+
+  // Agrupamento das abas Prática, Radiologia e Acervo MedCof
   const groupedModules = useMemo(() => {
-    const useMedcofAreaTema = effectiveCourse === "medcof_r1_2026" && medcofGroupMode === "area_tema";
+    if (activeTab === "trilha_r1") return [];
+    const useMedcofAreaTema = activeTab === "medcof_r1_2026" && medcofGroupMode === "area_tema";
     const sortedSource = useMedcofAreaTema
-      ? [...lessons].sort((a, b) => {
+      ? [...filteredLessons].sort((a, b) => {
           const areaA = a.subtema ? a.area : "ZZZ";
           const areaB = b.subtema ? b.area : "ZZZ";
           if (areaA !== areaB) return areaA.localeCompare(areaB, "pt-BR");
@@ -331,13 +560,12 @@ export default function LessonsClient() {
           if (subA !== subB) return subA.localeCompare(subB, "pt-BR");
           return a.module_order - b.module_order || a.lesson_order - b.lesson_order;
         })
-      : lessons;
+      : filteredLessons;
 
     const groups: Array<{
       key: string;
       moduleName: string;
       area: string;
-      isExtra: boolean;
       items: LessonItem[];
       completedCount: number;
       remainingSeconds: number;
@@ -360,7 +588,6 @@ export default function LessonsClient() {
           key,
           moduleName: groupTitle,
           area: item.area,
-          isExtra: item.is_extra,
           items: [],
           completedCount: 0,
           remainingSeconds: 0,
@@ -374,25 +601,102 @@ export default function LessonsClient() {
       }
     }
     return groups;
-  }, [lessons, effectiveCourse, medcofGroupMode]);
+  }, [activeTab, filteredLessons, medcofGroupMode]);
 
-  const flatOrderedLessons = useMemo(
-    () => groupedModules.flatMap((g) => g.items),
-    [groupedModules]
+  // Modo Sala de Aula: busca detalhe da aula selecionada (?lesson=<id>)
+  const {
+    data: detailData,
+    isError: isExplicitLessonError,
+    isLoading: isDetailLoading,
+  } = useQuery({
+    queryKey: ["lesson-detail", paramLessonId],
+    queryFn: () => api.lessons.get(paramLessonId!),
+    enabled: Boolean(canAccessLessons && paramLessonId),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const listActiveLesson = useMemo(
+    () => (paramLessonId ? allFetchedLessons.find((l) => l.id === paramLessonId) ?? null : null),
+    [allFetchedLessons, paramLessonId]
   );
 
-  // Navegação Anterior/Próxima usa a lista visível se a aula estiver nela; senão usa a playlist do módulo do detalhe
-  const navSource = useMemo(() => {
-    if (activeLesson && flatOrderedLessons.some((l) => l.id === activeLesson.id)) {
-      return flatOrderedLessons;
-    }
-    return activePlaylist ?? flatOrderedLessons;
-  }, [activeLesson, flatOrderedLessons, activePlaylist]);
+  const activeLesson: LessonItem | null =
+    paramLessonId && isExplicitLessonError
+      ? null
+      : detailData?.lesson ?? listActiveLesson;
 
-  const currentIdx = activeLesson ? navSource.findIndex((l) => l.id === activeLesson.id) : -1;
-  const prevLesson = currentIdx > 0 ? navSource[currentIdx - 1] : null;
+  const activePlaylist = useMemo(() => {
+    if (detailData?.playlist && detailData.playlist.length > 0 && activeLesson?.id === detailData.lesson.id) {
+      return detailData.playlist;
+    }
+    if (activeLesson?.subtema) {
+      return scopedLessons.filter((l) => l.subtema === activeLesson.subtema);
+    }
+    if (activeLesson) {
+      return scopedLessons.filter(
+        (l) => l.course_key === activeLesson.course_key && l.module_name === activeLesson.module_name
+      );
+    }
+    return [];
+  }, [detailData, activeLesson, scopedLessons]);
+
+  const sidebarSections = useMemo(() => {
+    if (!activeLesson?.subtema) {
+      return {
+        isSubtemaMode: false,
+        main: activePlaylist,
+        optionalMedway: [] as LessonItem[],
+        extraMedcof: [] as LessonItem[],
+      };
+    }
+    const main: LessonItem[] = [];
+    const optionalMedway: LessonItem[] = [];
+    const extraMedcof: LessonItem[] = [];
+    for (const item of activePlaylist) {
+      if (isMedwayMain(item)) main.push(item);
+      else if (isMedwayOptional(item)) optionalMedway.push(item);
+      else extraMedcof.push(item);
+    }
+    return {
+      isSubtemaMode: true,
+      main,
+      optionalMedway,
+      extraMedcof,
+    };
+  }, [activeLesson, activePlaylist]);
+
+  // Navegação Anterior / Próxima prioriza as Principais Medway quando a aula atual é principal
+  const navList = useMemo(() => {
+    if (!activeLesson) return [];
+    if (sidebarSections.isSubtemaMode && isMedwayMain(activeLesson)) {
+      if (sidebarSections.main.some((l) => l.id === activeLesson.id)) {
+        return sidebarSections.main;
+      }
+    }
+    if (activePlaylist.some((l) => l.id === activeLesson.id)) {
+      return activePlaylist;
+    }
+    return filteredLessons;
+  }, [activeLesson, sidebarSections, activePlaylist, filteredLessons]);
+
+  const currentIdx = activeLesson ? navList.findIndex((l) => l.id === activeLesson.id) : -1;
+  const prevLesson = currentIdx > 0 ? navList[currentIdx - 1] : null;
   const nextLesson =
-    currentIdx >= 0 && currentIdx < navSource.length - 1 ? navSource[currentIdx + 1] : null;
+    currentIdx >= 0 && currentIdx < navList.length - 1 ? navList[currentIdx + 1] : null;
+
+  const bookmarkInput =
+    activeLesson && draftEdit?.lessonId === activeLesson.id
+      ? draftEdit.bookmark
+      : activeLesson
+      ? formatSecondsToMmSs(activeLesson.progress.bookmark_seconds)
+      : "";
+  const notesInput =
+    activeLesson && draftEdit?.lessonId === activeLesson.id
+      ? draftEdit.notes
+      : activeLesson
+      ? activeLesson.progress.notes || ""
+      : "";
 
   const updateUrlParams = (updates: Record<string, string | null>) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -407,24 +711,24 @@ export default function LessonsClient() {
     router.replace(qs ? `/aulas?${qs}` : "/aulas", { scroll: false });
   };
 
-  const handleSelectLesson = (lesson: LessonItem) => {
-    updateUrlParams({ lesson: String(lesson.id) });
+  const handleSelectLesson = (lesson: LessonItem, preserveSubtema?: string) => {
+    const updates: Record<string, string | null> = { lesson: String(lesson.id) };
+    if (preserveSubtema !== undefined) {
+      updates.subtema = preserveSubtema || null;
+    }
+    updateUrlParams(updates);
   };
 
-  const handleSelectCourseTab = (nextCourse: CourseFilter) => {
+  const handleSelectViewTab = (nextTab: ViewTab) => {
     setAreaFilter("");
-    if (nextCourse === "radiologia_2026" || nextCourse === "medway_pratica_2026") {
+    if (nextTab !== "trilha_r1") {
       setOnlyCurrentWeek(false);
     }
-    const keepLesson =
-      activeLesson && (nextCourse === "all" || activeLesson.course_key === nextCourse)
-        ? String(activeLesson.id)
-        : null;
-    updateUrlParams({ course: nextCourse, lesson: keepLesson });
-  };
-
-  const clearSubtemaFilter = () => {
-    updateUrlParams({ subtema: null });
+    updateUrlParams({
+      course: nextTab === "trilha_r1" ? null : nextTab,
+      lesson: null,
+      subtema: nextTab === "trilha_r1" ? paramSubtema || null : null,
+    });
   };
 
   const handleSaveProgress = async (
@@ -440,7 +744,6 @@ export default function LessonsClient() {
     try {
       const res = await api.lessons.saveProgress(targetLesson.id, overrides);
 
-      // Atualiza listas já em cache sem re-baixar ~1 MB do backend
       queryClient.setQueriesData<LessonsListResponse>({ queryKey: ["lessons"] }, (old) => {
         if (!old) return old;
         let completedDelta = 0;
@@ -517,6 +820,11 @@ export default function LessonsClient() {
     }
   };
 
+  const handleToggleQuickComplete = (lesson: LessonItem) => {
+    const isDone = lesson.progress.status === "completed";
+    void handleSaveProgress(lesson, { status: isDone ? "not_started" : "completed" });
+  };
+
   const handleSaveNotesAndBookmark = async () => {
     if (!activeLesson) return;
     const parsedSeconds = parseMmSsToSeconds(bookmarkInput);
@@ -566,21 +874,438 @@ export default function LessonsClient() {
     );
   }
 
-  const themeUrls = activeLesson?.subtema ? getThemeUrls(activeLesson.subtema) : null;
-  const totalRemainingFormatted = formatDuration(
-    lessons.reduce((acc, l) => acc + (l.progress.status === "completed" ? 0 : l.duration_seconds || 0), 0)
-  );
-  const completedCount = lessons.filter((l) => l.progress.status === "completed").length;
-  const playerPreviewUrl = activeLesson
-    ? activeLesson.preview_url || `https://drive.google.com/file/d/${activeLesson.drive_file_id}/preview`
-    : "";
-  const playerOpenUrl = activeLesson
-    ? activeLesson.open_url || `https://drive.google.com/file/d/${activeLesson.drive_file_id}/view`
-    : "";
+  const headerRemainingFormatted = formatDuration(headerStats.remainingSeconds);
 
+  // ============================================================================
+  // MODO SALA DE AULA (?lesson=<id> presente na URL)
+  // ============================================================================
+  if (isClassroomMode) {
+    const themeUrls = activeLesson?.subtema ? getThemeUrls(activeLesson.subtema) : null;
+    const playerPreviewUrl = activeLesson
+      ? activeLesson.preview_url || `https://drive.google.com/file/d/${activeLesson.drive_file_id}/preview`
+      : "";
+    const playerOpenUrl = activeLesson
+      ? activeLesson.open_url || `https://drive.google.com/file/d/${activeLesson.drive_file_id}/view`
+      : "";
+    const extrasExpanded = showSidebarExtras || Boolean(activeLesson && !isMedwayMain(activeLesson) && !isMedwayOptional(activeLesson));
+
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Barra superior da Sala de Aula */}
+        <div className="rounded-md border border-line-subtle bg-surface px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => updateUrlParams({ lesson: null })}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-semibold text-ink-primary transition-colors cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Voltar para a trilha
+            </button>
+            {activeLesson && (
+              <div className="flex items-center gap-1.5 text-xs text-ink-secondary min-w-0 truncate">
+                <span className="font-medium text-ink-muted">{activeLesson.area}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                <span className="font-semibold text-ink-primary truncate">
+                  {activeLesson.subtema || activeLesson.module_name}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setTheaterMode((v) => !v)}
+              title="Alternar Modo Teatro (atalho: T)"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-medium text-ink-primary transition-colors cursor-pointer"
+            >
+              {theaterMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              {theaterMode ? "Sair Teatro" : "Modo Teatro"}
+            </button>
+            {activeLesson && (
+              <a
+                href={playerOpenUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-medium text-ink-primary transition-colors"
+              >
+                Abrir no Drive <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Player + Playlist do Subtema/Módulo */}
+        <div
+          className={clsx(
+            "grid grid-cols-1 gap-5 items-start",
+            !theaterMode && "lg:grid-cols-[minmax(0,1fr)_390px]"
+          )}
+        >
+          <section className="rounded-md border border-line-subtle bg-surface overflow-hidden flex flex-col">
+            {isExplicitLessonError ? (
+              <div className="p-10 text-center space-y-3">
+                <Film className="w-8 h-8 text-warning mx-auto" />
+                <p className="text-sm font-semibold text-ink-primary">
+                  Aula #{paramLessonId} não encontrada ou indisponível.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => updateUrlParams({ lesson: null })}
+                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
+                >
+                  Voltar para a trilha
+                </button>
+              </div>
+            ) : (isDetailLoading && !activeLesson) || !activeLesson ? (
+              <div className="p-6 space-y-4">
+                <div className="aspect-video w-full rounded-md bg-elevated animate-pulse" />
+                <div className="h-24 rounded-md bg-elevated animate-pulse" />
+              </div>
+            ) : (
+              <>
+                <div className="relative w-full aspect-video bg-black">
+                  <iframe
+                    key={activeLesson.drive_file_id}
+                    src={playerPreviewUrl}
+                    title={activeLesson.title}
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                </div>
+
+                <div className="p-4 sm:p-5 space-y-5">
+                  <div className="space-y-1.5 border-b border-line-subtle pb-4">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle font-semibold">
+                        {activeLesson.course_name}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle">
+                        {activeLesson.area}
+                      </span>
+                      {(() => {
+                        const badge = kindBadge(activeLesson.lesson_kind);
+                        if (!badge) return null;
+                        return (
+                          <span
+                            className={clsx(
+                              "px-2 py-0.5 rounded-xs border font-semibold",
+                              badge.tone === "accent"
+                                ? "bg-accent/10 text-accent border-accent/25"
+                                : badge.tone === "primary"
+                                ? "bg-primary/10 text-primary border-primary/25"
+                                : "bg-elevated text-ink-secondary border-line-subtle"
+                            )}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
+                      {activeLesson.duration_seconds ? (
+                        <span className="font-mono-lab text-ink-secondary">
+                          {formatDuration(activeLesson.duration_seconds)}
+                        </span>
+                      ) : activeLesson.size_bytes && activeLesson.size_bytes > 0 ? (
+                        <span className="font-mono-lab text-ink-muted">
+                          {formatSize(activeLesson.size_bytes)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h1 className="text-base sm:text-lg font-bold text-ink-primary leading-snug break-words">
+                      {activeLesson.title}
+                    </h1>
+                    <p className="text-xs text-ink-secondary">
+                      Módulo: <span className="font-medium text-ink-primary">{activeLesson.module_name}</span>
+                      {activeLesson.subtema && (
+                        <>
+                          {" • "}Tema canônico:{" "}
+                          <Link
+                            href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
+                            className="text-accent hover:underline font-medium"
+                          >
+                            {activeLesson.subtema}
+                          </Link>
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Controles de Status + Navegação */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(
+                        [
+                          { key: "not_started", label: "Não iniciada" },
+                          { key: "in_progress", label: "Em andamento" },
+                          { key: "completed", label: "Concluída" },
+                        ] as const
+                      ).map((st) => {
+                        const active = activeLesson.progress.status === st.key;
+                        return (
+                          <button
+                            key={st.key}
+                            type="button"
+                            disabled={savingProgress}
+                            onClick={() => void handleSaveProgress(activeLesson, { status: st.key })}
+                            className={clsx(
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors cursor-pointer",
+                              active && st.key === "completed"
+                                ? "bg-success/15 text-success border-success/40"
+                                : active && st.key === "in_progress"
+                                ? "bg-warning/15 text-warning border-warning/40"
+                                : active
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
+                            )}
+                          >
+                            {st.key === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {st.label}
+                          </button>
+                        );
+                      })}
+
+                      {nextLesson && (
+                        <button
+                          type="button"
+                          disabled={savingProgress}
+                          onClick={() =>
+                            void handleSaveProgress(activeLesson, { status: "completed" }, nextLesson)
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-success text-white hover:opacity-90 text-xs font-semibold transition-opacity cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Concluir e próxima →
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!prevLesson}
+                        onClick={() => prevLesson && handleSelectLesson(prevLesson)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-canvas text-xs font-medium text-ink-primary hover:bg-elevated disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" /> Anterior
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!nextLesson}
+                        onClick={() => nextLesson && handleSelectLesson(nextLesson)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-canvas text-xs font-medium text-ink-primary hover:bg-elevated disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Próxima <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bookmark + Anotações */}
+                  <div className="rounded-md border border-line-subtle bg-canvas p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-accent" />
+                        <label htmlFor="lesson-bookmark" className="text-xs font-semibold text-ink-primary">
+                          Parei em (mm:ss):
+                        </label>
+                        <input
+                          id="lesson-bookmark"
+                          type="text"
+                          value={bookmarkInput}
+                          onChange={(e) =>
+                            setDraftEdit({
+                              lessonId: activeLesson.id,
+                              bookmark: e.target.value,
+                              notes: notesInput,
+                            })
+                          }
+                          placeholder="ex: 24:15"
+                          className="w-24 px-2.5 py-1 rounded-xs border border-line-subtle bg-surface text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={savingProgress}
+                        onClick={() => void handleSaveNotesAndBookmark()}
+                        className="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+                      >
+                        Salvar ponto e anotações
+                      </button>
+                    </div>
+                    <textarea
+                      value={notesInput}
+                      onChange={(e) =>
+                        setDraftEdit({
+                          lessonId: activeLesson.id,
+                          bookmark: bookmarkInput,
+                          notes: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      placeholder="Anote pontos-chave da aula, pegadinhas de prova ou dúvidas para revisar..."
+                      className="w-full px-3 py-2 rounded-md border border-line-subtle bg-surface text-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+                    />
+                  </div>
+
+                  {/* Ponte direta para Questões */}
+                  {themeUrls && activeLesson.subtema && (
+                    <div className="rounded-md border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-ink-primary flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-primary" /> Fechar o ciclo: Aula → Questões
+                        </p>
+                        <p className="text-xs text-ink-secondary mt-0.5">
+                          Fixe &ldquo;{activeLesson.subtema}&rdquo; direto com bateria adaptativa no FSRS.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <Link
+                          href={themeUrls.practice(10)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+                        >
+                          <Zap className="w-3.5 h-3.5" /> Treinar 10q
+                        </Link>
+                        <Link
+                          href={themeUrls.practice(20)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/30 bg-surface hover:bg-elevated text-primary text-xs font-semibold transition-colors"
+                        >
+                          Treinar 20q
+                        </Link>
+                        <Link
+                          href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary text-xs font-medium transition-colors"
+                        >
+                          Análise
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* Playlist lateral focada no Subtema (ou Módulo) */}
+          <aside
+            className={clsx(
+              "rounded-md border border-line-subtle bg-surface overflow-hidden flex flex-col",
+              !theaterMode && "lg:max-h-[calc(100vh-10rem)]"
+            )}
+          >
+            <div className="px-4 py-3 border-b border-line-subtle bg-canvas/60">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                {sidebarSections.isSubtemaMode ? "Aulas do Tema" : "Playlist do Módulo"}
+              </p>
+              {activeLesson && (
+                <p className="text-xs font-semibold text-ink-primary truncate mt-0.5">
+                  {activeLesson.subtema || activeLesson.module_name}
+                </p>
+              )}
+            </div>
+
+            <div className="overflow-y-auto p-3 space-y-4">
+              {sidebarSections.isSubtemaMode ? (
+                <>
+                  {sidebarSections.main.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-primary px-1">
+                        Principais Medway ({sidebarSections.main.length})
+                      </p>
+                      <div className="space-y-1">
+                        {sidebarSections.main.map((item) => (
+                          <LessonRowCompact
+                            key={item.id}
+                            item={item}
+                            isActive={activeLesson?.id === item.id}
+                            savingProgress={savingProgress}
+                            onSelect={(l) => handleSelectLesson(l)}
+                            onToggleComplete={handleToggleQuickComplete}
+                            showKindBadge={false}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {sidebarSections.optionalMedway.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink-secondary px-1">
+                        Flash &amp; Revisão Medway ({sidebarSections.optionalMedway.length})
+                      </p>
+                      <div className="space-y-1">
+                        {sidebarSections.optionalMedway.map((item) => (
+                          <LessonRowCompact
+                            key={item.id}
+                            item={item}
+                            isActive={activeLesson?.id === item.id}
+                            savingProgress={savingProgress}
+                            onSelect={(l) => handleSelectLesson(l)}
+                            onToggleComplete={handleToggleQuickComplete}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {sidebarSections.extraMedcof.length > 0 && (
+                    <div className="pt-2 border-t border-line-subtle">
+                      <button
+                        type="button"
+                        onClick={() => setShowSidebarExtras((v) => !v)}
+                        className="w-full flex items-center justify-between px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-ink-secondary hover:text-ink-primary cursor-pointer"
+                      >
+                        <span>Extras MedCof ({sidebarSections.extraMedcof.length})</span>
+                        {extrasExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      {extrasExpanded && (
+                        <div className="space-y-1 mt-1.5">
+                          {sidebarSections.extraMedcof.map((item) => (
+                            <LessonRowCompact
+                              key={item.id}
+                              item={item}
+                              isActive={activeLesson?.id === item.id}
+                              savingProgress={savingProgress}
+                              onSelect={(l) => handleSelectLesson(l)}
+                              onToggleComplete={handleToggleQuickComplete}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-1">
+                  {sidebarSections.main.map((item) => (
+                    <LessonRowCompact
+                      key={item.id}
+                      item={item}
+                      isActive={activeLesson?.id === item.id}
+                      savingProgress={savingProgress}
+                      onSelect={(l) => handleSelectLesson(l)}
+                      onToggleComplete={handleToggleQuickComplete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // VISÃO DA TRILHA / CATÁLOGO EM LARGURA TOTAL (!paramLessonId)
+  // ============================================================================
   return (
     <div className="flex flex-col gap-5">
-      {/* Header & Filtros */}
+      {/* Header & 4 Visões */}
       <section className="rounded-md border border-line-subtle bg-surface p-4 sm:p-5 space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div>
@@ -589,28 +1314,27 @@ export default function LessonsClient() {
               <h1 className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight">
                 Videoteca de Aulas
               </h1>
-              {summary && (
+              {data && (
                 <span className="text-xs font-mono-lab px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle">
-                  {completedCount}/{lessons.length} concluídas
-                  {totalRemainingFormatted ? ` • ${totalRemainingFormatted} restantes` : ""}
+                  {headerStats.completed}/{headerStats.total} {headerStats.labelSuffix}
+                  {headerRemainingFormatted ? ` • ${headerRemainingFormatted} restantes` : ""}
                 </span>
               )}
             </div>
             <p className="text-xs text-ink-secondary mt-1">
-              Extensivo R1 (Medway) integrado aos 170 subtemas + MedCof, Radiologia e Prática/OSCE.
+              Trilha orientada pelos 170 subtemas e metas Medway, com complementos MedCof, Radiologia e Prática/OSCE.
             </p>
           </div>
 
-          {/* Abas de Curso */}
           <div className="inline-flex flex-wrap gap-1 bg-canvas p-1 rounded-md border border-line-subtle self-start">
-            {COURSE_TABS.map((tab) => (
+            {VIEW_TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => handleSelectCourseTab(tab.key)}
+                onClick={() => handleSelectViewTab(tab.key)}
                 className={clsx(
                   "px-2.5 py-1.5 rounded-xs text-xs font-semibold transition-colors cursor-pointer",
-                  effectiveCourse === tab.key
+                  activeTab === tab.key
                     ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-ink-secondary hover:text-ink-primary hover:bg-elevated"
                 )}
@@ -621,7 +1345,7 @@ export default function LessonsClient() {
           </div>
         </div>
 
-        {/* Barra de Busca e Filtros Secundários */}
+        {/* Barra de Busca e Filtros */}
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -629,7 +1353,7 @@ export default function LessonsClient() {
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Buscar aula, módulo ou subtema..."
+              placeholder="Buscar tema, aula ou módulo..."
               className="w-full pl-8 pr-8 py-2 rounded-md border border-line-subtle bg-canvas text-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
             {searchText && (
@@ -670,22 +1394,7 @@ export default function LessonsClient() {
             <option value="completed">Concluídas</option>
           </select>
 
-          <button
-            type="button"
-            onClick={() => setEssentialOnly((v) => !v)}
-            aria-pressed={essentialOnly}
-            className={clsx(
-              "inline-flex items-center gap-1.5 px-3 py-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer",
-              essentialOnly
-                ? "bg-accent/15 text-accent border-accent/40"
-                : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
-            )}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {essentialOnly ? "Só principais" : "Todas (c/ Flash)"}
-          </button>
-
-          {currentWeekData && currentWeekData.week !== null && (
+          {activeTab === "trilha_r1" && currentWeekData && currentWeekData.week !== null && (
             <button
               type="button"
               onClick={() => setOnlyCurrentWeek((v) => !v)}
@@ -699,10 +1408,18 @@ export default function LessonsClient() {
             >
               <Calendar className="w-3.5 h-3.5" />
               Semana {currentWeekData.week} (Planner)
+              {currentWeekMainStats.total > 0 && (
+                <span className="font-mono-lab opacity-80">
+                  • {currentWeekMainStats.completed}/{currentWeekMainStats.total}
+                  {currentWeekMainStats.remainingSeconds > 0
+                    ? ` (${formatDuration(currentWeekMainStats.remainingSeconds)})`
+                    : ""}
+                </span>
+              )}
             </button>
           )}
 
-          {effectiveCourse === "medcof_r1_2026" && (
+          {activeTab === "medcof_r1_2026" && (
             <div className="inline-flex rounded-md border border-line-subtle bg-canvas p-0.5">
               {(
                 [
@@ -737,7 +1454,7 @@ export default function LessonsClient() {
             </div>
             <button
               type="button"
-              onClick={clearSubtemaFilter}
+              onClick={() => updateUrlParams({ subtema: null })}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-xs bg-surface border border-line-subtle text-ink-secondary hover:text-ink-primary cursor-pointer"
             >
               <X className="w-3 h-3" /> Ver catálogo completo
@@ -746,473 +1463,390 @@ export default function LessonsClient() {
         )}
       </section>
 
-      {/* Main Split View: Player + Playlist */}
-      <div
-        className={clsx(
-          "grid grid-cols-1 gap-5 items-start",
-          !theaterMode && "lg:grid-cols-[minmax(0,1fr)_390px]"
-        )}
-      >
-        {/* Player & Estudo */}
-        <section className="rounded-md border border-line-subtle bg-surface overflow-hidden flex flex-col">
-          {paramLessonId && isExplicitLessonError ? (
-            <div className="p-10 text-center space-y-3">
-              <Film className="w-8 h-8 text-warning mx-auto" />
-              <p className="text-sm font-semibold text-ink-primary">
-                Aula #{paramLessonId} não encontrada ou indisponível.
-              </p>
-              <button
-                type="button"
-                onClick={() => updateUrlParams({ lesson: null })}
-                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
-              >
-                Abrir aula sugerida
-              </button>
+      {/* Banner compacto: Continuar estudando / Próxima aula */}
+      {activeTab === "trilha_r1" && !paramSubtema && continueData?.lesson && (
+        <section className="rounded-md border border-primary/25 bg-surface px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1 font-bold text-accent">
+                <PlayCircle className="w-3.5 h-3.5" />
+                {continueData.reason === "in_progress"
+                  ? "Continuar de onde parou"
+                  : continueData.reason === "planner_week"
+                  ? `Próxima da Semana ${continueData.planner_week ?? ""}`
+                  : "Próxima aula principal"}
+              </span>
+              {continueData.lesson.progress.bookmark_seconds > 0 && (
+                <span className="px-1.5 py-0.5 rounded-xs bg-warning/15 text-warning font-mono-lab font-semibold">
+                  Parou em {formatSecondsToMmSs(continueData.lesson.progress.bookmark_seconds)}
+                </span>
+              )}
+              {continueData.lesson.duration_seconds && (
+                <span className="font-mono-lab text-ink-muted">
+                  {formatDuration(continueData.lesson.duration_seconds)}
+                </span>
+              )}
             </div>
-          ) : isLoading || (paramLessonId && isDetailLoading && !activeLesson) ? (
-            <div className="p-6 space-y-4">
-              <div className="aspect-video w-full rounded-md bg-elevated animate-pulse" />
-              <div className="h-24 rounded-md bg-elevated animate-pulse" />
-            </div>
-          ) : isError ? (
-            <div className="p-8 text-center space-y-3">
-              <p className="text-sm font-semibold text-ink-primary">Erro ao carregar catálogo de aulas.</p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
-              >
-                Tentar novamente
-              </button>
-            </div>
-          ) : !activeLesson ? (
-            <div className="p-10 text-center space-y-2">
-              <Film className="w-8 h-8 text-ink-muted mx-auto" />
-              <p className="text-sm font-semibold text-ink-primary">Nenhuma aula encontrada.</p>
-              <p className="text-xs text-ink-secondary">
-                {onlyCurrentWeek
-                  ? "Sua semana atual do Planner não possui temas com aulas neste filtro."
-                  : "Ajuste a busca, troque a aba do curso ou limpe os filtros."}
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Player Embed Google Drive */}
-              <div className="relative w-full aspect-video bg-black">
-                <iframe
-                  key={activeLesson.drive_file_id}
-                  src={playerPreviewUrl}
-                  title={activeLesson.title}
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
-              </div>
+            <p className="text-sm font-bold text-ink-primary truncate">{continueData.lesson.title}</p>
+            <p className="text-xs text-ink-secondary truncate">
+              {continueData.lesson.subtema || continueData.lesson.module_name}
+              {continueData.stats.primary_total > 0 && (
+                <>
+                  {" • "}
+                  {continueData.stats.primary_completed}/{continueData.stats.primary_total} principais Medway
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              handleSelectLesson(
+                continueData.lesson!,
+                continueData.lesson!.subtema || undefined
+              )
+            }
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            Assistir agora →
+          </button>
+        </section>
+      )}
 
-              {/* Meta + Controles da Aula */}
-              <div className="p-4 sm:p-5 space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-line-subtle pb-4">
-                  <div className="space-y-1.5 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                      <span className="px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle font-semibold">
-                        {activeLesson.course_name}
+      {/* Conteúdo Principal da Visão */}
+      {isLoading ? (
+        <div className="space-y-3">
+          <div className="h-28 rounded-md bg-surface border border-line-subtle animate-pulse" />
+          <div className="h-44 rounded-md bg-surface border border-line-subtle animate-pulse" />
+        </div>
+      ) : isError ? (
+        <div className="rounded-md border border-line-subtle bg-surface p-8 text-center space-y-3">
+          <p className="text-sm font-semibold text-ink-primary">Erro ao carregar catálogo de aulas.</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : activeTab === "trilha_r1" ? (
+        areaSubtemaGroups.length === 0 ? (
+          <div className="rounded-md border border-line-subtle bg-surface p-10 text-center space-y-2">
+            <Film className="w-8 h-8 text-ink-muted mx-auto" />
+            <p className="text-sm font-semibold text-ink-primary">Nenhuma aula encontrada.</p>
+            <p className="text-xs text-ink-secondary">
+              {onlyCurrentWeek
+                ? "Sua semana atual do Planner não possui temas com aulas neste filtro."
+                : "Ajuste a busca ou limpe os filtros para ver os 170 subtemas."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {areaSubtemaGroups.map((areaGroup) => {
+              const forceExpandArea =
+                Boolean(paramSubtema) ||
+                Boolean(areaFilter) ||
+                onlyCurrentWeek ||
+                deferredSearchText.trim().length >= 2 ||
+                areaSubtemaGroups.length <= 2;
+              const isAreaExpanded =
+                expandedAreas[areaGroup.area] !== undefined
+                  ? expandedAreas[areaGroup.area]
+                  : forceExpandArea || areaGroup.subtemas.some((s) => s.isCurrentWeek);
+
+              return (
+                <section
+                  key={areaGroup.area}
+                  className="rounded-md border border-line-subtle bg-surface overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedAreas((prev) => ({
+                        ...prev,
+                        [areaGroup.area]: !isAreaExpanded,
+                      }))
+                    }
+                    className="w-full px-4 py-3 flex items-center justify-between gap-3 bg-canvas/60 hover:bg-elevated/50 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Layers className="w-4 h-4 text-accent shrink-0" />
+                      <h2 className="text-sm sm:text-base font-bold text-ink-primary truncate">
+                        {areaGroup.area}
+                      </h2>
+                      <span className="text-xs text-ink-muted">
+                        ({areaGroup.subtemas.length} {areaGroup.subtemas.length === 1 ? "tema" : "temas"})
                       </span>
-                      <span className="px-2 py-0.5 rounded-xs bg-elevated text-ink-secondary border border-line-subtle">
-                        {activeLesson.area}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-mono-lab text-ink-secondary">
+                        {areaGroup.mainCompleted}/{areaGroup.mainTotal} principais
+                        {areaGroup.mainRemainingSeconds > 0
+                          ? ` • ${formatDuration(areaGroup.mainRemainingSeconds)}`
+                          : ""}
                       </span>
-                      {(() => {
-                        const badge = kindBadge(activeLesson.lesson_kind);
-                        if (!badge) return null;
+                      {isAreaExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-ink-muted" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-ink-muted" />
+                      )}
+                    </div>
+                  </button>
+
+                  {isAreaExpanded && (
+                    <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-3.5 border-t border-line-subtle">
+                      {areaGroup.subtemas.map((subGroup) => {
+                        const openComplement =
+                          expandedComplements[subGroup.subtema] !== undefined
+                            ? expandedComplements[subGroup.subtema]
+                            : subGroup.mainLessons.length === 0
+                            ? subGroup.optionalMedwayLessons.length > 0
+                              ? "optional"
+                              : "medcof"
+                            : subGroup.hasSecondaryMatch
+                            ? subGroup.optionalMedwayLessons.length > 0
+                              ? "optional"
+                              : "medcof"
+                            : null;
+
                         return (
-                          <span
+                          <article
+                            key={subGroup.subtema}
                             className={clsx(
-                              "px-2 py-0.5 rounded-xs border font-semibold",
-                              badge.tone === "accent"
-                                ? "bg-accent/10 text-accent border-accent/25"
-                                : badge.tone === "primary"
-                                ? "bg-primary/10 text-primary border-primary/25"
-                                : "bg-elevated text-ink-secondary border-line-subtle"
+                              "rounded-md border p-3.5 flex flex-col gap-3 bg-surface",
+                              subGroup.isCurrentWeek ? "border-primary/40 ring-1 ring-primary/15" : "border-line-subtle"
                             )}
                           >
-                            {badge.label}
-                          </span>
-                        );
-                      })()}
-                      {activeLesson.duration_seconds ? (
-                        <span className="font-mono-lab text-ink-secondary">
-                          {formatDuration(activeLesson.duration_seconds)}
-                        </span>
-                      ) : activeLesson.size_bytes && activeLesson.size_bytes > 0 ? (
-                        <span className="font-mono-lab text-ink-muted">
-                          {formatSize(activeLesson.size_bytes)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <h2 className="text-base sm:text-lg font-bold text-ink-primary leading-snug break-words">
-                      {activeLesson.title}
-                    </h2>
-                    <p className="text-xs text-ink-secondary">
-                      Módulo: <span className="font-medium text-ink-primary">{activeLesson.module_name}</span>
-                      {activeLesson.subtema && (
-                        <>
-                          {" • "}Tema canônico:{" "}
-                          <Link
-                            href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
-                            className="text-accent hover:underline font-medium"
-                          >
-                            {activeLesson.subtema}
-                          </Link>
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setTheaterMode((v) => !v)}
-                      title="Alternar Modo Teatro (atalho: T)"
-                      className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-medium text-ink-primary transition-colors cursor-pointer"
-                    >
-                      {theaterMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                      {theaterMode ? "Sair Teatro" : "Modo Teatro"}
-                    </button>
-                    <a
-                      href={playerOpenUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-medium text-ink-primary transition-colors"
-                    >
-                      Abrir no Drive <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-
-                {/* Barra de Status + Navegação Anterior/Próxima */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {(
-                      [
-                        { key: "not_started", label: "Não iniciada" },
-                        { key: "in_progress", label: "Em andamento" },
-                        { key: "completed", label: "Concluída" },
-                      ] as const
-                    ).map((st) => {
-                      const active = activeLesson.progress.status === st.key;
-                      return (
-                        <button
-                          key={st.key}
-                          type="button"
-                          disabled={savingProgress}
-                          onClick={() => void handleSaveProgress(activeLesson, { status: st.key })}
-                          className={clsx(
-                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors cursor-pointer",
-                            active && st.key === "completed"
-                              ? "bg-success/15 text-success border-success/40"
-                              : active && st.key === "in_progress"
-                              ? "bg-warning/15 text-warning border-warning/40"
-                              : active
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
-                          )}
-                        >
-                          {st.key === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                          {st.label}
-                        </button>
-                      );
-                    })}
-
-                    {nextLesson && (
-                      <button
-                        type="button"
-                        disabled={savingProgress}
-                        onClick={() =>
-                          void handleSaveProgress(activeLesson, { status: "completed" }, nextLesson)
-                        }
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-success text-white hover:opacity-90 text-xs font-semibold transition-opacity cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Concluir e próxima →
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={!prevLesson}
-                      onClick={() => prevLesson && handleSelectLesson(prevLesson)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-canvas text-xs font-medium text-ink-primary hover:bg-elevated disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" /> Anterior
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!nextLesson}
-                      onClick={() => nextLesson && handleSelectLesson(nextLesson)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-canvas text-xs font-medium text-ink-primary hover:bg-elevated disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      Próxima <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bookmark manual (mm:ss) + Anotações */}
-                <div className="rounded-md border border-line-subtle bg-canvas p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-accent" />
-                      <label htmlFor="lesson-bookmark" className="text-xs font-semibold text-ink-primary">
-                        Parei em (mm:ss):
-                      </label>
-                      <input
-                        id="lesson-bookmark"
-                        type="text"
-                        value={bookmarkInput}
-                        onChange={(e) =>
-                          setDraftEdit({
-                            lessonId: activeLesson.id,
-                            bookmark: e.target.value,
-                            notes: notesInput,
-                          })
-                        }
-                        placeholder="ex: 24:15"
-                        className="w-24 px-2.5 py-1 rounded-xs border border-line-subtle bg-surface text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      disabled={savingProgress}
-                      onClick={() => void handleSaveNotesAndBookmark()}
-                      className="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
-                    >
-                      Salvar ponto e anotações
-                    </button>
-                  </div>
-                  <textarea
-                    value={notesInput}
-                    onChange={(e) =>
-                      setDraftEdit({
-                        lessonId: activeLesson.id,
-                        bookmark: bookmarkInput,
-                        notes: e.target.value,
-                      })
-                    }
-                    rows={3}
-                    placeholder="Anote pontos-chave da aula, pegadinhas de prova ou dúvidas para revisar..."
-                    className="w-full px-3 py-2 rounded-md border border-line-subtle bg-surface text-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent resize-y"
-                  />
-                </div>
-
-                {/* Ponte direta para Questões do Tema */}
-                {themeUrls && activeLesson.subtema && (
-                  <div className="rounded-md border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold text-ink-primary flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-primary" /> Fechar o ciclo: Aula → Questões
-                      </p>
-                      <p className="text-xs text-ink-secondary mt-0.5">
-                        Fixe &ldquo;{activeLesson.subtema}&rdquo; direto com bateria adaptativa no FSRS.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <Link
-                        href={themeUrls.practice(10)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
-                      >
-                        <Zap className="w-3.5 h-3.5" /> Treinar 10q
-                      </Link>
-                      <Link
-                        href={themeUrls.practice(20)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/30 bg-surface hover:bg-elevated text-primary text-xs font-semibold transition-colors"
-                      >
-                        Treinar 20q
-                      </Link>
-                      <Link
-                        href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary text-xs font-medium transition-colors"
-                      >
-                        Análise
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Playlist lateral agrupada por módulo (recolhida por padrão para performance) */}
-        <aside
-          className={clsx(
-            "rounded-md border border-line-subtle bg-surface overflow-hidden flex flex-col",
-            !theaterMode && "lg:max-h-[calc(100vh-12rem)]"
-          )}
-        >
-          <div className="px-4 py-3 border-b border-line-subtle flex items-center justify-between bg-canvas/60">
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-secondary">
-              Módulos e Aulas ({lessons.length})
-            </span>
-            <span className="text-[11px] font-mono-lab text-ink-muted">
-              {groupedModules.length} grupos
-            </span>
-          </div>
-
-          <div className="overflow-y-auto divide-y divide-line-subtle">
-            {groupedModules.length === 0 ? (
-              <div className="p-6 text-center text-xs text-ink-secondary">
-                {onlyCurrentWeek
-                  ? "Nenhuma aula vinculada aos subtemas desta semana do Planner."
-                  : "Nenhuma aula corresponde aos filtros selecionados."}
-              </div>
-            ) : (
-              groupedModules.map((group) => {
-                const containsActive = Boolean(activeLesson && group.items.some((i) => i.id === activeLesson.id));
-                const forceExpanded =
-                  Boolean(paramSubtema) ||
-                  onlyCurrentWeek ||
-                  deferredSearchText.trim().length >= 2 ||
-                  groupedModules.length <= 3;
-                const isExpanded =
-                  expandedModules[group.key] !== undefined
-                    ? expandedModules[group.key]
-                    : containsActive || forceExpanded;
-                const remDur = formatDuration(group.remainingSeconds);
-
-                return (
-                  <div key={group.key} className="flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedModules((prev) => ({
-                          ...prev,
-                          [group.key]: !isExpanded,
-                        }))
-                      }
-                      className={clsx(
-                        "w-full px-3.5 py-2.5 text-left flex items-start justify-between gap-2 hover:bg-elevated/60 transition-colors cursor-pointer",
-                        containsActive && "bg-accent/5"
-                      )}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-ink-muted">
-                          <span>{group.area}</span>
-                          {group.isExtra && (
-                            <span className="px-1.5 py-0.2 rounded-xs bg-elevated text-ink-secondary">
-                              Extra
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs font-semibold text-ink-primary leading-snug break-words mt-0.5">
-                          {group.moduleName}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                        <span className="text-[11px] font-mono-lab text-ink-secondary text-right">
-                          {group.completedCount}/{group.items.length}
-                          {remDur ? ` • ${remDur}` : ""}
-                        </span>
-                        {isExpanded ? (
-                          <ChevronDown className="w-3.5 h-3.5 text-ink-muted" />
-                        ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-ink-muted" />
-                        )}
-                      </div>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="bg-canvas/40 divide-y divide-line-subtle/60 border-t border-line-subtle/60">
-                        {group.items.map((item) => {
-                          const isActive = activeLesson?.id === item.id;
-                          const isDone = item.progress.status === "completed";
-                          const isInProg = item.progress.status === "in_progress";
-                          const badge = kindBadge(item.lesson_kind);
-                          const durLabel = formatDuration(item.duration_seconds);
-                          return (
-                            <div
-                              key={item.id}
-                              className={clsx(
-                                "flex items-start gap-2 px-3.5 py-2 transition-colors",
-                                isActive ? "bg-accent/10 border-l-2 border-accent" : "hover:bg-elevated/50"
-                              )}
-                            >
-                              <button
-                                type="button"
-                                title={isDone ? "Desmarcar conclusão" : "Marcar aula concluída"}
-                                disabled={savingProgress}
-                                onClick={() =>
-                                  void handleSaveProgress(item, {
-                                    status: isDone ? "not_started" : "completed",
-                                  })
-                                }
-                                className={clsx(
-                                  "mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors",
-                                  isDone
-                                    ? "bg-success border-success text-white"
-                                    : isInProg
-                                    ? "border-warning text-warning"
-                                    : "border-line-subtle hover:border-accent"
-                                )}
-                              >
-                                {isDone && <CheckCircle2 className="w-3 h-3" />}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleSelectLesson(item)}
-                                className="flex-1 min-w-0 text-left cursor-pointer"
-                              >
-                                <p
-                                  className={clsx(
-                                    "text-xs leading-snug break-words",
-                                    isActive
-                                      ? "font-semibold text-accent"
-                                      : isDone
-                                      ? "text-ink-muted line-through"
-                                      : "text-ink-primary"
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {subGroup.isCurrentWeek && currentWeekData?.week && (
+                                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-xs bg-primary/10 text-primary border border-primary/25">
+                                      Semana {currentWeekData.week}
+                                    </span>
                                   )}
+                                  {subGroup.mainTotal > 0 ? (
+                                    <span className="text-[11px] font-mono-lab text-ink-secondary">
+                                      {subGroup.mainCompleted}/{subGroup.mainTotal} principais
+                                      {subGroup.mainRemainingSeconds > 0
+                                        ? ` • ${formatDuration(subGroup.mainRemainingSeconds)}`
+                                        : " • Concluído ✓"}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[11px] text-ink-muted">
+                                      Sem aula principal Medway
+                                    </span>
+                                  )}
+                                </div>
+                                <h3 className="text-sm font-bold text-ink-primary leading-snug break-words">
+                                  {subGroup.subtema}
+                                </h3>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Link
+                                  href={getThemeUrls(subGroup.subtema).practice(10)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold border border-primary/20 transition-colors"
                                 >
-                                  {item.title}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] text-ink-muted">
-                                  {badge && (
-                                    <span
+                                  <Zap className="w-3 h-3" /> 10q
+                                </Link>
+                                <Link
+                                  href={`/analise?tab=cobertura&subtema=${encodeURIComponent(subGroup.subtema)}`}
+                                  className="inline-flex items-center px-2 py-1 rounded-xs bg-canvas hover:bg-elevated text-ink-secondary text-[11px] font-medium border border-line-subtle transition-colors"
+                                >
+                                  Análise
+                                </Link>
+                              </div>
+                            </div>
+
+                            {/* Aulas Principais da Medway */}
+                            {subGroup.mainLessons.length > 0 && (
+                              <div className="space-y-1">
+                                {subGroup.mainLessons.map((lesson) => (
+                                  <LessonRowCompact
+                                    key={lesson.id}
+                                    item={lesson}
+                                    savingProgress={savingProgress}
+                                    onSelect={(l) => handleSelectLesson(l, subGroup.subtema)}
+                                    onToggleComplete={handleToggleQuickComplete}
+                                    showKindBadge={false}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Pílulas de Complementos (Flash/Revisão Medway e Extras MedCof) */}
+                            {(subGroup.optionalMedwayLessons.length > 0 ||
+                              subGroup.extraMedcofLessons.length > 0) && (
+                              <div className="pt-2 border-t border-line-subtle/70 space-y-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {subGroup.optionalMedwayLessons.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedComplements((prev) => ({
+                                          ...prev,
+                                          [subGroup.subtema]:
+                                            openComplement === "optional" ? null : "optional",
+                                        }))
+                                      }
                                       className={clsx(
-                                        "px-1.5 py-0.2 rounded-xs border",
-                                        badge.tone === "accent"
-                                          ? "bg-accent/10 text-accent border-accent/25"
-                                          : badge.tone === "primary"
-                                          ? "bg-primary/10 text-primary border-primary/25"
-                                          : "bg-elevated border-line-subtle text-ink-secondary"
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-xs text-[11px] font-semibold border transition-colors cursor-pointer",
+                                        openComplement === "optional"
+                                          ? "bg-accent/15 text-accent border-accent/35"
+                                          : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
                                       )}
                                     >
-                                      {badge.label}
-                                    </span>
+                                      {openComplement === "optional" ? (
+                                        <ChevronDown className="w-3 h-3" />
+                                      ) : (
+                                        <ChevronRight className="w-3 h-3" />
+                                      )}
+                                      Flash &amp; Revisão Medway ({subGroup.optionalMedwayLessons.length})
+                                    </button>
                                   )}
-                                  {item.progress.bookmark_seconds > 0 && (
-                                    <span className="font-mono-lab text-warning">
-                                      ⏱ {formatSecondsToMmSs(item.progress.bookmark_seconds)}
-                                    </span>
+
+                                  {subGroup.extraMedcofLessons.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedComplements((prev) => ({
+                                          ...prev,
+                                          [subGroup.subtema]:
+                                            openComplement === "medcof" ? null : "medcof",
+                                        }))
+                                      }
+                                      className={clsx(
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-xs text-[11px] font-semibold border transition-colors cursor-pointer",
+                                        openComplement === "medcof"
+                                          ? "bg-primary/15 text-primary border-primary/35"
+                                          : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
+                                      )}
+                                    >
+                                      {openComplement === "medcof" ? (
+                                        <ChevronDown className="w-3 h-3" />
+                                      ) : (
+                                        <ChevronRight className="w-3 h-3" />
+                                      )}
+                                      Extras MedCof ({subGroup.extraMedcofLessons.length})
+                                    </button>
                                   )}
-                                  {durLabel ? (
-                                    <span className="font-mono-lab">{durLabel}</span>
-                                  ) : item.size_bytes && item.size_bytes > 0 ? (
-                                    <span className="font-mono-lab">{formatSize(item.size_bytes)}</span>
-                                  ) : null}
                                 </div>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
+
+                                {openComplement === "optional" && (
+                                  <div className="space-y-1 pl-1">
+                                    {subGroup.optionalMedwayLessons.map((lesson) => (
+                                      <LessonRowCompact
+                                        key={lesson.id}
+                                        item={lesson}
+                                        savingProgress={savingProgress}
+                                        onSelect={(l) => handleSelectLesson(l, subGroup.subtema)}
+                                        onToggleComplete={handleToggleQuickComplete}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+
+                                {openComplement === "medcof" && (
+                                  <div className="space-y-1 pl-1">
+                                    {subGroup.extraMedcofLessons.map((lesson) => (
+                                      <LessonRowCompact
+                                        key={lesson.id}
+                                        item={lesson}
+                                        savingProgress={savingProgress}
+                                        onSelect={(l) => handleSelectLesson(l, subGroup.subtema)}
+                                        onToggleComplete={handleToggleQuickComplete}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )
+      ) : groupedModules.length === 0 ? (
+        <div className="rounded-md border border-line-subtle bg-surface p-10 text-center space-y-2">
+          <Film className="w-8 h-8 text-ink-muted mx-auto" />
+          <p className="text-sm font-semibold text-ink-primary">Nenhuma aula encontrada.</p>
+          <p className="text-xs text-ink-secondary">
+            Ajuste a busca ou limpe os filtros desta aba.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groupedModules.map((group) => {
+            const forceExpand =
+              deferredSearchText.trim().length >= 2 || groupedModules.length <= 3;
+            const isExpanded =
+              expandedModules[group.key] !== undefined
+                ? expandedModules[group.key]
+                : forceExpand;
+            const remDur = formatDuration(group.remainingSeconds);
+
+            return (
+              <section
+                key={group.key}
+                className="rounded-md border border-line-subtle bg-surface overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedModules((prev) => ({
+                      ...prev,
+                      [group.key]: !isExpanded,
+                    }))
+                  }
+                  className="w-full px-4 py-3 flex items-center justify-between gap-3 bg-canvas/60 hover:bg-elevated/50 transition-colors cursor-pointer text-left"
+                >
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted block">
+                      {group.area}
+                    </span>
+                    <h2 className="text-sm font-bold text-ink-primary truncate">
+                      {group.moduleName}
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-mono-lab text-ink-secondary">
+                      {group.completedCount}/{group.items.length}
+                      {remDur ? ` • ${remDur}` : ""}
+                    </span>
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4 text-ink-muted" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-ink-muted" />
                     )}
                   </div>
-                );
-              })
-            )}
-          </div>
-        </aside>
-      </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-1.5 border-t border-line-subtle">
+                    {group.items.map((item) => (
+                      <LessonRowCompact
+                        key={item.id}
+                        item={item}
+                        savingProgress={savingProgress}
+                        onSelect={(l) => handleSelectLesson(l)}
+                        onToggleComplete={handleToggleQuickComplete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

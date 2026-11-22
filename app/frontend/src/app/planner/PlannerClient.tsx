@@ -178,18 +178,34 @@ const TopicRow = memo(function TopicRow({
             >
               <Play size={11} className="fill-current" /> Praticar Questões
             </Link>
-            {lessonSummary && lessonSummary.total > 0 && (
+            {lessonSummary && lessonSummary.essential_total > 0 ? (
               <Link
-                href={`/aulas?subtema=${encodeURIComponent(t.subtema)}`}
+                href={
+                  lessonSummary.next_lesson_id
+                    ? `/aulas?subtema=${encodeURIComponent(t.subtema)}&lesson=${lessonSummary.next_lesson_id}`
+                    : `/aulas?subtema=${encodeURIComponent(t.subtema)}`
+                }
                 className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-md transition-colors border border-primary/20"
               >
-                <PlayCircle size={12} /> Assistir aulas ({lessonSummary.completed}/{lessonSummary.total}
+                <PlayCircle size={12} /> Assistir aulas ({lessonSummary.essential_completed}/
+                {lessonSummary.essential_total}
                 {lessonSummary.remaining_duration_seconds
                   ? ` • ${formatRemainingSeconds(lessonSummary.remaining_duration_seconds)}`
                   : ""}
                 )
               </Link>
-            )}
+            ) : lessonSummary && lessonSummary.total > 0 ? (
+              <Link
+                href={
+                  lessonSummary.next_lesson_id
+                    ? `/aulas?subtema=${encodeURIComponent(t.subtema)}&lesson=${lessonSummary.next_lesson_id}`
+                    : `/aulas?subtema=${encodeURIComponent(t.subtema)}`
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-elevated hover:bg-elevated/80 text-ink-secondary hover:text-ink-primary text-xs font-medium rounded-md transition-colors border border-line-subtle"
+              >
+                <PlayCircle size={12} /> Aulas extras ({lessonSummary.total})
+              </Link>
+            ) : null}
             {lessonSummary?.theory_completed ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-success/10 text-success border border-success/25">
                 <Check size={11} /> Teoria ✓
