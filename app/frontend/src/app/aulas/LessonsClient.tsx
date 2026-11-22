@@ -298,8 +298,13 @@ export default function LessonsClient() {
   const deferredSearchText = useDeferredValue(searchText);
 
   const [expandedAreas, setExpandedAreas] = useState<Record<string, boolean>>({});
-  const [expandedComplements, setExpandedComplements] = useState<Record<string, "optional" | "medcof" | null>>({});
+  const [defaultShowMain, setDefaultShowMain] = useState<boolean>(true);
+  const [expandedMainBySubtema, setExpandedMainBySubtema] = useState<Record<string, boolean>>({});
+  const [expandedOptionalBySubtema, setExpandedOptionalBySubtema] = useState<Record<string, boolean>>({});
+  const [expandedMedcofBySubtema, setExpandedMedcofBySubtema] = useState<Record<string, boolean>>({});
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const [showSidebarMain, setShowSidebarMain] = useState<boolean>(true);
+  const [showSidebarOptional, setShowSidebarOptional] = useState<boolean>(true);
   const [showSidebarExtras, setShowSidebarExtras] = useState<boolean>(false);
 
   const [draftEdit, setDraftEdit] = useState<{
@@ -1366,47 +1371,69 @@ export default function LessonsClient() {
               )}
             </div>
 
-            <div className="overflow-y-auto p-3 space-y-4">
+            <div className="overflow-y-auto p-3 space-y-3">
               {sidebarSections.isSubtemaMode ? (
                 <>
                   {sidebarSections.main.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-primary px-1">
-                        Principais Medway ({sidebarSections.main.length})
-                      </p>
-                      <div className="space-y-1">
-                        {sidebarSections.main.map((item) => (
-                          <LessonRowCompact
-                            key={item.id}
-                            item={item}
-                            isActive={activeLesson?.id === item.id}
-                            savingProgress={savingProgress}
-                            onSelect={(l) => handleSelectLesson(l)}
-                            onToggleComplete={handleToggleQuickComplete}
-                            showKindBadge={false}
-                          />
-                        ))}
-                      </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowSidebarMain((v) => !v)}
+                        className="w-full flex items-center justify-between px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:opacity-85 cursor-pointer"
+                      >
+                        <span>Principais Medway ({sidebarSections.main.length})</span>
+                        {showSidebarMain ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      {showSidebarMain && (
+                        <div className="space-y-1 mt-1.5">
+                          {sidebarSections.main.map((item) => (
+                            <LessonRowCompact
+                              key={item.id}
+                              item={item}
+                              isActive={activeLesson?.id === item.id}
+                              savingProgress={savingProgress}
+                              onSelect={(l) => handleSelectLesson(l)}
+                              onToggleComplete={handleToggleQuickComplete}
+                              showKindBadge={false}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {sidebarSections.optionalMedway.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-line-subtle">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink-secondary px-1">
-                        Flash &amp; Revisão Medway ({sidebarSections.optionalMedway.length})
-                      </p>
-                      <div className="space-y-1">
-                        {sidebarSections.optionalMedway.map((item) => (
-                          <LessonRowCompact
-                            key={item.id}
-                            item={item}
-                            isActive={activeLesson?.id === item.id}
-                            savingProgress={savingProgress}
-                            onSelect={(l) => handleSelectLesson(l)}
-                            onToggleComplete={handleToggleQuickComplete}
-                          />
-                        ))}
-                      </div>
+                    <div className="pt-2 border-t border-line-subtle">
+                      <button
+                        type="button"
+                        onClick={() => setShowSidebarOptional((v) => !v)}
+                        className="w-full flex items-center justify-between px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-ink-secondary hover:text-ink-primary cursor-pointer"
+                      >
+                        <span>Flash &amp; Revisão Medway ({sidebarSections.optionalMedway.length})</span>
+                        {showSidebarOptional ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      {showSidebarOptional && (
+                        <div className="space-y-1 mt-1.5">
+                          {sidebarSections.optionalMedway.map((item) => (
+                            <LessonRowCompact
+                              key={item.id}
+                              item={item}
+                              isActive={activeLesson?.id === item.id}
+                              savingProgress={savingProgress}
+                              onSelect={(l) => handleSelectLesson(l)}
+                              onToggleComplete={handleToggleQuickComplete}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1555,6 +1582,30 @@ export default function LessonsClient() {
             <option value="in_progress">Em andamento</option>
             <option value="completed">Concluídas</option>
           </select>
+
+          {activeTab === "trilha_r1" && (
+            <button
+              type="button"
+              onClick={() => {
+                setExpandedMainBySubtema({});
+                setDefaultShowMain((v) => !v);
+              }}
+              aria-pressed={defaultShowMain}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-line-subtle bg-canvas hover:bg-elevated text-xs font-semibold text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+            >
+              {defaultShowMain ? (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  Ocultar principais
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-primary" />
+                  Mostrar principais
+                </>
+              )}
+            </button>
+          )}
 
           {activeTab === "trilha_r1" && currentWeekData && currentWeekData.week !== null && (
             <button
@@ -1760,18 +1811,20 @@ export default function LessonsClient() {
                   {isAreaExpanded && (
                     <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-3.5 border-t border-line-subtle">
                       {areaGroup.subtemas.map((subGroup) => {
-                        const openComplement =
-                          expandedComplements[subGroup.subtema] !== undefined
-                            ? expandedComplements[subGroup.subtema]
-                            : subGroup.mainLessons.length === 0
-                            ? subGroup.optionalMedwayLessons.length > 0
-                              ? "optional"
-                              : "medcof"
-                            : subGroup.hasSecondaryMatch
-                            ? subGroup.optionalMedwayLessons.length > 0
-                              ? "optional"
-                              : "medcof"
-                            : null;
+                        const isMainOpen =
+                          expandedMainBySubtema[subGroup.subtema] !== undefined
+                            ? expandedMainBySubtema[subGroup.subtema]
+                            : defaultShowMain;
+                        const isOptionalOpen =
+                          expandedOptionalBySubtema[subGroup.subtema] !== undefined
+                            ? expandedOptionalBySubtema[subGroup.subtema]
+                            : subGroup.mainLessons.length === 0 && subGroup.optionalMedwayLessons.length > 0;
+                        const isMedcofOpen =
+                          expandedMedcofBySubtema[subGroup.subtema] !== undefined
+                            ? expandedMedcofBySubtema[subGroup.subtema]
+                            : subGroup.mainLessons.length === 0 &&
+                              subGroup.optionalMedwayLessons.length === 0 &&
+                              subGroup.extraMedcofLessons.length > 0;
 
                         return (
                           <article
@@ -1823,45 +1876,54 @@ export default function LessonsClient() {
                               </div>
                             </div>
 
-                            {/* Aulas Principais da Medway */}
-                            {subGroup.mainLessons.length > 0 && (
-                              <div className="space-y-1">
-                                {subGroup.mainLessons.map((lesson) => (
-                                  <LessonRowCompact
-                                    key={lesson.id}
-                                    item={lesson}
-                                    savingProgress={savingProgress}
-                                    onSelect={(l) => handleSelectLesson(l, subGroup.subtema)}
-                                    onToggleComplete={handleToggleQuickComplete}
-                                    showKindBadge={false}
-                                  />
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Pílulas de Complementos (Flash/Revisão Medway e Extras MedCof) */}
-                            {(subGroup.optionalMedwayLessons.length > 0 ||
+                            {/* Pílulas de Mostrar/Ocultar: Principais Medway, Flash/Revisão Medway e Extras MedCof */}
+                            {(subGroup.mainLessons.length > 0 ||
+                              subGroup.optionalMedwayLessons.length > 0 ||
                               subGroup.extraMedcofLessons.length > 0) && (
                               <div className="pt-2 border-t border-line-subtle/70 space-y-2">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  {subGroup.optionalMedwayLessons.length > 0 && (
+                                  {subGroup.mainLessons.length > 0 && (
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setExpandedComplements((prev) => ({
+                                        setExpandedMainBySubtema((prev) => ({
                                           ...prev,
-                                          [subGroup.subtema]:
-                                            openComplement === "optional" ? null : "optional",
+                                          [subGroup.subtema]: !isMainOpen,
                                         }))
                                       }
                                       className={clsx(
                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-xs text-[11px] font-semibold border transition-colors cursor-pointer",
-                                        openComplement === "optional"
+                                        isMainOpen
+                                          ? "bg-primary/15 text-primary border-primary/35"
+                                          : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
+                                      )}
+                                    >
+                                      {isMainOpen ? (
+                                        <ChevronDown className="w-3 h-3" />
+                                      ) : (
+                                        <ChevronRight className="w-3 h-3" />
+                                      )}
+                                      Principais Medway ({subGroup.mainLessons.length})
+                                    </button>
+                                  )}
+
+                                  {subGroup.optionalMedwayLessons.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedOptionalBySubtema((prev) => ({
+                                          ...prev,
+                                          [subGroup.subtema]: !isOptionalOpen,
+                                        }))
+                                      }
+                                      className={clsx(
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-xs text-[11px] font-semibold border transition-colors cursor-pointer",
+                                        isOptionalOpen
                                           ? "bg-accent/15 text-accent border-accent/35"
                                           : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
                                       )}
                                     >
-                                      {openComplement === "optional" ? (
+                                      {isOptionalOpen ? (
                                         <ChevronDown className="w-3 h-3" />
                                       ) : (
                                         <ChevronRight className="w-3 h-3" />
@@ -1874,20 +1936,19 @@ export default function LessonsClient() {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setExpandedComplements((prev) => ({
+                                        setExpandedMedcofBySubtema((prev) => ({
                                           ...prev,
-                                          [subGroup.subtema]:
-                                            openComplement === "medcof" ? null : "medcof",
+                                          [subGroup.subtema]: !isMedcofOpen,
                                         }))
                                       }
                                       className={clsx(
                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-xs text-[11px] font-semibold border transition-colors cursor-pointer",
-                                        openComplement === "medcof"
+                                        isMedcofOpen
                                           ? "bg-primary/15 text-primary border-primary/35"
                                           : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary"
                                       )}
                                     >
-                                      {openComplement === "medcof" ? (
+                                      {isMedcofOpen ? (
                                         <ChevronDown className="w-3 h-3" />
                                       ) : (
                                         <ChevronRight className="w-3 h-3" />
@@ -1897,7 +1958,22 @@ export default function LessonsClient() {
                                   )}
                                 </div>
 
-                                {openComplement === "optional" && (
+                                {isMainOpen && subGroup.mainLessons.length > 0 && (
+                                  <div className="space-y-1">
+                                    {subGroup.mainLessons.map((lesson) => (
+                                      <LessonRowCompact
+                                        key={lesson.id}
+                                        item={lesson}
+                                        savingProgress={savingProgress}
+                                        onSelect={(l) => handleSelectLesson(l, subGroup.subtema)}
+                                        onToggleComplete={handleToggleQuickComplete}
+                                        showKindBadge={false}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+
+                                {isOptionalOpen && subGroup.optionalMedwayLessons.length > 0 && (
                                   <div className="space-y-1 pl-1">
                                     {subGroup.optionalMedwayLessons.map((lesson) => (
                                       <LessonRowCompact
@@ -1911,7 +1987,7 @@ export default function LessonsClient() {
                                   </div>
                                 )}
 
-                                {openComplement === "medcof" && (
+                                {isMedcofOpen && subGroup.extraMedcofLessons.length > 0 && (
                                   <div className="space-y-1 pl-1">
                                     {subGroup.extraMedcofLessons.map((lesson) => (
                                       <LessonRowCompact
