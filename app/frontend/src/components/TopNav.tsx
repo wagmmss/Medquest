@@ -116,7 +116,11 @@ export default function TopNav() {
         >
           <span className="flex items-center gap-2 min-w-0">
             <ClinicalIcon name="search" className="w-3.5 h-3.5 text-accent shrink-0" />
-            <span className="truncate">Pesquisar provas, temas, questões ou macetes...</span>
+            <span className="truncate">
+              {canAccessLessons
+                ? "Pesquisar aulas, provas, temas, questões ou macetes..."
+                : "Pesquisar provas, temas, questões ou macetes..."}
+            </span>
           </span>
           <kbd className="text-[10px] font-mono-lab px-1.5 py-0.5 rounded-xs bg-surface border border-line-subtle text-ink-muted shrink-0">
             Ctrl+K

@@ -5,13 +5,75 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search, X, Sparkles, Filter, Image as ImageIcon,
-  ExternalLink, PlayCircle, BookOpen, AlertCircle, RefreshCw, Lightbulb
+  ExternalLink, PlayCircle, BookOpen, AlertCircle, RefreshCw, Lightbulb,
+  Film, Clock, CheckCircle2, ArrowRight
 } from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/api";
-import { QuestionMeta, SearchResult, SearchFilterOptions } from "@/types/api";
+import { LessonItem, QuestionMeta, SearchResult, SearchFilterOptions } from "@/types/api";
 import { parseSearchHighlight } from "@/lib/searchHighlight";
 import { useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
+import { buildLessonReturnUrl } from "@/lib/themeJourney";
+
+type SearchScope = "all" | "aulas" | "questoes";
+
+const LESSONS_PREVIEW_LIMIT = 6;
+const LESSONS_FETCH_LIMIT = 30;
+
+function formatLessonDuration(seconds?: number | null): string {
+  if (!seconds || seconds <= 0) return "";
+  const totalMin = Math.max(1, Math.round(seconds / 60));
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function getLessonOriginBadge(lesson: LessonItem): { label: string; className: string } {
+  if (lesson.course_key === "medway_r1_2026" && lesson.is_essential) {
+    return {
+      label: "Medway Principal",
+      className: "bg-primary/10 text-primary border-primary/25",
+    };
+  }
+  if (lesson.course_key === "medway_r1_2026") {
+    const kindLabel =
+      lesson.lesson_kind === "flash"
+        ? "Medway Flash"
+        : lesson.lesson_kind === "revisao"
+        ? "Medway Revisão"
+        : lesson.lesson_kind === "como_cai"
+        ? "Medway Como Cai"
+        : "Medway Extra";
+    return {
+      label: kindLabel,
+      className: "bg-accent/10 text-accent border-accent/25",
+    };
+  }
+  if (lesson.course_key === "medway_pratica_2026") {
+    return {
+      label: "Prática / OSCE",
+      className: "bg-normal-bg text-normal border-normal/25",
+    };
+  }
+  if (lesson.course_key === "radiologia_2026") {
+    return {
+      label: "Radiologia",
+      className: "bg-accent/10 text-accent border-accent/25",
+    };
+  }
+  if (lesson.course_key === "medcof_r1_2026") {
+    return {
+      label: lesson.lesson_kind === "cofexpress" ? "MedCof • CofExpress" : "MedCof",
+      className: "bg-elevated text-ink-secondary border-line-subtle",
+    };
+  }
+  return {
+    label: lesson.course_name || "Aula",
+    className: "bg-elevated text-ink-secondary border-line-subtle",
+  };
+}
 
 const QUICK_TOPICS = [
   "IAM com supra",
@@ -68,6 +130,7 @@ interface SearchClientProps {
   initialInstitution?: string;
   initialYear?: string;
   initialWithImage?: boolean;
+  initialScope?: SearchScope;
   initialMeta?: QuestionMeta | null;
 }
 
@@ -77,9 +140,11 @@ export function SearchClient({
   initialInstitution = "Todas",
   initialYear = "Todos",
   initialWithImage = false,
+  initialScope = "all",
   initialMeta = null,
 }: SearchClientProps) {
   const router = useRouter();
+  const { canAccessLessons } = useLessonsAccess();
   const { data: queriedMeta } = useQuestionMetaQuery(
     {},
     !initialMeta,
@@ -91,11 +156,16 @@ export function SearchClient({
   const [selectedInstitution, setSelectedInstitution] = useState(initialInstitution);
   const [selectedYear, setSelectedYear] = useState<string>(initialYear);
   const [onlyWithImage, setOnlyWithImage] = useState(initialWithImage);
+  const [scope, setScope] = useState<SearchScope>(initialScope);
 
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [lessonResults, setLessonResults] = useState<LessonItem[]>([]);
+  const [totalLessonsFound, setTotalLessonsFound] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const effectiveScope: SearchScope = canAccessLessons ? scope : "questoes";
 
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -146,14 +216,28 @@ export function SearchClient({
   }, []);
 
   const executeSearch = useCallback(
-    async (q: string, area: string, inst: string, year: string, withImg: boolean) => {
+    async (
+      q: string,
+      area: string,
+      inst: string,
+      year: string,
+      withImg: boolean,
+      includeLessons: boolean
+    ) => {
       const cleanQ = q.trim();
-      const hasFilters = area !== "Todas" || inst !== "Todas" || year !== "Todos" || withImg;
+      const hasQuestionFilters = area !== "Todas" || inst !== "Todas" || year !== "Todos" || withImg;
+      const shouldSearchLessons = includeLessons && (cleanQ.length > 0 || area !== "Todas");
 
-      if (!cleanQ && !hasFilters) {
+      if (!cleanQ && !hasQuestionFilters) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
         setResults([]);
+        setLessonResults([]);
+        setTotalLessonsFound(0);
         setIsLoading(false);
         setHasSearched(false);
+        setError(null);
         return;
       }
 
@@ -174,18 +258,62 @@ export function SearchClient({
         has_images: withImg ? true : undefined,
       };
 
+      const questionsPromise = api.questions.search(cleanQ, filterOpts, controller.signal);
+      const lessonsPromise = shouldSearchLessons
+        ? api.lessons.list(
+            {
+              q: cleanQ || undefined,
+              area: area !== "Todas" ? area : undefined,
+              limit: LESSONS_FETCH_LIMIT,
+            },
+            controller.signal
+          )
+        : Promise.resolve(null);
+
       try {
-        const data = await api.questions.search(cleanQ, filterOpts, controller.signal);
-        setResults(data);
-        setHasSearched(true);
-      } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") {
+        const [questionsOutcome, lessonsOutcome] = await Promise.allSettled([
+          questionsPromise,
+          lessonsPromise,
+        ]);
+
+        if (controller.signal.aborted) {
           return;
         }
-        console.error("Falha ao buscar questões:", err);
-        setError("Não foi possível carregar os resultados da busca. Tente novamente.");
+
+        const qRejected = questionsOutcome.status === "rejected";
+        const lRejected = lessonsOutcome.status === "rejected";
+
+        if (qRejected && (!shouldSearchLessons || lRejected)) {
+          console.error("Falha ao buscar conteúdo:", questionsOutcome.reason);
+          setError("Não foi possível carregar os resultados da busca. Tente novamente.");
+          return;
+        }
+
+        if (questionsOutcome.status === "fulfilled") {
+          setResults(questionsOutcome.value);
+        } else {
+          console.error("Falha ao buscar questões:", questionsOutcome.reason);
+          setResults([]);
+        }
+
+        if (lessonsOutcome.status === "fulfilled" && lessonsOutcome.value) {
+          setLessonResults(lessonsOutcome.value.lessons);
+          setTotalLessonsFound(
+            lessonsOutcome.value.summary?.total ?? lessonsOutcome.value.lessons.length
+          );
+        } else {
+          if (lRejected) {
+            console.error("Falha ao buscar aulas:", lessonsOutcome.reason);
+          }
+          setLessonResults([]);
+          setTotalLessonsFound(0);
+        }
+
+        setHasSearched(true);
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     },
     []
@@ -194,11 +322,26 @@ export function SearchClient({
   // Debounced search trigger
   useEffect(() => {
     const timer = setTimeout(() => {
-      void executeSearch(query, selectedArea, selectedInstitution, selectedYear, onlyWithImage);
+      void executeSearch(
+        query,
+        selectedArea,
+        selectedInstitution,
+        selectedYear,
+        onlyWithImage,
+        canAccessLessons
+      );
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [query, selectedArea, selectedInstitution, selectedYear, onlyWithImage, executeSearch]);
+  }, [
+    query,
+    selectedArea,
+    selectedInstitution,
+    selectedYear,
+    onlyWithImage,
+    canAccessLessons,
+    executeSearch,
+  ]);
 
   const handleClear = () => {
     setQuery("");
@@ -229,19 +372,37 @@ export function SearchClient({
       ? `${meta.total_questions.toLocaleString("pt-BR")} questões`
       : "acervo completo de questões";
 
+  const showLessonsSection = effectiveScope === "all" || effectiveScope === "aulas";
+  const showQuestionsSection = effectiveScope === "all" || effectiveScope === "questoes";
+  const visibleLessons =
+    effectiveScope === "all" ? lessonResults.slice(0, LESSONS_PREVIEW_LIMIT) : lessonResults;
+  const hasVisibleResults =
+    (showLessonsSection && lessonResults.length > 0) ||
+    (showQuestionsSection && results.length > 0);
+  const onlyQuestionSpecificFiltersActive =
+    !query.trim() &&
+    selectedArea === "Todas" &&
+    (selectedInstitution !== "Todas" || selectedYear !== "Todos" || onlyWithImage);
+
   return (
     <div className="flex flex-col gap-5 max-w-6xl mx-auto px-4 sm:px-6 py-5 pb-24">
       {/* Top Header */}
       <div className="mq-page-hero p-5 sm:p-6 shadow-2xs flex flex-col gap-1.5">
         <div className="flex items-center gap-2 text-accent font-semibold text-xs">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Pesquisa Clínica em {totalCountLabel}</span>
+          <span>
+            {canAccessLessons
+              ? `Pesquisa Clínica em ${totalCountLabel} e videoteca de aulas`
+              : `Pesquisa Clínica em ${totalCountLabel}`}
+          </span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-ink-primary tracking-tight">
           Busca Clínica Instantânea
         </h1>
         <p className="text-xs sm:text-sm text-ink-secondary">
-          Pesquise por síndromes, sinais semiológicos, condutas de emergência, achados de imagem ou bancas examinadoras.
+          {canAccessLessons
+            ? "Pesquise questões e aulas em vídeo por síndromes, sinais semiológicos, condutas de emergência, achados de imagem ou bancas."
+            : "Pesquise por síndromes, sinais semiológicos, condutas de emergência, achados de imagem ou bancas examinadoras."}
         </p>
       </div>
 
@@ -255,8 +416,16 @@ export function SearchClient({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Pesquisar questões por síndromes, condutas ou bancas"
-          placeholder="Ex: infarto com supra, cetoacidose, sinal de Cullen, apendicite, pré-eclâmpsia..."
+          aria-label={
+            canAccessLessons
+              ? "Pesquisar questões e aulas por síndromes, temas, condutas ou bancas"
+              : "Pesquisar questões por síndromes, condutas ou bancas"
+          }
+          placeholder={
+            canAccessLessons
+              ? "Ex: cetoacidose, choque séptico, apendicite, pré-eclâmpsia, meningite..."
+              : "Ex: infarto com supra, cetoacidose, sinal de Cullen, apendicite, pré-eclâmpsia..."
+          }
           className="w-full h-12 pl-10 pr-20 rounded-2xl bg-surface border border-line-subtle text-ink-primary placeholder:text-ink-muted text-sm shadow-2xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
         />
         <div className="absolute right-3 flex items-center gap-1.5">
@@ -366,10 +535,51 @@ export function SearchClient({
       {/* Results Header */}
       {hasSearched && (
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-b border-line-subtle pb-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono-lab tabular-nums text-xs sm:text-sm font-bold text-ink-primary">
-              {results.length} {results.length === 1 ? "questão encontrada" : "questões encontradas"}
-            </span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {canAccessLessons ? (
+              <div className="inline-flex items-center rounded-md bg-surface border border-line-subtle p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setScope("all")}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-xs font-semibold transition-colors cursor-pointer",
+                    effectiveScope === "all"
+                      ? "bg-accent text-white shadow-2xs"
+                      : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Tudo ({totalLessonsFound + results.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope("aulas")}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-xs font-semibold transition-colors cursor-pointer",
+                    effectiveScope === "aulas"
+                      ? "bg-accent text-white shadow-2xs"
+                      : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Aulas ({totalLessonsFound})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope("questoes")}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-xs font-semibold transition-colors cursor-pointer",
+                    effectiveScope === "questoes"
+                      ? "bg-accent text-white shadow-2xs"
+                      : "text-ink-secondary hover:text-ink-primary"
+                  )}
+                >
+                  Questões ({results.length})
+                </button>
+              </div>
+            ) : (
+              <span className="font-mono-lab tabular-nums text-xs sm:text-sm font-bold text-ink-primary">
+                {results.length} {results.length === 1 ? "questão encontrada" : "questões encontradas"}
+              </span>
+            )}
             {isLoading && (
               <div className="flex items-center gap-1 text-xs text-ink-secondary">
                 <RefreshCw className="w-3 h-3 animate-spin" />
@@ -378,7 +588,7 @@ export function SearchClient({
             )}
           </div>
 
-          {results.length > 0 && (
+          {showQuestionsSection && results.length > 0 && (
             <button
               type="button"
               onClick={handleStartPracticeBatch}
@@ -406,16 +616,20 @@ export function SearchClient({
             <Search className="w-5 h-5" />
           </div>
           <h3 className="text-base font-bold text-ink-primary mb-1">
-            Explore {totalCountLabel} comentadas
+            {canAccessLessons
+              ? `Explore ${totalCountLabel} e aulas em vídeo`
+              : `Explore ${totalCountLabel} comentadas`}
           </h3>
           <p className="text-xs sm:text-sm text-ink-secondary max-w-md">
-            Digite um quadro clínico, droga ou conceito das bancas examinadoras ou combine os filtros acima para pesquisar instantaneamente.
+            {canAccessLessons
+              ? "Digite um quadro clínico, tema, droga ou conceito para localizar aulas da trilha e questões comentadas no mesmo lugar."
+              : "Digite um quadro clínico, droga ou conceito das bancas examinadoras ou combine os filtros acima para pesquisar instantaneamente."}
           </p>
         </div>
       )}
 
       {/* Loading state skeleton */}
-      {isLoading && results.length === 0 && (
+      {isLoading && results.length === 0 && lessonResults.length === 0 && (
         <div className="flex flex-col gap-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="p-5 rounded-lg bg-surface border border-line-subtle space-y-3">
@@ -432,23 +646,160 @@ export function SearchClient({
       )}
 
       {/* No results found */}
-      {hasSearched && !isLoading && results.length === 0 && (
+      {hasSearched && !isLoading && !hasVisibleResults && (
         <div className="flex flex-col items-center justify-center p-10 text-center rounded-lg border border-line-subtle bg-surface">
           <div className="w-11 h-11 rounded-md bg-elevated text-ink-muted flex items-center justify-center mb-3">
-            <BookOpen className="w-5 h-5" />
+            {effectiveScope === "aulas" ? (
+              <Film className="w-5 h-5" />
+            ) : (
+              <BookOpen className="w-5 h-5" />
+            )}
           </div>
           <h3 className="text-base font-bold text-ink-primary mb-1">
-            Nenhuma questão encontrada
+            {effectiveScope === "aulas"
+              ? "Nenhuma aula encontrada"
+              : effectiveScope === "questoes"
+              ? "Nenhuma questão encontrada"
+              : "Nenhum resultado encontrado"}
           </h3>
           <p className="text-xs sm:text-sm text-ink-secondary max-w-md">
-            Não encontramos questões correspondentes aos termos e filtros selecionados. Tente termos mais abrangentes ou remova alguns filtros.
+            {effectiveScope === "aulas" && onlyQuestionSpecificFiltersActive
+              ? "Banca, ano e filtro de imagem se aplicam apenas a questões. Digite um tema ou selecione uma área para buscar aulas."
+              : "Não encontramos resultados correspondentes aos termos e filtros selecionados. Tente termos mais abrangentes ou remova alguns filtros."}
           </p>
         </div>
       )}
 
-      {/* Results List */}
-      {results.length > 0 && (
-        <div className="flex flex-col gap-3">
+      {/* Lessons Results Section */}
+      {showLessonsSection && visibleLessons.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Film className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-bold text-ink-primary">
+                Aulas em Vídeo ({totalLessonsFound})
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              {effectiveScope === "all" && totalLessonsFound > visibleLessons.length && (
+                <button
+                  type="button"
+                  onClick={() => setScope("aulas")}
+                  className="text-xs font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Ver todas as {totalLessonsFound} aulas</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {effectiveScope === "aulas" && totalLessonsFound > visibleLessons.length && (
+                <Link
+                  href="/aulas"
+                  className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                >
+                  <span>Mostrando {visibleLessons.length} de {totalLessonsFound} • Abrir videoteca</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {visibleLessons.map((lesson) => {
+              const originBadge = getLessonOriginBadge(lesson);
+              const durationLabel = formatLessonDuration(lesson.duration_seconds);
+              const isDone = lesson.progress.status === "completed";
+              const isInProgress = lesson.progress.status === "in_progress";
+              const lessonHref = buildLessonReturnUrl({
+                lessonId: lesson.id,
+                subtema: lesson.subtema,
+              });
+
+              return (
+                <Link
+                  key={lesson.id}
+                  href={lessonHref}
+                  className="p-4 rounded-lg bg-surface border border-line-subtle hover:border-accent/45 transition-colors shadow-2xs group flex flex-col justify-between gap-2.5"
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={clsx(
+                            "px-2 py-0.5 rounded-xs border text-[11px] font-semibold",
+                            originBadge.className
+                          )}
+                        >
+                          {originBadge.label}
+                        </span>
+                        {lesson.area && (
+                          <span
+                            className={clsx(
+                              "px-2 py-0.5 rounded-xs border text-[11px] font-semibold",
+                              getAreaBadgeColor(lesson.area)
+                            )}
+                          >
+                            {lesson.area}
+                          </span>
+                        )}
+                        {isDone && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-success/10 text-success border border-success/25 text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Concluída</span>
+                          </span>
+                        )}
+                        {isInProgress && (
+                          <span className="px-1.5 py-0.5 rounded-xs bg-warning/10 text-warning border border-warning/25 text-[10px] font-bold">
+                            Em andamento
+                          </span>
+                        )}
+                      </div>
+
+                      {durationLabel && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono-lab text-ink-muted tabular-nums shrink-0">
+                          <Clock className="w-3 h-3" />
+                          <span>{durationLabel}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-sm font-semibold text-ink-primary group-hover:text-accent transition-colors leading-snug">
+                      {lesson.title}
+                    </h3>
+
+                    <p className="text-xs text-ink-secondary line-clamp-1">
+                      {lesson.subtema
+                        ? `${lesson.subtema} • ${lesson.module_name}`
+                        : lesson.module_name}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-line-subtle/60 text-xs">
+                    <span className="text-ink-muted truncate max-w-[65%]">
+                      {lesson.specialty || lesson.course_name}
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-accent group-hover:underline shrink-0">
+                      <PlayCircle className="w-3.5 h-3.5" />
+                      <span>Assistir aula</span>
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Questions Results List */}
+      {showQuestionsSection && results.length > 0 && (
+        <section className="flex flex-col gap-3">
+          {canAccessLessons && effectiveScope === "all" && visibleLessons.length > 0 && (
+            <div className="flex items-center gap-2 pt-2">
+              <BookOpen className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-bold text-ink-primary">
+                Questões ({results.length})
+              </h2>
+            </div>
+          )}
           {results.map((q) => (
             <div
               key={q.id}
@@ -511,7 +862,7 @@ export function SearchClient({
               )}
             </div>
           ))}
-        </div>
+        </section>
       )}
     </div>
   );

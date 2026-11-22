@@ -7,11 +7,14 @@ interface SearchPageProps {
     institution?: string;
     year?: string;
     has_images?: string;
+    scope?: string;
   }>;
 }
 
 export default async function BuscarPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
+  const initialScope =
+    params.scope === "aulas" || params.scope === "questoes" ? params.scope : "all";
 
   return (
     <SearchClient
@@ -20,6 +23,7 @@ export default async function BuscarPage({ searchParams }: SearchPageProps) {
       initialInstitution={params.institution || "Todas"}
       initialYear={params.year || "Todos"}
       initialWithImage={params.has_images === "true"}
+      initialScope={initialScope}
     />
   );
 }

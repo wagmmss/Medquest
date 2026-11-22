@@ -543,3 +543,56 @@ def test_lesson_study_cycle_medway_flow_and_settings(client, seeded_lessons, mon
     # Validação de payload inválido em /lessons/cycle
     assert client.put("/api/lessons/cycle", headers=owner_headers, json={"subtema": "Inexistente", "phase": "pre"}).status_code == 400
     assert client.put("/api/lessons/cycle", headers=owner_headers, json={"subtema": THEME, "phase": "mid"}).status_code == 400
+
+
+def test_lessons_search_multitoken_area_alias_ranking_and_limit(app, client, seeded_lessons, monkeypatch):
+    from api.db import db_transaction, get_db
+
+    monkeypatch.setenv("LESSONS_ALLOWED_USER_IDS", ALLOWED_SUB)
+    owner_headers = {"X-User-ID": ALLOWED_SUB, "X-User-Email": ALLOWED_EMAIL}
+
+    with app.app_context():
+        db = get_db()
+        with db_transaction(db):
+            db.execute(
+                """
+                INSERT INTO lessons (
+                    course_key, course_name, is_extra, area, specialty, subtema,
+                    module_name, module_order, title, lesson_order, lesson_kind,
+                    is_essential, media_type, provider, drive_file_id, drive_path,
+                    size_bytes, duration_seconds, mapping_source, active, updated_at
+                ) VALUES
+                ('medway_r1_2026', 'Extensivo R1 (Medway)', 0, 'Preventiva', 'Epidemiologia', ?,
+                 'Imunizações', 1, '01. Aula — Vacinação e Calendário PNI', 1, 'aula',
+                 1, 'video', 'gdrive', 'drive-id-prev-1', 'Medway/Prev/01.mp4', 100000, 1500, 'auto', 1, '2026-11-21T00:00:00Z')
+                """,
+                (OTHER_THEME,),
+            )
+
+    # 1. Busca multi-token fora de ordem + sem acento + ignorando stopword ("de")
+    multi_resp = client.get("/api/lessons?q=crises+de+hipertensao", headers=owner_headers)
+    assert multi_resp.status_code == 200
+    multi_data = multi_resp.get_json()
+    assert len(multi_data["lessons"]) >= 2
+    # Aula principal com "Crises Hipertensivas" no título deve rankear no topo
+    assert multi_data["lessons"][0]["drive_file_id"] == "drive-id-2"
+
+    # 2. Alias de área: "Medicina Preventiva" (vindo de /buscar) encontra aulas com area='Preventiva'
+    alias_resp = client.get("/api/lessons?area=Medicina+Preventiva", headers=owner_headers)
+    assert alias_resp.status_code == 200
+    alias_data = alias_resp.get_json()
+    assert len(alias_data["lessons"]) == 1
+    assert alias_data["lessons"][0]["drive_file_id"] == "drive-id-prev-1"
+
+    # 3. Parâmetro limit restringe lista retornada mas preserva summary.total com total de matches
+    limited_resp = client.get("/api/lessons?q=hipertensao&limit=2", headers=owner_headers)
+    assert limited_resp.status_code == 200
+    limited_data = limited_resp.get_json()
+    assert len(limited_data["lessons"]) == 2
+    assert limited_data["summary"]["total"] == 4
+    # Aulas principais Medway aparecem antes de Flash/MedCof
+    assert all(
+        item["course_key"] == "medway_r1_2026" and item["is_essential"]
+        for item in limited_data["lessons"]
+    )
+

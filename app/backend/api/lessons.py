@@ -4,6 +4,7 @@ from __future__ import annotations
 import configparser
 import json
 import os
+import re
 import time
 import unicodedata
 from datetime import datetime, timezone
@@ -207,6 +208,60 @@ def _norm_text(value: str | None) -> str:
     return " ".join(without_accents.lower().split())
 
 
+_SEARCH_STOPWORDS = frozenset({"a", "o", "e", "de", "da", "do", "das", "dos", "em", "na", "no", "nas", "nos", "com", "por", "para"})
+_PREVENTIVA_AREA_ALIASES = ("Preventiva", "Medicina Preventiva", "Medicina Preventiva e Social")
+
+
+def _norm_search_text(value: str | None) -> str:
+    base = _norm_text(value)
+    if not base:
+        return ""
+    return " ".join(re.findall(r"[a-z0-9]+", base))
+
+
+def _tokenize_search_query(q_norm: str) -> list[str]:
+    raw_tokens = [tok for tok in q_norm.split() if tok]
+    if not raw_tokens:
+        return []
+    filtered = [tok for tok in raw_tokens if len(tok) >= 2 and tok not in _SEARCH_STOPWORDS]
+    return filtered or raw_tokens
+
+
+def _lesson_search_rank(item: dict, q_norm: str, q_tokens: list[str]) -> tuple[int, int, int, int, int] | None:
+    title_norm = _norm_search_text(item["title"])
+    title_sub = _norm_search_text(f"{item['title']} {item['subtema'] or ''}")
+    full_haystack = _norm_search_text(
+        f"{item['title']} {item['module_name']} {item['subtema'] or ''} {item['specialty']} {item['area']} {item['course_name']}"
+    )
+    in_title_exact = q_norm in title_norm
+    in_title_all = bool(q_tokens) and all(tok in title_norm for tok in q_tokens)
+    in_title_sub_exact = q_norm in title_sub
+    in_title_sub_all = bool(q_tokens) and all(tok in title_sub for tok in q_tokens)
+    in_full_exact = q_norm in full_haystack
+    in_full_all = bool(q_tokens) and all(tok in full_haystack for tok in q_tokens)
+
+    if not (in_title_sub_exact or in_title_sub_all or in_full_exact or in_full_all):
+        return None
+
+    scope_tier = 0 if (in_title_sub_exact or in_title_sub_all) else 1
+    track_extra = 1 if item["is_extra"] else 0
+    track_optional = 0 if item["is_essential"] else 1
+    title_hits = sum(1 for tok in q_tokens if tok in title_norm)
+    if in_title_exact:
+        detail_tier = 0
+    elif in_title_all:
+        detail_tier = 1
+    elif in_title_sub_exact:
+        detail_tier = 2
+    elif in_title_sub_all:
+        detail_tier = 3
+    elif in_full_exact:
+        detail_tier = 4
+    else:
+        detail_tier = 5
+    return (scope_tier, track_extra, track_optional, detail_tier, -title_hits)
+
+
 def _extract_progress_fields(row) -> tuple[str, int, str, str | None, str | None]:
     keys = row.keys() if hasattr(row, "keys") else []
     status = row["progress_status"] if "progress_status" in keys and row["progress_status"] else "not_started"
@@ -359,6 +414,15 @@ def list_lessons():
     q = (request.args.get("q") or "").strip()
     status_filter = (request.args.get("status") or "all").strip()
     essential_only = (request.args.get("essential_only") or "").strip().lower() in ("1", "true", "yes")
+    limit_param = (request.args.get("limit") or "").strip()
+    limit_val: int | None = None
+    if limit_param:
+        try:
+            parsed_limit = int(limit_param)
+            if parsed_limit > 0:
+                limit_val = min(parsed_limit, 200)
+        except (ValueError, TypeError):
+            limit_val = None
 
     where = ["l.active = 1"]
     params: list = [user_id]
@@ -367,8 +431,12 @@ def list_lessons():
         where.append("l.course_key = ?")
         params.append(course)
     if area:
-        where.append("l.area = ?")
-        params.append(area)
+        if area in _PREVENTIVA_AREA_ALIASES:
+            where.append("l.area IN (?, ?, ?)")
+            params.extend(_PREVENTIVA_AREA_ALIASES)
+        else:
+            where.append("l.area = ?")
+            params.append(area)
     if subtema:
         where.append("l.subtema = ?")
         params.append(subtema)
@@ -383,7 +451,9 @@ def list_lessons():
     )
     rows = db.execute(sql, tuple(params)).fetchall()
 
-    q_norm = _norm_text(q)
+    q_norm = _norm_search_text(q)
+    q_tokens = _tokenize_search_query(q_norm) if q_norm else []
+    ranked_lessons: list[tuple[tuple[int, int, int, int, int], dict]] = []
     lessons_out: list[dict] = []
     areas_set: set[str] = set()
     by_course_map: dict[str, dict] = {}
@@ -400,12 +470,12 @@ def list_lessons():
         item = _serialize_lesson_list_item(row)
         item_status = item["progress"]["status"]
 
+        rank: tuple[int, int, int, int, int] = (0, 0, 0, 0, 0)
         if q_norm:
-            haystack = _norm_text(
-                f"{item['title']} {item['module_name']} {item['subtema'] or ''} {item['specialty']} {item['area']}"
-            )
-            if q_norm not in haystack:
+            matched_rank = _lesson_search_rank(item, q_norm, q_tokens)
+            if matched_rank is None:
                 continue
+            rank = matched_rank
 
         if status_filter == "pending":
             if item_status == "completed":
@@ -414,7 +484,10 @@ def list_lessons():
             if item_status != status_filter:
                 continue
 
-        lessons_out.append(item)
+        if q_norm:
+            ranked_lessons.append((rank, item))
+        else:
+            lessons_out.append(item)
         if item["area"]:
             areas_set.add(item["area"])
 
@@ -440,6 +513,22 @@ def list_lessons():
             by_course_map[ckey]["completed"] += 1
         elif item_status == "in_progress":
             by_course_map[ckey]["in_progress"] += 1
+
+    if q_norm:
+        ranked_lessons.sort(
+            key=lambda pair: (
+                pair[0],
+                1 if pair[1]["is_extra"] else 0,
+                0 if pair[1]["is_essential"] else 1,
+                pair[1]["module_order"],
+                pair[1]["lesson_order"],
+                pair[1]["id"],
+            )
+        )
+        lessons_out = [item for _, item in ranked_lessons]
+
+    if limit_val is not None:
+        lessons_out = lessons_out[:limit_val]
 
     return jsonify({
         "lessons": lessons_out,

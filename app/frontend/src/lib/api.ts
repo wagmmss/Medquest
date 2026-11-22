@@ -897,14 +897,18 @@ export const api = {
       }),
   },
   lessons: {
-    list: (params?: {
-      course?: string;
-      area?: string;
-      subtema?: string;
-      q?: string;
-      status?: string;
-      essential_only?: boolean;
-    }) => {
+    list: (
+      params?: {
+        course?: string;
+        area?: string;
+        subtema?: string;
+        q?: string;
+        status?: string;
+        essential_only?: boolean;
+        limit?: number;
+      },
+      signal?: AbortSignal
+    ) => {
       const qs = new URLSearchParams();
       if (params?.course) qs.set("course", params.course);
       if (params?.area) qs.set("area", params.area);
@@ -912,8 +916,9 @@ export const api = {
       if (params?.q) qs.set("q", params.q);
       if (params?.status) qs.set("status", params.status);
       if (params?.essential_only) qs.set("essential_only", "1");
+      if (params?.limit) qs.set("limit", String(params.limit));
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
-      return apiFetch<LessonsListResponse>(`/api/lessons${suffix}`, { cache: "no-store" });
+      return apiFetch<LessonsListResponse>(`/api/lessons${suffix}`, { cache: "no-store", signal });
     },
     get: (lessonId: number) =>
       apiFetch<LessonDetailResponse>(`/api/lessons/${lessonId}`, { cache: "no-store" }),
