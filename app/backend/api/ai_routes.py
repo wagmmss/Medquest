@@ -17,6 +17,7 @@ def ask_question_ai(question_id):
     db = get_db()
     q_sql = """
         SELECT q.id, q.stem, q.area, q.subtema, q.topic,
+               q.year, q.institution_code,
                e.explanation_text
         FROM questions q
         LEFT JOIN explanations e ON q.id = e.question_id
@@ -69,7 +70,9 @@ def ask_question_ai(question_id):
         chat_history=chat_history if isinstance(chat_history, list) else None,
         user_id=user_id,
         db=db,
-        question_id=question_id
+        question_id=question_id,
+        question_year=q["year"],
+        institution_code=q["institution_code"] or "",
     )
 
     if result.get("source") == "fallback":

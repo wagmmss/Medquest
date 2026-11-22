@@ -4,10 +4,14 @@ Gerencia a base de conhecimento médico indexada (Fichas Resumo, Revisões Rápi
 utilizando SQLite FTS5 (BM25) de alta performance e latência ultrabaixa (< 5ms).
 """
 
+import html
+import json
 import logging
 import os
 import re
 import sqlite3
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -314,10 +318,137 @@ def format_grounding_block(chunks: List[Dict[str, Any]]) -> str:
         blocks.append(f"{header}\n{content}")
 
     joined = "\n\n---\n\n".join(blocks)
-    return f"""### CONTEXTO CLÍNICO OFICIAL ANCORADO (DATA STORE):
-As informações abaixo foram extraídas diretamente das fontes médicas e diretrizes de estudo oficiais.
-Priorize estritamente estas referências para fundamentar a sua resposta e utilize citações explícitas [Fonte: ...].
+    return f"""### FICHAS DE APOIO LOCAL (DATA STORE — PODEM CONTER VERSÕES 2023–2025):
+As informações abaixo foram extraídas das fichas de estudo locais. Use-as como apoio didático, MAS nunca acima de atualizações oficiais recentes (2024–2026) do Ministério da Saúde/SUS/PNI/CONITEC ou de busca web mais recente.
 
 {joined}
 """
+
+
+_RECENT_UPDATES_PATH = BACKEND_DIR / "data" / "diretrizes_atualizadas_2025_2026.json"
+_recent_updates_cache: Optional[List[Dict[str, Any]]] = None
+_web_search_cache = SimpleTTLCache(600, max_size=200)
+
+
+def _load_recent_updates() -> List[Dict[str, Any]]:
+    global _recent_updates_cache
+    if _recent_updates_cache is not None:
+        return _recent_updates_cache
+    try:
+        if _RECENT_UPDATES_PATH.exists():
+            data = json.loads(_RECENT_UPDATES_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                _recent_updates_cache = data
+                return _recent_updates_cache
+    except Exception as exc:
+        logger.warning("[Grounding] Falha ao carregar diretrizes_atualizadas_2025_2026.json: %s", exc)
+    _recent_updates_cache = []
+    return _recent_updates_cache
+
+
+def retrieve_recent_guideline_updates(
+    area: str = "",
+    subtema: str = "",
+    stem: str = "",
+    user_question: str = "",
+    top_k: int = 2,
+) -> List[Dict[str, Any]]:
+    """Recupera atualizações oficiais recentes (2024–2026) pertinentes à questão."""
+    updates = _load_recent_updates()
+    if not updates:
+        return []
+
+    haystack = " ".join(filter(None, [area, subtema, stem[:800], user_question])).lower()
+    scored: List[tuple[int, Dict[str, Any]]] = []
+    for item in updates:
+        kws = item.get("keywords") or []
+        hits = sum(1 for kw in kws if kw.lower() in haystack)
+        if hits >= 2 or (hits == 1 and any(kw.lower() in (subtema or "").lower() for kw in kws)):
+            scored.append((hits, item))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in scored[:top_k]]
+
+
+def format_recent_updates_block(updates: List[Dict[str, Any]]) -> str:
+    """Formata atualizações oficiais 2024–2026 com prioridade máxima sobre fichas antigas e gabarito histórico."""
+    if not updates:
+        return ""
+
+    blocks = []
+    for u in updates:
+        blocks.append(
+            f"• **{u.get('topic')} ({u.get('orgao')} — {u.get('ano')})**\n"
+            f"  - Regra anterior (questões antigas): {u.get('regra_antiga')}\n"
+            f"  - Regra VIGENTE ATUAL: {u.get('regra_atual')}\n"
+            f"  - Impacto em provas: {u.get('impacto_provas')}"
+        )
+
+    joined = "\n\n".join(blocks)
+    return f"""### 🚨 ATUALIZAÇÕES OFICIAIS DE DIRETRIZES (2024–2026) — PRIORIDADE MÁXIMA:
+As mudanças oficiais abaixo PREVALECEM estritamente sobre o gabarito histórico da prova e sobre fichas locais antigas:
+
+{joined}
+"""
+
+
+def search_web_guideline_snippets(query: str, max_results: int = 3, timeout: float = 4.0) -> List[Dict[str, str]]:
+    """Busca leve e gratuita (DuckDuckGo HTML) para verificar mudanças recentes de diretrizes no Brasil."""
+    clean_q = re.sub(r"\s+", " ", (query or "").strip())[:180]
+    if not clean_q:
+        return []
+
+    cached = _web_search_cache.get(clean_q.lower())
+    if cached is not None:
+        return cached
+
+    try:
+        url = "https://html.duckduckgo.com/html/?" + urllib.parse.urlencode({"q": clean_q, "kl": "br-pt"})
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+                "Accept-Language": "pt-BR,pt;q=0.9",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            page = resp.read().decode("utf-8", errors="ignore")
+
+        results: List[Dict[str, str]] = []
+        blocks = re.findall(
+            r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>[\s\S]*?(?:<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)</a>|<div[^>]+class="result__snippet"[^>]*>([\s\S]*?)</div>)',
+            page,
+            re.IGNORECASE,
+        )
+        for href, raw_title, snip1, snip2 in blocks[:max_results]:
+            title = html.unescape(re.sub(r"<[^>]+>", "", raw_title)).strip()
+            snippet = html.unescape(re.sub(r"<[^>]+>", "", snip1 or snip2 or "")).strip()
+            uri = href
+            if "uddg=" in href:
+                parsed = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                if parsed.get("uddg"):
+                    uri = parsed["uddg"][0]
+            if title and snippet:
+                results.append({"title": title[:160], "snippet": snippet[:320], "uri": uri[:300]})
+
+        _web_search_cache.set(clean_q.lower(), results)
+        return results
+    except Exception as exc:
+        logger.debug("[WebGrounding] Busca web auxiliar indisponível: %s", exc)
+        return []
+
+
+def format_web_snippets_block(snippets: List[Dict[str, str]]) -> str:
+    if not snippets:
+        return ""
+    lines = [
+        f"• **{s['title']}** ({s['uri']})\n  {s['snippet']}"
+        for s in snippets
+    ]
+    return (
+        "### 🌐 VERIFICAÇÃO WEB RECENTE (DIRETRIZES VIGENTES):\n"
+        + "\n".join(lines)
+        + "\n"
+    )
+
 

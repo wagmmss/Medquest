@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ms_mama_2025",
+    "topic": "Câncer de Mama — Rastreamento no SUS",
+    "orgao": "Ministério da Saúde (SUS / INCA)",
+    "ano": 2025,
+    "keywords": ["mamografia", "mama", "rastreamento", "bi-rads", "birads", "40 anos", "43 anos", "45 anos", "50 a 69", "74 anos", "mastologia"],
+    "regra_antiga": "Até 2025, as diretrizes do MS/INCA (2015) recomendavam mamografia bienal apenas de 50 a 69 anos e contra-indicavam rastreamento rotineiro abaixo dos 50 anos no SUS.",
+    "regra_atual": "Em setembro de 2025, o Ministério da Saúde atualizou a diretriz no SUS: (1) passou a GARANTIR acesso à mamografia pelo SUS a partir dos 40 anos (faixa de 40 a 49 anos) sob demanda da paciente mediante decisão compartilhada com o profissional de saúde, mesmo sem sinais/sintomas; (2) ampliou a faixa do rastreamento ativo bienal de 50–69 anos para 50 a 74 anos.",
+    "impacto_provas": "Questões antigas (ex.: 2015–2024) que davam como gabarito 'não solicitar mamografia / não indicar rastreamento' para mulher de 40–49 anos no SUS que solicita o exame estão DESATUALIZADAS frente à diretriz vigente do Ministério da Saúde (set/2025)."
+  },
+  {
+    "id": "ms_colo_uterino_dna_hpv_2024_2025",
+    "topic": "Câncer de Colo do Útero — Rastreamento com DNA-HPV no SUS",
+    "orgao": "Ministério da Saúde / CONITEC / INCA",
+    "ano": 2025,
+    "keywords": ["colo uterino", "colo do útero", "papanicolau", "citologia", "citopatológico", "dna-hpv", "hpv", "preventivo", "rastreamento", "3 em 3 anos", "5 anos"],
+    "regra_antiga": "Diretrizes Brasileiras de 2016: rastreamento primário com citologia oncótica (Papanicolau) dos 25 aos 64 anos, a cada 3 anos após 2 exames anuais consecutivos normais.",
+    "regra_atual": "A CONITEC/MS (Portaria SECTICS/MS 2024 e Diretrizes Brasileiras atualizadas em 2025) incorporou o teste molecular de DNA-HPV oncogênico como método primário de rastreamento organizado no SUS para mulheres de 25 a 64 anos, com intervalo de 5 anos quando o resultado for negativo (substituindo progressivamente o Papanicolau trienal; a citologia passa a ser exame de triagem reflexa para HPV positivo não-16/18).",
+    "impacto_provas": "Questões anteriores a 2024–2025 que cobram exclusivamente citologia oncótica a cada 3 anos refletem as Diretrizes de 2016; hoje é obrigatório citar a transição/incorporação do teste molecular DNA-HPV a cada 5 anos no SUS."
+  },
+  {
+    "id": "pni_hpv_dose_unica_2024",
+    "topic": "Vacina HPV — Esquema de Dose Única no PNI/SUS",
+    "orgao": "Ministério da Saúde (PNI)",
+    "ano": 2024,
+    "keywords": ["vacina hpv", "hpv", "doses", "dose única", "duas doses", "quadrivalente", "9 a 14", "calendário vacinal", "pni"],
+    "regra_antiga": "Até março de 2024, o PNI adotava esquema de 2 doses (0 e 6 meses) para meninas e meninos de 9 a 14 anos.",
+    "regra_atual": "Desde abril de 2024 (Nota Técnica MS/PNI), o esquema de vacinação contra o HPV no SUS passou a ser DOSE ÚNICA para crianças e adolescentes de 9 a 14 anos (imunocompetentes). Imunossuprimidos (HIV/AIDS, transplantados, oncológicos) mantêm esquema de 3 doses. Houve também estratégia de resgate para adolescentes de 15 a 19 anos não vacinados.",
+    "impacto_provas": "Questões antigas que cobram '2 doses (0 e 6 meses)' para imunocompetentes de 9–14 anos no PNI estão DESATUALIZADAS (hoje é dose única)."
+  },
+  {
+    "id": "pni_polio_vip_exclusiva_2024",
+    "topic": "Vacina Poliomielite — Fim da VOP (Gotinha) e Esquema Exclusivo com VIP",
+    "orgao": "Ministério da Saúde (PNI)",
+    "ano": 2024,
+    "keywords": ["poliomielite", "pólio", "vop", "vip", "sabin", "gotinha", "reforço", "15 meses", "4 anos", "calendário vacinal"],
+    "regra_antiga": "Até outubro de 2024, o calendário infantil do PNI usava VIP aos 2, 4 e 6 meses e dois reforços com VOP (gotinha) aos 15 meses e aos 4 anos.",
+    "regra_atual": "Desde novembro de 2024, o Brasil substituiu a VOP pela VIP no calendário de rotina do PNI: o esquema passou a ser exclusivamente injetável (VIP) aos 2, 4 e 6 meses, com apenas 1 dose de reforço de VIP aos 15 meses (eliminando a VOP e o reforço dos 4 anos).",
+    "impacto_provas": "Questões antigas que indicam VOP aos 15 meses ou reforço aos 4 anos estão DESATUALIZADAS."
+  },
+  {
+    "id": "ms_dengue_2024",
+    "topic": "Dengue — Manual de Manejo Clínico 2024 e Vacina Qdenga no SUS",
+    "orgao": "Ministério da Saúde",
+    "ano": 2024,
+    "keywords": ["dengue", "qdenga", "vacina dengue", "grupo a", "grupo b", "grupo c", "grupo d", "hidratação"],
+    "regra_antiga": "Antes de 2024, não havia vacina contra dengue incorporada na rotina do SUS (apenas Dengvaxia no setor privado para soropositivos).",
+    "regra_atual": "Em 2024, o MS incorporou a vacina Qdenga (atenuada tetravalente, 2 doses com intervalo de 3 meses, independentemente de infecção prévia) no SUS para 10 a 14 anos em municípios prioritários, e publicou a 6ª edição do Manual de Diagnóstico e Manejo Clínico da Dengue (2024).",
+    "impacto_provas": "Questões antigas afirmando que não há vacina contra dengue no SUS ou exigindo sorologia prévia positiva para vacinar estão desatualizadas frente à Qdenga."
+  },
+  {
+    "id": "sbd_sbc_has_dm_2024_2025",
+    "topic": "Hipertensão Arterial (DBHA) e Diabetes (SBD 2024/2025)",
+    "orgao": "SBC / SBH / SBN / SBD",
+    "ano": 2025,
+    "keywords": ["hipertensão", "pressão arterial", "meta pressórica", "pré-hipertensão", "diabetes", "metformina", "isglt2", "glp-1", "hemoglobina glicada"],
+    "regra_antiga": "Diretrizes antigas (2016–2020) postergavam iSGLT2/aGLP-1 para 2ª/3ª linha após metformina mesmo em pacientes com DCV/IC/DRC estabelecidas e usavam metas pressóricas menos estritas.",
+    "regra_atual": "Diretrizes recentes da SBD (2024–2025) indicam iSGLT2 e/ou aGLP-1 precocemente (independente da HbA1c basal) em pacientes com DM2 e alto/muito alto risco cardiovascular, IC ou DRC; e diretrizes atuais de HAS reforçam terapia combinada inicial para a maioria dos hipertensos estágio 1 de risco moderado/alto e estágio 2/3.",
+    "impacto_provas": "Questões antigas de DM2 com IC/DRC que excluem iSGLT2 ou exigem falha prévia de metformina podem estar defasadas em relação às diretrizes atuais."
+  }
+]

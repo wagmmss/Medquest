@@ -296,11 +296,13 @@ class GeminiPool:
         timeout: int = 25,
         max_total_seconds: Optional[float] = None,
         thinking_budget: Optional[int] = None,
+        use_google_search: bool = False,
     ) -> Dict[str, Any]:
         """
         Executa uma chamada ao Gemini com fallback automático entre chaves e modelos.
-        Suporta chamadas de texto puro (via prompt) ou multimodais (via parts contendo inlineData).
-        Retorna dicionário contendo 'text', 'raw_response', e 'key_index'.
+        Suporta chamadas de texto puro (via prompt), multimodais (via parts contendo inlineData)
+        e Google Search Grounding (use_google_search=True) para checagem de diretrizes atuais.
+        Retorna dicionário contendo 'text', 'raw', 'key_index', 'model' e 'web_sources'.
         """
         conteudo_parts = parts if parts is not None else [{"text": prompt}]
         payload: Dict[str, Any] = {
@@ -315,10 +317,17 @@ class GeminiPool:
             }
         if json_mode:
             payload["generationConfig"]["responseMimeType"] = "application/json"
+        if use_google_search and not json_mode:
+            payload["tools"] = [{"google_search": {}}]
         if system_instruction:
             payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
         body = json.dumps(payload).encode("utf-8")
+        body_no_tools = (
+            json.dumps({k: v for k, v in payload.items() if k != "tools"}).encode("utf-8")
+            if "tools" in payload
+            else body
+        )
         last_exception = None
         deadline = time.monotonic() + max_total_seconds if max_total_seconds else None
 
@@ -326,7 +335,9 @@ class GeminiPool:
             if deadline and time.monotonic() >= deadline:
                 break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent"
-            logger.info("[GeminiPool] Tentando modelo %s.", target_model)
+            logger.info("[GeminiPool] Tentando modelo %s (google_search=%s).", target_model, use_google_search)
+            model_body = body
+            retried_without_search = False
 
             # Pelo menos uma tentativa por chave: assim contas independentes não são
             # descartadas apenas porque uma chave anterior atingiu seu limite.
@@ -346,7 +357,7 @@ class GeminiPool:
 
                 req = urllib.request.Request(
                     url,
-                    data=body,
+                    data=model_body,
                     headers={"Content-Type": "application/json", "x-goog-api-key": key_state.key}
                 )
 
@@ -373,7 +384,22 @@ class GeminiPool:
                         text = "\n".join(text_chunks).strip()
                         if not text and resp_parts:
                             text = resp_parts[-1].get("text", "")
-                        return {"text": text, "raw": data, "key_index": key_state.index, "model": target_model}
+                        grounding_meta = candidates[0].get("groundingMetadata") or {}
+                        web_sources = []
+                        for chunk in grounding_meta.get("groundingChunks", [])[:5]:
+                            web = chunk.get("web") if isinstance(chunk, dict) else None
+                            if isinstance(web, dict) and web.get("uri"):
+                                web_sources.append({
+                                    "title": web.get("title") or web.get("uri"),
+                                    "uri": web.get("uri"),
+                                })
+                        return {
+                            "text": text,
+                            "raw": data,
+                            "key_index": key_state.index,
+                            "model": target_model,
+                            "web_sources": web_sources,
+                        }
 
                 except urllib.error.HTTPError as e:
                     try:
@@ -405,6 +431,14 @@ class GeminiPool:
                         last_exception = RuntimeError(f"Chave #{key_state.index} rejeitada (HTTP {e.code}): {err_body[:200]}")
                         continue
                     if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body:
+                        if use_google_search and not retried_without_search:
+                            logger.warning(
+                                "[GeminiPool] Modelo %s retornou 429 com google_search (cota de grounding). Repetindo sem tools.",
+                                target_model,
+                            )
+                            model_body = body_no_tools
+                            retried_without_search = True
+                            continue
                         cooldown_seconds = self._retry_after_seconds(e, err_body)
                         quota_is_global = self._is_account_quota_exhausted(err_body)
                         # Quota diária/financeira pertence à conta da chave, não ao
@@ -451,6 +485,11 @@ class GeminiPool:
                             )
                             break
                         time.sleep(0.3)
+                        continue
+                    if e.code == 400 and use_google_search and not retried_without_search and ("tool" in err_body.lower() or "search" in err_body.lower() or "grounding" in err_body.lower()):
+                        logger.warning("[GeminiPool] Modelo %s rejeitou google_search (HTTP 400). Repetindo sem tools.", target_model)
+                        model_body = body_no_tools
+                        retried_without_search = True
                         continue
                     key_state.mark_error(f"HTTP {e.code}: {err_body[:100]}", model=target_model)
                     raise RuntimeError(f"Erro na API Gemini ({e.code}): {err_body}")
@@ -625,6 +664,7 @@ def generate_content_with_fallback(
     response_validator: Optional[Callable[[str], bool]] = None,
     provider_order: Optional[List[str] | Tuple[str, ...]] = None,
     model: Optional[str] = None,
+    use_google_search: bool = False,
 ) -> Dict[str, Any]:
     """Gera conteúdo via Google Gemini Pool com controle de timeout, validação e Circuit Breaker."""
     if provider_order is not None:
@@ -644,8 +684,12 @@ def generate_content_with_fallback(
         float(os.environ.get("AI_PROVIDER_TIMEOUT", str(DEFAULT_PROVIDER_TIMEOUT))),
     )
     provider_timeout = float(timeout) if timeout is not None else configured_provider_timeout
-    per_request_timeout = max(8, min(15, int(provider_timeout * 0.65)))
-    max_budget = min(float(provider_timeout * 1.5), 28.0) if timeout is not None else 28.0
+    if use_google_search:
+        per_request_timeout = max(12, min(24, int(provider_timeout * 0.85)))
+        max_budget = min(float(provider_timeout * 1.6), 36.0) if timeout is not None else 36.0
+    else:
+        per_request_timeout = max(8, min(15, int(provider_timeout * 0.65)))
+        max_budget = min(float(provider_timeout * 1.5), 28.0) if timeout is not None else 28.0
     max_total_seconds = max(provider_timeout, max_budget)
 
     try:
@@ -657,6 +701,7 @@ def generate_content_with_fallback(
             temperature=temperature,
             timeout=per_request_timeout,
             max_total_seconds=max_total_seconds,
+            use_google_search=use_google_search,
         )
         text = response.get("text", "")
         if _valid_text(text, response_validator):
@@ -665,6 +710,7 @@ def generate_content_with_fallback(
                 "text": text.strip(),
                 "source": "gemini",
                 "model": response.get("model", "gemini"),
+                "web_sources": response.get("web_sources", []),
             }
         logger.warning("[GeminiPool] Gemini retornou resposta vazia ou rejeitada pelo validador.")
         circuit_breaker.record_failure()

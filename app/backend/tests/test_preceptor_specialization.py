@@ -137,3 +137,59 @@ def test_ask_preceptor_ai_prompt_specialization(monkeypatch):
     assert "### MODO ATIVADO: DICA DO PRECEPTOR PRÉ-RESPOSTA (ATTENDING TIP)" in dica_prompt
     assert "REGRA ABSOLUTA DE SIGILO" in dica_prompt
     assert dica_res.get("jurisprudence_sources") == []
+
+
+def test_ask_preceptor_ai_temporal_context_and_web_search(monkeypatch):
+    """Garante injeção de ano da questão, data atual e ativação seletiva de Google Search Grounding."""
+    captured = []
+
+    def mock_generate_content(prompt, system_instruction=None, **kwargs):
+        captured.append((prompt, system_instruction, kwargs))
+        return {
+            "text": "Na época da prova (USP-RP 2021) valia 50-69 anos; hoje o SUS garante a partir dos 40 anos.",
+            "source": "gemini",
+            "model": "gemini-3-flash-preview",
+            "web_sources": [{"title": "Ministério da Saúde", "uri": "https://www.gov.br/saude"}],
+        }
+
+    monkeypatch.setattr("api.ai.generate_content_with_fallback", mock_generate_content)
+
+    res = ask_preceptor_ai(
+        stem="Mulher de 43 anos busca pedido de mamografia na USF.",
+        alternatives=[
+            {"letter": "B", "text": "Forneceria o pedido de mamografia.", "is_correct": False},
+            {"letter": "C", "text": "Orientaria que não está indicado.", "is_correct": True},
+        ],
+        correct_letter="C",
+        correct_text="Orientaria que não está indicado.",
+        user_letter="B",
+        user_question="Está desatualizada essa questão não está?",
+        area="Preventiva",
+        subtema="Câncer de Mama",
+        question_year=2021,
+        institution_code="USP-RP",
+    )
+
+    prompt, sys_inst, kwargs = captured[-1]
+    assert "BANCA / ANO DA QUESTÃO: USP-RP 2021" in prompt
+    assert "ALERTA TEMPORAL: Esta questão é de 2021" in prompt
+    assert "DATA ATUAL DE REFERÊNCIA:" in prompt
+    assert "VERIFICAÇÃO DE ATUALIZAÇÃO DE DIRETRIZES" in prompt
+    assert "ATUALIZAÇÕES OFICIAIS DE DIRETRIZES (2024–2026)" in prompt
+    assert "a partir dos 40 anos" in prompt
+    assert "REGRA CRÍTICA DE RIGOR TEMPORAL" in sys_inst
+    assert kwargs.get("use_google_search") is False
+    assert res.get("web_sources") == [{"title": "Ministério da Saúde", "uri": "https://www.gov.br/saude"}]
+
+    # /dica deve manter use_google_search=False para latência mínima
+    ask_preceptor_ai(
+        stem="Mulher de 43 anos busca pedido de mamografia na USF.",
+        alternatives=[{"letter": "C", "text": "Orientaria que não está indicado.", "is_correct": True}],
+        correct_letter="C",
+        correct_text="Orientaria que não está indicado.",
+        user_question="/dica",
+        question_year=2021,
+        institution_code="USP-RP",
+    )
+    _, _, dica_kwargs = captured[-1]
+    assert dica_kwargs.get("use_google_search") is False
