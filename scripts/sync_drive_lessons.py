@@ -645,6 +645,39 @@ def parse_medcof_lessons(videos: list[dict], catalog: dict, durations: dict[str,
     return rows
 
 
+RADIOLOGIA_CANONICAL_LESSONS: dict[int, tuple[int, str, str, str | None]] = {
+    1: (1, "01. Fundamentos da Radiologia", "01. Introdução ao Domínio de Imagens Radiológicas", None),
+    2: (1, "01. Fundamentos da Radiologia", "02. Noções Básicas de Radiologia e Métodos de Imagem", None),
+    3: (2, "02. Radiologia Torácica", "03. Radiografia de Tórax: Interpretação Sistemática e Anatomia Normal", None),
+    4: (2, "02. Radiologia Torácica", "04. Principais Padrões da Radiografia de Tórax", None),
+    5: (2, "02. Radiologia Torácica", "05. TC de Tórax: Anatomia Normal e Sistemática de Avaliação", None),
+    6: (2, "02. Radiologia Torácica", "06. Padrões de Lesões na TC de Tórax", None),
+    7: (2, "02. Radiologia Torácica", "07. Emergências Clínicas no Tórax (Síndromes Aórticas, TEP, Pneumonia e Edema)", None),
+    8: (2, "02. Radiologia Torácica", "08. Trauma Torácico: Além do Pneumotórax", "Trauma Torácico e Manejo de Drenos"),
+    9: (2, "02. Radiologia Torácica", "09. Radiologia Torácica Pediátrica: Da Membrana Hialina ao Corpo Estranho", None),
+    10: (3, "03. Neurorradiologia", "10. TC de Crânio: Comece Aprendendo o que é Normal e Anatomia", None),
+    11: (3, "03. Neurorradiologia", "11. RM de Crânio: Comece Aprendendo o que é Normal e Sequências", None),
+    12: (3, "03. Neurorradiologia", "12. Déficit Focal Agudo e AVC (Isquêmico e Hemorrágico)", "AVC e Doenças Cerebrovasculares"),
+    13: (3, "03. Neurorradiologia", "13. Infecções do SNC: Padrões de Imagem (Neurotoxoplasmose, Abscesso e Meningite)", "Meningites e Encefalites"),
+    14: (3, "03. Neurorradiologia", "14. Traumatismo Cranioencefálico (TCE) e Hematomas Intracranianos", "Traumatismo Cranioencefálico (TCE)"),
+    15: (4, "04. Radiologia Abdominal", "15. TC de Abdome Normal: Anatomia Seccional (Isso é Alça ou Pâncreas?)", None),
+    16: (4, "04. Radiologia Abdominal", "16. Abdome Agudo Inflamatório: Pancreatite, Apendicite e Diverticulite", "Abdome Agudo Inflamatório (Apendicite e Diverticulite Aguda)"),
+    17: (4, "04. Radiologia Abdominal", "17. Vias Biliares: Colecistite Aguda, Colelitíase e Coledocolitíase", "Doenças Benignas das Vias Biliares (Colelitíase, Colecistite, Coledocolitíase e Colangite)"),
+    18: (4, "04. Radiologia Abdominal", "18. Abdome Agudo Obstrutivo: Trânsito Obstruído, Bridas e Volvo", "Abdome Agudo Obstrutivo (Bridas, Neoplasias e Volvo)"),
+    19: (4, "04. Radiologia Abdominal", "19. Abdome Agudo Vascular e Dissecção/Aneurisma de Aorta", "Abdome Agudo Vascular (Isquemia Mesentérica)"),
+    20: (4, "04. Radiologia Abdominal", "20. Trauma Abdominal: FAST e Tomografia nas Lesões Viscerais", "Trauma Abdominal e Pélvico"),
+    21: (4, "04. Radiologia Abdominal", "21. Lesões Renais e Urolitíase na Tomografia", "Litíase Urinária e Cólica Nefrética"),
+    22: (4, "04. Radiologia Abdominal", "22. Lesões Focais Hepáticas e Fases do Contraste", None),
+    23: (4, "04. Radiologia Abdominal", "23. Radiologia Abdominal Pediátrica (Abdome Agudo e Malformações na Criança)", "Cirurgia Pediátrica e Malformações Digestivas Neonatais"),
+    24: (5, "05. Radiologia em GO e Mama", "24. Lesões Ovarianas: Essa Lesão é Benigna ou Maligna? (O-RADS / IOTA)", "Tumores Anexiais e Câncer de Ovário"),
+    25: (5, "05. Radiologia em GO e Mama", "25. Lesões Uterinas: Miomatose, Adenomiose e Pólipos (Não se esqueça do útero)", "Sangramento Uterino Anormal (SUA), Miomatose e Adenomiose"),
+    26: (5, "05. Radiologia em GO e Mama", "26. Mama e BI-RADS: A Classificação Obrigatória para a Prova", "Rastreamento e Diagnóstico do Câncer de Mama"),
+    27: (5, "05. Radiologia em GO e Mama", "27. Avaliação Obstétrica e Vitalidade Fetal (USG e Doppler no Sofrimento Fetal)", "Avaliação da Vitalidade Fetal (Cardiotocografia, PBF e Doppler)"),
+    28: (5, "05. Radiologia em GO e Mama", "28. Sangramentos Gestacionais de 1ª e 2ª Metade na Ultrassonografia", "Sangramentos da Primeira Metade da Gestação"),
+    29: (6, "06. POCUS (Ultrassom Point-of-Care)", "29. POCUS: Ultrassonografia Point-of-Care na Emergência e Terapia Intensiva", None),
+}
+
+
 def parse_radiologia_lessons(videos: list[dict], catalog: dict, durations: dict[str, int]) -> list[dict]:
     rows = []
     for item in videos:
@@ -656,7 +689,16 @@ def parse_radiologia_lessons(videos: list[dict], catalog: dict, durations: dict[
         clean_title = re.sub(r"^\d+\.\s*", "", clean_title).strip() or rest
         clean_title = clean_title.replace("_", ":")
 
-        subtema, _ = match_canonical_subtema(clean_title, catalog, area_hint=None, min_score=0.72)
+        canonical = RADIOLOGIA_CANONICAL_LESSONS.get(order_num)
+        if canonical:
+            mod_order, mod_name, full_title, mapped_sub = canonical
+            subtema = mapped_sub if (mapped_sub and mapped_sub in catalog["canon_area"]) else None
+        else:
+            mod_order = 1
+            mod_name = "Imagens Radiológicas"
+            full_title = f"{order_num:02d}. {clean_title}" if order_num != 999 else clean_title
+            subtema, _ = match_canonical_subtema(clean_title, catalog, area_hint=None, min_score=0.72)
+
         fid = item["ID"]
 
         rows.append({
@@ -664,11 +706,11 @@ def parse_radiologia_lessons(videos: list[dict], catalog: dict, durations: dict[
             "course_name": COURSE_SOURCES["radiologia"]["course_name"],
             "is_extra": 1,
             "area": "Radiologia",
-            "specialty": "Imagens Radiológicas",
+            "specialty": mod_name,
             "subtema": subtema,
-            "module_name": "Imagens Radiológicas",
-            "module_order": 1,
-            "title": f"{order_num:02d}. {clean_title}" if order_num != 999 else clean_title,
+            "module_name": mod_name,
+            "module_order": mod_order,
+            "title": full_title,
             "lesson_order": order_num,
             "lesson_kind": "radiologia",
             "is_essential": 0,
