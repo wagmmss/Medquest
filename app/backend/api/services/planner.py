@@ -127,7 +127,7 @@ def _consolidate_row_stats(rows, meta_dict):
     # Isso também protege contra a mesma classificação aparecer em mais de uma
     # área durante uma migração de dados.
     row_stats = {
-        subtema: {"q_count": 0, "subtopics": []}
+        subtema: {"q_count": 0, "target_q_count": 0, "subtopics": []}
         for subtema in meta_dict
     }
     for row in rows:
@@ -139,10 +139,72 @@ def _consolidate_row_stats(rows, meta_dict):
             stats["q_count"] += int(row["q_count"] or 0)
         except (TypeError, ValueError):
             pass
+        raw_target_q = (
+            row.get("target_q_count")
+            if isinstance(row, dict)
+            else (row["target_q_count"] if "target_q_count" in row.keys() else 0)
+        )
+        try:
+            stats["target_q_count"] += int(raw_target_q or 0)
+        except (TypeError, ValueError):
+            pass
         topics = row.get("topics") if isinstance(row, dict) else (row["topics"] if "topics" in row.keys() else None)
         if topics:
             stats["subtopics"].extend(topic for topic in str(topics).split(",") if topic)
     return row_stats
+
+
+def _compute_empirical_incidence(meta_dict, row_stats, use_bank_incidence=False):
+    """
+    Calcula incidência empírica normalizada dentro de cada grande área a partir
+    das questões reais das bancas-alvo selecionadas pelo estudante.
+
+    Quando não há bancas-alvo ou não existem questões dessas bancas no catálogo,
+    retorna `({}, False)` preservando integralmente o comportamento legado.
+    """
+    if not use_bank_incidence:
+        return {}, False
+
+    total_target_q = sum(stats.get("target_q_count", 0) for stats in row_stats.values())
+    if total_target_q <= 0:
+        return {}, False
+
+    by_area = {}
+    for subtema, meta in meta_dict.items():
+        area = meta["area"]
+        by_area.setdefault(area, []).append(
+            (subtema, row_stats[subtema].get("target_q_count", 0), bool(meta["highYield"]))
+        )
+
+    incidence_map = {}
+    for area, items in by_area.items():
+        max_area_q = max((item[1] for item in items), default=0)
+        if max_area_q <= 0:
+            for subtema, tq, is_hy in items:
+                incidence_map[subtema] = {
+                    "target_q_count": tq,
+                    "effective_high_yield": is_hy,
+                    "incidence_bonus": 0.0,
+                    "incidence_source": "national_catalog",
+                }
+            continue
+
+        static_hy_count = sum(1 for item in items if item[2])
+        cutoff = max(1, static_hy_count) if static_hy_count > 0 else max(1, round(len(items) * 0.5))
+        ranked = sorted(items, key=lambda x: (x[1], 1 if x[2] else 0), reverse=True)
+        top_subtemas = {item[0] for item in ranked[:cutoff]}
+        denom = math.log1p(max_area_q)
+
+        for subtema, tq, _is_hy in items:
+            ratio = (math.log1p(tq) / denom) if denom > 0 and tq > 0 else 0.0
+            incidence_map[subtema] = {
+                "target_q_count": tq,
+                "effective_high_yield": subtema in top_subtemas,
+                "incidence_bonus": round(ratio * 25.0, 2),
+                "incidence_source": "target_banks",
+            }
+
+    return incidence_map, True
 
 
 def _build_topic_item(
@@ -153,6 +215,7 @@ def _build_topic_item(
     practice_hours_per_subtema,
     adaptive_signals=None,
     completed_subtemas=None,
+    incidence_info=None,
 ):
     norm_area = meta["area"]
     q_count = stats["q_count"] if stats else 0
@@ -169,9 +232,19 @@ def _build_topic_item(
     practice_hours = practice_hours_per_subtema
     total_topic_hours = theory_hours + practice_hours
 
-    # Priority score: High Yield = 100, plus area weight
+    use_empirical = bool(incidence_info and incidence_info.get("incidence_source") == "target_banks")
+    effective_high_yield = (
+        bool(incidence_info["effective_high_yield"])
+        if incidence_info is not None
+        else bool(meta["highYield"])
+    )
+    incidence_bonus = float(incidence_info.get("incidence_bonus", 0.0)) if use_empirical else 0.0
+    target_q_count = int(incidence_info.get("target_q_count", 0)) if use_empirical else None
+
+    # Priority score: High Yield = 100, plus empirical bank incidence (when active), plus area weight
     weight = USP_WEIGHTS.get(norm_area, 0.1)
-    priority = 100 if meta["highYield"] else 0
+    priority = 100 if effective_high_yield else 0
+    priority += incidence_bonus
     priority += weight * 10
 
     priority_reasons = []
@@ -201,8 +274,12 @@ def _build_topic_item(
         priority_tier = "Normal"
 
     explanation_parts = []
-    if meta["highYield"]:
-        explanation_parts.append("é de alto rendimento nas provas")
+    if effective_high_yield:
+        if use_empirical and target_q_count and target_q_count > 0:
+            q_label = "1 questão" if target_q_count == 1 else f"{target_q_count} questões"
+            explanation_parts.append(f"tem alta incidência nas suas bancas ({q_label})")
+        else:
+            explanation_parts.append("é de alto rendimento nas provas")
     if "low_accuracy" in priority_reasons:
         explanation_parts.append("houve baixo desempenho recente")
     if "reviews_due" in priority_reasons:
@@ -236,7 +313,10 @@ def _build_topic_item(
         "priority_tier": priority_tier,
         "priority_explanation": priority_explanation,
         "completed": bool(completed_subtemas and subtema in completed_subtemas),
+        "incidence_source": "target_banks" if use_empirical else "national_catalog",
     }
+    if use_empirical:
+        topic_obj["target_questions_count"] = target_q_count
     return topic_obj, total_topic_hours
 
 
@@ -248,6 +328,7 @@ def _prepare_topics(
     practice_hours_per_subtema,
     adaptive_signals=None,
     completed_subtemas=None,
+    incidence_map=None,
 ):
     # Prepara exatamente os tópicos canônicos, calculando as horas de cada um.
     all_topics = []
@@ -258,7 +339,9 @@ def _prepare_topics(
         user_progress = {}
 
     for subtema, meta in meta_dict.items():
-        if intensive and not meta["highYield"]:
+        inc_info = incidence_map.get(subtema) if incidence_map else None
+        effective_hy = inc_info["effective_high_yield"] if inc_info is not None else meta["highYield"]
+        if intensive and not effective_hy:
             continue
 
         stats = row_stats[subtema]
@@ -271,6 +354,7 @@ def _prepare_topics(
             practice_hours_per_subtema,
             adaptive_signals,
             completed_subtemas=completed_subtemas,
+            incidence_info=inc_info,
         )
         total_required_hours += topic_hours
         if not topic_obj["completed"]:
@@ -595,6 +679,7 @@ def generate_annual_plan(
     organization="geral",
     internato_blocks=None,
     completed_subtemas=None,
+    use_bank_incidence=False,
 ):
     """
     Gera um plano de estudos fatiado por semanas conforme o modo de organização
@@ -608,6 +693,9 @@ def generate_annual_plan(
     planner_meta, katomart_subtemas, practice_hours_per_subtema = _load_catalogs()
     meta_dict = _build_meta_dict(planner_meta, katomart_subtemas)
     row_stats = _consolidate_row_stats(rows, meta_dict)
+    incidence_map, _using_empirical = _compute_empirical_incidence(
+        meta_dict, row_stats, use_bank_incidence=use_bank_incidence
+    )
 
     all_topics, _total_required_hours, pending_required_hours = _prepare_topics(
         meta_dict,
@@ -617,6 +705,7 @@ def generate_annual_plan(
         practice_hours_per_subtema,
         adaptive_signals=adaptive_signals,
         completed_subtemas=completed_subtemas,
+        incidence_map=incidence_map or None,
     )
 
     plan, completed_topics = _build_weekly_plan(
@@ -658,6 +747,7 @@ def build_plan_from_schedule(
     completed_subtemas=None,
     organization="geral",
     internato_blocks=None,
+    use_bank_incidence=False,
 ):
     """
     Reconstrói a estrutura semanal do plano a partir do cronograma congelado em banco,
@@ -677,6 +767,9 @@ def build_plan_from_schedule(
     planner_meta, katomart_subtemas, practice_hours_per_subtema = _load_catalogs()
     meta_dict = _build_meta_dict(planner_meta, katomart_subtemas)
     row_stats = _consolidate_row_stats(rows or [], meta_dict)
+    incidence_map, _using_empirical = _compute_empirical_incidence(
+        meta_dict, row_stats, use_bank_incidence=use_bank_incidence
+    )
 
     if user_progress is None:
         user_progress = {}
@@ -689,6 +782,7 @@ def build_plan_from_schedule(
         practice_hours_per_subtema,
         adaptive_signals=adaptive_signals,
         completed_subtemas=completed_subtemas,
+        incidence_map=incidence_map or None,
     )
 
     weeks_map = {}
@@ -728,7 +822,7 @@ def build_plan_from_schedule(
             meta = meta_dict.get(subtema)
             if not meta:
                 continue
-            stats = row_stats.get(subtema, {"q_count": 0, "subtopics": []})
+            stats = row_stats.get(subtema, {"q_count": 0, "target_q_count": 0, "subtopics": []})
             prog = user_progress.get(subtema)
             topic_obj, topic_hours = _build_topic_item(
                 subtema,
@@ -738,6 +832,7 @@ def build_plan_from_schedule(
                 practice_hours_per_subtema,
                 adaptive_signals,
                 completed_subtemas=completed_subtemas,
+                incidence_info=incidence_map.get(subtema) if incidence_map else None,
             )
             if not topic_obj["completed"]:
                 current_week_hours += topic_hours

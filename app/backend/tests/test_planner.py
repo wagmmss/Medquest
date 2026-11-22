@@ -922,6 +922,124 @@ def test_best_fit_packing_respects_13h_cap_and_avoids_short_weeks_and_hybrid_int
     assert any(a != "Cirurgia" for a in cir_areas)
 
 
+def test_empirical_bank_incidence_reorders_priority_and_intensive_cutoff():
+    start = date(2026, 11, 30)
+    exam = date(2027, 11, 15)
+
+    # Câncer de Mama não é highYield no catálogo estático, mas tem altíssima incidência nas bancas-alvo
+    non_hy_heavy = "Câncer de Mama: Rastreamento, Diagnóstico e Estadiamento"
+    hy_light = "Climatério, Menopausa e Terapia de Reposição Hormonal (TRH)"
+    rows = [
+        {"area": "Ginecologia e Obstetrícia", "subtema": non_hy_heavy, "q_count": 500, "target_q_count": 225},
+        {"area": "Ginecologia e Obstetrícia", "subtema": hy_light, "q_count": 200, "target_q_count": 12},
+    ]
+
+    res = generate_annual_plan(
+        rows,
+        start.isoformat(),
+        exam.isoformat(),
+        hours_per_week=12,
+        use_bank_incidence=True,
+    )
+    all_topics = [t for w in res["plan"] for t in w["topics"]]
+    t_heavy = next(t for t in all_topics if t["subtema"] == non_hy_heavy)
+    t_light = next(t for t in all_topics if t["subtema"] == hy_light)
+
+    assert t_heavy["incidence_source"] == "target_banks"
+    assert t_heavy["target_questions_count"] == 225
+    assert "225 questões" in t_heavy["priority_explanation"]
+    assert t_heavy["priority"] > t_light["priority"]
+
+    # No modo intensivo, o subtema pesado nas bancas-alvo deve entrar no plano
+    res_int = generate_annual_plan(
+        rows,
+        start.isoformat(),
+        exam.isoformat(),
+        hours_per_week=12,
+        intensive=True,
+        use_bank_incidence=True,
+    )
+    int_names = {t["subtema"] for w in res_int["plan"] for t in w["topics"]}
+    assert non_hy_heavy in int_names
+
+
+def test_changing_target_institution_regenerates_schedule_and_uses_db_incidence(client, app):
+    from api.db import get_db
+
+    user_id = "user_bank_incidence_e2e"
+    headers = {"X-User-ID": user_id}
+    non_hy_heavy = "Câncer de Mama: Rastreamento, Diagnóstico e Estadiamento"
+
+    with app.app_context():
+        db = get_db()
+        for idx in range(15):
+            db.execute(
+                """INSERT INTO questions(id, area, subtema, stem, correct_letter, missing_alts, year, institution_code, institution_label)
+                   VALUES (?, 'Ginecologia e Obstetrícia', ?, 'Stem Mama', 'A', 0, 2025, 'USP-SP', 'USP-SP')""",
+                (77000 + idx, non_hy_heavy),
+            )
+        db.commit()
+
+    start_iso = "2026-11-30T12:00:00Z"
+    exam_iso = "2027-11-15T12:00:00Z"
+
+    # 1) Começa com Todas as Bancas -> usa catálogo nacional
+    r_cfg1 = client.post("/api/planner/config", json={
+        "start_date": start_iso,
+        "exam_date": exam_iso,
+        "days_per_week": 6,
+        "hours_per_day": 2,
+        "target_institution": "Todas as Bancas",
+        "target_institutions": ["TODAS"],
+    }, headers=headers)
+    assert r_cfg1.status_code == 200
+
+    r_plan1 = client.post("/api/generate_plan", json={
+        "start_date": start_iso,
+        "exam_date": exam_iso,
+        "hours_per_week": 12,
+    }, headers=headers)
+    assert r_plan1.status_code == 200
+    t_all = [t for w in r_plan1.get_json()["plan"] for t in w["topics"]]
+    mama_before = next(t for t in t_all if t["subtema"] == non_hy_heavy)
+    assert mama_before["incidence_source"] == "national_catalog"
+    assert mama_before["priority"] < 100
+
+    # Marca 1 aula concluída para garantir preservação ao mudar bancas
+    done_topic = t_all[0]["subtema"]
+    assert client.post("/api/planner/1/topic", json={"subtema": done_topic, "completed": True}, headers=headers).status_code == 200
+
+    # 2) Muda bancas para USP-SP -> deve limpar planner_schedule (preservando concluídos) e promover Câncer de Mama
+    r_cfg2 = client.post("/api/planner/config", json={
+        "start_date": start_iso,
+        "exam_date": exam_iso,
+        "days_per_week": 6,
+        "hours_per_day": 2,
+        "target_institution": "USP-SP",
+        "target_institutions": ["USP-SP"],
+    }, headers=headers)
+    assert r_cfg2.status_code == 200
+
+    with app.app_context():
+        db = get_db()
+        assert db.execute("SELECT COUNT(*) FROM planner_schedule WHERE user_id = ?", (user_id,)).fetchone()[0] == 0
+
+    r_plan2 = client.post("/api/generate_plan", json={
+        "start_date": start_iso,
+        "exam_date": exam_iso,
+        "hours_per_week": 12,
+    }, headers=headers)
+    assert r_plan2.status_code == 200
+    body2 = r_plan2.get_json()
+    t_after = [t for w in body2["plan"] for t in w["topics"]]
+    mama_after = next(t for t in t_after if t["subtema"] == non_hy_heavy)
+    assert mama_after["incidence_source"] == "target_banks"
+    assert mama_after["target_questions_count"] == 15
+    assert mama_after["priority"] >= 100
+    assert any(t["subtema"] == done_topic for t in body2.get("completed_topics", []))
+
+
+
 
 
 

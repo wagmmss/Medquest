@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { api, OfflineQueuedError } from "@/lib/api";
 import { PlannerConfig } from "@/types/api";
 import {
@@ -30,17 +31,17 @@ interface InstitutionPreset {
 }
 
 const INSTITUTION_PRESETS: InstitutionPreset[] = [
-  { id: "TODAS", name: "Todas as Bancas (Nacional + SP + Regionais)", shortName: "Todas as Bancas", defaultDate: "2026-11-15", typicalCutoff: 76 },
-  { id: "USP-SP", name: "USP - São Paulo (FUVEST)", shortName: "USP-SP", defaultDate: "2026-11-15", typicalCutoff: 78 },
-  { id: "ENARE", name: "ENARE (Exame Nacional)", shortName: "ENARE", defaultDate: "2026-10-25", typicalCutoff: 75 },
-  { id: "SUS-SP", name: "SUS - São Paulo (Vunesp)", shortName: "SUS-SP", defaultDate: "2026-12-06", typicalCutoff: 76 },
-  { id: "UNICAMP", name: "UNICAMP (Campinas)", shortName: "UNICAMP", defaultDate: "2026-11-22", typicalCutoff: 77 },
-  { id: "UNIFESP", name: "UNIFESP (EPM)", shortName: "UNIFESP", defaultDate: "2026-12-13", typicalCutoff: 79 },
-  { id: "USP-RP", name: "USP - Ribeirão Preto", shortName: "USP-RP", defaultDate: "2026-11-29", typicalCutoff: 77 },
-  { id: "SCMSP", name: "Santa Casa de SP", shortName: "SCMSP", defaultDate: "2026-12-05", typicalCutoff: 76 },
-  { id: "IAMSPE", name: "IAMSPE (São Paulo)", shortName: "IAMSPE", defaultDate: "2026-12-12", typicalCutoff: 75 },
-  { id: "AMRIGS", name: "AMRIGS (Sul / Nacional)", shortName: "AMRIGS", defaultDate: "2026-11-15", typicalCutoff: 74 },
-  { id: "OUTRA", name: "Outra Banca", shortName: "Personalizada", defaultDate: "2026-11-20", typicalCutoff: 75 },
+  { id: "TODAS", name: "Todas as Bancas (Nacional + SP + Regionais)", shortName: "Todas as Bancas", defaultDate: "2027-11-15", typicalCutoff: 76 },
+  { id: "USP-SP", name: "USP - São Paulo (FUVEST)", shortName: "USP-SP", defaultDate: "2027-11-15", typicalCutoff: 78 },
+  { id: "ENARE", name: "ENARE (Exame Nacional)", shortName: "ENARE", defaultDate: "2027-10-25", typicalCutoff: 75 },
+  { id: "SUS-SP", name: "SUS - São Paulo (Vunesp)", shortName: "SUS-SP", defaultDate: "2027-12-06", typicalCutoff: 76 },
+  { id: "UNICAMP", name: "UNICAMP (Campinas)", shortName: "UNICAMP", defaultDate: "2027-11-22", typicalCutoff: 77 },
+  { id: "UNIFESP", name: "UNIFESP (EPM)", shortName: "UNIFESP", defaultDate: "2027-12-13", typicalCutoff: 79 },
+  { id: "USP-RP", name: "USP - Ribeirão Preto", shortName: "USP-RP", defaultDate: "2027-11-29", typicalCutoff: 77 },
+  { id: "SCMSP", name: "Santa Casa de SP", shortName: "SCMSP", defaultDate: "2027-12-05", typicalCutoff: 76 },
+  { id: "IAMSPE", name: "IAMSPE (São Paulo)", shortName: "IAMSPE", defaultDate: "2027-12-12", typicalCutoff: 75 },
+  { id: "AMRIGS", name: "AMRIGS (Sul / Nacional)", shortName: "AMRIGS", defaultDate: "2027-11-15", typicalCutoff: 74 },
+  { id: "OUTRA", name: "Outra Banca", shortName: "Personalizada", defaultDate: "2027-11-20", typicalCutoff: 75 },
 ];
 
 const SPECIALTY_PRESETS: { name: string; suggestedCutoff: number }[] = [
@@ -68,6 +69,7 @@ interface PlannerWizardProps {
 
 export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizardProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [pendingSync, setPendingSync] = useState(false);
   useEffect(() => {
@@ -76,13 +78,14 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
       const endpoint = (event as CustomEvent<{ endpoint?: string }>).detail?.endpoint;
       if (endpoint?.endsWith("/api/planner/config")) {
         setPendingSync(false);
+        void queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
         onClose?.();
         router.refresh();
       }
     };
     window.addEventListener("sync-item-success", synced);
     return () => window.removeEventListener("sync-item-success", synced);
-  }, [pendingSync, router, onClose]);
+  }, [pendingSync, router, onClose, queryClient]);
   const [error, setError] = useState("");
   const [examError, setExamError] = useState(false);
 
@@ -103,7 +106,8 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
 
   const [selectedInsts, setSelectedInsts] = useState<string[]>(initialInsts);
   const [selectedSpec, setSelectedSpec] = useState<string>(initialConfig?.target_specialty || "Clínica Médica");
-  const [examDate, setExamDate] = useState(initialExamDate || "2026-11-15");
+  const [examDate, setExamDate] = useState(initialExamDate || "2027-11-15");
+  const [hasCustomExamDate, setHasCustomExamDate] = useState<boolean>(Boolean(initialExamDate));
   const [startDate, setStartDate] = useState(initialStartDate);
   const [daysPerWeek, setDaysPerWeek] = useState(initialConfig?.days_per_week || 6);
   const [hoursPerDay, setHoursPerDay] = useState(initialConfig?.hours_per_day || 4);
@@ -121,7 +125,9 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
   const handleToggleInstitution = (presetId: string) => {
     if (presetId === "TODAS") {
       setSelectedInsts(["TODAS"]);
-      setExamDate("2026-11-15");
+      if (!hasCustomExamDate) {
+        setExamDate("2027-11-15");
+      }
       return;
     }
 
@@ -134,8 +140,10 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
 
     if (next.length === 0) {
       next = ["TODAS"];
-      setExamDate("2026-11-15");
-    } else {
+      if (!hasCustomExamDate) {
+        setExamDate("2027-11-15");
+      }
+    } else if (!hasCustomExamDate) {
       const firstPreset = INSTITUTION_PRESETS.find(p => p.id === next[0]);
       if (firstPreset && firstPreset.defaultDate) {
         setExamDate(firstPreset.defaultDate);
@@ -188,6 +196,7 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
         target_specialty: selectedSpec,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ["planner-bundle"] });
       toast.success("Perfil de estudos calibrado com sucesso!");
       if (onClose) {
         onClose();
@@ -245,7 +254,7 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
       <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 mb-6 text-xs text-primary flex items-center gap-2.5">
         <Globe size={18} className="shrink-0" />
         <div>
-          <strong className="font-semibold">Acesso Universal a Todas as Bancas:</strong> Você terá acesso a todas as questões de todas as bancas do Brasil. A seleção abaixo orienta seus simulados e análises; o cronograma usa a matriz nacional de referência até que pesos específicos por banca estejam disponíveis.
+          <strong className="font-semibold">Acesso Universal + Priorização por Incidência Real:</strong> Você mantém acesso a todas as questões do banco. As bancas selecionadas ordenam a prioridade do cronograma (e o corte do modo intensivo) pela incidência real dessas provas no banco, além de priorizar 40% da fila de estudo e do adaptativo.
         </div>
       </div>
 
@@ -261,7 +270,7 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
         <div className="space-y-2.5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Building2 size={14} className="text-primary" /> 1. Banca(s) Alvo para Simulados e Análises
+              <Building2 size={14} className="text-primary" /> 1. Banca(s) Alvo (Cronograma, Fila e Adaptativo)
             </label>
             <span className="text-xs text-muted-foreground">
               {isAllSelected 
@@ -357,6 +366,7 @@ export function PlannerWizard({ initialConfig, onClose, isModal }: PlannerWizard
                 value={examDate}
                 onChange={(e) => {
                   setExamDate(e.target.value);
+                  setHasCustomExamDate(Boolean(e.target.value));
                   if (examError) setExamError(false);
                 }}
               />

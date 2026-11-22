@@ -10,6 +10,7 @@ from .internato_config import RODIZIOS_TURMA_J
 from .services.planner import generate_annual_plan, build_plan_from_schedule
 
 from .db import db_transaction, get_db
+from .filters import get_user_target_institutions
 from .observability import record_domain_event
 from .questions import invalidate_user_caches
 from .schemas import (
@@ -145,7 +146,13 @@ def planner_config():
             else existing_blocks_json
         )
 
-        # Só limpa planner_schedule se parâmetros estruturais de tempo/data ou blocos realmente mudarem
+        # Só limpa planner_schedule se parâmetros estruturais de tempo/data, bancas ou blocos realmente mudarem
+        existing_inst = (
+            existing_row["target_institution"]
+            if existing_row and "target_institution" in existing_keys
+            else None
+        )
+        inst_changed = (existing_inst or "").strip() != (target_inst or "").strip()
         timing_changed = (
             not existing_row
             or existing_row["exam_date"] != cfg.exam_date
@@ -156,7 +163,7 @@ def planner_config():
         blocks_changed = cfg.internato_blocks is not None and blocks_json != existing_blocks_json
 
         with db_transaction(db, immediate=True):
-            if timing_changed:
+            if timing_changed or inst_changed:
                 db.execute("DELETE FROM planner_schedule WHERE user_id = ?", (g.user_id,))
             elif blocks_changed:
                 db.execute("DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'", (g.user_id,))
@@ -297,7 +304,7 @@ def planner_move_topic():
     # Se ainda não houver schedule salvo, popula a partir do plano gerado
     if not schedule_rows:
         start_date, exam_date, days, hours_per_week = _get_planner_config(db, g.user_id)
-        rows, answered_map = _fetch_plan_data(db, g.user_id)
+        rows, answered_map, use_bank_incidence = _fetch_plan_data(db, g.user_id)
         adaptive_signals = get_adaptive_signals_by_topic(db, g.user_id)
         completed_subtemas = _get_completed_subtemas(db, g.user_id)
         internato_blocks = _get_user_internato_blocks(db, g.user_id)
@@ -309,6 +316,7 @@ def planner_move_topic():
             organization=org_mode,
             internato_blocks=internato_blocks,
             completed_subtemas=completed_subtemas,
+            use_bank_incidence=use_bank_incidence,
         )
         if isinstance(plan, dict) and plan.get("plan"):
             insert_records = []
@@ -465,7 +473,7 @@ def generate_plan():
     mode = _resolve_schedule_mode(data.organization, data.intensive)
 
     db = get_db()
-    rows, answered_map = _fetch_plan_data(db, g.user_id)
+    rows, answered_map, use_bank_incidence = _fetch_plan_data(db, g.user_id)
     adaptive_signals = get_adaptive_signals_by_topic(db, g.user_id)
     completed_subtemas = _get_completed_subtemas(db, g.user_id)
     internato_blocks = _get_user_internato_blocks(db, g.user_id)
@@ -484,6 +492,7 @@ def generate_plan():
                 completed_subtemas=completed_subtemas,
                 organization=data.organization,
                 internato_blocks=internato_blocks,
+                use_bank_incidence=use_bank_incidence,
             )
             if plan:
                 return jsonify(plan)
@@ -495,6 +504,7 @@ def generate_plan():
         organization=data.organization,
         internato_blocks=internato_blocks,
         completed_subtemas=completed_subtemas,
+        use_bank_incidence=use_bank_incidence,
     )
 
     if isinstance(plan, dict) and plan.get("plan"):
@@ -536,12 +546,32 @@ def _get_planner_config(db, user_id):
 
 
 def _fetch_plan_data(db, user_id):
-    q_query = """
-        SELECT area, subtema, GROUP_CONCAT(DISTINCT topic) as topics, COUNT(id) as q_count 
-        FROM questions 
-        WHERE area IS NOT NULL AND subtema IS NOT NULL AND missing_alts = 0
-        GROUP BY area, subtema
-    """
+    target_insts = get_user_target_institutions(db, user_id)
+    use_bank_incidence = bool(target_insts)
+
+    if target_insts:
+        sorted_insts = sorted(target_insts)
+        placeholders = ",".join("?" * len(sorted_insts))
+        q_query = f"""
+            SELECT area, subtema, GROUP_CONCAT(DISTINCT topic) as topics,
+                   COUNT(id) as q_count,
+                   SUM(CASE WHEN institution_code IN ({placeholders}) OR UPPER(institution_code) IN ({placeholders}) THEN 1 ELSE 0 END) as target_q_count
+            FROM questions
+            WHERE area IS NOT NULL AND subtema IS NOT NULL AND missing_alts = 0
+            GROUP BY area, subtema
+        """
+        q_params = tuple(sorted_insts) + tuple(sorted_insts)
+    else:
+        q_query = """
+            SELECT area, subtema, GROUP_CONCAT(DISTINCT topic) as topics,
+                   COUNT(id) as q_count,
+                   0 as target_q_count
+            FROM questions
+            WHERE area IS NOT NULL AND subtema IS NOT NULL AND missing_alts = 0
+            GROUP BY area, subtema
+        """
+        q_params = ()
+
     a_query = """
         SELECT q.subtema, COUNT(DISTINCT a.question_id) as ans_count, SUM(a.is_correct) as correct_count, COUNT(a.id) as attempts
         FROM attempts a
@@ -551,17 +581,17 @@ def _fetch_plan_data(db, user_id):
     """
     if hasattr(db, "batch"):
         res = db.batch([
-            (q_query, ()),
+            (q_query, q_params),
             (a_query, (user_id,))
         ])
         rows = [dict(r) for r in res[0].fetchall()]
         answered = [dict(r) for r in res[1].fetchall()]
     else:
-        rows = [dict(r) for r in db.execute(q_query).fetchall()]
+        rows = [dict(r) for r in db.execute(q_query, q_params).fetchall()]
         answered = [dict(r) for r in db.execute(a_query, (user_id,)).fetchall()]
 
     answered_map = {r["subtema"]: r for r in answered}
-    return rows, answered_map
+    return rows, answered_map, use_bank_incidence
 
 
 def _get_base_url():
@@ -582,7 +612,7 @@ def _get_base_url():
 
 def _generate_calendar_ics_content(db, user_id):
     start_date, exam_date, days, hours_per_week = _get_planner_config(db, user_id)
-    rows, answered_map = _fetch_plan_data(db, user_id)
+    rows, answered_map, use_bank_incidence = _fetch_plan_data(db, user_id)
     adaptive_signals = get_adaptive_signals_by_topic(db, user_id)
     completed_subtemas = _get_completed_subtemas(db, user_id)
     internato_blocks = _get_user_internato_blocks(db, user_id)
@@ -603,6 +633,7 @@ def _generate_calendar_ics_content(db, user_id):
             completed_subtemas=completed_subtemas,
             organization=org_mode,
             internato_blocks=internato_blocks,
+            use_bank_incidence=use_bank_incidence,
         ) or {}
     else:
         plan_result = generate_annual_plan(
@@ -612,6 +643,7 @@ def _generate_calendar_ics_content(db, user_id):
             organization=org_mode,
             internato_blocks=internato_blocks,
             completed_subtemas=completed_subtemas,
+            use_bank_incidence=use_bank_incidence,
         )
 
     plan_weeks = plan_result.get("plan", [])

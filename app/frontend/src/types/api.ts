@@ -333,6 +333,8 @@ export interface PlannerTopic {
   priority_tier?: string;
   priority_explanation?: string;
   completed?: boolean;
+  target_questions_count?: number;
+  incidence_source?: "target_banks" | "national_catalog";
 }
 
 export interface PlannerWeek {

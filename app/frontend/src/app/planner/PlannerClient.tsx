@@ -165,7 +165,12 @@ const TopicRow = memo(function TopicRow({
               <Clock size={11} /> {formatHours(t.estimated_theory_hours)}h teóricas + {formatHours(t.estimated_practice_hours)}h questões = {formatHours(t.estimated_hours)}h
             </span>
             <span>•</span>
-            <span>{t.questions_available} questões disponíveis</span>
+            <span>
+              {t.questions_available} questões disponíveis
+              {t.incidence_source === "target_banks" && typeof t.target_questions_count === "number"
+                ? ` (${t.target_questions_count} nas suas bancas)`
+                : ""}
+            </span>
           </div>
 
           <div className="mt-2.5 flex items-center gap-2 flex-wrap">
