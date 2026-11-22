@@ -22,6 +22,13 @@ import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import clsx from "clsx";
 
 const DASHBOARD_CACHE_KEY = "medquest_dashboard_cache_v1";
+const DISMISSED_DASHBOARD_LESSON_KEY = "medquest_dismissed_dashboard_lesson_v1";
+
+interface DismissedDashboardLesson {
+  lessonId: number;
+  updatedAt: string | null;
+  bookmarkSeconds: number;
+}
 
 interface DashboardCachedData {
   stats: OverviewStats;
@@ -123,6 +130,52 @@ export function DashboardClient({
   const hasAnimated = useRef(false);
   const [activeSession, setActiveSession] = useState<{ kind: "quiz" | "simulado"; url: string } | null>(null);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
+  const [dismissedLesson, setDismissedLesson] = useState<DismissedDashboardLesson | null>(null);
+  const [isDismissedLoaded, setIsDismissedLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DISMISSED_DASHBOARD_LESSON_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<DismissedDashboardLesson>;
+        if (typeof parsed.lessonId === "number") {
+          setDismissedLesson({
+            lessonId: parsed.lessonId,
+            updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : null,
+            bookmarkSeconds: typeof parsed.bookmarkSeconds === "number" ? parsed.bookmarkSeconds : 0,
+          });
+        }
+      }
+    } catch {
+      // ignore invalid storage
+    } finally {
+      setIsDismissedLoaded(true);
+    }
+  }, []);
+
+  const isContinueLessonDismissed = Boolean(
+    continueLessonData?.lesson &&
+      dismissedLesson &&
+      dismissedLesson.lessonId === continueLessonData.lesson.id &&
+      dismissedLesson.updatedAt === (continueLessonData.lesson.progress.updated_at ?? null) &&
+      dismissedLesson.bookmarkSeconds === (continueLessonData.lesson.progress.bookmark_seconds ?? 0)
+  );
+
+  const handleDismissContinueLesson = useCallback(() => {
+    const lesson = continueLessonData?.lesson;
+    if (!lesson) return;
+    const payload: DismissedDashboardLesson = {
+      lessonId: lesson.id,
+      updatedAt: lesson.progress.updated_at ?? null,
+      bookmarkSeconds: lesson.progress.bookmark_seconds ?? 0,
+    };
+    setDismissedLesson(payload);
+    try {
+      localStorage.setItem(DISMISSED_DASHBOARD_LESSON_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }, [continueLessonData]);
 
   // Estados reativos internos para dados e auto-recuperação
   const [stats, setStats] = useState<OverviewStats>(initialStats);
@@ -906,7 +959,7 @@ export function DashboardClient({
           </motion.section>
 
           {/* CONTINUAR ASSISTINDO (PRIVADO AO PROPRIETARIO) */}
-          {canAccessLessons && continueLessonData?.lesson && (
+          {canAccessLessons && isDismissedLoaded && continueLessonData?.lesson && !isContinueLessonDismissed && (
             <motion.section
               variants={itemVariants}
               className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -965,6 +1018,15 @@ export function DashboardClient({
                 >
                   Videoteca
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleDismissContinueLesson}
+                  title="Remover do dashboard"
+                  aria-label="Remover aula do dashboard"
+                  className="inline-flex items-center justify-center p-2 rounded-xs border border-line-subtle bg-canvas hover:bg-elevated text-ink-muted hover:text-ink-primary transition-colors cursor-pointer"
+                >
+                  <ClinicalIcon name="close" className="w-3.5 h-3.5" />
+                </button>
               </div>
             </motion.section>
           )}
