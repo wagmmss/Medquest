@@ -1,4 +1,7 @@
-import type { LearningProfileTopic, ThemeProgress } from "@/types/api";
+import type { LearningProfileTopic, LessonCyclePhase, ThemeProgress } from "@/types/api";
+
+export const DEFAULT_LESSON_PRE_QUESTIONS = 5;
+export const DEFAULT_LESSON_POST_QUESTIONS = 25;
 
 export interface ThemeHubUrls {
   review: string;
@@ -12,6 +15,51 @@ export function getThemeUrls(subtema: string): ThemeHubUrls {
     review: practiceUrl({ status: "srs_due", limit: "50" }),
     practice: (limit = 20) => practiceUrl({ mode: "adaptive", limit: String(limit) }),
   };
+}
+
+export function buildLessonReturnUrl({
+  subtema,
+  lessonId,
+}: {
+  subtema?: string | null;
+  lessonId?: number | null;
+}): string {
+  const params = new URLSearchParams();
+  if (subtema) params.set("subtema", subtema);
+  if (lessonId && Number.isInteger(lessonId) && lessonId > 0) {
+    params.set("lesson", String(lessonId));
+  }
+  const qs = params.toString();
+  return qs ? `/aulas?${qs}` : "/aulas";
+}
+
+export function buildLessonCycleQuizUrl({
+  subtema,
+  phase,
+  target,
+  returnLessonId,
+}: {
+  subtema: string;
+  phase: LessonCyclePhase;
+  target?: number;
+  returnLessonId?: number | null;
+}): string {
+  const defaultTarget =
+    phase === "pre" ? DEFAULT_LESSON_PRE_QUESTIONS : DEFAULT_LESSON_POST_QUESTIONS;
+  const safeTarget = Math.max(1, Math.round(target ?? defaultTarget));
+  const params = new URLSearchParams({
+    subtema,
+    mode: "adaptive",
+    adaptive_focus: "coverage",
+    unanswered_only: "false",
+    limit: String(safeTarget),
+    cycle_phase: phase,
+    cycle_target: String(safeTarget),
+  });
+  if (returnLessonId && Number.isInteger(returnLessonId) && returnLessonId > 0) {
+    params.set("return_lesson", String(returnLessonId));
+  }
+  return `/estudar?${params.toString()}`;
 }
 
 export function themeJourney(

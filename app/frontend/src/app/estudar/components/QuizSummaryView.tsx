@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { SessionAnswer } from "../quizSessionReducer";
+import type { LessonCycleQuizContext } from "./QuizSessionReportModal";
 
 const QuizSessionReportModal = dynamic(
   () => import("./QuizSessionReportModal").then((m) => m.QuizSessionReportModal),
@@ -21,10 +22,12 @@ export function QuizSummaryView({
   sessionAnswers,
   onBackToFilters,
   onRestartSession,
+  lessonCycleContext = null,
 }: {
   sessionAnswers: Record<number, SessionAnswer>;
   onBackToFilters: () => void;
   onRestartSession: () => void;
+  lessonCycleContext?: LessonCycleQuizContext | null;
 }) {
   const answeredEntries = Object.entries(sessionAnswers).filter(
     ([, a]) => Boolean(a && (a.result || a.isOffline))
@@ -48,6 +51,7 @@ export function QuizSummaryView({
       wrongItems={wrongItems}
       onBackToFilters={onBackToFilters}
       onRestartSession={onRestartSession}
+      lessonCycleContext={lessonCycleContext}
     />
   );
 }

@@ -2,7 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { CheckCircle2, Sparkles, BookOpen, RotateCcw, ArrowRight } from "lucide-react";
+import { CheckCircle2, Sparkles, BookOpen, RotateCcw, ArrowRight, PlayCircle } from "lucide-react";
+import type { LessonCyclePhase } from "@/types/api";
+
+export interface LessonCycleQuizContext {
+  phase: LessonCyclePhase;
+  subtema: string;
+  target: number;
+  returnUrl: string;
+  returnLessonId?: number | null;
+}
 
 export interface QuizSessionReportModalProps {
   totalAnswered: number;
@@ -12,6 +21,7 @@ export interface QuizSessionReportModalProps {
   wrongItems: Array<{ question_id: number; wrong_letter: string }>;
   onBackToFilters: () => void;
   onRestartSession: () => void;
+  lessonCycleContext?: LessonCycleQuizContext | null;
 }
 
 export const QuizSessionReportModal: React.FC<QuizSessionReportModalProps> = ({
@@ -22,15 +32,28 @@ export const QuizSessionReportModal: React.FC<QuizSessionReportModalProps> = ({
   wrongItems,
   onBackToFilters,
   onRestartSession,
+  lessonCycleContext = null,
 }) => {
   const unassistedCorrectCount = Math.max(0, correctCount - assistedCorrectCount);
+  const isPreLesson = lessonCycleContext?.phase === "pre";
+  const isPostLesson = lessonCycleContext?.phase === "post";
+
   return (
     <div className="bg-surface border border-line-subtle shadow-2xs rounded-lg p-7 md:p-9 max-w-2xl mx-auto w-full text-center flex flex-col items-center animate-in zoom-in-95 duration-200">
       <div className="w-16 h-16 bg-normal-bg text-normal border border-normal/25 rounded-lg flex items-center justify-center mx-auto mb-5">
         <CheckCircle2 size={32} />
       </div>
+      {lessonCycleContext && (
+        <span className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xs text-[11px] font-mono-lab font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/25">
+          {isPreLesson ? "Ciclo Medway • Etapa 1/3 (Pré-aula)" : "Ciclo Medway • Etapa 3/3 (Pós-aula)"}
+        </span>
+      )}
       <h2 className="text-2xl font-bold text-ink-primary mb-2 tracking-tight">
-        Sessão Concluída
+        {isPreLesson
+          ? "Pré-teste Concluído"
+          : isPostLesson
+          ? "Fixação Pós-aula Concluída"
+          : "Sessão Concluída"}
       </h2>
       <p className="text-ink-secondary text-sm sm:text-base mb-4">
         Você respondeu <strong className="font-mono-lab tabular-nums text-ink-primary">{totalAnswered}</strong> {totalAnswered === 1 ? "questão" : "questões"} com <strong className="font-mono-lab tabular-nums text-accent">{accuracy}%</strong> de acerto ({correctCount} acertos).
@@ -45,6 +68,34 @@ export const QuizSessionReportModal: React.FC<QuizSessionReportModalProps> = ({
               Correto com ajuda (/dica): {assistedCorrectCount}
             </span>
           )}
+        </div>
+      )}
+
+      {lessonCycleContext && (
+        <div className="w-full bg-primary/5 border border-primary/25 rounded-lg p-5 mb-6 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-bold uppercase tracking-wider font-mono-lab text-primary">
+              {isPreLesson ? "Próximo passo: Etapa 2/3 — Assistir à aula" : "Ciclo do tema fechado"}
+            </p>
+            <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+              {isPreLesson ? (
+                <>
+                  Raciocínio aquecido em <strong className="text-ink-primary">{lessonCycleContext.subtema}</strong>. Agora assista à aula focado nos pontos em que teve dúvida.
+                </>
+              ) : (
+                <>
+                  Fixação registrada em <strong className="text-ink-primary">{lessonCycleContext.subtema}</strong>. As revisões futuras já estão sob gestão do FSRS.
+                </>
+              )}
+            </p>
+          </div>
+          <Link
+            href={lessonCycleContext.returnUrl}
+            className="shrink-0 inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 px-4 rounded-md text-xs transition-colors shadow-2xs"
+          >
+            <PlayCircle size={15} />
+            {isPreLesson ? "Assistir aula agora →" : "Voltar para as aulas →"}
+          </Link>
         </div>
       )}
 

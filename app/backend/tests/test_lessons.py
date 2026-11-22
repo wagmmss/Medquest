@@ -456,3 +456,90 @@ def test_lesson_native_hd_stream_and_signed_token(client, seeded_lessons, monkey
     assert resp.headers.get("Cache-Control") == "private, no-store"
     assert captured_headers.get("Range") == "bytes=0-10"
     assert captured_headers.get("Authorization") == "Bearer fake-drive-access-token"
+
+
+def test_lesson_study_cycle_medway_flow_and_settings(client, seeded_lessons, monkeypatch):
+    """Valida ciclo Medway (5q pré-aula -> aula -> 25q pós-aula), settings e controle de acesso."""
+    monkeypatch.setenv("LESSONS_ALLOWED_USER_IDS", ALLOWED_SUB)
+    owner_headers = {"X-User-ID": ALLOWED_SUB, "X-User-Email": ALLOWED_EMAIL}
+    guest_headers = {"X-User-ID": "guest:550e8400-e29b-41d4-a716-446655440000", "X-User-Email": ALLOWED_EMAIL}
+    id1 = seeded_lessons["drive-id-1"]
+
+    # Acesso negado para visitante
+    assert client.get("/api/lessons/cycle", headers=guest_headers).status_code == 403
+    assert client.put("/api/lessons/cycle", headers=guest_headers, json={"subtema": THEME, "phase": "pre"}).status_code == 403
+    assert client.put("/api/lessons/cycle/settings", headers=guest_headers, json={"default_pre_questions": 5}).status_code == 403
+
+    # Padrões default: 5 pré-aula e 25 pós-aula
+    initial = client.get("/api/lessons/cycle", headers=owner_headers)
+    assert initial.status_code == 200
+    body = initial.get_json()
+    assert body["settings"] == {"default_pre_questions": 5, "default_post_questions": 25}
+    assert body["cycles"] == {}
+
+    # Registra conclusão do pré-teste (5 questões, 3 acertos = 60%)
+    pre_resp = client.put(
+        "/api/lessons/cycle",
+        headers=owner_headers,
+        json={"subtema": THEME, "phase": "pre", "target": 5, "completed": 5, "correct": 3, "done": True},
+    )
+    assert pre_resp.status_code == 200
+    pre_cycle = pre_resp.get_json()["cycle"]
+    assert pre_cycle["pre_done"] is True
+    assert pre_cycle["pre_completed"] == 5
+    assert pre_cycle["pre_correct"] == 3
+    assert pre_cycle["pre_accuracy"] == 60
+    assert pre_cycle["post_done"] is False
+
+    # Registra conclusão do pós-aula (25 questões, 22 acertos = 88%) preservando o pré-teste
+    post_resp = client.put(
+        "/api/lessons/cycle",
+        headers=owner_headers,
+        json={"subtema": THEME, "phase": "post", "target": 25, "completed": 25, "correct": 22, "done": True},
+    )
+    assert post_resp.status_code == 200
+    post_cycle = post_resp.get_json()["cycle"]
+    assert post_cycle["pre_done"] is True
+    assert post_cycle["pre_accuracy"] == 60
+    assert post_cycle["post_done"] is True
+    assert post_cycle["post_completed"] == 25
+    assert post_cycle["post_correct"] == 22
+    assert post_cycle["post_accuracy"] == 88
+
+    # Ciclo aparece tanto no summary-by-subtema quanto no detalhe da aula
+    summary_body = client.get("/api/lessons/summary-by-subtema", headers=owner_headers).get_json()
+    assert summary_body["cycle_settings"] == {"default_pre_questions": 5, "default_post_questions": 25}
+    assert summary_body["subtemas"][THEME]["cycle"]["pre_done"] is True
+    assert summary_body["subtemas"][THEME]["cycle"]["post_done"] is True
+
+    detail_body = client.get(f"/api/lessons/{id1}", headers=owner_headers).get_json()
+    assert detail_body["cycle"]["pre_accuracy"] == 60
+    assert detail_body["cycle"]["post_accuracy"] == 88
+    assert detail_body["cycle_settings"]["default_post_questions"] == 25
+
+    # Desmarcar manualmente limpa a fase específica sem afetar a outra
+    reset_pre = client.put(
+        "/api/lessons/cycle",
+        headers=owner_headers,
+        json={"subtema": THEME, "phase": "pre", "done": False},
+    )
+    assert reset_pre.status_code == 200
+    assert reset_pre.get_json()["cycle"]["pre_done"] is False
+    assert reset_pre.get_json()["cycle"]["pre_completed"] == 0
+    assert reset_pre.get_json()["cycle"]["post_done"] is True
+
+    # Atualização de configurações globais e validação de limites
+    assert client.put("/api/lessons/cycle/settings", headers=owner_headers, json={"default_pre_questions": -1}).status_code == 400
+    assert client.put("/api/lessons/cycle/settings", headers=owner_headers, json={"default_post_questions": 0}).status_code == 400
+    upd = client.put(
+        "/api/lessons/cycle/settings",
+        headers=owner_headers,
+        json={"default_pre_questions": 6, "default_post_questions": 30},
+    )
+    assert upd.status_code == 200
+    assert upd.get_json()["default_pre_questions"] == 6
+    assert upd.get_json()["default_post_questions"] == 30
+
+    # Validação de payload inválido em /lessons/cycle
+    assert client.put("/api/lessons/cycle", headers=owner_headers, json={"subtema": "Inexistente", "phase": "pre"}).status_code == 400
+    assert client.put("/api/lessons/cycle", headers=owner_headers, json={"subtema": THEME, "phase": "mid"}).status_code == 400

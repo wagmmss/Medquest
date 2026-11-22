@@ -211,6 +211,11 @@ const TopicRow = memo(function TopicRow({
                 <PlayCircle size={12} /> Aulas extras ({lessonSummary.total})
               </Link>
             ) : null}
+            {lessonSummary?.cycle?.pre_done && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-success/10 text-success border border-success/25">
+                <Check size={11} /> Pré {lessonSummary.cycle.pre_completed > 0 ? `${lessonSummary.cycle.pre_completed}q` : "✓"}
+              </span>
+            )}
             {lessonSummary?.theory_completed ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-success/10 text-success border border-success/25">
                 <Check size={11} /> Teoria ✓
@@ -220,6 +225,11 @@ const TopicRow = memo(function TopicRow({
                 <Check size={11} /> Aulas ✓
               </span>
             ) : null}
+            {lessonSummary?.cycle?.post_done && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-success/10 text-success border border-success/25">
+                <Check size={11} /> Pós {lessonSummary.cycle.post_completed > 0 ? `${lessonSummary.cycle.post_completed}q` : "✓"}
+              </span>
+            )}
             {onOpenMoveModal && (
               <button
                 type="button"

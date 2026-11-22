@@ -711,6 +711,45 @@ export interface SubtemaLessonsResponse {
   };
 }
 
+export type LessonCyclePhase = "pre" | "post";
+
+export interface LessonCycleSettings {
+  default_pre_questions: number;
+  default_post_questions: number;
+  updated_at?: string;
+}
+
+export interface LessonStudyCycle {
+  subtema: string;
+  pre_target: number;
+  pre_completed: number;
+  pre_correct: number;
+  pre_accuracy: number | null;
+  pre_done: boolean;
+  pre_completed_at: string | null;
+  post_target: number;
+  post_completed: number;
+  post_correct: number;
+  post_accuracy: number | null;
+  post_done: boolean;
+  post_completed_at: string | null;
+  updated_at: string | null;
+}
+
+export interface LessonCycleResponse {
+  settings: LessonCycleSettings;
+  cycles: Record<string, LessonStudyCycle>;
+}
+
+export interface SaveLessonCyclePayload {
+  subtema: string;
+  phase: LessonCyclePhase;
+  target?: number;
+  completed?: number;
+  correct?: number;
+  done?: boolean;
+}
+
 export interface LessonsSummaryBySubtemaItem {
   total: number;
   completed: number;
@@ -725,10 +764,12 @@ export interface LessonsSummaryBySubtemaItem {
   theory_completed?: boolean;
   essential_all_completed?: boolean;
   next_lesson_id: number | null;
+  cycle?: LessonStudyCycle | null;
 }
 
 export interface LessonsSummaryBySubtemaResponse {
   subtemas: Record<string, LessonsSummaryBySubtemaItem>;
+  cycle_settings?: LessonCycleSettings;
 }
 
 export interface ContinueLessonResponse {
@@ -750,6 +791,8 @@ export interface CurrentWeekLessonsResponse {
 export interface LessonDetailResponse {
   lesson: LessonItem;
   playlist: LessonItem[];
+  cycle?: LessonStudyCycle | null;
+  cycle_settings?: LessonCycleSettings;
 }
 
 export interface SaveLessonProgressPayload {

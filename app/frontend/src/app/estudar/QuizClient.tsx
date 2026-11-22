@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult } from "@/types/api";
 import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
-import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2, PlayCircle } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { isLocalIdentityReady } from "@/lib/db";
 import { prefetchQuestionsByIds, getCachedQuestionsMap } from "@/lib/syncQueue";
 import { useAppUser } from "@/lib/auth-client";
 import { areFiltersEquivalent } from "@/lib/quizFilterMatch";
+import { buildLessonReturnUrl } from "@/lib/themeJourney";
+import type { LessonCycleQuizContext } from "./components/QuizSessionReportModal";
 
 import dynamic from "next/dynamic";
 import { FormattedContent, normalizeImageSrc, filterExtraImages } from "@/components/FormattedContent";
@@ -845,6 +848,70 @@ export function QuizClient({
 
   const [showFinishModal, setShowFinishModal] = useState(false);
 
+  const lessonCycleContext = useMemo<LessonCycleQuizContext | null>(() => {
+    const rawPhase = Array.isArray(filters.cycle_phase) ? filters.cycle_phase[0] : filters.cycle_phase;
+    const rawSubtema = Array.isArray(filters.subtema) ? filters.subtema[0] : filters.subtema;
+    if ((rawPhase !== "pre" && rawPhase !== "post") || !rawSubtema) return null;
+    const rawTarget = Array.isArray(filters.cycle_target)
+      ? Number(filters.cycle_target[0])
+      : Number(filters.cycle_target || (typeof filters.limit === "string" ? filters.limit : 0));
+    const defaultTarget = rawPhase === "pre" ? 5 : 25;
+    const target = Number.isInteger(rawTarget) && rawTarget > 0 ? rawTarget : defaultTarget;
+    const rawReturnLesson = Array.isArray(filters.return_lesson)
+      ? Number(filters.return_lesson[0])
+      : Number(filters.return_lesson || 0);
+    const returnLessonId =
+      Number.isInteger(rawReturnLesson) && rawReturnLesson > 0 ? rawReturnLesson : null;
+    return {
+      phase: rawPhase,
+      subtema: rawSubtema,
+      target,
+      returnLessonId,
+      returnUrl: buildLessonReturnUrl({
+        subtema: rawSubtema,
+        lessonId: rawPhase === "pre" ? returnLessonId : null,
+      }),
+    };
+  }, [filters]);
+
+  const recordedCycleKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state !== "FINISHED") {
+      recordedCycleKeyRef.current = null;
+      return;
+    }
+    if (!lessonCycleContext) return;
+    const answeredEntries = Object.values(sessionAnswers).filter(
+      (a) => Boolean(a && (a.result || a.isOffline))
+    );
+    const totalAnswered = answeredEntries.length;
+    if (totalAnswered <= 0) return;
+    const correctCount = answeredEntries.filter((a) => a.result?.is_correct === true).length;
+    const syncKey = `${lessonCycleContext.subtema}::${lessonCycleContext.phase}::${totalAnswered}::${correctCount}`;
+    if (recordedCycleKeyRef.current === syncKey) return;
+    recordedCycleKeyRef.current = syncKey;
+
+    void api.lessons
+      .saveCyclePhase({
+        subtema: lessonCycleContext.subtema,
+        phase: lessonCycleContext.phase,
+        target: lessonCycleContext.target,
+        completed: totalAnswered,
+        correct: correctCount,
+        done: true,
+      })
+      .then(() => {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["lessons-cycle"] }),
+          queryClient.invalidateQueries({ queryKey: ["lessons-summary-by-subtema"] }),
+          queryClient.invalidateQueries({ queryKey: ["lesson-detail"] }),
+        ]);
+      })
+      .catch(() => {
+        // Silencioso para visitantes sem acesso à videoteca ou offline
+      });
+  }, [state, lessonCycleContext, sessionAnswers, queryClient]);
+
   const confirmFinish = useCallback(() => {
     ensureCurrentQuestionReviewed();
     setShowFinishModal(false);
@@ -1552,6 +1619,7 @@ export function QuizClient({
     return (
       <QuizSummaryView
         sessionAnswers={sessionAnswers}
+        lessonCycleContext={lessonCycleContext}
         onBackToFilters={handleNewSession}
         onRestartSession={() => {
           reviewedQuestionsRef.current.clear();
@@ -1619,6 +1687,30 @@ export function QuizClient({
         stemFontSize={stemFontSize}
         onCycleFontSize={cycleFontSize}
       />
+
+      {lessonCycleContext && (
+        <div className="bg-primary/5 border border-primary/25 text-ink rounded-sm px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="px-2 py-0.5 rounded-xs bg-primary/15 text-primary font-bold font-mono-lab uppercase text-[10px] shrink-0">
+              {lessonCycleContext.phase === "pre"
+                ? `Etapa 1/3 • Pré-aula (${lessonCycleContext.target}q)`
+                : `Etapa 3/3 • Pós-aula (${lessonCycleContext.target}q)`}
+            </span>
+            <span className="text-ink-secondary truncate">
+              {lessonCycleContext.phase === "pre"
+                ? `Aquecimento ativo antes da aula de ${lessonCycleContext.subtema}`
+                : `Fixação pós-aula de ${lessonCycleContext.subtema}`}
+            </span>
+          </div>
+          <Link
+            href={lessonCycleContext.returnUrl}
+            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline shrink-0"
+          >
+            <PlayCircle size={13} />
+            {lessonCycleContext.phase === "pre" ? "Ir direto para a aula →" : "Voltar para as aulas"}
+          </Link>
+        </div>
+      )}
 
       {filters.mode === "remediation" && (
         <div className="bg-critical/5 border border-critical/25 text-ink rounded-sm px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs shadow-xs">

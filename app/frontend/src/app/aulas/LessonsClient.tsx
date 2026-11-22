@@ -24,18 +24,26 @@ import {
   Play,
   PlayCircle,
   Search,
+  SlidersHorizontal,
   Sparkles,
   X,
   Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
-import { getThemeUrls } from "@/lib/themeJourney";
+import {
+  buildLessonCycleQuizUrl,
+  DEFAULT_LESSON_POST_QUESTIONS,
+  DEFAULT_LESSON_PRE_QUESTIONS,
+} from "@/lib/themeJourney";
 import type {
+  LessonCyclePhase,
+  LessonCycleResponse,
   LessonDetailResponse,
   LessonItem,
   LessonProgressStatus,
   LessonsListResponse,
+  LessonStudyCycle,
 } from "@/types/api";
 
 type ViewTab =
@@ -313,6 +321,10 @@ export default function LessonsClient() {
     notes: string;
   } | null>(null);
   const [savingProgress, setSavingProgress] = useState<boolean>(false);
+  const [savingCycle, setSavingCycle] = useState<boolean>(false);
+  const [showCycleSettings, setShowCycleSettings] = useState<boolean>(false);
+  const [draftCyclePre, setDraftCyclePre] = useState<string>("");
+  const [draftCyclePost, setDraftCyclePost] = useState<string>("");
   const [forceDriveEmbed, setForceDriveEmbed] = useState<boolean>(false);
   const [failedStreamLessonId, setFailedStreamLessonId] = useState<number | null>(null);
   const [playbackRate, setPlaybackRate] = useState<number>(1);
@@ -356,6 +368,23 @@ export default function LessonsClient() {
     staleTime: 60_000,
     retry: false,
   });
+
+  const { data: cycleData } = useQuery({
+    queryKey: ["lessons-cycle"],
+    queryFn: () => api.lessons.getCycle(),
+    enabled: canAccessLessons,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const defaultPreQuestions =
+    cycleData?.settings?.default_pre_questions ?? DEFAULT_LESSON_PRE_QUESTIONS;
+  const defaultPostQuestions =
+    cycleData?.settings?.default_post_questions ?? DEFAULT_LESSON_POST_QUESTIONS;
+  const cyclesBySubtema = useMemo<Record<string, LessonStudyCycle>>(
+    () => cycleData?.cycles ?? {},
+    [cycleData]
+  );
 
   const currentWeekSubtemasSet = useMemo(
     () => new Set(currentWeekData?.subtemas ?? []),
@@ -820,7 +849,9 @@ export default function LessonsClient() {
 
       if (!silent) {
         if (res.theme_theory_completed && targetLesson.subtema) {
-          toast.success(`Teoria de "${targetLesson.subtema}" concluída automaticamente!`);
+          toast.success(
+            `Teoria de "${targetLesson.subtema}" concluída! Próximo passo: ${defaultPostQuestions}q de fixação pós-aula.`
+          );
         } else if (overrides.status === "completed") {
           toast.success("Aula marcada como concluída.");
         } else if (overrides.bookmark_seconds !== undefined || overrides.notes !== undefined) {
@@ -886,6 +917,84 @@ export default function LessonsClient() {
     });
   };
 
+  const handleToggleCyclePhase = async (
+    subtema: string,
+    phase: LessonCyclePhase,
+    currentlyDone: boolean
+  ) => {
+    setSavingCycle(true);
+    try {
+      const target = phase === "pre" ? defaultPreQuestions : defaultPostQuestions;
+      const res = await api.lessons.saveCyclePhase({
+        subtema,
+        phase,
+        target,
+        done: !currentlyDone,
+      });
+      queryClient.setQueryData<LessonCycleResponse>(["lessons-cycle"], (old) => ({
+        settings: res.settings,
+        cycles: {
+          ...(old?.cycles ?? {}),
+          [subtema]: res.cycle,
+        },
+      }));
+      if (activeLesson && activeLesson.subtema === subtema) {
+        queryClient.setQueryData<LessonDetailResponse>(["lesson-detail", activeLesson.id], (old) =>
+          old ? { ...old, cycle: res.cycle, cycle_settings: res.settings } : old
+        );
+      }
+      void queryClient.invalidateQueries({ queryKey: ["lessons-summary-by-subtema"] });
+      const label = phase === "pre" ? "Pré-aula" : "Pós-aula";
+      toast.success(!currentlyDone ? `${label} marcada como concluída.` : `${label} reaberta.`);
+    } catch {
+      toast.error("Não foi possível atualizar a etapa do ciclo.");
+    } finally {
+      setSavingCycle(false);
+    }
+  };
+
+  const handleOpenCycleSettings = () => {
+    setDraftCyclePre(String(defaultPreQuestions));
+    setDraftCyclePost(String(defaultPostQuestions));
+    setShowCycleSettings((v) => !v);
+  };
+
+  const handleSaveCycleSettings = async (overridePre?: number, overridePost?: number) => {
+    const preVal = overridePre ?? Number(draftCyclePre);
+    const postVal = overridePost ?? Number(draftCyclePost);
+    if (!Number.isInteger(preVal) || preVal < 0 || preVal > 30) {
+      toast.error("Pré-aula deve ser um número inteiro entre 0 e 30.");
+      return;
+    }
+    if (!Number.isInteger(postVal) || postVal < 1 || postVal > 100) {
+      toast.error("Pós-aula deve ser um número inteiro entre 1 e 100.");
+      return;
+    }
+    setSavingCycle(true);
+    try {
+      const saved = await api.lessons.saveCycleSettings({
+        default_pre_questions: preVal,
+        default_post_questions: postVal,
+      });
+      queryClient.setQueryData<LessonCycleResponse>(["lessons-cycle"], (old) => ({
+        settings: saved,
+        cycles: old?.cycles ?? {},
+      }));
+      void queryClient.invalidateQueries({ queryKey: ["lessons-summary-by-subtema"] });
+      void queryClient.invalidateQueries({ queryKey: ["lesson-detail"] });
+      setDraftCyclePre(String(saved.default_pre_questions));
+      setDraftCyclePost(String(saved.default_post_questions));
+      setShowCycleSettings(false);
+      toast.success(
+        `Padrão do ciclo salvo: ${saved.default_pre_questions}q antes → Aula → ${saved.default_post_questions}q depois.`
+      );
+    } catch {
+      toast.error("Não foi possível salvar o padrão do ciclo.");
+    } finally {
+      setSavingCycle(false);
+    }
+  };
+
   if (checkingAccess) {
     return (
       <div className="space-y-4">
@@ -923,7 +1032,31 @@ export default function LessonsClient() {
   // MODO SALA DE AULA (?lesson=<id> presente na URL)
   // ============================================================================
   if (isClassroomMode) {
-    const themeUrls = activeLesson?.subtema ? getThemeUrls(activeLesson.subtema) : null;
+    const activeCycle = activeLesson?.subtema
+      ? cyclesBySubtema[activeLesson.subtema] ??
+        (detailData?.lesson.id === activeLesson.id ? detailData.cycle : null) ??
+        null
+      : null;
+    const classroomPreTarget =
+      activeCycle?.pre_done && activeCycle.pre_target > 0
+        ? activeCycle.pre_target
+        : defaultPreQuestions;
+    const classroomPostTarget =
+      activeCycle?.post_done && activeCycle.post_target > 0
+        ? activeCycle.post_target
+        : defaultPostQuestions;
+    const classroomMainTotal = sidebarSections.isSubtemaMode ? sidebarSections.main.length : 0;
+    const classroomMainCompleted = sidebarSections.isSubtemaMode
+      ? sidebarSections.main.filter((l) => l.progress.status === "completed").length
+      : 0;
+    const classroomLessonDone =
+      classroomMainTotal > 0
+        ? classroomMainCompleted >= classroomMainTotal
+        : activeLesson?.progress.status === "completed";
+    const classroomDelta =
+      activeCycle?.pre_accuracy != null && activeCycle?.post_accuracy != null
+        ? activeCycle.post_accuracy - activeCycle.pre_accuracy
+        : null;
     const playerPreviewUrl = activeLesson
       ? activeLesson.preview_url || `https://drive.google.com/file/d/${activeLesson.drive_file_id}/preview`
       : "";
@@ -1315,36 +1448,227 @@ export default function LessonsClient() {
                     />
                   </div>
 
-                  {/* Ponte direta para Questões */}
-                  {themeUrls && activeLesson.subtema && (
-                    <div className="rounded-md border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold text-ink-primary flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-primary" /> Fechar o ciclo: Aula → Questões
-                        </p>
-                        <p className="text-xs text-ink-secondary mt-0.5">
-                          Fixe &ldquo;{activeLesson.subtema}&rdquo; direto com bateria adaptativa no FSRS.
-                        </p>
+                  {/* Ciclo Medway: Pré-aula (5q) → Aula → Pós-aula (25q) */}
+                  {activeLesson.subtema && (
+                    <div className="rounded-md border border-primary/25 bg-primary/5 p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-bold text-ink-primary flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-primary" />
+                            Ciclo Medway do Tema ({classroomPreTarget > 0 ? `${classroomPreTarget}q → ` : ""}Aula → {classroomPostTarget}q)
+                          </p>
+                          <p className="text-[11px] text-ink-secondary mt-0.5">
+                            Estudo ativo em 3 etapas para &ldquo;{activeLesson.subtema}&rdquo;, sem bloquear sua ordem.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {classroomDelta !== null && (
+                            <span
+                              className={clsx(
+                                "px-2 py-0.5 rounded-xs text-[11px] font-mono-lab font-bold border",
+                                classroomDelta >= 0
+                                  ? "bg-success/10 text-success border-success/30"
+                                  : "bg-warning/10 text-warning border-warning/30"
+                              )}
+                            >
+                              Pré {activeCycle?.pre_accuracy}% → Pós {activeCycle?.post_accuracy}% ({classroomDelta >= 0 ? "+" : ""}{classroomDelta}pp)
+                            </span>
+                          )}
+                          <Link
+                            href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
+                            className="inline-flex items-center px-2.5 py-1 rounded-xs border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary text-[11px] font-medium transition-colors"
+                          >
+                            Análise
+                          </Link>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <Link
-                          href={themeUrls.practice(10)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+
+                      <div className={clsx("grid grid-cols-1 gap-2.5", classroomPreTarget > 0 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                        {/* Etapa 1: Pré-aula */}
+                        {classroomPreTarget > 0 && (
+                          <div
+                            className={clsx(
+                              "rounded-md border p-3 flex flex-col justify-between gap-2.5 bg-surface",
+                              activeCycle?.pre_done
+                                ? "border-success/35 bg-success/5"
+                                : !classroomLessonDone
+                                ? "border-primary/35"
+                                : "border-line-subtle"
+                            )}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider font-mono-lab text-ink-muted">
+                                  1. Pré-aula
+                                </span>
+                                {activeCycle?.pre_done ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success">
+                                    <CheckCircle2 className="w-3 h-3" /> Feito
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-mono-lab text-ink-muted">
+                                    {classroomPreTarget}q
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-semibold text-ink-primary">
+                                {activeCycle?.pre_done
+                                  ? activeCycle.pre_completed > 0
+                                    ? `${activeCycle.pre_correct}/${activeCycle.pre_completed} acertos (${activeCycle.pre_accuracy ?? 0}%)`
+                                    : "Concluído manualmente"
+                                  : `Aquecimento com ${classroomPreTarget} questões`}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Link
+                                href={buildLessonCycleQuizUrl({
+                                  subtema: activeLesson.subtema,
+                                  phase: "pre",
+                                  target: defaultPreQuestions,
+                                  returnLessonId: activeLesson.id,
+                                })}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xs text-[11px] font-semibold transition-colors",
+                                  !activeCycle?.pre_done && !classroomLessonDone
+                                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                    : "border border-primary/30 bg-canvas hover:bg-elevated text-primary"
+                                )}
+                              >
+                                <Zap className="w-3 h-3" />
+                                {activeCycle?.pre_done ? `Refazer ${defaultPreQuestions}q` : `Fazer ${defaultPreQuestions}q`}
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={savingCycle}
+                                onClick={() =>
+                                  void handleToggleCyclePhase(
+                                    activeLesson.subtema!,
+                                    "pre",
+                                    Boolean(activeCycle?.pre_done)
+                                  )
+                                }
+                                className="px-2 py-1.5 rounded-xs border border-line-subtle bg-canvas hover:bg-elevated text-[11px] text-ink-secondary cursor-pointer"
+                              >
+                                {activeCycle?.pre_done ? "Desmarcar" : "Já fiz"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Etapa 2: Aula */}
+                        <div
+                          className={clsx(
+                            "rounded-md border p-3 flex flex-col justify-between gap-2.5 bg-surface",
+                            classroomLessonDone
+                              ? "border-success/35 bg-success/5"
+                              : "border-accent/45 ring-1 ring-accent/15"
+                          )}
                         >
-                          <Zap className="w-3.5 h-3.5" /> Treinar 10q
-                        </Link>
-                        <Link
-                          href={themeUrls.practice(20)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/30 bg-surface hover:bg-elevated text-primary text-xs font-semibold transition-colors"
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider font-mono-lab text-accent">
+                                {classroomPreTarget > 0 ? "2. Aula" : "1. Aula"} • Você está aqui
+                              </span>
+                              {classroomLessonDone && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success">
+                                  <CheckCircle2 className="w-3 h-3" /> Feito
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-ink-primary">
+                              {classroomMainTotal > 0
+                                ? `${classroomMainCompleted}/${classroomMainTotal} aulas principais concluídas`
+                                : activeLesson.progress.status === "completed"
+                                ? "Aula concluída"
+                                : "Assistindo aula do tema"}
+                            </p>
+                          </div>
+                          <div>
+                            {activeLesson.progress.status === "completed" ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Esta aula está concluída
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={savingProgress}
+                                onClick={() => void handleSaveProgress(activeLesson, { status: "completed" })}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xs border border-success/35 bg-success/10 hover:bg-success/20 text-success text-[11px] font-semibold transition-colors cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Concluir esta aula
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Etapa 3: Pós-aula */}
+                        <div
+                          className={clsx(
+                            "rounded-md border p-3 flex flex-col justify-between gap-2.5 bg-surface",
+                            activeCycle?.post_done
+                              ? "border-success/35 bg-success/5"
+                              : classroomLessonDone
+                              ? "border-primary/45 ring-1 ring-primary/15"
+                              : "border-line-subtle"
+                          )}
                         >
-                          Treinar 20q
-                        </Link>
-                        <Link
-                          href={`/analise?tab=cobertura&subtema=${encodeURIComponent(activeLesson.subtema)}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary text-xs font-medium transition-colors"
-                        >
-                          Análise
-                        </Link>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider font-mono-lab text-ink-muted">
+                                {classroomPreTarget > 0 ? "3. Pós-aula" : "2. Pós-aula"}
+                              </span>
+                              {activeCycle?.post_done ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success">
+                                  <CheckCircle2 className="w-3 h-3" /> Feito
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-mono-lab text-ink-muted">
+                                  {classroomPostTarget}q
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-ink-primary">
+                              {activeCycle?.post_done
+                                ? activeCycle.post_completed > 0
+                                  ? `${activeCycle.post_correct}/${activeCycle.post_completed} acertos (${activeCycle.post_accuracy ?? 0}%)`
+                                  : "Concluído manualmente"
+                                : `Fixação com ${classroomPostTarget} questões (FSRS)`}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Link
+                              href={buildLessonCycleQuizUrl({
+                                subtema: activeLesson.subtema,
+                                phase: "post",
+                                target: defaultPostQuestions,
+                                returnLessonId: activeLesson.id,
+                              })}
+                              className={clsx(
+                                "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xs text-[11px] font-semibold transition-colors",
+                                classroomLessonDone && !activeCycle?.post_done
+                                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                  : "border border-primary/30 bg-canvas hover:bg-elevated text-primary"
+                              )}
+                            >
+                              <Zap className="w-3 h-3" />
+                              {activeCycle?.post_done ? `Refazer ${defaultPostQuestions}q` : `Fazer ${defaultPostQuestions}q →`}
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={savingCycle}
+                              onClick={() =>
+                                void handleToggleCyclePhase(
+                                  activeLesson.subtema!,
+                                  "post",
+                                  Boolean(activeCycle?.post_done)
+                                )
+                              }
+                              className="px-2 py-1.5 rounded-xs border border-line-subtle bg-canvas hover:bg-elevated text-[11px] text-ink-secondary cursor-pointer"
+                            >
+                              {activeCycle?.post_done ? "Desmarcar" : "Já fiz"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1607,6 +1931,24 @@ export default function LessonsClient() {
             </button>
           )}
 
+          {activeTab === "trilha_r1" && (
+            <button
+              type="button"
+              onClick={handleOpenCycleSettings}
+              aria-expanded={showCycleSettings}
+              title="Configurar padrão do ciclo Medway (questões antes e depois da aula)"
+              className={clsx(
+                "inline-flex items-center gap-1.5 px-3 py-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer",
+                showCycleSettings
+                  ? "bg-accent/15 text-accent border-accent/35"
+                  : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary hover:bg-elevated"
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Ciclo: {defaultPreQuestions}q → Aula → {defaultPostQuestions}q
+            </button>
+          )}
+
           {activeTab === "trilha_r1" && currentWeekData && currentWeekData.week !== null && (
             <button
               type="button"
@@ -1657,6 +1999,64 @@ export default function LessonsClient() {
             </div>
           )}
         </div>
+
+        {activeTab === "trilha_r1" && showCycleSettings && (
+          <div className="rounded-md border border-accent/30 bg-canvas p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
+            <div className="space-y-0.5">
+              <p className="font-bold text-ink-primary">Padrão do Ciclo Medway</p>
+              <p className="text-[11px] text-ink-secondary">
+                Defina quantas questões fazer antes da aula (pré-teste) e depois da aula (fixação). Padrão: 5 pré e 25 pós.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <label className="inline-flex items-center gap-1.5 text-ink-secondary">
+                <span>Pré-aula:</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={draftCyclePre}
+                  onChange={(e) => setDraftCyclePre(e.target.value)}
+                  className="w-16 px-2 py-1 rounded-xs border border-line-subtle bg-surface font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span>q</span>
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-ink-secondary">
+                <span>Pós-aula:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={draftCyclePost}
+                  onChange={(e) => setDraftCyclePost(e.target.value)}
+                  className="w-16 px-2 py-1 rounded-xs border border-line-subtle bg-surface font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span>q</span>
+              </label>
+              <button
+                type="button"
+                disabled={savingCycle}
+                onClick={() => void handleSaveCycleSettings()}
+                className="px-3 py-1.5 rounded-xs bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Salvar padrão
+              </button>
+              <button
+                type="button"
+                disabled={savingCycle}
+                onClick={() =>
+                  void handleSaveCycleSettings(
+                    DEFAULT_LESSON_PRE_QUESTIONS,
+                    DEFAULT_LESSON_POST_QUESTIONS
+                  )
+                }
+                className="px-2.5 py-1.5 rounded-xs border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary font-medium cursor-pointer"
+              >
+                Padrão 5 / 25
+              </button>
+            </div>
+          </div>
+        )}
 
         {paramSubtema && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-md bg-accent/10 border border-accent/25 text-xs">
@@ -1711,19 +2111,38 @@ export default function LessonsClient() {
               )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              handleSelectLesson(
-                continueData.lesson!,
-                continueData.lesson!.subtema || undefined
-              )
-            }
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            Assistir agora →
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+            {continueData.lesson.subtema &&
+              defaultPreQuestions > 0 &&
+              continueData.lesson.progress.status === "not_started" &&
+              !cyclesBySubtema[continueData.lesson.subtema]?.pre_done && (
+                <Link
+                  href={buildLessonCycleQuizUrl({
+                    subtema: continueData.lesson.subtema,
+                    phase: "pre",
+                    target: defaultPreQuestions,
+                    returnLessonId: continueData.lesson.id,
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-primary/35 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  1. Pré-teste ({defaultPreQuestions}q)
+                </Link>
+              )}
+            <button
+              type="button"
+              onClick={() =>
+                handleSelectLesson(
+                  continueData.lesson!,
+                  continueData.lesson!.subtema || undefined
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              Assistir agora →
+            </button>
+          </div>
         </section>
       )}
 
@@ -1826,6 +2245,29 @@ export default function LessonsClient() {
                               subGroup.optionalMedwayLessons.length === 0 &&
                               subGroup.extraMedcofLessons.length > 0;
 
+                        const subCycle = cyclesBySubtema[subGroup.subtema];
+                        const subNextLesson =
+                          subGroup.mainLessons.find((l) => l.progress.status !== "completed") ??
+                          subGroup.mainLessons[0] ??
+                          subGroup.optionalMedwayLessons[0] ??
+                          subGroup.extraMedcofLessons[0] ??
+                          null;
+                        const subMainAllDone =
+                          subGroup.mainTotal > 0 && subGroup.mainCompleted >= subGroup.mainTotal;
+                        const preDone = Boolean(subCycle?.pre_done);
+                        const postDone = Boolean(subCycle?.post_done);
+                        const preRequired = defaultPreQuestions > 0;
+                        const cycleAllDone =
+                          (!preRequired || preDone) && subMainAllDone && postDone;
+                        const nextStep: "pre" | "lesson" | "post" | "done" =
+                          preRequired && !preDone && subGroup.mainCompleted === 0
+                            ? "pre"
+                            : !subMainAllDone && subGroup.mainTotal > 0
+                            ? "lesson"
+                            : !postDone
+                            ? "post"
+                            : "done";
+
                         return (
                           <article
                             key={subGroup.subtema}
@@ -1840,6 +2282,11 @@ export default function LessonsClient() {
                                   {subGroup.isCurrentWeek && currentWeekData?.week && (
                                     <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-xs bg-primary/10 text-primary border border-primary/25">
                                       Semana {currentWeekData.week}
+                                    </span>
+                                  )}
+                                  {cycleAllDone && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-xs bg-success/10 text-success border border-success/30">
+                                      <CheckCircle2 className="w-3 h-3" /> Ciclo ✓
                                     </span>
                                   )}
                                   {subGroup.mainTotal > 0 ? (
@@ -1862,18 +2309,110 @@ export default function LessonsClient() {
 
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <Link
-                                  href={getThemeUrls(subGroup.subtema).practice(10)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold border border-primary/20 transition-colors"
-                                >
-                                  <Zap className="w-3 h-3" /> 10q
-                                </Link>
-                                <Link
                                   href={`/analise?tab=cobertura&subtema=${encodeURIComponent(subGroup.subtema)}`}
                                   className="inline-flex items-center px-2 py-1 rounded-xs bg-canvas hover:bg-elevated text-ink-secondary text-[11px] font-medium border border-line-subtle transition-colors"
                                 >
                                   Análise
                                 </Link>
                               </div>
+                            </div>
+
+                            {/* Stepper Ciclo Medway: 5q Pré → Aula → 25q Pós */}
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                              {preRequired && (
+                                <>
+                                  <Link
+                                    href={buildLessonCycleQuizUrl({
+                                      subtema: subGroup.subtema,
+                                      phase: "pre",
+                                      target: defaultPreQuestions,
+                                      returnLessonId: subNextLesson?.id,
+                                    })}
+                                    title={`Etapa 1: Fazer ${defaultPreQuestions} questões antes da aula`}
+                                    className={clsx(
+                                      "inline-flex items-center gap-1 px-2 py-1 rounded-xs font-semibold border transition-colors",
+                                      preDone
+                                        ? "bg-success/10 text-success border-success/30 hover:bg-success/15"
+                                        : nextStep === "pre"
+                                        ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                                        : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary hover:bg-elevated"
+                                    )}
+                                  >
+                                    {preDone ? (
+                                      <CheckCircle2 className="w-3 h-3" />
+                                    ) : (
+                                      <Zap className="w-3 h-3" />
+                                    )}
+                                    <span>
+                                      1. Pré ({defaultPreQuestions}q)
+                                      {preDone && subCycle?.pre_accuracy != null
+                                        ? ` • ${subCycle.pre_accuracy}%`
+                                        : ""}
+                                    </span>
+                                  </Link>
+                                  <span className="text-ink-muted select-none">→</span>
+                                </>
+                              )}
+
+                              {subNextLesson ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectLesson(subNextLesson, subGroup.subtema)}
+                                  title="Etapa 2: Assistir à aula do tema"
+                                  className={clsx(
+                                    "inline-flex items-center gap-1 px-2 py-1 rounded-xs font-semibold border transition-colors cursor-pointer",
+                                    subMainAllDone
+                                      ? "bg-success/10 text-success border-success/30 hover:bg-success/15"
+                                      : nextStep === "lesson"
+                                      ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                                      : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary hover:bg-elevated"
+                                  )}
+                                >
+                                  {subMainAllDone ? (
+                                    <CheckCircle2 className="w-3 h-3" />
+                                  ) : (
+                                    <Play className="w-3 h-3 fill-current" />
+                                  )}
+                                  <span>
+                                    {preRequired ? "2. Aula" : "1. Aula"}
+                                    {subGroup.mainTotal > 0
+                                      ? ` (${subGroup.mainCompleted}/${subGroup.mainTotal})`
+                                      : ""}
+                                  </span>
+                                </button>
+                              ) : null}
+
+                              <span className="text-ink-muted select-none">→</span>
+
+                              <Link
+                                href={buildLessonCycleQuizUrl({
+                                  subtema: subGroup.subtema,
+                                  phase: "post",
+                                  target: defaultPostQuestions,
+                                  returnLessonId: subNextLesson?.id,
+                                })}
+                                title={`Etapa 3: Fixar com ${defaultPostQuestions} questões após a aula`}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 px-2 py-1 rounded-xs font-semibold border transition-colors",
+                                  postDone
+                                    ? "bg-success/10 text-success border-success/30 hover:bg-success/15"
+                                    : nextStep === "post"
+                                    ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                                    : "bg-canvas text-ink-secondary border-line-subtle hover:text-ink-primary hover:bg-elevated"
+                                )}
+                              >
+                                {postDone ? (
+                                  <CheckCircle2 className="w-3 h-3" />
+                                ) : (
+                                  <Zap className="w-3 h-3" />
+                                )}
+                                <span>
+                                  {preRequired ? "3. Pós" : "2. Pós"} ({defaultPostQuestions}q)
+                                  {postDone && subCycle?.post_accuracy != null
+                                    ? ` • ${subCycle.post_accuracy}%`
+                                    : ""}
+                                </span>
+                              </Link>
                             </div>
 
                             {/* Pílulas de Mostrar/Ocultar: Principais Medway, Flash/Revisão Medway e Extras MedCof */}

@@ -22,6 +22,11 @@ VALID_STATUSES = ("not_started", "in_progress", "completed")
 MAX_BOOKMARK_SECONDS = 86400
 MAX_NOTES_LEN = 10000
 STREAM_CHUNK_BYTES = 256 * 1024
+DEFAULT_CYCLE_PRE_QUESTIONS = 5
+DEFAULT_CYCLE_POST_QUESTIONS = 25
+MAX_CYCLE_PRE_QUESTIONS = 30
+MAX_CYCLE_POST_QUESTIONS = 100
+VALID_CYCLE_PHASES = ("pre", "post")
 
 _DRIVE_TOKEN_CACHE: dict[str, object] = {
     "access_token": None,
@@ -125,6 +130,73 @@ def _add_private_no_store_headers(response):
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _get_user_cycle_settings(db, user_id: str) -> dict[str, int]:
+    """Retorna padrão do ciclo Medway do usuário (5q pré-aula, 25q pós-aula por padrão)."""
+    defaults = {
+        "default_pre_questions": DEFAULT_CYCLE_PRE_QUESTIONS,
+        "default_post_questions": DEFAULT_CYCLE_POST_QUESTIONS,
+    }
+    try:
+        row = db.execute(
+            "SELECT default_pre_questions, default_post_questions FROM lesson_cycle_settings WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    except Exception:
+        return defaults
+    if not row:
+        return defaults
+    pre_q = int(row["default_pre_questions"]) if row["default_pre_questions"] is not None else DEFAULT_CYCLE_PRE_QUESTIONS
+    post_q = int(row["default_post_questions"]) if row["default_post_questions"] is not None else DEFAULT_CYCLE_POST_QUESTIONS
+    return {
+        "default_pre_questions": max(0, min(MAX_CYCLE_PRE_QUESTIONS, pre_q)),
+        "default_post_questions": max(1, min(MAX_CYCLE_POST_QUESTIONS, post_q)),
+    }
+
+
+def _serialize_cycle_row(row, settings: dict[str, int]) -> dict:
+    pre_target = int(row["pre_target"] if row["pre_target"] is not None else settings["default_pre_questions"])
+    post_target = int(row["post_target"] if row["post_target"] is not None else settings["default_post_questions"])
+    pre_completed = int(row["pre_completed"] or 0)
+    pre_correct = int(row["pre_correct"] or 0)
+    post_completed = int(row["post_completed"] or 0)
+    post_correct = int(row["post_correct"] or 0)
+    return {
+        "subtema": row["subtema"],
+        "pre_target": pre_target,
+        "pre_completed": pre_completed,
+        "pre_correct": pre_correct,
+        "pre_accuracy": round((pre_correct / pre_completed) * 100) if pre_completed > 0 else None,
+        "pre_done": bool(row["pre_done"]),
+        "pre_completed_at": row["pre_completed_at"],
+        "post_target": post_target,
+        "post_completed": post_completed,
+        "post_correct": post_correct,
+        "post_accuracy": round((post_correct / post_completed) * 100) if post_completed > 0 else None,
+        "post_done": bool(row["post_done"]),
+        "post_completed_at": row["post_completed_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _get_user_cycles_map(
+    db, user_id: str, settings: dict[str, int], subtema: str | None = None
+) -> dict[str, dict]:
+    try:
+        if subtema:
+            rows = db.execute(
+                "SELECT * FROM lesson_study_cycle WHERE user_id = ? AND subtema = ?",
+                (user_id, subtema),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM lesson_study_cycle WHERE user_id = ?",
+                (user_id,),
+            ).fetchall()
+    except Exception:
+        return {}
+    return {r["subtema"]: _serialize_cycle_row(r, settings) for r in rows}
 
 
 def _norm_text(value: str | None) -> str:
@@ -492,6 +564,8 @@ def lessons_summary_by_subtema():
         (user_id,),
     ).fetchall()
     theme_completed_map = {r["subtema"]: bool(r["theory_completed"]) for r in theme_rows}
+    cycle_settings = _get_user_cycle_settings(db, user_id)
+    cycles_map = _get_user_cycles_map(db, user_id, cycle_settings)
 
     subtemas: dict[str, dict] = {}
     fallback_next_any_main: dict[str, int] = {}
@@ -514,6 +588,7 @@ def lessons_summary_by_subtema():
             "theory_completed": bool(theme_completed_map.get(sub, False)),
             "essential_all_completed": False,
             "next_lesson_id": None,
+            "cycle": cycles_map.get(sub),
         })
         is_completed = row["progress_status"] == "completed"
         is_extra = bool(row["is_extra"])
@@ -563,7 +638,7 @@ def lessons_summary_by_subtema():
                 or fallback_next_any.get(sub)
             )
 
-    return jsonify({"subtemas": subtemas})
+    return jsonify({"subtemas": subtemas, "cycle_settings": cycle_settings})
 
 
 @bp.route("/lessons/current-week", methods=["GET"])
@@ -736,7 +811,16 @@ def get_lesson_detail(lesson_id: int):
         ).fetchall()
 
     playlist = [_serialize_lesson(r) for r in sibling_rows]
-    return jsonify({"lesson": lesson, "playlist": playlist})
+    cycle_settings = _get_user_cycle_settings(db, user_id)
+    cycle = None
+    if lesson["subtema"]:
+        cycle = _get_user_cycles_map(db, user_id, cycle_settings, subtema=lesson["subtema"]).get(lesson["subtema"])
+    return jsonify({
+        "lesson": lesson,
+        "playlist": playlist,
+        "cycle": cycle,
+        "cycle_settings": cycle_settings,
+    })
 
 
 @bp.route("/lessons/<int:lesson_id>/stream", methods=["GET"])
@@ -946,3 +1030,197 @@ def update_lesson_mapping(lesson_id: int):
         "mapping_source": "manual",
         "updated_at": now,
     })
+
+
+@bp.route("/lessons/cycle", methods=["GET"])
+@require_lessons_access
+def get_lesson_cycle():
+    db = get_db()
+    user_id = str(g.user_id)
+    subtema = (request.args.get("subtema") or "").strip() or None
+    settings = _get_user_cycle_settings(db, user_id)
+    cycles = _get_user_cycles_map(db, user_id, settings, subtema=subtema)
+    return jsonify({
+        "settings": settings,
+        "cycles": cycles,
+    })
+
+
+@bp.route("/lessons/cycle/settings", methods=["PUT"])
+@require_lessons_access
+def update_lesson_cycle_settings():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Payload JSON inválido."}), 400
+
+    db = get_db()
+    user_id = str(g.user_id)
+    current = _get_user_cycle_settings(db, user_id)
+
+    pre_q = current["default_pre_questions"]
+    post_q = current["default_post_questions"]
+
+    if "default_pre_questions" in payload and payload["default_pre_questions"] is not None:
+        raw_pre = payload["default_pre_questions"]
+        if type(raw_pre) is not int or raw_pre < 0 or raw_pre > MAX_CYCLE_PRE_QUESTIONS:
+            return jsonify({"error": f"default_pre_questions deve ser inteiro entre 0 e {MAX_CYCLE_PRE_QUESTIONS}."}), 400
+        pre_q = raw_pre
+
+    if "default_post_questions" in payload and payload["default_post_questions"] is not None:
+        raw_post = payload["default_post_questions"]
+        if type(raw_post) is not int or raw_post < 1 or raw_post > MAX_CYCLE_POST_QUESTIONS:
+            return jsonify({"error": f"default_post_questions deve ser inteiro entre 1 e {MAX_CYCLE_POST_QUESTIONS}."}), 400
+        post_q = raw_post
+
+    now = _now_iso()
+    with db_transaction(db, immediate=True):
+        db.execute(
+            """
+            INSERT INTO lesson_cycle_settings (user_id, default_pre_questions, default_post_questions, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                default_pre_questions = excluded.default_pre_questions,
+                default_post_questions = excluded.default_post_questions,
+                updated_at = excluded.updated_at
+            """,
+            (user_id, pre_q, post_q, now),
+        )
+
+    return jsonify({
+        "default_pre_questions": pre_q,
+        "default_post_questions": post_q,
+        "updated_at": now,
+    })
+
+
+@bp.route("/lessons/cycle", methods=["PUT"])
+@require_lessons_access
+def upsert_lesson_cycle():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Payload JSON inválido."}), 400
+
+    subtema = (payload.get("subtema") or "").strip() if isinstance(payload.get("subtema"), str) else ""
+    if not subtema or not find_area_for_subtema(subtema):
+        return jsonify({"error": "Subtema inválido ou não encontrado no catálogo canônico."}), 400
+
+    phase = payload.get("phase")
+    if phase not in VALID_CYCLE_PHASES:
+        return jsonify({"error": "phase deve ser 'pre' ou 'post'."}), 400
+
+    max_target = MAX_CYCLE_PRE_QUESTIONS if phase == "pre" else MAX_CYCLE_POST_QUESTIONS
+    min_target = 0 if phase == "pre" else 1
+
+    raw_target = payload.get("target")
+    if raw_target is not None:
+        if type(raw_target) is not int or raw_target < min_target or raw_target > max_target:
+            return jsonify({"error": f"target inválido para fase {phase}."}), 400
+
+    raw_completed = payload.get("completed")
+    if raw_completed is not None:
+        if type(raw_completed) is not int or raw_completed < 0 or raw_completed > 500:
+            return jsonify({"error": "completed deve ser inteiro entre 0 e 500."}), 400
+
+    raw_correct = payload.get("correct")
+    if raw_correct is not None:
+        if type(raw_correct) is not int or raw_correct < 0 or raw_correct > 500:
+            return jsonify({"error": "correct deve ser inteiro entre 0 e 500."}), 400
+
+    raw_done = payload.get("done")
+    if raw_done is not None and type(raw_done) is not bool:
+        return jsonify({"error": "done deve ser booleano."}), 400
+
+    db = get_db()
+    user_id = str(g.user_id)
+    settings = _get_user_cycle_settings(db, user_id)
+    now = _now_iso()
+
+    with db_transaction(db, immediate=True):
+        existing = db.execute(
+            "SELECT * FROM lesson_study_cycle WHERE user_id = ? AND subtema = ?",
+            (user_id, subtema),
+        ).fetchone()
+
+        pre_target = int(existing["pre_target"]) if existing else settings["default_pre_questions"]
+        pre_completed = int(existing["pre_completed"]) if existing else 0
+        pre_correct = int(existing["pre_correct"]) if existing else 0
+        pre_done = int(existing["pre_done"]) if existing else 0
+        pre_completed_at = existing["pre_completed_at"] if existing else None
+
+        post_target = int(existing["post_target"]) if existing else settings["default_post_questions"]
+        post_completed = int(existing["post_completed"]) if existing else 0
+        post_correct = int(existing["post_correct"]) if existing else 0
+        post_done = int(existing["post_done"]) if existing else 0
+        post_completed_at = existing["post_completed_at"] if existing else None
+
+        if phase == "pre":
+            if raw_target is not None:
+                pre_target = raw_target
+            if raw_completed is not None:
+                pre_completed = raw_completed
+            if raw_correct is not None:
+                pre_correct = min(raw_correct, pre_completed) if raw_completed is not None else raw_correct
+            if raw_done is not None:
+                pre_done = int(raw_done)
+            elif raw_completed is not None:
+                pre_done = 1 if pre_completed > 0 else 0
+            if pre_done:
+                pre_completed_at = now
+            else:
+                pre_completed_at = None
+                if raw_completed is None and raw_done is False:
+                    pre_completed = 0
+                    pre_correct = 0
+        else:
+            if raw_target is not None:
+                post_target = raw_target
+            if raw_completed is not None:
+                post_completed = raw_completed
+            if raw_correct is not None:
+                post_correct = min(raw_correct, post_completed) if raw_completed is not None else raw_correct
+            if raw_done is not None:
+                post_done = int(raw_done)
+            elif raw_completed is not None:
+                post_done = 1 if post_completed > 0 else 0
+            if post_done:
+                post_completed_at = now
+            else:
+                post_completed_at = None
+                if raw_completed is None and raw_done is False:
+                    post_completed = 0
+                    post_correct = 0
+
+        db.execute(
+            """
+            INSERT INTO lesson_study_cycle (
+                user_id, subtema,
+                pre_target, pre_completed, pre_correct, pre_done, pre_completed_at,
+                post_target, post_completed, post_correct, post_done, post_completed_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, subtema) DO UPDATE SET
+                pre_target = excluded.pre_target,
+                pre_completed = excluded.pre_completed,
+                pre_correct = excluded.pre_correct,
+                pre_done = excluded.pre_done,
+                pre_completed_at = excluded.pre_completed_at,
+                post_target = excluded.post_target,
+                post_completed = excluded.post_completed,
+                post_correct = excluded.post_correct,
+                post_done = excluded.post_done,
+                post_completed_at = excluded.post_completed_at,
+                updated_at = excluded.updated_at
+            """,
+            (
+                user_id, subtema,
+                pre_target, pre_completed, pre_correct, pre_done, pre_completed_at,
+                post_target, post_completed, post_correct, post_done, post_completed_at,
+                now,
+            ),
+        )
+        saved = db.execute(
+            "SELECT * FROM lesson_study_cycle WHERE user_id = ? AND subtema = ?",
+            (user_id, subtema),
+        ).fetchone()
+
+    return jsonify({"cycle": _serialize_cycle_row(saved, settings), "settings": settings})

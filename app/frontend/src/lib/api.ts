@@ -962,6 +962,28 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(payload),
       }),
+    getCycle: (subtema?: string) => {
+      const suffix = subtema ? `?subtema=${encodeURIComponent(subtema)}` : "";
+      return apiFetch<import("@/types/api").LessonCycleResponse>(`/api/lessons/cycle${suffix}`, {
+        cache: "no-store",
+      });
+    },
+    saveCycleSettings: (payload: {
+      default_pre_questions?: number;
+      default_post_questions?: number;
+    }) =>
+      apiFetch<import("@/types/api").LessonCycleSettings>("/api/lessons/cycle/settings", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    saveCyclePhase: (payload: import("@/types/api").SaveLessonCyclePayload) =>
+      apiFetch<{
+        cycle: import("@/types/api").LessonStudyCycle;
+        settings: import("@/types/api").LessonCycleSettings;
+      }>("/api/lessons/cycle", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
   },
 };
 

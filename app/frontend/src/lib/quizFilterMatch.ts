@@ -4,6 +4,8 @@ const CORE_FILTER_KEYS = [
   "topic",
   "institution",
   "mode",
+  "adaptive_focus",
+  "cycle_phase",
   "status",
   "year",
   "specialty",
