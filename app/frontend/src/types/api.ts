@@ -1259,6 +1259,23 @@ export interface QuestionUserNote {
   stem_preview?: string;
 }
 
+export interface LessonUserNote {
+  lesson_id: number;
+  title: string;
+  course_key: string;
+  course_name: string;
+  is_extra: boolean;
+  is_essential: boolean;
+  area: string;
+  specialty: string;
+  subtema: string | null;
+  module_name: string;
+  status: LessonProgressStatus;
+  bookmark_seconds: number;
+  notes: string;
+  updated_at: string | null;
+}
+
 export type FocusPrevalence = "prioritario" | "alta" | "media";
 
 export interface FocusRadarItem {

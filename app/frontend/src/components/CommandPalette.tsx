@@ -77,8 +77,15 @@ export function CommandPalette() {
 
   const { data: notesData } = useQuery({
     queryKey: ["command-palette-notes", trimmed],
-    queryFn: () => api.notes.list({ q: trimmed }),
+    queryFn: ({ signal }) => api.notes.list({ q: trimmed }, signal),
     enabled: isOpen && trimmed.length >= 2,
+    staleTime: 30_000,
+  });
+
+  const { data: lessonNotesData } = useQuery({
+    queryKey: ["command-palette-lesson-notes", trimmed],
+    queryFn: ({ signal }) => api.lessons.listNotes({ q: trimmed }, signal),
+    enabled: isOpen && canAccessLessons && trimmed.length >= 2,
     staleTime: 30_000,
   });
 
@@ -129,6 +136,7 @@ export function CommandPalette() {
   }, [examsData, trimmed]);
 
   const matchingNotes = (notesData?.notes ?? []).slice(0, 4);
+  const matchingLessonNotes = canAccessLessons ? (lessonNotesData?.notes ?? []).slice(0, 4) : [];
   const matchingLessons = canAccessLessons ? (lessonsData?.lessons ?? []).slice(0, 5) : [];
   const totalMatchingLessons = canAccessLessons ? (lessonsData?.summary?.total ?? matchingLessons.length) : 0;
   const matchingQuestions = (searchData ?? []).slice(0, 5);
@@ -223,14 +231,29 @@ export function CommandPalette() {
             </section>
           )}
 
-          {matchingNotes.length > 0 && (
+          {(matchingNotes.length > 0 || matchingLessonNotes.length > 0) && (
             <section className="flex flex-col gap-1">
               <span className="px-2 text-[10px] font-mono-lab uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <StickyNote className="w-3 h-3" /> Caderno Inteligente
               </span>
+              {matchingLessonNotes.map((ln) => (
+                <button
+                  key={`ln-${ln.lesson_id}`}
+                  type="button"
+                  onClick={() => navigate(`/caderno`)}
+                  className="w-full flex flex-col gap-0.5 px-3 py-2 rounded-xs hover:bg-elevated text-left cursor-pointer"
+                >
+                  <span className="text-xs font-semibold text-ink-primary">
+                    Aula • {ln.subtema || ln.title}
+                  </span>
+                  <span className="text-[11px] text-ink-secondary line-clamp-1">
+                    {ln.notes}
+                  </span>
+                </button>
+              ))}
               {matchingNotes.map((n) => (
                 <button
-                  key={n.question_id}
+                  key={`qn-${n.question_id}`}
                   type="button"
                   onClick={() => navigate(`/caderno`)}
                   className="w-full flex flex-col gap-0.5 px-3 py-2 rounded-xs hover:bg-elevated text-left cursor-pointer"

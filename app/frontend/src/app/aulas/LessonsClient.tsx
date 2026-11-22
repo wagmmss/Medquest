@@ -845,6 +845,7 @@ export default function LessonsClient() {
         queryClient.invalidateQueries({ queryKey: ["lessons-by-subtema"] }),
         queryClient.invalidateQueries({ queryKey: ["lessons-continue"] }),
         queryClient.invalidateQueries({ queryKey: ["theme-progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["smart-notebook-lessons"] }),
       ]);
 
       if (!silent) {
@@ -855,7 +856,7 @@ export default function LessonsClient() {
         } else if (overrides.status === "completed") {
           toast.success("Aula marcada como concluída.");
         } else if (overrides.bookmark_seconds !== undefined || overrides.notes !== undefined) {
-          toast.success("Anotações e ponto da aula salvos.");
+          toast.success("Ponto salvo e anotações sincronizadas com o Caderno Inteligente.");
         }
       }
       if (advanceNext) {
@@ -1424,14 +1425,22 @@ export default function LessonsClient() {
                           className="w-24 px-2.5 py-1 rounded-xs border border-line-subtle bg-surface text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
                         />
                       </div>
-                      <button
-                        type="button"
-                        disabled={savingProgress}
-                        onClick={() => void handleSaveNotesAndBookmark()}
-                        className="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
-                      >
-                        Salvar ponto e anotações
-                      </button>
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <Link
+                          href="/caderno"
+                          className="px-2.5 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary hover:text-ink-primary text-xs font-medium transition-colors"
+                        >
+                          Ver no Caderno
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={savingProgress}
+                          onClick={() => void handleSaveNotesAndBookmark()}
+                          className="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          Salvar ponto e anotações
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={notesInput}

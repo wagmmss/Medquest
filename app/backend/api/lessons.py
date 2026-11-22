@@ -210,6 +210,7 @@ def _norm_text(value: str | None) -> str:
 
 _SEARCH_STOPWORDS = frozenset({"a", "o", "e", "de", "da", "do", "das", "dos", "em", "na", "no", "nas", "nos", "com", "por", "para"})
 _PREVENTIVA_AREA_ALIASES = ("Preventiva", "Medicina Preventiva", "Medicina Preventiva e Social")
+_CIRURGIA_AREA_ALIASES = ("Cirurgia", "Cirurgia Geral")
 
 
 def _norm_search_text(value: str | None) -> str:
@@ -434,6 +435,9 @@ def list_lessons():
         if area in _PREVENTIVA_AREA_ALIASES:
             where.append("l.area IN (?, ?, ?)")
             params.extend(_PREVENTIVA_AREA_ALIASES)
+        elif area in _CIRURGIA_AREA_ALIASES:
+            where.append("l.area IN (?, ?)")
+            params.extend(_CIRURGIA_AREA_ALIASES)
         else:
             where.append("l.area = ?")
             params.append(area)
@@ -814,6 +818,91 @@ def lessons_continue():
         })
 
     return jsonify({"lesson": None, "reason": None, "planner_week": week_num, "stats": stats})
+
+
+@bp.route("/lessons/notes", methods=["GET"])
+@require_lessons_access
+def list_lesson_notes():
+    """Lista todas as anotações salvas em aulas do usuário autenticado (para o Caderno Inteligente)."""
+    db = get_db()
+    user_id = str(g.user_id)
+    area = (request.args.get("area") or "").strip()
+    q = (request.args.get("q") or "").strip()
+
+    where = [
+        "lp.user_id = ?",
+        "l.active = 1",
+        "TRIM(COALESCE(lp.notes, '')) != ''",
+    ]
+    params: list = [user_id]
+    if area:
+        if area in _PREVENTIVA_AREA_ALIASES:
+            where.append("l.area IN (?, ?, ?)")
+            params.extend(_PREVENTIVA_AREA_ALIASES)
+        elif area in _CIRURGIA_AREA_ALIASES:
+            where.append("l.area IN (?, ?)")
+            params.extend(_CIRURGIA_AREA_ALIASES)
+        else:
+            where.append("l.area = ?")
+            params.append(area)
+
+    rows = db.execute(
+        f"""
+        SELECT
+            l.id AS lesson_id,
+            l.title,
+            l.course_key,
+            l.course_name,
+            l.is_extra,
+            l.is_essential,
+            l.area,
+            l.specialty,
+            l.subtema,
+            l.module_name,
+            lp.status,
+            lp.bookmark_seconds,
+            lp.notes,
+            lp.updated_at
+        FROM lesson_progress lp
+        JOIN lessons l ON l.id = lp.lesson_id
+        WHERE {' AND '.join(where)}
+        ORDER BY lp.updated_at DESC, l.id DESC
+        """,
+        tuple(params),
+    ).fetchall()
+
+    q_norm = _norm_search_text(q)
+    q_tokens = _tokenize_search_query(q_norm) if q_norm else []
+    notes_out: list[dict] = []
+
+    for r in rows:
+        note_text = (r["notes"] or "").strip()
+        if not note_text:
+            continue
+        if q_norm:
+            haystack = _norm_search_text(
+                f"{note_text} {r['title']} {r['subtema'] or ''} {r['module_name']} {r['specialty'] or ''} {r['area']} {r['course_name']}"
+            )
+            if q_norm not in haystack and not (q_tokens and all(tok in haystack for tok in q_tokens)):
+                continue
+        notes_out.append({
+            "lesson_id": r["lesson_id"],
+            "title": r["title"],
+            "course_key": r["course_key"],
+            "course_name": r["course_name"],
+            "is_extra": bool(r["is_extra"]),
+            "is_essential": bool(r["is_essential"]),
+            "area": r["area"],
+            "specialty": r["specialty"] or "",
+            "subtema": r["subtema"],
+            "module_name": r["module_name"],
+            "status": r["status"] or "not_started",
+            "bookmark_seconds": int(r["bookmark_seconds"] or 0),
+            "notes": note_text,
+            "updated_at": r["updated_at"],
+        })
+
+    return jsonify({"notes": notes_out})
 
 
 @bp.route("/lessons/by-subtema", methods=["GET"])

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import unicodedata
 from datetime import datetime, timezone
 
 from flask import Blueprint, g, jsonify, request
@@ -11,6 +12,16 @@ from .db import db_transaction, get_db
 bp = Blueprint("notes_presets", __name__)
 
 ALLOWED_HIGHLIGHT_COLORS = {"yellow", "green", "pink", "blue"}
+_PREVENTIVA_AREA_ALIASES = ("Preventiva", "Medicina Preventiva", "Medicina Preventiva e Social")
+_CIRURGIA_AREA_ALIASES = ("Cirurgia", "Cirurgia Geral")
+
+
+def _norm_note_search(value: str | None) -> str:
+    if not value:
+        return ""
+    decomposed = unicodedata.normalize("NFD", str(value))
+    without_accents = "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+    return " ".join(without_accents.lower().split())
 
 
 def _now_iso() -> str:
@@ -122,11 +133,19 @@ def list_notes():
     """
     params: list[object] = [str(g.user_id)]
     if area:
-        query += " AND q.area = ?"
-        params.append(area)
+        if area in _PREVENTIVA_AREA_ALIASES:
+            query += " AND q.area IN (?, ?, ?)"
+            params.extend(_PREVENTIVA_AREA_ALIASES)
+        elif area in _CIRURGIA_AREA_ALIASES:
+            query += " AND q.area IN (?, ?)"
+            params.extend(_CIRURGIA_AREA_ALIASES)
+        else:
+            query += " AND q.area = ?"
+            params.append(area)
     query += " ORDER BY n.updated_at DESC"
 
     rows = db.execute(query, params).fetchall()
+    q_norm = _norm_note_search(q)
     notes = []
     for r in rows:
         try:
@@ -134,15 +153,15 @@ def list_notes():
         except json.JSONDecodeError:
             highlights = []
         note_text = r["note_text"] or ""
-        if q:
-            haystack = " ".join([
+        if q_norm:
+            haystack = _norm_note_search(" ".join([
                 note_text,
                 r["subtema"] or "",
                 r["area"] or "",
                 r["stem"] or "",
                 " ".join(h.get("text", "") for h in highlights if isinstance(h, dict)),
-            ]).lower()
-            if q not in haystack:
+            ]))
+            if q_norm not in haystack:
                 continue
         notes.append({
             "question_id": r["question_id"],

@@ -870,13 +870,14 @@ export const api = {
       }),
   },
   notes: {
-    list: (params?: { area?: string; q?: string }) => {
+    list: (params?: { area?: string; q?: string }, signal?: AbortSignal) => {
       const qs = new URLSearchParams();
       if (params?.area) qs.set("area", params.area);
       if (params?.q) qs.set("q", params.q);
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return apiFetch<{ notes: import("@/types/api").QuestionUserNote[] }>(`/api/notes${suffix}`, {
         cache: "no-store",
+        signal,
       });
     },
     getByQuestion: (qid: number) =>
@@ -922,6 +923,16 @@ export const api = {
     },
     get: (lessonId: number) =>
       apiFetch<LessonDetailResponse>(`/api/lessons/${lessonId}`, { cache: "no-store" }),
+    listNotes: (params?: { area?: string; q?: string }, signal?: AbortSignal) => {
+      const qs = new URLSearchParams();
+      if (params?.area) qs.set("area", params.area);
+      if (params?.q) qs.set("q", params.q);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return apiFetch<{ notes: import("@/types/api").LessonUserNote[] }>(`/api/lessons/notes${suffix}`, {
+        cache: "no-store",
+        signal,
+      });
+    },
     bySubtema: (subtema: string) =>
       apiFetch<SubtemaLessonsResponse>(
         `/api/lessons/by-subtema?subtema=${encodeURIComponent(subtema)}`,

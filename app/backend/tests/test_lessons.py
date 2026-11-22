@@ -596,3 +596,53 @@ def test_lessons_search_multitoken_area_alias_ranking_and_limit(app, client, see
         for item in limited_data["lessons"]
     )
 
+
+def test_lesson_notes_endpoint_access_filter_and_clear(client, seeded_lessons, monkeypatch):
+    monkeypatch.setenv("LESSONS_ALLOWED_USER_IDS", ALLOWED_SUB)
+    owner_headers = {"X-User-ID": ALLOWED_SUB, "X-User-Email": ALLOWED_EMAIL}
+    other_headers = {"X-User-ID": "user_other", "X-User-Email": "other@example.com"}
+
+    id1 = seeded_lessons["drive-id-1"]
+    id2 = seeded_lessons["drive-id-2"]
+
+    # Acesso negado para quem não está na allowlist de aulas
+    assert client.get("/api/lessons/notes", headers=other_headers).status_code == 403
+
+    # Salva anotação na aula 1 e progresso sem anotação na aula 2
+    assert client.put(
+        f"/api/lessons/{id1}/progress",
+        headers=owner_headers,
+        json={"status": "in_progress", "bookmark_seconds": 778, "notes": "Fatores de risco CA de mama: BRCA1 e BRCA2."},
+    ).status_code == 200
+    assert client.put(
+        f"/api/lessons/{id2}/progress",
+        headers=owner_headers,
+        json={"status": "completed", "notes": "   "},
+    ).status_code == 200
+
+    resp = client.get("/api/lessons/notes", headers=owner_headers)
+    assert resp.status_code == 200
+    assert resp.headers.get("Cache-Control") == "private, no-store"
+    notes = resp.get_json()["notes"]
+    assert len(notes) == 1
+    assert notes[0]["lesson_id"] == id1
+    assert notes[0]["bookmark_seconds"] == 778
+    assert "BRCA1" in notes[0]["notes"]
+
+    # Busca textual sem acento e filtro de área
+    by_q = client.get("/api/lessons/notes?q=brca1+mama", headers=owner_headers).get_json()["notes"]
+    assert len(by_q) == 1
+    by_area_miss = client.get("/api/lessons/notes?area=Pediatria", headers=owner_headers).get_json()["notes"]
+    assert by_area_miss == []
+    by_area_hit = client.get("/api/lessons/notes?area=Cl%C3%ADnica%20M%C3%A9dica", headers=owner_headers).get_json()["notes"]
+    assert len(by_area_hit) == 1
+
+    # Limpar anotação preserva status e bookmark da aula
+    clear_resp = client.put(f"/api/lessons/{id1}/progress", headers=owner_headers, json={"notes": ""})
+    assert clear_resp.status_code == 200
+    clear_data = clear_resp.get_json()
+    assert clear_data["status"] == "in_progress"
+    assert clear_data["bookmark_seconds"] == 778
+    assert client.get("/api/lessons/notes", headers=owner_headers).get_json()["notes"] == []
+
+

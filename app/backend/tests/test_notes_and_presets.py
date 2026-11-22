@@ -55,3 +55,23 @@ def test_question_notes_and_highlights_roundtrip(app, client) -> None:
     assert del_resp.status_code == 200
     after_del = client.get("/api/questions/1/note", headers={"X-User-ID": "user-a"}).get_json()
     assert after_del["note_text"] == ""
+
+
+def test_question_notes_area_aliases_and_accent_insensitive_search(app, client) -> None:
+    from api.db import db_transaction, get_db
+
+    with app.app_context():
+        db = get_db()
+        with db_transaction(db):
+            db.execute("UPDATE questions SET area = 'Cirurgia' WHERE id = 1")
+
+    client.put(
+        "/api/questions/1/note",
+        headers={"X-User-ID": "user-a"},
+        json={"note_text": "Sinal de Blumberg na apendicite aguda.", "highlights": []},
+    )
+
+    by_alias = client.get("/api/notes?area=Cirurgia+Geral&q=apendicite", headers={"X-User-ID": "user-a"}).get_json()["notes"]
+    assert len(by_alias) == 1
+    assert by_alias[0]["question_id"] == 1
+
