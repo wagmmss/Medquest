@@ -96,7 +96,8 @@ def create_app(testing=False, initialize_db=None):
     from .curation import bp as curation_bp
     from .osce_routes import bp as osce_routes_bp
     from .notes_presets import bp as notes_presets_bp
-    for bp in (questions_bp, stats_bp, plan_bp, logs_bp, sessions_bp, notifications_bp, themes_bp, auth_bp, ai_routes_bp, curation_bp, osce_routes_bp, notes_presets_bp):
+    from .lessons import bp as lessons_bp
+    for bp in (questions_bp, stats_bp, plan_bp, logs_bp, sessions_bp, notifications_bp, themes_bp, auth_bp, ai_routes_bp, curation_bp, osce_routes_bp, notes_presets_bp, lessons_bp):
         app.register_blueprint(bp, url_prefix="/api")
         app.register_blueprint(bp, url_prefix="/api/v1", name=f"{bp.name}_v1")
 

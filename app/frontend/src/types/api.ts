@@ -627,6 +627,126 @@ export interface AuthMeResponse {
   user_id: string;
   email: string | null;
   is_curator: boolean;
+  can_access_lessons?: boolean;
+}
+
+export type LessonProgressStatus = "not_started" | "in_progress" | "completed";
+
+export interface LessonProgressState {
+  status: LessonProgressStatus;
+  bookmark_seconds: number;
+  notes?: string;
+  has_notes?: boolean;
+  completed_at: string | null;
+  updated_at: string | null;
+}
+
+export interface LessonItem {
+  id: number;
+  course_key: string;
+  course_name: string;
+  is_extra: boolean;
+  area: string;
+  specialty: string;
+  subtema: string | null;
+  module_name: string;
+  module_order: number;
+  title: string;
+  lesson_order: number;
+  lesson_kind: string;
+  is_essential: boolean;
+  media_type?: string;
+  provider?: string;
+  drive_file_id: string;
+  drive_path?: string;
+  size_bytes?: number;
+  duration_seconds: number | null;
+  preview_url?: string;
+  open_url?: string;
+  progress: LessonProgressState;
+}
+
+export interface LessonsCourseSummary {
+  course_key: string;
+  course_name: string;
+  is_extra: boolean;
+  total: number;
+  completed: number;
+  in_progress: number;
+}
+
+export interface LessonsListResponse {
+  lessons: LessonItem[];
+  summary: {
+    total: number;
+    completed: number;
+    in_progress: number;
+    not_started: number;
+    total_duration_seconds?: number;
+    remaining_duration_seconds?: number;
+    by_course: LessonsCourseSummary[];
+    areas: string[];
+  };
+}
+
+export interface SubtemaLessonsResponse {
+  subtema: string;
+  primary: LessonItem[];
+  extras: LessonItem[];
+  progress: {
+    total: number;
+    completed: number;
+    essential_total: number;
+    essential_completed: number;
+    extra_total: number;
+    extra_completed: number;
+  };
+}
+
+export interface LessonsSummaryBySubtemaItem {
+  total: number;
+  completed: number;
+  essential_total: number;
+  essential_completed: number;
+  extra_total: number;
+  extra_completed: number;
+  total_duration_seconds?: number;
+  remaining_duration_seconds?: number;
+  theory_completed?: boolean;
+  essential_all_completed?: boolean;
+  next_lesson_id: number | null;
+}
+
+export interface LessonsSummaryBySubtemaResponse {
+  subtemas: Record<string, LessonsSummaryBySubtemaItem>;
+}
+
+export interface ContinueLessonResponse {
+  lesson: LessonItem | null;
+  reason: "in_progress" | "planner_week" | "next_pending" | null;
+  planner_week: number | null;
+  stats: {
+    primary_total: number;
+    primary_completed: number;
+    primary_remaining_seconds: number;
+  };
+}
+
+export interface CurrentWeekLessonsResponse {
+  week: number | null;
+  subtemas: string[];
+}
+
+export interface LessonDetailResponse {
+  lesson: LessonItem;
+  playlist: LessonItem[];
+}
+
+export interface SaveLessonProgressPayload {
+  status?: LessonProgressStatus;
+  bookmark_seconds?: number;
+  notes?: string;
+  sync_theme_theory?: boolean;
 }
 
 export interface PreceptorFocusTopic {

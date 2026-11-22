@@ -436,4 +436,94 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
     await expect(page.locator('h2:has-text("Novo Simulado")')).not.toBeVisible();
   });
 
+  test('P1-02: sync de tentativa avulsa não tira simulado de OFFLINE_SUBMITTED; apenas o lote do próprio queueId leva a RESULTS', async ({ page }) => {
+    await page.route('**/api/**', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/api/meta')) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_META) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+    });
+
+    await page.goto('/simulado?area=Cl%C3%ADnica+M%C3%A9dica');
+    await page.waitForFunction(() => typeof (window as unknown as { localDb?: unknown }).localDb !== 'undefined');
+
+    await page.evaluate(() => {
+      const owner = localStorage.getItem('medquest_local_owner') || 'default';
+      const key = `medquest_simulado_state_v2:${owner}`;
+      const state = {
+        version: 2,
+        state: 'OFFLINE_SUBMITTED',
+        queue: [
+          { id: 902, institution_code: 'USP-SP', year: 2026, area: 'Clínica Médica', subtema: 'Cardio' }
+        ],
+        answers: { 902: 'A' },
+        deadlineAt: Date.now() + 3600000,
+        currentIndex: 0,
+        resultsMap: {},
+        flagged: {},
+        force4Options: false,
+        queueId: 'mock-batch-queue-id-902',
+        sessionId: 'mock-session-902',
+        plannedDurationSeconds: 3600,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(key, JSON.stringify(state));
+    });
+
+    await page.reload();
+    await expect(page.locator('button:has-text("Continuar Andamento")')).toBeVisible({ timeout: 10000 });
+    await page.click('button:has-text("Continuar Andamento")');
+    await expect(page.locator('text=Simulado Salvo Offline')).toBeVisible({ timeout: 10000 });
+
+    // 1. Evento de sync de tentativa avulsa (/api/questions/1/attempt) NÃO pode tirar de OFFLINE_SUBMITTED
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new CustomEvent('sync-item-success', {
+          detail: {
+            id: 'unrelated-single-attempt-id',
+            endpoint: '/api/questions/1/attempt',
+            method: 'POST',
+            data: {
+              is_correct: true,
+              correct_letter: 'B',
+              explanation: 'Explicação avulsa.',
+            },
+          },
+        })
+      );
+    });
+
+    await page.waitForTimeout(500);
+    await expect(page.locator('text=Simulado Salvo Offline')).toBeVisible();
+    await expect(page.locator('text=Nota Final')).not.toBeVisible();
+
+    // 2. Evento do próprio lote (mesmo queueId) com results leva a RESULTS com a nota do servidor
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new CustomEvent('sync-item-success', {
+          detail: {
+            id: 'mock-batch-queue-id-902',
+            endpoint: '/api/attempt/batch',
+            method: 'POST',
+            data: {
+              results: [
+                {
+                  question_id: 902,
+                  is_correct: true,
+                  correct_letter: 'A',
+                  explanation: 'Explicação oficial do lote.',
+                  next_review_date: '2026-12-01T00:00:00Z',
+                },
+              ],
+            },
+          },
+        })
+      );
+    });
+
+    await expect(page.locator('text=Nota Final')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=100% de Acerto')).toBeVisible();
+  });
+
 });

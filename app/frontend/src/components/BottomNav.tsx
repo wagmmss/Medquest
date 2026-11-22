@@ -19,6 +19,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { OfflineModal } from "./OfflineModal";
 import { AccountModal } from "./AccountModal";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import {
   PRIMARY_BOTTOM_NAV_ITEMS,
   MORE_BOTTOM_NAV_ITEMS,
@@ -34,6 +35,8 @@ export function BottomNav() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const { isZenMode, toggleZenMode } = useZenMode();
   const { isOffline, forcedOffline } = useOfflineStatus();
+  const { canAccessLessons } = useLessonsAccess();
+  const visibleMoreItems = MORE_BOTTOM_NAV_ITEMS.filter((item) => !item.requiresLessonsAccess || canAccessLessons);
 
   useEffect(() => {
     if (!isMoreOpen) return;
@@ -78,7 +81,7 @@ export function BottomNav() {
           </div>
 
           <div className="overflow-y-auto p-2 space-y-1">
-            {MORE_BOTTOM_NAV_ITEMS.map((item) => {
+            {visibleMoreItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link

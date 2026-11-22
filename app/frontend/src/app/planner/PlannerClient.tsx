@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PlannerWeek,
   PlannerProgressMap,
@@ -13,9 +13,11 @@ import {
   PlannerTopicProgressMap,
   PlannerOrganizationMode,
   PlannerScheduleMode,
+  LessonsSummaryBySubtemaItem,
 } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
-import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange } from "lucide-react";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
+import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, PlayCircle, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { InternatoBlocksModal } from "./InternatoBlocksModal";
@@ -43,6 +45,15 @@ const formatHours = (hours: number) => hours.toLocaleString("pt-BR", {
   maximumFractionDigits: 1,
 });
 
+const formatRemainingSeconds = (seconds?: number) => {
+  if (!seconds || seconds <= 0) return "";
+  const totalMin = Math.round(seconds / 60);
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+};
+
 
 const TopicRow = memo(function TopicRow({ 
   t, 
@@ -56,6 +67,7 @@ const TopicRow = memo(function TopicRow({
   onDragOver,
   onDrop,
   onOpenMoveModal,
+  lessonSummary,
 }: { 
   t: PlannerTopic; 
   completed: boolean;
@@ -68,6 +80,7 @@ const TopicRow = memo(function TopicRow({
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onOpenMoveModal?: () => void;
+  lessonSummary?: LessonsSummaryBySubtemaItem;
 }) {
     const key = `planner-topic-${week}-${t.subtema}`;
   const isChecked = completed;
@@ -165,6 +178,27 @@ const TopicRow = memo(function TopicRow({
             >
               <Play size={11} className="fill-current" /> Praticar Questões
             </Link>
+            {lessonSummary && lessonSummary.total > 0 && (
+              <Link
+                href={`/aulas?subtema=${encodeURIComponent(t.subtema)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-md transition-colors border border-primary/20"
+              >
+                <PlayCircle size={12} /> Assistir aulas ({lessonSummary.completed}/{lessonSummary.total}
+                {lessonSummary.remaining_duration_seconds
+                  ? ` • ${formatRemainingSeconds(lessonSummary.remaining_duration_seconds)}`
+                  : ""}
+                )
+              </Link>
+            )}
+            {lessonSummary?.theory_completed ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-success/10 text-success border border-success/25">
+                <Check size={11} /> Teoria ✓
+              </span>
+            ) : lessonSummary?.essential_all_completed ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/25">
+                <Check size={11} /> Aulas ✓
+              </span>
+            ) : null}
             {onOpenMoveModal && (
               <button
                 type="button"
@@ -205,6 +239,15 @@ export function PlannerClient({
 }: PlannerClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { canAccessLessons } = useLessonsAccess();
+  const { data: lessonsSummaryData } = useQuery({
+    queryKey: ["lessons-summary-by-subtema"],
+    queryFn: () => api.lessons.summaryBySubtema(),
+    enabled: canAccessLessons,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const lessonsSummaryBySubtema = lessonsSummaryData?.subtemas;
   const [currentPlan, setCurrentPlan] = useState<PlannerWeek[]>(plan);
   const [progress, setProgress] = useState<PlannerProgressMap>(initialProgress);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -829,6 +872,7 @@ export function PlannerClient({
                       onDragOver={(e) => handleTopicDragOver(e, week.week, idx)}
                       onDrop={(e) => handleTopicDrop(e, week.week, idx)}
                       onOpenMoveModal={() => setMoveModalTopic({ subtema: t.subtema, currentWeek: week.week, targetWeek: week.week })}
+                      lessonSummary={canAccessLessons ? lessonsSummaryBySubtema?.[t.subtema] : undefined}
                     />
                   ))}
                   {week.topics.length === 0 && (

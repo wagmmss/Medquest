@@ -73,3 +73,40 @@ def test_simulado_custom_expande_aliases(client):
     assert r.status_code == 200
     # Na fixture de teste temos poucas questões cadastradas, mas o endpoint não deve falhar
     assert isinstance(r.get_json(), list)
+
+
+def test_simulado_session_idempotency_is_committed(client, app):
+    """A conclusão da chave de idempotência deve ser persistida junto com a sessão."""
+    import sqlite3
+    import uuid
+
+    key = str(uuid.uuid4())
+    payload = {
+        "client_session_id": "idem-session-0001",
+        "planned_duration_seconds": 600,
+        "elapsed_seconds": 300,
+        "total_questions": 2,
+        "answered_count": 2,
+        "correct_count": 1,
+        "filters": {},
+        "area_results": [],
+    }
+    headers = {"X-Idempotency-Key": key}
+    first = client.post("/api/simulado/sessions", json=payload, headers=headers)
+    assert first.status_code == 200
+
+    import os
+    con = sqlite3.connect(os.environ["MEDQUEST_DB"])
+    try:
+        row = con.execute(
+            "SELECT status, status_code FROM idempotency_keys WHERE key = ?", (key,)
+        ).fetchone()
+    finally:
+        con.close()
+    assert row is not None
+    assert row[0] == "completed"
+    assert row[1] == 200
+
+    replay = client.post("/api/simulado/sessions", json=payload, headers=headers)
+    assert replay.status_code == 200
+    assert replay.get_json() == {"success": True}

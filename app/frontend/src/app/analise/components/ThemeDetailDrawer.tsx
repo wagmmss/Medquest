@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   Flame,
+  PlayCircle,
   RotateCcw,
   Target,
   X,
@@ -21,6 +22,7 @@ import type {
   ThemeProgress,
 } from "@/types/api";
 import { api } from "@/lib/api";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { plannerData } from "@/lib/plannerData";
 import { getThemeUrls } from "@/lib/themeJourney";
 
@@ -43,6 +45,8 @@ export function ThemeDetailDrawer({
     limit: 10 | 20 | 30;
   } | null>(null);
   const [savingProgress, setSavingProgress] = useState(false);
+  const [showExtraLessons, setShowExtraLessons] = useState(false);
+  const { canAccessLessons } = useLessonsAccess();
 
   const { data: queriedProgress } = useQuery({
     queryKey: ["theme-progress", subtema],
@@ -50,6 +54,14 @@ export function ThemeDetailDrawer({
     enabled: Boolean(subtema),
     staleTime: 60_000,
     retry: 1,
+  });
+
+  const { data: subtemaLessons } = useQuery({
+    queryKey: ["lessons-by-subtema", subtema],
+    queryFn: () => api.lessons.bySubtema(subtema!),
+    enabled: Boolean(subtema && canAccessLessons),
+    staleTime: 60_000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -343,6 +355,91 @@ export function ThemeDetailDrawer({
               );
             })}
           </div>
+
+          {canAccessLessons &&
+            subtemaLessons &&
+            (subtemaLessons.primary.length > 0 || subtemaLessons.extras.length > 0) && (
+              <div className="pt-3 mt-2 border-t border-line-subtle space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-ink-primary flex items-center gap-1.5">
+                    <PlayCircle size={14} className="text-accent" />
+                    Aulas em vídeo ({subtemaLessons.progress.completed}/{subtemaLessons.progress.total})
+                  </span>
+                  <Link
+                    href={`/aulas?subtema=${encodeURIComponent(subtema)}`}
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    Abrir no player →
+                  </Link>
+                </div>
+
+                {subtemaLessons.primary.length > 0 && (
+                  <ul className="space-y-1">
+                    {subtemaLessons.primary.map((lesson) => {
+                      const done = lesson.progress.status === "completed";
+                      return (
+                        <li key={lesson.id}>
+                          <Link
+                            href={`/aulas?lesson=${lesson.id}&subtema=${encodeURIComponent(subtema)}`}
+                            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xs bg-surface border border-line-subtle hover:border-accent/50 text-xs transition-colors"
+                          >
+                            <span
+                              className={clsx(
+                                "truncate",
+                                done ? "text-ink-muted line-through" : "text-ink-primary font-medium"
+                              )}
+                            >
+                              {lesson.title}
+                            </span>
+                            <span
+                              className={clsx(
+                                "text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-xs",
+                                done
+                                  ? "bg-success/10 text-success"
+                                  : lesson.is_essential
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-elevated text-ink-muted"
+                              )}
+                            >
+                              {done ? "Concluída" : lesson.is_essential ? "Principal" : lesson.lesson_kind}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {subtemaLessons.extras.length > 0 && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowExtraLessons((v) => !v)}
+                      className="text-[11px] font-semibold text-ink-secondary hover:text-ink-primary cursor-pointer"
+                    >
+                      {showExtraLessons ? "Ocultar" : "Ver"} Extras MedCof ({subtemaLessons.extras.length})
+                    </button>
+                    {showExtraLessons && (
+                      <ul className="mt-1.5 space-y-1">
+                        {subtemaLessons.extras.map((lesson) => (
+                          <li key={lesson.id}>
+                            <Link
+                              href={`/aulas?lesson=${lesson.id}&subtema=${encodeURIComponent(subtema)}&course=medcof_r1_2026`}
+                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xs bg-surface border border-line-subtle hover:border-accent/50 text-xs transition-colors"
+                            >
+                              <span className="truncate text-ink-primary">{lesson.title}</span>
+                              <span className="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-xs bg-elevated text-ink-secondary">
+                                MedCof
+                              </span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {/* Study Actions */}

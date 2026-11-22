@@ -97,7 +97,7 @@ test('impede envio duplicado da mesma tentativa por clique duplo', async ({ page
   await page.getByRole('button', { name: /Mudança de estilo de vida/ }).click();
   await page.getByRole('button', { name: 'Confirmar Resposta' }).dblclick();
 
-  await expect(page.getByText('Resposta Correta!')).toBeVisible();
+  await expect(page.getByText('Resposta Correta', { exact: true })).toBeVisible();
   expect(attempts).toBe(1);
 });
 

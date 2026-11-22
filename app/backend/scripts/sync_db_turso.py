@@ -430,12 +430,107 @@ def sync_database(verbose: bool = True) -> bool:
             if verbose and (batch_idx % 25 == 0 or batch_idx == total_batches):
                 print(f"      ... [Explicações] {min(i + batch_size, len(exps_to_sync))}/{len(exps_to_sync)} ({batch_idx}/{total_batches} lotes)")
 
+    # 6. Sincronizar Catálogo de Aulas (lessons) se existir localmente e o schema remoto já estiver migrado
+    has_lessons_table = cur.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='lessons'"
+    ).fetchone()
+    synced_lessons = 0
+    if has_lessons_table:
+        cur.execute("SELECT * FROM lessons ORDER BY id ASC")
+        local_lessons = cur.fetchall()
+        if local_lessons:
+            schema_probe = execute_turso_pipeline(url, token, [
+                {"type": "execute", "stmt": {"sql": "SELECT name FROM sqlite_master WHERE type='table' AND name='lessons'"}},
+                {"type": "execute", "stmt": {"sql": "PRAGMA table_info(lessons)"}},
+            ], timeout=30)
+            remote_has_lessons = bool(schema_probe["results"][0]["response"]["result"]["rows"])
+            remote_cols = {
+                r[1]["value"]
+                for r in schema_probe["results"][1]["response"]["result"]["rows"]
+                if len(r) > 1 and r[1].get("value")
+            }
+            if not remote_has_lessons or "mapping_source" not in remote_cols:
+                print("  [AVISO] Tabela 'lessons' (migrations 022/023) ainda não aplicada no Turso remoto.")
+                print("          Faça primeiro o deploy do backend (que aplica as migrations) e depois rode --db-only.")
+                conn.close()
+                return False
+
+            if verbose:
+                print(f"  [+] Sincronizando catálogo de {len(local_lessons)} aulas (lessons) com o Turso...")
+
+            lesson_upsert_sql = """
+                INSERT INTO lessons (
+                    course_key, course_name, is_extra, area, specialty, subtema,
+                    module_name, module_order, title, lesson_order, lesson_kind,
+                    is_essential, media_type, provider, drive_file_id, drive_path,
+                    size_bytes, duration_seconds, mapping_source, active, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(drive_file_id) DO UPDATE SET
+                    course_key = excluded.course_key,
+                    course_name = excluded.course_name,
+                    is_extra = excluded.is_extra,
+                    area = CASE WHEN lessons.mapping_source = 'manual' THEN lessons.area ELSE excluded.area END,
+                    specialty = excluded.specialty,
+                    subtema = CASE WHEN lessons.mapping_source = 'manual' THEN lessons.subtema ELSE excluded.subtema END,
+                    module_name = excluded.module_name,
+                    module_order = excluded.module_order,
+                    title = excluded.title,
+                    lesson_order = excluded.lesson_order,
+                    lesson_kind = excluded.lesson_kind,
+                    is_essential = CASE WHEN lessons.mapping_source = 'manual' THEN lessons.is_essential ELSE excluded.is_essential END,
+                    media_type = excluded.media_type,
+                    provider = excluded.provider,
+                    drive_path = excluded.drive_path,
+                    size_bytes = excluded.size_bytes,
+                    duration_seconds = COALESCE(excluded.duration_seconds, lessons.duration_seconds),
+                    active = excluded.active,
+                    updated_at = excluded.updated_at
+            """
+
+            def _turso_arg(val):
+                if val is None:
+                    return {"type": "null"}
+                if isinstance(val, int):
+                    return {"type": "integer", "value": str(val)}
+                if isinstance(val, float):
+                    return {"type": "float", "value": val}
+                return {"type": "text", "value": str(val)}
+
+            batch_size = 150
+            for i in range(0, len(local_lessons), batch_size):
+                chunk = local_lessons[i:i + batch_size]
+                steps = []
+                for idx, row in enumerate(chunk):
+                    step = {
+                        "stmt": {
+                            "sql": lesson_upsert_sql,
+                            "args": [_turso_arg(row[col]) for col in (
+                                "course_key", "course_name", "is_extra", "area", "specialty", "subtema",
+                                "module_name", "module_order", "title", "lesson_order", "lesson_kind",
+                                "is_essential", "media_type", "provider", "drive_file_id", "drive_path",
+                                "size_bytes", "duration_seconds", "mapping_source", "active", "updated_at",
+                            )],
+                        }
+                    }
+                    if idx > 0:
+                        step["condition"] = {"type": "ok", "step": idx - 1}
+                    steps.append(step)
+
+                batch_resp = execute_turso_pipeline(url, token, [{"type": "batch", "batch": {"steps": steps}}])
+                batch_result = batch_resp["results"][0]["response"]["result"]
+                step_errors = batch_result.get("step_errors") or []
+                for err in step_errors:
+                    if err is not None:
+                        raise RuntimeError(f"Erro atômico no lote de aulas no Turso (rollback aplicado): {err}")
+            synced_lessons = len(local_lessons)
+
     duration = time.time() - start_time
-    total_synced = len(missing_q) + len(missing_a) + len(missing_i) + len(exps_to_sync)
+    total_synced = len(missing_q) + len(missing_a) + len(missing_i) + len(exps_to_sync) + synced_lessons
 
     if total_synced > 0:
-        print(f"  [OK] Turso Cloud sincronizado com sucesso!")
-        print(f"       +{len(missing_q)} questões, +{len(missing_a)} alternativas, +{len(missing_i)} imagens, {len(exps_to_sync)} explicações atualizadas ({duration:.1f}s)")
+        print("  [OK] Turso Cloud sincronizado com sucesso!")
+        print(f"       +{len(missing_q)} questões, +{len(missing_a)} alternativas, +{len(missing_i)} imagens, {len(exps_to_sync)} explicações atualizadas, {synced_lessons} aulas ({duration:.1f}s)")
     else:
         print(f"  [OK] Turso Cloud já está 100% atualizado e em sincronia com o banco local ({duration:.1f}s)")
 

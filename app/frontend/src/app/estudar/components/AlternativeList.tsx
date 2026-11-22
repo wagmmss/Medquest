@@ -144,6 +144,12 @@ export const AlternativeList: React.FC<AlternativeListProps> = React.memo(({
               if (attemptResult || submitting) return;
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
+                // Já selecionada: deixa o atalho global confirmar esta mesma letra.
+                if (isSelected) return;
+                // Ainda não selecionada: só seleciona. Sem stopPropagation o atalho
+                // global (window) confirmaria a letra antiga, pois o React ainda
+                // não re-renderizou com a nova seleção neste mesmo evento.
+                e.stopPropagation();
                 onSelectAlternative(alt.letter);
               }
             }}

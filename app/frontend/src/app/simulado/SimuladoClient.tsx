@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { QuestionMeta, QuestionListItem, QuestionDetail, BatchAttemptItem, BatchAttemptResultItem } from "@/types/api";
-import { api, OfflineQueuedError } from "@/lib/api";
+import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, BatchAttemptItem, BatchAttemptResultItem } from "@/types/api";
+import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { localDb, getLocalOwnerId, isLocalIdentityReady, SimuladoPackage, isPackageValid, isDeviceOffline } from "@/lib/db";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { getReadySimuladoPackage, downloadSimuladoPackage } from "@/lib/simuladoPackage";
@@ -63,7 +63,17 @@ const SimuladoResultsView = dynamic(
   }
 );
 
-type SimuladoState = "START" | "LOADING" | "PLAYING" | "SUBMITTING" | "RESULTS" | "OFFLINE_SUBMITTED";
+type SimuladoState = "START" | "LOADING" | "PLAYING" | "AWAITING_PRACTICE_SYNC" | "SUBMITTING" | "RESULTS" | "OFFLINE_SUBMITTED";
+interface PendingSimuladoBatch {
+  key: string;
+  attempts: BatchAttemptItem[];
+}
+interface PracticeAttemptEntry {
+  status: "inflight" | "queued" | "failed";
+  key: string;
+  body: AttemptPayload;
+  queueItemId?: string;
+}
 interface SavedSimuladoState {
   version: number;
   state: SimuladoState;
@@ -80,13 +90,15 @@ interface SavedSimuladoState {
   savedAt: number;
   eliminatedMap?: Record<number, string[]>;
   feedbackMode?: "exam" | "practice";
+  pendingBatch?: PendingSimuladoBatch | null;
+  practiceByQid?: Record<number, PracticeAttemptEntry>;
 }
 
 function isSavedSimuladoState(value: unknown): value is SavedSimuladoState {
   if (typeof value !== "object" || value === null) return false;
   const saved = value as Partial<SavedSimuladoState>;
   return saved.version === LEARNING_SESSION_VERSION &&
-    (saved.state === "PLAYING" || saved.state === "RESULTS" || saved.state === "OFFLINE_SUBMITTED") &&
+    (saved.state === "PLAYING" || saved.state === "AWAITING_PRACTICE_SYNC" || saved.state === "RESULTS" || saved.state === "OFFLINE_SUBMITTED") &&
     Array.isArray(saved.queue) && saved.queue.length > 0 &&
     typeof saved.currentIndex === "number" && saved.currentIndex >= 0 &&
     saved.currentIndex < saved.queue.length &&
@@ -143,12 +155,40 @@ export function SimuladoClient({
 
   // Answers: question_id -> letter
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const answersRef = useRef<Record<number, string>>({});
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
   const [eliminatedMap, setEliminatedMap] = useState<Record<number, string[]>>({});
   const [resultsMap, setResultsMap] = useState<Record<number, BatchAttemptResultItem>>({});
+  const resultsMapRef = useRef<Record<number, BatchAttemptResultItem>>({});
+  useEffect(() => {
+    resultsMapRef.current = resultsMap;
+  }, [resultsMap]);
   const [queueId, setQueueId] = useState<string | undefined>(undefined);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [plannedDurationSeconds, setPlannedDurationSeconds] = useState(0);
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
+  const [pendingBatch, setPendingBatch] = useState<PendingSimuladoBatch | null>(null);
+  const pendingBatchRef = useRef<PendingSimuladoBatch | null>(null);
+  const [practiceByQid, setPracticeByQid] = useState<Record<number, PracticeAttemptEntry>>({});
+  const practiceByQidRef = useRef<Record<number, PracticeAttemptEntry>>({});
+  const [failedPracticeQueueIds, setFailedPracticeQueueIds] = useState<Record<string, string>>({});
+
+  const updatePendingBatch = useCallback((next: PendingSimuladoBatch | null) => {
+    pendingBatchRef.current = next;
+    setPendingBatch(next);
+  }, []);
+
+  const updatePracticeByQid = useCallback(
+    (updater: (prev: Record<number, PracticeAttemptEntry>) => Record<number, PracticeAttemptEntry>) => {
+      const next = updater(practiceByQidRef.current);
+      practiceByQidRef.current = next;
+      setPracticeByQid(next);
+      return next;
+    },
+    []
+  );
 
   // Marcar para revisar
   const [flagged, setFlagged] = useState<Record<number, boolean>>({});
@@ -191,9 +231,8 @@ export function SimuladoClient({
   const detailRequestRef = useRef(0);
   const dialogInitialFocusRef = useRef<HTMLButtonElement>(null);
   const customConfigLoadedRef = useRef(false);
-  const syncResolutionRef = useRef<"idle" | "pending" | "confirmed_results" | "removed_no_results" | "terminal_failed">("idle");
+  const syncResolutionRef = useRef<"idle" | "pending" | "confirmed_results" | "synced_without_results" | "terminal_failed">("idle");
   const hasAutoSubmittedRef = useRef(false);
-  const inFlightPracticeRef = useRef<Map<number, Promise<void>>>(new Map());
   const activeConfigRef = useRef(customConfig);
   const questionShownAtRef = useRef<number>(0);
 
@@ -327,11 +366,29 @@ export function SimuladoClient({
         hasAutoSubmittedRef.current = false;
       }
       setCurrentIndex(saved.currentIndex);
+      resultsMapRef.current = saved.resultsMap;
       setResultsMap(saved.resultsMap);
       setFlagged(saved.flagged);
       setForce4Options(saved.force4Options);
       setQueueId(saved.queueId);
       setSessionId(saved.sessionId);
+      updatePendingBatch(saved.pendingBatch ?? null);
+      if (saved.practiceByQid) {
+        const restoredPractice: Record<number, PracticeAttemptEntry> = {};
+        for (const [qidStr, entry] of Object.entries(saved.practiceByQid)) {
+          const qidNum = Number(qidStr);
+          if (!Number.isFinite(qidNum) || !entry) continue;
+          // Após reload, um envio que estava "inflight" não tem mais promise viva;
+          // reclassifica como "failed" preservando a mesma key/body para reenvio seguro.
+          restoredPractice[qidNum] = entry.status === "inflight"
+            ? { ...entry, status: "failed" }
+            : entry;
+        }
+        updatePracticeByQid(() => restoredPractice);
+      } else {
+        updatePracticeByQid(() => ({}));
+      }
+      setFailedPracticeQueueIds({});
       if (saved.eliminatedMap) {
         setEliminatedMap(saved.eliminatedMap);
       }
@@ -356,7 +413,7 @@ export function SimuladoClient({
 
   useEffect(() => {
     if (!storageReady) return;
-    if (state === "PLAYING" || state === "OFFLINE_SUBMITTED") {
+    if (state === "PLAYING" || state === "AWAITING_PRACTICE_SYNC" || state === "OFFLINE_SUBMITTED") {
       writeLearningSession("simulado", {
         version: LEARNING_SESSION_VERSION,
         state,
@@ -373,9 +430,11 @@ export function SimuladoClient({
         savedAt: Date.now(),
         eliminatedMap,
         feedbackMode,
+        pendingBatch,
+        practiceByQid,
       } satisfies SavedSimuladoState);
     }
-  }, [storageReady, state, queue, answers, currentIndex, resultsMap, flagged, force4Options, queueId, sessionId, plannedDurationSeconds, eliminatedMap, feedbackMode]);
+  }, [storageReady, state, queue, answers, currentIndex, resultsMap, flagged, force4Options, queueId, sessionId, plannedDurationSeconds, eliminatedMap, feedbackMode, pendingBatch, practiceByQid]);
 
   const handleDownloadOfflineSimulado = async (overrideConfig?: typeof customConfig) => {
     if (isDownloadingPackage || isOffline) return;
@@ -485,9 +544,14 @@ export function SimuladoClient({
         setQueue(qList);
         setCurrentIndex(0);
         setAnswers({});
+        resultsMapRef.current = {};
         setResultsMap({});
         setFlagged({});
         setEliminatedMap({});
+        setQueueId(undefined);
+        updatePendingBatch(null);
+        updatePracticeByQid(() => ({}));
+        setFailedPracticeQueueIds({});
         hasAutoSubmittedRef.current = false;
         setState("PLAYING");
         toast.success(`Iniciando Simulado Offline: ${readyPkg.name}`);
@@ -525,9 +589,14 @@ export function SimuladoClient({
       setQueue(qList);
       setCurrentIndex(0);
       setAnswers({});
+      resultsMapRef.current = {};
       setResultsMap({});
       setFlagged({});
       setEliminatedMap({});
+      setQueueId(undefined);
+      updatePendingBatch(null);
+      updatePracticeByQid(() => ({}));
+      setFailedPracticeQueueIds({});
       hasAutoSubmittedRef.current = false;
       setState("PLAYING");
 
@@ -584,6 +653,49 @@ export function SimuladoClient({
   };
 
 
+  const sendPracticeAttempt = useCallback(
+    async (qid: number, key: string, body: AttemptPayload) => {
+      updatePracticeByQid((prev) => ({
+        ...prev,
+        [qid]: { status: "inflight", key, body },
+      }));
+      try {
+        const res = await api.questions.postAttempt(qid, body, key);
+        const mappedResult: BatchAttemptResultItem = {
+          question_id: qid,
+          is_correct: Boolean(res.is_correct),
+          correct_letter: res.correct_letter || "",
+          explanation: res.explanation || null,
+          next_review_date: res.next_review_date || new Date().toISOString(),
+          is_discursive: Boolean(res.is_discursive),
+        };
+        resultsMapRef.current = { ...resultsMapRef.current, [qid]: mappedResult };
+        setResultsMap((prev) => ({ ...prev, [qid]: mappedResult }));
+        updatePracticeByQid((prev) => {
+          const next = { ...prev };
+          delete next[qid];
+          return next;
+        });
+      } catch (err) {
+        if (err instanceof OfflineQueuedError) {
+          updatePracticeByQid((prev) => ({
+            ...prev,
+            [qid]: { status: "queued", key, body, queueItemId: err.localId },
+          }));
+          toast("Sem conexão: resposta salva localmente e enfileirada para correção.");
+          return;
+        }
+        updatePracticeByQid((prev) => ({
+          ...prev,
+          [qid]: { status: "failed", key, body },
+        }));
+        console.error("Erro ao validar feedback imediato em modo treino:", err);
+        toast.error("Não foi possível validar o feedback imediato agora. Sua resposta foi mantida.");
+      }
+    },
+    [updatePracticeByQid]
+  );
+
   const submitSimulado = useCallback(async () => {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
@@ -593,36 +705,88 @@ export function SimuladoClient({
         : 0;
     setState("SUBMITTING");
 
-    if (inFlightPracticeRef.current.size > 0) {
-      await Promise.allSettled(Array.from(inFlightPracticeRef.current.values()));
+    let activeBatch = pendingBatchRef.current;
+
+    if (!activeBatch) {
+      // Antes de montar o lote, reenvia tentativas do modo prática que falharam com a MESMA key/body.
+      const failedPracticeEntries = Object.entries(practiceByQidRef.current).filter(
+        ([, entry]) => entry.status === "failed"
+      );
+      if (failedPracticeEntries.length > 0) {
+        await Promise.allSettled(
+          failedPracticeEntries.map(([qidStr, entry]) =>
+            sendPracticeAttempt(Number(qidStr), entry.key, entry.body)
+          )
+        );
+      }
+
+      // Se ainda restar alguma resposta do modo treino pendente (queued/inflight/failed),
+      // aguarda sincronização antes de montar o lote final para nunca duplicar.
+      if (Object.keys(practiceByQidRef.current).length > 0) {
+        setState("AWAITING_PRACTICE_SYNC");
+        submitLockRef.current = false;
+        return;
+      }
+
+      const currentAnswers = answersRef.current;
+      const currentResults = resultsMapRef.current;
+      const currentPractice = practiceByQidRef.current;
+      const pendingQuestionIds = Object.keys(currentAnswers)
+        .map(qIdStr => parseInt(qIdStr, 10))
+        .filter(qId => !currentResults[qId] && !currentPractice[qId]);
+
+      if (pendingQuestionIds.length === 0 && Object.keys(currentResults).length > 0) {
+        setState("RESULTS");
+        setShowResultsSummary(true);
+        setCurrentIndex(0);
+        removeLearningSession("simulado");
+        submitLockRef.current = false;
+        return;
+      }
+
+      const attempts: BatchAttemptItem[] = pendingQuestionIds.map(qId => ({
+        question_id: qId,
+        selected_letter: currentAnswers[qId],
+        confidence: "duvida" // We don't ask for confidence in Simulado, default to duvida
+      }));
+
+      activeBatch = {
+        key: crypto.randomUUID(),
+        attempts,
+      };
+      updatePendingBatch(activeBatch);
+
+      // Persiste pendingBatch ANTES do POST para que reload durante SUBMITTING reutilize a mesma chave e payload.
+      writeLearningSession("simulado", {
+        version: LEARNING_SESSION_VERSION,
+        state: "PLAYING",
+        queue,
+        answers: currentAnswers,
+        deadlineAt: deadlineRef.current,
+        currentIndex,
+        resultsMap: currentResults,
+        flagged,
+        force4Options,
+        queueId,
+        sessionId,
+        plannedDurationSeconds,
+        savedAt: Date.now(),
+        eliminatedMap,
+        feedbackMode,
+        pendingBatch: activeBatch,
+        practiceByQid: currentPractice,
+      } satisfies SavedSimuladoState);
     }
-
-    const pendingQuestionIds = Object.keys(answers)
-      .map(qIdStr => parseInt(qIdStr, 10))
-      .filter(qId => !resultsMap[qId]);
-
-    if (pendingQuestionIds.length === 0 && Object.keys(resultsMap).length > 0) {
-      setState("RESULTS");
-      setShowResultsSummary(true);
-      setCurrentIndex(0);
-      removeLearningSession("simulado");
-      submitLockRef.current = false;
-      return;
-    }
-
-    const attempts: BatchAttemptItem[] = pendingQuestionIds.map(qId => ({
-      question_id: qId,
-      selected_letter: answers[qId],
-      confidence: "duvida" // We don't ask for confidence in Simulado, default to duvida
-    }));
 
     try {
-      const res = await api.questions.submitAttemptBatch(attempts);
+      const res = await api.questions.submitAttemptBatch(activeBatch.attempts, activeBatch.key);
+      updatePendingBatch(null);
       setResultsMap(prev => {
         const next = { ...prev };
         res.results.forEach(r => {
           next[r.question_id] = r;
         });
+        resultsMapRef.current = next;
         return next;
       });
       setState("RESULTS");
@@ -633,6 +797,7 @@ export function SimuladoClient({
 
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
+        updatePendingBatch(null);
         toast("Respostas do simulado salvas no dispositivo; serão sincronizadas quando a conexão voltar.");
         syncResolutionRef.current = "pending";
         setQueueId(err.localId);
@@ -648,7 +813,7 @@ export function SimuladoClient({
     } finally {
       submitLockRef.current = false;
     }
-  }, [answers, resultsMap]);
+  }, [queue, currentIndex, flagged, force4Options, queueId, sessionId, plannedDurationSeconds, eliminatedMap, feedbackMode, sendPracticeAttempt, updatePendingBatch]);
 
   const submitSimuladoRef = useRef(submitSimulado);
   useEffect(() => {
@@ -698,7 +863,164 @@ export function SimuladoClient({
     }
   }, [answers, isSyncingOffline]);
 
-  // Sincronização offline e ouvinte de sucesso
+  // Ouvinte de sync para tentativas avulsas do modo treino (casa por queueItemId ou idempotencyKey)
+  useEffect(() => {
+    if (state !== "PLAYING" && state !== "AWAITING_PRACTICE_SYNC" && state !== "SUBMITTING") return;
+
+    const handlePracticeSyncSuccess = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        id: string;
+        endpoint: string;
+        method: string;
+        data: unknown;
+        idempotencyKey?: string;
+      }>;
+      const detail = customEvent.detail;
+      if (!detail) return;
+
+      const matchedEntry = Object.entries(practiceByQidRef.current).find(
+        ([, entry]) =>
+          (entry.queueItemId && entry.queueItemId === detail.id) ||
+          (detail.idempotencyKey && entry.key === detail.idempotencyKey)
+      );
+      if (!matchedEntry) return;
+
+      const [qidStr, entry] = matchedEntry;
+      const qid = Number(qidStr);
+      const attemptRes = detail.data as AttemptResult | null;
+      if (attemptRes && (typeof attemptRes.is_correct === "boolean" || attemptRes.is_correct === null)) {
+        const mappedResult: BatchAttemptResultItem = {
+          question_id: qid,
+          is_correct: Boolean(attemptRes.is_correct),
+          correct_letter: attemptRes.correct_letter || "",
+          explanation: attemptRes.explanation || null,
+          next_review_date: attemptRes.next_review_date || new Date().toISOString(),
+          is_discursive: Boolean(attemptRes.is_discursive),
+        };
+        resultsMapRef.current = { ...resultsMapRef.current, [qid]: mappedResult };
+        setResultsMap((prev) => ({ ...prev, [qid]: mappedResult }));
+      }
+      updatePracticeByQid((prev) => {
+        const next = { ...prev };
+        delete next[qid];
+        return next;
+      });
+      if (entry.queueItemId) {
+        setFailedPracticeQueueIds((prev) => {
+          if (!(entry.queueItemId! in prev)) return prev;
+          const next = { ...prev };
+          delete next[entry.queueItemId!];
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener("sync-item-success", handlePracticeSyncSuccess);
+    return () => {
+      window.removeEventListener("sync-item-success", handlePracticeSyncSuccess);
+    };
+  }, [state, updatePracticeByQid]);
+
+  // Monitoramento do estado AWAITING_PRACTICE_SYNC: avança automaticamente quando todas forem confirmadas
+  // e detecta falhas terminais na fila via syncManager.getFailedItems().
+  useEffect(() => {
+    if (state !== "AWAITING_PRACTICE_SYNC") return;
+
+    if (Object.keys(practiceByQid).length === 0) {
+      const timer = setTimeout(() => {
+        void submitSimuladoRef.current();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
+    let cancelled = false;
+    const checkFailedPracticeItems = async () => {
+      try {
+        const { syncManager } = await import("@/lib/sync");
+        const failedItems = await syncManager.getFailedItems();
+        if (cancelled) return;
+        const queuedIds = new Set(
+          Object.values(practiceByQidRef.current)
+            .map((entry) => entry.queueItemId)
+            .filter((id): id is string => Boolean(id))
+        );
+        const nextFailed: Record<string, string> = {};
+        for (const item of failedItems) {
+          if (queuedIds.has(item.id)) {
+            nextFailed[item.id] = item.last_error || "Falha ao sincronizar resposta.";
+          }
+        }
+        setFailedPracticeQueueIds(nextFailed);
+      } catch (err) {
+        console.error("Erro ao verificar falhas da fila do modo treino:", err);
+      }
+    };
+
+    void checkFailedPracticeItems();
+    const handleQueueUpdate = () => {
+      void checkFailedPracticeItems();
+    };
+    window.addEventListener("sync-queue-updated", handleQueueUpdate);
+    const interval = setInterval(() => {
+      void checkFailedPracticeItems();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("sync-queue-updated", handleQueueUpdate);
+      clearInterval(interval);
+    };
+  }, [state, practiceByQid]);
+
+  const handleSyncPracticeNow = useCallback(async () => {
+    if (isSyncingOffline) return;
+    setIsSyncingOffline(true);
+    try {
+      const { syncManager } = await import("@/lib/sync");
+      await syncManager.sync(true);
+      const failedItems = await syncManager.getFailedItems();
+      const queuedIds = new Set(
+        Object.values(practiceByQidRef.current)
+          .map((entry) => entry.queueItemId)
+          .filter((id): id is string => Boolean(id))
+      );
+      const nextFailed: Record<string, string> = {};
+      for (const item of failedItems) {
+        if (queuedIds.has(item.id)) {
+          nextFailed[item.id] = item.last_error || "Falha ao sincronizar resposta.";
+        }
+      }
+      setFailedPracticeQueueIds(nextFailed);
+    } catch {
+      toast.error("Não foi possível sincronizar agora. Verifique sua conexão.");
+    } finally {
+      setIsSyncingOffline(false);
+    }
+  }, [isSyncingOffline]);
+
+  const handleResendFailedPractice = useCallback(async () => {
+    if (isSyncingOffline) return;
+    setIsSyncingOffline(true);
+    try {
+      const { syncManager } = await import("@/lib/sync");
+      const toResend = Object.entries(practiceByQidRef.current).filter(
+        ([, entry]) =>
+          entry.status === "failed" ||
+          (entry.queueItemId ? entry.queueItemId in failedPracticeQueueIds : false)
+      );
+      for (const [qidStr, entry] of toResend) {
+        if (entry.queueItemId && entry.queueItemId in failedPracticeQueueIds) {
+          await syncManager.discardItem(entry.queueItemId);
+        }
+        await sendPracticeAttempt(Number(qidStr), entry.key, entry.body);
+      }
+      setFailedPracticeQueueIds({});
+    } finally {
+      setIsSyncingOffline(false);
+    }
+  }, [isSyncingOffline, failedPracticeQueueIds, sendPracticeAttempt]);
+
+  // Sincronização offline e ouvinte de sucesso do LOTE
   useEffect(() => {
     if (state !== "OFFLINE_SUBMITTED") return;
 
@@ -708,17 +1030,17 @@ export function SimuladoClient({
         endpoint: string;
         method: string;
         data: unknown;
+        idempotencyKey?: string;
       }>;
       const detail = customEvent.detail;
       if (!detail) return;
 
-      const isBatchAttempt =
-        detail.endpoint.includes("/api/attempt/batch") ||
-        detail.endpoint.includes("/api/questions/attempts/batch") ||
-        detail.endpoint.includes("attempt") ||
-        (queueId && detail.id === queueId);
+      const isOwnBatch = Boolean(
+        (queueId && detail.id === queueId) ||
+        (pendingBatchRef.current?.key && detail.idempotencyKey === pendingBatchRef.current.key)
+      );
 
-      if (!isBatchAttempt) return;
+      if (!isOwnBatch) return;
 
       const res = detail.data as { results?: BatchAttemptResultItem[] } | null;
 
@@ -730,6 +1052,7 @@ export function SimuladoClient({
           res.results!.forEach(r => {
             next[r.question_id] = r;
           });
+          resultsMapRef.current = next;
           return next;
         });
         removeLearningSession("simulado");
@@ -739,28 +1062,13 @@ export function SimuladoClient({
         setCurrentIndex(0);
         toast.success("Simulado sincronizado e corrigido com sucesso!");
       } else {
-        // b) Fila removida sem resposta utilizável
-        syncResolutionRef.current = "removed_no_results";
-        const rMap: Record<number, BatchAttemptResultItem> = {};
-        queue.forEach(q => {
-          const detail = detailsCache[q.id];
-          const selected = answers[q.id];
-          const correctLetter = (detail && "correct_letter" in detail ? (detail as { correct_letter?: string }).correct_letter : undefined) || "";
-          rMap[q.id] = {
-            question_id: q.id,
-            is_correct: Boolean(selected && correctLetter && selected === correctLetter),
-            correct_letter: correctLetter,
-            explanation: (detail && "explanation" in detail ? (detail as { explanation?: string }).explanation : undefined) || detail?.technical_note || null,
-            next_review_date: new Date().toISOString(),
-          };
-        });
-        setResultsMap(prev => ({ ...rMap, ...prev }));
+        // b) Evento do próprio lote chegou sem results: nunca fabricar nota
+        syncResolutionRef.current = "synced_without_results";
         removeLearningSession("simulado");
         setHasSavedState(false);
-        setState("RESULTS");
-        setShowResultsSummary(true);
-        setCurrentIndex(0);
-        toast.success("Simulado sincronizado!");
+        setQueueId(undefined);
+        toast("Simulado sincronizado — confira no histórico");
+        setState("START");
       }
     };
 
@@ -769,7 +1077,7 @@ export function SimuladoClient({
 
     const checkAndSync = async () => {
       // Se já resolvido com resultados ou em RESULTS, nunca resetar ou alterar estado
-      if (syncResolutionRef.current === "confirmed_results" || syncResolutionRef.current === "removed_no_results") {
+      if (syncResolutionRef.current === "confirmed_results" || syncResolutionRef.current === "synced_without_results") {
         return;
       }
 
@@ -805,7 +1113,7 @@ export function SimuladoClient({
       window.removeEventListener("online", handleOnline);
       clearInterval(interval);
     };
-  }, [state, queueId, queue, answers, detailsCache]);
+  }, [state, queueId]);
 
 
   const toggleEliminate = useCallback((letter: string) => {
@@ -837,6 +1145,7 @@ export function SimuladoClient({
     const currentQ = queue[currentIndex];
     if (!currentQ) return;
     const qid = currentQ.id;
+    if (feedbackMode === "practice" && (resultsMap[qid] || practiceByQidRef.current[qid])) return;
     // Un-eliminate if selected
     setEliminatedMap(prev => {
       if (!prev[qid]?.includes(letter)) return prev;
@@ -848,33 +1157,17 @@ export function SimuladoClient({
     setAnswers(prev => ({ ...prev, [qid]: letter }));
 
     // No modo Treino/Aprendizado (Feedback imediato), valida e revela a questão na hora
-    if (feedbackMode === "practice" && !resultsMap[qid] && !inFlightPracticeRef.current.has(qid)) {
+    if (feedbackMode === "practice" && !resultsMap[qid] && !practiceByQidRef.current[qid]) {
       const elapsedMs = questionShownAtRef.current > 0 ? Math.max(500, Date.now() - questionShownAtRef.current) : 5000;
-      const p = api.questions.submitAttempt(qid, letter, elapsedMs, "duvida").then(res => {
-        setResultsMap(prev => ({
-          ...prev,
-          [qid]: {
-            question_id: qid,
-            is_correct: Boolean(res.is_correct),
-            correct_letter: res.correct_letter || "",
-            explanation: res.explanation || null,
-            next_review_date: res.next_review_date || new Date().toISOString(),
-            is_discursive: Boolean(res.is_discursive),
-          }
-        }));
-      }).catch(err => {
-        if (err instanceof OfflineQueuedError) {
-          toast("Sem conexão: resposta salva localmente e enfileirada para correção.");
-          return;
-        }
-        console.error("Erro ao validar feedback imediato em modo treino:", err);
-        toast.error("Não foi possível validar o feedback imediato agora. Sua resposta foi mantida.");
-      }).finally(() => {
-        inFlightPracticeRef.current.delete(qid);
-      });
-      inFlightPracticeRef.current.set(qid, p);
+      const key = crypto.randomUUID();
+      const body: AttemptPayload = {
+        selected_letter: letter,
+        time_spent_ms: elapsedMs,
+        confidence: "duvida",
+      };
+      void sendPracticeAttempt(qid, key, body);
     }
-  }, [state, queue, currentIndex, feedbackMode, resultsMap]);
+  }, [state, queue, currentIndex, feedbackMode, resultsMap, sendPracticeAttempt]);
 
   const toggleFlag = useCallback(() => {
     if (state !== "PLAYING") return;
@@ -1046,6 +1339,58 @@ export function SimuladoClient({
         <p className="text-ink-secondary font-medium text-lg">
           {state === "LOADING" ? "Gerando cadernos e balanceando questões..." : "Corrigindo gabarito e calculando SRS..."}
         </p>
+      </div>
+    );
+  }
+
+  if (state === "AWAITING_PRACTICE_SYNC") {
+    const pendingEntries = Object.values(practiceByQid);
+    const pendingCount = pendingEntries.length;
+    const failedCount = pendingEntries.filter(
+      (entry) =>
+        entry.status === "failed" ||
+        (entry.queueItemId ? entry.queueItemId in failedPracticeQueueIds : false)
+    ).length;
+
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-6 text-center flex flex-col items-center gap-5 bg-surface border border-line-subtle rounded-lg mt-8">
+        <div className="w-12 h-12 rounded-md bg-accent/10 text-accent border border-accent/20 flex items-center justify-center">
+          <CloudOff size={24} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-ink-primary">
+            Aguardando sincronizar {pendingCount} {pendingCount === 1 ? "resposta" : "respostas"} do modo treino
+          </h2>
+          <p className="text-sm text-ink-secondary leading-relaxed">
+            Suas respostas anteriores estão sendo confirmadas no servidor antes do fechamento final para evitar duplicidade na sua nota e no FSRS.
+          </p>
+          {failedCount > 0 && (
+            <p className="text-xs text-destructive font-medium">
+              {failedCount} {failedCount === 1 ? "resposta falhou" : "respostas falharam"} na sincronização. Use Reenviar para tentar novamente com a mesma chave segura.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md mt-2">
+          <button
+            type="button"
+            onClick={handleSyncPracticeNow}
+            disabled={isSyncingOffline}
+            className="flex-1 bg-accent text-white font-semibold px-5 py-3 rounded-md hover:bg-accent/90 disabled:opacity-50 transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <RotateCcw className={clsx(isSyncingOffline && "animate-spin")} size={16} />
+            {isSyncingOffline ? "Sincronizando..." : "Sincronizar agora"}
+          </button>
+          {failedCount > 0 && (
+            <button
+              type="button"
+              onClick={handleResendFailedPractice}
+              disabled={isSyncingOffline}
+              className="flex-1 bg-elevated hover:bg-elevated/80 text-ink-primary font-semibold px-5 py-3 rounded-md disabled:opacity-50 transition-colors text-sm cursor-pointer"
+            >
+              Reenviar
+            </button>
+          )}
+        </div>
       </div>
     );
   }

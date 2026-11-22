@@ -5,7 +5,7 @@ import os
 import random
 import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from flask import Blueprint, g, jsonify, request
 
@@ -392,6 +392,9 @@ def save_simulado_session():
             """, (data.client_session_id, data.planned_duration_seconds, data.elapsed_seconds,
                    data.total_questions, data.answered_count, data.correct_count,
                    json.dumps(data.filters), json.dumps(data.area_results), completed_at, g.user_id))
+            resp_data = {"success": True}
+            if lease_token:
+                complete_idempotency(db, g.user_id, 200, resp_data, lease_token)
 
         record_domain_event(
             "simulado_completed",
@@ -402,9 +405,6 @@ def save_simulado_session():
             correct_count=data.correct_count,
             elapsed_seconds=data.elapsed_seconds,
         )
-        resp_data = {"success": True}
-        if lease_token:
-            complete_idempotency(db, g.user_id, 200, resp_data, lease_token)
         return jsonify(resp_data)
     except Exception:
         if lease_token:
@@ -460,10 +460,12 @@ def search_questions():
             extra_params.append(area)
     if year:
         try:
-            extra_filters.append("q.year = ?")
-            extra_params.append(int(year))
+            year_value = int(year)
         except ValueError:
-            pass
+            year_value = None
+        if year_value is not None:
+            extra_filters.append("q.year = ?")
+            extra_params.append(year_value)
     if has_images:
         extra_filters.append("EXISTS (SELECT 1 FROM question_images qi WHERE qi.question_id = q.id)")
 
@@ -863,6 +865,108 @@ def question_detail(qid):
     })
 
 
+def _parse_utc_dt(value: str | None) -> datetime | None:
+    """Converte timestamp ISO-8601 em datetime UTC aware para comparação segura."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).strip())
+        return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    except (ValueError, TypeError):
+        return None
+
+
+def _card_last_review_dt(card_json: str | None) -> datetime | None:
+    """Extrai o datetime UTC de `last_review` de um card FSRS serializado."""
+    if not card_json:
+        return None
+    try:
+        payload = json.loads(card_json)
+        if isinstance(payload, dict):
+            return _parse_utc_dt(payload.get("last_review"))
+    except (ValueError, TypeError):
+        return None
+    return None
+
+
+def _upsert_spaced_repetition(db, qid: int, user_id: int, next_review: str, card_json: str) -> None:
+    db.execute(
+        """
+        INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(question_id, user_id) DO UPDATE SET
+            next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
+        """,
+        (qid, next_review, card_json, user_id),
+    )
+
+
+def _apply_fsrs(
+    db,
+    qid: int,
+    user_id: int,
+    is_correct,
+    confidence,
+    assisted: bool,
+    now: datetime,
+    srs_map: dict | None = None,
+) -> tuple[str | None, str, str]:
+    """Aplica FSRS a partir do estado atual, persiste o novo card e retorna (card_before, next_review, now_iso)."""
+    if srs_map is not None:
+        card_before = srs_map.get(qid)
+    else:
+        sr = db.execute(
+            "SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?",
+            (qid, user_id),
+        ).fetchone()
+        card_before = sr["fsrs_card"] if sr else None
+
+    try:
+        card_json, next_review = srs.review(
+            card_before,
+            is_correct,
+            confidence,
+            now=now,
+            assisted=bool(assisted),
+        )
+    except Exception:
+        logger.error("Erro ao calcular FSRS (question_id=%s, user_id=%s)", qid, user_id)
+        raise
+
+    _upsert_spaced_repetition(db, qid, user_id, next_review, card_json)
+    if srs_map is not None:
+        srs_map[qid] = card_json
+    now_iso = now.astimezone(UTC).isoformat()
+    return card_before, next_review, now_iso
+
+
+def _save_attempt_fsrs_snapshot(
+    db,
+    attempt_id: int | None,
+    user_id: int,
+    card_before: str | None,
+    reviewed_at: str,
+    twin_card_before: str | None = None,
+    twin_reviewed_at: str | None = None,
+) -> None:
+    if not attempt_id:
+        return
+    if twin_reviewed_at is not None:
+        db.execute(
+            """UPDATE attempts
+               SET fsrs_card_before = ?, fsrs_reviewed_at = ?, twin_card_before = ?, twin_reviewed_at = ?
+               WHERE id = ? AND user_id = ?""",
+            (card_before, reviewed_at, twin_card_before, twin_reviewed_at, attempt_id, user_id),
+        )
+    else:
+        db.execute(
+            """UPDATE attempts
+               SET fsrs_card_before = ?, fsrs_reviewed_at = ?
+               WHERE id = ? AND user_id = ?""",
+            (card_before, reviewed_at, attempt_id, user_id),
+        )
+
+
 @bp.route("/questions/<int:qid>/attempt", methods=["POST"])
 def submit_attempt(qid):
     db = get_db()
@@ -919,6 +1023,7 @@ def submit_attempt(qid):
         explanation_text = q["explanation_text"]
 
         with db_transaction(db, immediate=True):
+            now = datetime.now(UTC)
             selected = (payload.selected_letter or "A").upper()
             if payload.is_correct is not None:
                 is_correct = 1 if payload.is_correct else 0
@@ -928,7 +1033,7 @@ def submit_attempt(qid):
             else:
                 is_correct = check_is_correct(selected, q["correct_letter"], correct_alts_set)
 
-            observed_at = _resolve_answered_at(payload.answered_at)
+            observed_at = _resolve_answered_at(payload.answered_at, fallback_now=now)
             assisted_flag = 1 if getattr(payload, "assisted", False) else 0
             try:
                 cursor = db.execute(
@@ -958,54 +1063,25 @@ def submit_attempt(qid):
                 _defer_question_review(db, qid, g.user_id)
                 if payload.twin_for_question_id:
                     _defer_question_review(db, payload.twin_for_question_id, g.user_id)
-            if payload.confidence != "defer":
-                sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (qid, g.user_id)).fetchone()
-                try:
-                    card_json, next_review = srs.review(
-                        sr["fsrs_card"] if sr else None,
-                        is_correct,
-                        payload.confidence,
-                        assisted=bool(assisted_flag),
-                    )
-                except Exception as srs_err:
-                    logger.warning("Erro ao calcular FSRS na tentativa da questão %s: %s. Usando estado limpo.", qid, srs_err)
-                    card_json, next_review = srs.review(
-                        None,
-                        is_correct,
-                        payload.confidence,
-                        assisted=bool(assisted_flag),
-                    )
-                db.execute("""
-                    INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(question_id, user_id) DO UPDATE SET
-                        next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-                """, (qid, next_review, card_json, g.user_id))
-
+            else:
+                card_before, next_review, reviewed_at = _apply_fsrs(
+                    db, qid, g.user_id, is_correct, payload.confidence, bool(assisted_flag), now
+                )
+                twin_card_before = None
+                twin_reviewed_at = None
                 if payload.twin_for_question_id:
-                    orig_qid = payload.twin_for_question_id
-                    orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, g.user_id)).fetchone()
-                    try:
-                        orig_card_json, orig_next_review = srs.review(
-                            orig_sr["fsrs_card"] if orig_sr else None,
-                            is_correct,
-                            payload.confidence,
-                            assisted=bool(assisted_flag),
-                        )
-                    except Exception as srs_err:
-                        logger.warning("Erro ao calcular FSRS na questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                        orig_card_json, orig_next_review = srs.review(
-                            None,
-                            is_correct,
-                            payload.confidence,
-                            assisted=bool(assisted_flag),
-                        )
-                    db.execute("""
-                        INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(question_id, user_id) DO UPDATE SET
-                            next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-                    """, (orig_qid, orig_next_review, orig_card_json, g.user_id))
+                    twin_card_before, _, twin_reviewed_at = _apply_fsrs(
+                        db,
+                        payload.twin_for_question_id,
+                        g.user_id,
+                        is_correct,
+                        payload.confidence,
+                        bool(assisted_flag),
+                        now,
+                    )
+                _save_attempt_fsrs_snapshot(
+                    db, attempt_id, g.user_id, card_before, reviewed_at, twin_card_before, twin_reviewed_at
+                )
 
             alt_stats = None
             if not is_discursive:
@@ -1081,16 +1157,19 @@ def review_fsrs(qid):
         confidence = data.confidence
 
         with db_transaction(db, immediate=True):
+            now = datetime.now(UTC)
             if getattr(data, "attempt_id", None) is not None:
                 try:
                     last_attempt = db.execute(
-                        "SELECT id, is_correct, confidence, assisted FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?",
-                        (data.attempt_id, qid, g.user_id)
+                        """SELECT id, is_correct, confidence, assisted,
+                                  fsrs_card_before, fsrs_reviewed_at, twin_card_before, twin_reviewed_at
+                           FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?""",
+                        (data.attempt_id, qid, g.user_id),
                     ).fetchone()
                 except Exception:
                     last_attempt = db.execute(
                         "SELECT id, is_correct, confidence FROM attempts WHERE id = ? AND question_id = ? AND user_id = ?",
-                        (data.attempt_id, qid, g.user_id)
+                        (data.attempt_id, qid, g.user_id),
                     ).fetchone()
             else:
                 last_attempt = None
@@ -1098,13 +1177,15 @@ def review_fsrs(qid):
             if not last_attempt:
                 try:
                     last_attempt = db.execute(
-                        "SELECT id, is_correct, confidence, assisted FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
-                        (qid, g.user_id)
+                        """SELECT id, is_correct, confidence, assisted,
+                                  fsrs_card_before, fsrs_reviewed_at, twin_card_before, twin_reviewed_at
+                           FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1""",
+                        (qid, g.user_id),
                     ).fetchone()
                 except Exception:
                     last_attempt = db.execute(
                         "SELECT id, is_correct, confidence FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
-                        (qid, g.user_id)
+                        (qid, g.user_id),
                     ).fetchone()
 
             if not last_attempt:
@@ -1113,18 +1194,55 @@ def review_fsrs(qid):
                     complete_idempotency(db, g.user_id, 400, resp_data, lease_token)
                 return jsonify(resp_data), 400
 
+            attempt_id = last_attempt["id"]
             prev_confidence = last_attempt["confidence"]
             prev_is_correct = int(bool(last_attempt["is_correct"]))
             attempt_dict = dict(last_attempt)
             is_assisted = bool(data.assisted) if data.assisted is not None else bool(attempt_dict.get("assisted", 0))
-            is_rectification = (
+            already_applied = prev_confidence != "defer"
+            is_correct_changed = (
                 data.is_correct is not None
                 and int(bool(data.is_correct)) != prev_is_correct
             )
 
-            # Evita avanço duplo no FSRS se esta tentativa já havia sido classificada antes
-            # (mesmo que o cliente envie is_correct explícito em chamadas automáticas de fallback)
-            if prev_confidence not in ("defer", None) and not is_rectification:
+            if not already_applied:
+                # 1ª aplicação normal (ex.: tentativa adiada com "defer", inclusive discursiva)
+                is_correct_for_srs = int(bool(data.is_correct)) if data.is_correct is not None else prev_is_correct
+                if data.is_correct is not None:
+                    db.execute(
+                        "UPDATE attempts SET confidence = ?, is_correct = ? WHERE id = ? AND user_id = ?",
+                        (confidence, is_correct_for_srs, attempt_id, g.user_id),
+                    )
+                else:
+                    db.execute(
+                        "UPDATE attempts SET confidence = ? WHERE id = ? AND user_id = ?",
+                        (confidence, attempt_id, g.user_id),
+                    )
+                card_before, next_review, reviewed_at = _apply_fsrs(
+                    db, qid, g.user_id, is_correct_for_srs, confidence, is_assisted, now
+                )
+                twin_card_before = None
+                twin_reviewed_at = None
+                if data.twin_for_question_id:
+                    twin_card_before, _, twin_reviewed_at = _apply_fsrs(
+                        db, data.twin_for_question_id, g.user_id, is_correct_for_srs, confidence, is_assisted, now
+                    )
+                _save_attempt_fsrs_snapshot(
+                    db, attempt_id, g.user_id, card_before, reviewed_at, twin_card_before, twin_reviewed_at
+                )
+                resp_data = {
+                    "success": True,
+                    "next_review_date": next_review,
+                    "is_correct": bool(is_correct_for_srs),
+                    "assisted": is_assisted,
+                }
+            elif not is_correct_changed:
+                # FSRS já aplicado e nota inalterada: preserva o agendamento na primeira impressão
+                if confidence != prev_confidence:
+                    db.execute(
+                        "UPDATE attempts SET confidence = ? WHERE id = ? AND user_id = ?",
+                        (confidence, attempt_id, g.user_id),
+                    )
                 existing_sr = db.execute(
                     "SELECT next_review_date FROM spaced_repetition WHERE question_id = ? AND user_id = ?",
                     (qid, g.user_id),
@@ -1136,77 +1254,108 @@ def review_fsrs(qid):
                     "assisted": is_assisted,
                     "warning": "Confiança atualizada, mas FSRS retido na primeira impressão para evitar avanço duplo.",
                 }
-                if lease_token:
-                    complete_idempotency(db, g.user_id, 200, resp_data, lease_token)
-                return jsonify(resp_data)
-
-            is_correct_for_srs = last_attempt["is_correct"]
-            if data.is_correct is not None:
-                is_correct_for_srs = 1 if data.is_correct else 0
-                db.execute(
-                    "UPDATE attempts SET confidence = ?, is_correct = ? WHERE id = ?",
-                    (confidence, is_correct_for_srs, last_attempt["id"])
-                )
             else:
-                db.execute(
-                    "UPDATE attempts SET confidence = ? WHERE id = ?",
-                    (confidence, last_attempt["id"])
-                )
+                # Retificação: FSRS já aplicado e is_correct mudou
+                new_is_correct = int(bool(data.is_correct))
+                latest_row = db.execute(
+                    "SELECT MAX(id) AS max_id FROM attempts WHERE question_id = ? AND user_id = ?",
+                    (qid, g.user_id),
+                ).fetchone()
+                is_latest = bool(latest_row and latest_row["max_id"] == attempt_id)
+                fsrs_reviewed_at = attempt_dict.get("fsrs_reviewed_at")
 
-            sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (qid, g.user_id)).fetchone()
-            try:
-                card_json, next_review = srs.review(
-                    sr["fsrs_card"] if sr else None,
-                    is_correct_for_srs,
-                    confidence,
-                    assisted=is_assisted,
-                )
-            except Exception as srs_err:
-                logger.warning("Erro ao calcular FSRS na revisão da questão %s: %s. Usando estado limpo.", qid, srs_err)
-                card_json, next_review = srs.review(
-                    None,
-                    is_correct_for_srs,
-                    confidence,
-                    assisted=is_assisted,
-                )
-            db.execute("""
-                INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(question_id, user_id) DO UPDATE SET
-                    next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-            """, (qid, next_review, card_json, g.user_id))
-
-            if data.twin_for_question_id:
-                orig_qid = data.twin_for_question_id
-                orig_sr = db.execute("SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?", (orig_qid, g.user_id)).fetchone()
-                try:
-                    orig_card_json, orig_next_review = srs.review(
-                        orig_sr["fsrs_card"] if orig_sr else None,
-                        is_correct_for_srs,
-                        confidence,
-                        assisted=is_assisted,
+                if not is_latest or not fsrs_reviewed_at:
+                    db.execute(
+                        "UPDATE attempts SET confidence = ?, is_correct = ? WHERE id = ? AND user_id = ?",
+                        (confidence, new_is_correct, attempt_id, g.user_id),
                     )
-                except Exception as srs_err:
-                    logger.warning("Erro ao calcular FSRS na questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                    orig_card_json, orig_next_review = srs.review(
-                        None,
-                        is_correct_for_srs,
-                        confidence,
-                        assisted=is_assisted,
-                    )
-                db.execute("""
-                    INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(question_id, user_id) DO UPDATE SET
-                        next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-                """, (orig_qid, orig_next_review, orig_card_json, g.user_id))
+                    existing_sr = db.execute(
+                        "SELECT next_review_date FROM spaced_repetition WHERE question_id = ? AND user_id = ?",
+                        (qid, g.user_id),
+                    ).fetchone()
+                    resp_data = {
+                        "success": True,
+                        "next_review_date": existing_sr["next_review_date"] if existing_sr else None,
+                        "is_correct": bool(new_is_correct),
+                        "assisted": is_assisted,
+                        "warning": "Nota retificada, mas o agendamento FSRS foi preservado.",
+                    }
+                else:
+                    preserved_any = False
+                    sr = db.execute(
+                        "SELECT fsrs_card, next_review_date FROM spaced_repetition WHERE question_id = ? AND user_id = ?",
+                        (qid, g.user_id),
+                    ).fetchone()
+                    current_last_review = _card_last_review_dt(sr["fsrs_card"] if sr else None)
+                    attempt_reviewed_dt = _parse_utc_dt(fsrs_reviewed_at)
+                    if (
+                        current_last_review is not None
+                        and attempt_reviewed_dt is not None
+                        and current_last_review == attempt_reviewed_dt
+                    ):
+                        try:
+                            new_card_json, next_review = srs.review(
+                                attempt_dict.get("fsrs_card_before"),
+                                new_is_correct,
+                                confidence,
+                                now=attempt_reviewed_dt,
+                                assisted=is_assisted,
+                            )
+                        except Exception:
+                            logger.error("Erro ao retificar FSRS (question_id=%s, user_id=%s)", qid, g.user_id)
+                            raise
+                        _upsert_spaced_repetition(db, qid, g.user_id, next_review, new_card_json)
+                    else:
+                        next_review = sr["next_review_date"] if sr else None
+                        preserved_any = True
 
-            resp_data = {
-                "success": True,
-                "next_review_date": next_review,
-                "is_correct": bool(is_correct_for_srs),
-                "assisted": is_assisted,
-            }
+                    if data.twin_for_question_id:
+                        orig_qid = data.twin_for_question_id
+                        twin_reviewed_at = attempt_dict.get("twin_reviewed_at")
+                        if twin_reviewed_at:
+                            orig_sr = db.execute(
+                                "SELECT fsrs_card FROM spaced_repetition WHERE question_id = ? AND user_id = ?",
+                                (orig_qid, g.user_id),
+                            ).fetchone()
+                            twin_last_review = _card_last_review_dt(orig_sr["fsrs_card"] if orig_sr else None)
+                            twin_reviewed_dt = _parse_utc_dt(twin_reviewed_at)
+                            if (
+                                twin_last_review is not None
+                                and twin_reviewed_dt is not None
+                                and twin_last_review == twin_reviewed_dt
+                            ):
+                                try:
+                                    new_twin_json, new_twin_due = srs.review(
+                                        attempt_dict.get("twin_card_before"),
+                                        new_is_correct,
+                                        confidence,
+                                        now=twin_reviewed_dt,
+                                        assisted=is_assisted,
+                                    )
+                                except Exception:
+                                    logger.error(
+                                        "Erro ao retificar FSRS da questão espelho (question_id=%s, user_id=%s)",
+                                        orig_qid,
+                                        g.user_id,
+                                    )
+                                    raise
+                                _upsert_spaced_repetition(db, orig_qid, g.user_id, new_twin_due, new_twin_json)
+                            else:
+                                preserved_any = True
+
+                    db.execute(
+                        "UPDATE attempts SET confidence = ?, is_correct = ? WHERE id = ? AND user_id = ?",
+                        (confidence, new_is_correct, attempt_id, g.user_id),
+                    )
+                    resp_data = {
+                        "success": True,
+                        "next_review_date": next_review,
+                        "is_correct": bool(new_is_correct),
+                        "assisted": is_assisted,
+                    }
+                    if preserved_any:
+                        resp_data["warning"] = "Agendamento FSRS preservado para card revisado posteriormente."
+
             if lease_token:
                 complete_idempotency(db, g.user_id, 200, resp_data, lease_token)
 
@@ -1225,12 +1374,14 @@ def _process_single_attempt(
     q_map: dict,
     correct_alts_map: dict,
     exp_map: dict,
-    srs_map: dict
+    srs_map: dict,
+    now: datetime | None = None,
 ) -> dict | None:
     correct_letter = q_map.get(item.question_id)
     if not correct_letter:
         return None
 
+    review_now = now if now is not None else datetime.now(UTC)
     selected = (item.selected_letter or "A").upper()
     if item.is_correct is not None:
         is_correct = 1 if item.is_correct else 0
@@ -1238,20 +1389,27 @@ def _process_single_attempt(
         is_correct = check_is_correct(selected, correct_letter, correct_alts_map.get(item.question_id))
     conf = item.confidence or "certeza"
     is_assisted = bool(getattr(item, "assisted", False))
-    item_answered_at = _resolve_answered_at(getattr(item, "answered_at", None)) if getattr(item, "answered_at", None) else answered_at
+    item_answered_at = _resolve_answered_at(getattr(item, "answered_at", None), fallback_now=review_now) if getattr(item, "answered_at", None) else answered_at
 
     try:
-        db.execute(
+        cursor = db.execute(
             """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id, assisted)
                VALUES (?,?,?,?,?,?,?,?)""",
             (item.question_id, selected, is_correct, item_answered_at, item.time_spent_ms, conf, user_id, 1 if is_assisted else 0),
         )
     except Exception:
-        db.execute(
+        cursor = db.execute(
             """INSERT INTO attempts (question_id, selected_letter, is_correct, answered_at, time_spent_ms, confidence, user_id)
                VALUES (?,?,?,?,?,?,?)""",
             (item.question_id, selected, is_correct, item_answered_at, item.time_spent_ms, conf, user_id),
         )
+    attempt_id = getattr(cursor, "lastrowid", None)
+    if not attempt_id:
+        att_row = db.execute(
+            "SELECT id FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1",
+            (item.question_id, user_id),
+        ).fetchone()
+        attempt_id = att_row["id"] if att_row else None
 
     next_review = None
     if conf == "defer":
@@ -1259,35 +1417,25 @@ def _process_single_attempt(
         if getattr(item, "twin_for_question_id", None):
             _defer_question_review(db, item.twin_for_question_id, user_id)
     else:
-        old_card = srs_map.get(item.question_id)
-        try:
-            card_json, next_review = srs.review(old_card, is_correct, conf, assisted=is_assisted)
-        except Exception as srs_err:
-            logger.warning("Erro ao calcular FSRS no lote para questão %s: %s. Usando estado limpo.", item.question_id, srs_err)
-            card_json, next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
-        srs_map[item.question_id] = card_json
-        db.execute("""
-            INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(question_id, user_id) DO UPDATE SET
-                next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-        """, (item.question_id, next_review, card_json, user_id))
-
+        card_before, next_review, reviewed_at = _apply_fsrs(
+            db, item.question_id, user_id, is_correct, conf, is_assisted, review_now, srs_map=srs_map
+        )
+        twin_card_before = None
+        twin_reviewed_at = None
         if getattr(item, "twin_for_question_id", None):
-            orig_qid = item.twin_for_question_id
-            orig_card = srs_map.get(orig_qid)
-            try:
-                orig_card_json, orig_next_review = srs.review(orig_card, is_correct, conf, assisted=is_assisted)
-            except Exception as srs_err:
-                logger.warning("Erro ao calcular FSRS no lote para questão espelho %s: %s. Usando estado limpo.", orig_qid, srs_err)
-                orig_card_json, orig_next_review = srs.review(None, is_correct, conf, assisted=is_assisted)
-            srs_map[orig_qid] = orig_card_json
-            db.execute("""
-                INSERT INTO spaced_repetition (question_id, next_review_date, fsrs_card, user_id)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(question_id, user_id) DO UPDATE SET
-                    next_review_date = excluded.next_review_date, fsrs_card = excluded.fsrs_card
-            """, (orig_qid, orig_next_review, orig_card_json, user_id))
+            twin_card_before, _, twin_reviewed_at = _apply_fsrs(
+                db,
+                item.twin_for_question_id,
+                user_id,
+                is_correct,
+                conf,
+                is_assisted,
+                review_now,
+                srs_map=srs_map,
+            )
+        _save_attempt_fsrs_snapshot(
+            db, attempt_id, user_id, card_before, reviewed_at, twin_card_before, twin_reviewed_at
+        )
 
     return {
         "question_id": item.question_id,
@@ -1319,7 +1467,8 @@ def submit_attempt_batch():
             return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
 
         results = []
-        answered_at = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC)
+        answered_at = now.isoformat()
 
         # To avoid many SELECTs, get all correct_letters and explanations at once
         q_ids = [item.question_id for item in payload.attempts]
@@ -1344,7 +1493,7 @@ def submit_attempt_batch():
 
             for item in payload.attempts:
                 res = _process_single_attempt(
-                    db, item, g.user_id, answered_at, q_map, correct_alts_map, exp_map, srs_map
+                    db, item, g.user_id, answered_at, q_map, correct_alts_map, exp_map, srs_map, now=now
                 )
                 if res:
                     results.append(res)

@@ -94,16 +94,17 @@ export const serverApi = {
   },
   stats: {
     getOverview: () => serverFetch<OverviewStats>("/api/stats/overview", { cache: "no-store" }),
-    getDashboardSummary: () => serverFetch<DashboardSummaryResponse>("/api/dashboard/summary", { cache: "no-store" }),
+    getDashboardSummary: () => serverFetch<DashboardSummaryResponse>("/api/dashboard/summary?tz=America/Sao_Paulo", { cache: "no-store" }),
     getAnalysisSummary: (institution?: string, compareInstitution?: string) => {
       const params = new URLSearchParams();
       if (institution) params.append("institution", institution);
       if (compareInstitution) params.append("compare_institution", compareInstitution);
+      params.append("tz", "America/Sao_Paulo");
       const qs = params.toString();
       return serverFetch<AnalysisSummaryResponse>(`/api/stats/analysis-summary${qs ? `?${qs}` : ""}`, { cache: "no-store" });
     },
     getCoverage: () => serverFetch<CoverageResponse>("/api/coverage", { cache: "no-store" }),
-    getTimeline: (days: number = 14) => serverFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}`, { next: { tags: ['stats'] } }),
+    getTimeline: (days: number = 14) => serverFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}&tz=America/Sao_Paulo`, { next: { tags: ['stats'] } }),
     getWeakTopics: () => serverFetch<WeakTopic[]>("/api/stats/weak-topics", { next: { tags: ['stats'] } }),
     getRecommendations: () => serverFetch<Recommendation[]>("/api/stats/recommendations", { next: { tags: ['stats'] } }),
     getDistractors: () => serverFetch<DistractorStat[]>("/api/stats/distractors", { next: { tags: ['stats'] } }),

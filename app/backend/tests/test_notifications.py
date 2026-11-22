@@ -517,3 +517,123 @@ def test_is_vapid_configured_none_present(monkeypatch):
     monkeypatch.delenv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", raising=False)
     monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
     assert is_vapid_configured() is False
+
+
+def _make_frozen_notif_datetime(fixed_utc: datetime):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return fixed_utc.replace(tzinfo=None)
+            return fixed_utc.astimezone(tz)
+
+    return FrozenDateTime
+
+
+def _seed_user_for_cron(app, user_id: str, preferred_hour: int, days_of_week: list[int], next_review_iso: str):
+    with app.app_context():
+        db = get_db()
+        with db_transaction(db, immediate=True):
+            db.execute(
+                """
+                INSERT INTO notification_configs (user_id, enabled, preferred_hour, days_of_week, max_daily_reminders, updated_at)
+                VALUES (?, 1, ?, ?, 1, '2026-11-19T00:00:00+00:00')
+                ON CONFLICT(user_id) DO UPDATE SET
+                    enabled = 1,
+                    preferred_hour = excluded.preferred_hour,
+                    days_of_week = excluded.days_of_week
+                """,
+                (user_id, preferred_hour, json.dumps(days_of_week)),
+            )
+            db.execute(
+                """
+                INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at)
+                VALUES (?, ?, 'k', 'a', '2026-11-19T00:00:00+00:00')
+                ON CONFLICT(user_id, endpoint) DO NOTHING
+                """,
+                (user_id, f"https://fcm.googleapis.com/fcm/send/{user_id}"),
+            )
+            db.execute(
+                """
+                INSERT INTO spaced_repetition (question_id, efactor, interval, next_review_date, user_id)
+                VALUES (1, 2.5, 1, ?, ?)
+                ON CONFLICT(question_id, user_id) DO UPDATE SET next_review_date = excluded.next_review_date
+                """,
+                (next_review_iso, user_id),
+            )
+
+
+def test_cron_due_cards_use_local_day_cutoff_and_preferred_hour_brt(app, client, monkeypatch):
+    """Cards vencendo às 15:00 e 23:59:59 BRT entram; 00:00 BRT de amanhã fica fora; preferred_hour=8 dispara às 11:00 UTC."""
+    from api import notifications as notif_mod
+
+    cron_secret = "test_tz_cron_secret"
+    monkeypatch.setenv("NOTIFICATIONS_CRON_SECRET", cron_secret)
+    set_mock_webpush_sender(lambda sub, payload: {"status": "delivered", "delivered": True})
+
+    # 2026-11-19 08:00 BRT == 2026-11-19 11:00 UTC (quinta-feira, weekday=3)
+    fixed_utc = datetime(2026, 11, 19, 11, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(notif_mod, "datetime", _make_frozen_notif_datetime(fixed_utc))
+
+    # 1) Card vencendo hoje às 15:00 BRT (18:00 UTC) -> DEVE entrar
+    _seed_user_for_cron(app, "u_due_15h", preferred_hour=8, days_of_week=[3], next_review_iso="2026-11-19T18:00:00+00:00")
+    # 2) Card vencendo hoje às 23:59:59 BRT (02:59:59 UTC de amanhã) -> DEVE entrar
+    _seed_user_for_cron(app, "u_due_2359", preferred_hour=8, days_of_week=[3], next_review_iso="2026-11-20T02:59:59+00:00")
+    # 3) Card vencendo exatamente às 00:00:00 BRT de amanhã (03:00:00 UTC) -> FICA DE FORA
+    _seed_user_for_cron(app, "u_due_next_day", preferred_hour=8, days_of_week=[3], next_review_iso="2026-11-20T03:00:00+00:00")
+
+    res_15h = client.post(
+        "/api/notifications/cron/dispatch",
+        headers={"X-Cron-Secret": cron_secret},
+        json={"force_user_id": "u_due_15h", "ignore_hour": False},
+    )
+    assert res_15h.status_code == 200
+    assert res_15h.get_json()["dispatched_count"] == 1
+
+    res_2359 = client.post(
+        "/api/notifications/cron/dispatch",
+        headers={"X-Cron-Secret": cron_secret},
+        json={"force_user_id": "u_due_2359", "ignore_hour": False},
+    )
+    assert res_2359.status_code == 200
+    assert res_2359.get_json()["dispatched_count"] == 1
+
+    res_next = client.post(
+        "/api/notifications/cron/dispatch",
+        headers={"X-Cron-Secret": cron_secret},
+        json={"force_user_id": "u_due_next_day", "ignore_hour": False},
+    )
+    assert res_next.status_code == 200
+    assert res_next.get_json()["dispatched_count"] == 0
+
+
+def test_cron_days_of_week_evaluated_in_local_timezone(app, client, monkeypatch):
+    """Domingo 22:00 BRT (segunda 01:00 UTC) conta como domingo (weekday=6), não segunda (0)."""
+    from api import notifications as notif_mod
+
+    cron_secret = "test_tz_weekday_secret"
+    monkeypatch.setenv("NOTIFICATIONS_CRON_SECRET", cron_secret)
+    set_mock_webpush_sender(lambda sub, payload: {"status": "delivered", "delivered": True})
+
+    # 2026-11-22 é domingo; 22:00 BRT == 2026-11-23T01:00:00+00:00 (segunda-feira em UTC!)
+    fixed_utc = datetime(2026, 11, 23, 1, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(notif_mod, "datetime", _make_frozen_notif_datetime(fixed_utc))
+
+    _seed_user_for_cron(app, "u_sunday", preferred_hour=22, days_of_week=[6], next_review_iso="2026-11-22T15:00:00+00:00")
+    _seed_user_for_cron(app, "u_monday", preferred_hour=22, days_of_week=[0], next_review_iso="2026-11-22T15:00:00+00:00")
+
+    res_sun = client.post(
+        "/api/notifications/cron/dispatch",
+        headers={"X-Cron-Secret": cron_secret},
+        json={"force_user_id": "u_sunday", "ignore_hour": False},
+    )
+    assert res_sun.status_code == 200
+    assert res_sun.get_json()["dispatched_count"] == 1
+
+    res_mon = client.post(
+        "/api/notifications/cron/dispatch",
+        headers={"X-Cron-Secret": cron_secret},
+        json={"force_user_id": "u_monday", "ignore_hour": False},
+    )
+    assert res_mon.status_code == 200
+    assert res_mon.get_json()["dispatched_count"] == 0

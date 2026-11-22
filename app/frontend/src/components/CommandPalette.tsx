@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X, FileText, StickyNote, ArrowRight, Compass } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 
 const QUICK_ROUTES = [
   { label: "Estudar Questões (Montar Bateria)", href: "/estudar", tag: "Questões" },
+  { label: "Aulas em Vídeo (Extensivo + MedCof)", href: "/aulas", tag: "Aulas", requiresLessonsAccess: true },
   { label: "Caderno Inteligente (Meus Macetes)", href: "/caderno", tag: "Caderno" },
   { label: "Provas na Íntegra & Simulados", href: "/simulado", tag: "Provas" },
   { label: "Raio-X Sniper & Domínio de Focos", href: "/analise?tab=sniper", tag: "Sniper" },
@@ -23,6 +25,7 @@ export function openCommandPalette() {
 
 export function CommandPalette() {
   const router = useRouter();
+  const { canAccessLessons } = useLessonsAccess();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,12 +80,13 @@ export function CommandPalette() {
   });
 
   const matchingRoutes = useMemo(() => {
-    if (!trimmed) return QUICK_ROUTES;
+    const allowed = QUICK_ROUTES.filter((r) => !r.requiresLessonsAccess || canAccessLessons);
+    if (!trimmed) return allowed;
     const lower = trimmed.toLowerCase();
-    return QUICK_ROUTES.filter(
+    return allowed.filter(
       (r) => r.label.toLowerCase().includes(lower) || r.tag.toLowerCase().includes(lower)
     );
-  }, [trimmed]);
+  }, [trimmed, canAccessLessons]);
 
   const matchingExams = useMemo(() => {
     const exams = examsData?.exams ?? [];

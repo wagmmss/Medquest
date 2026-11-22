@@ -15,7 +15,9 @@ import { motion, Variants } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { readLearningSession, syncSessionFromCloud } from "@/lib/sessionState";
 import { triggerConfetti } from "@/lib/confetti";
+import { useQuery } from "@tanstack/react-query";
 import { useDashboardSummaryQuery } from "@/lib/queries/useStudyQueries";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import clsx from "clsx";
 
@@ -79,6 +81,22 @@ interface DashboardClientProps {
   hasPlannerError?: boolean;
 }
 
+function formatCompactDuration(seconds?: number | null): string {
+  if (!seconds || seconds <= 0) return "";
+  const totalMin = Math.round(seconds / 60);
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function formatBookmarkMmSs(seconds?: number | null): string {
+  if (!seconds || seconds <= 0) return "";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function DashboardClient({ 
   stats: initialStats, 
   currentPlannerWeek: initialPlannerWeek, 
@@ -94,6 +112,14 @@ export function DashboardClient({
   hasPlannerError: initialHasPlannerError = false,
 }: DashboardClientProps) {
   const { isLoaded: authLoaded } = useAppUser();
+  const { canAccessLessons } = useLessonsAccess();
+  const { data: continueLessonData } = useQuery({
+    queryKey: ["lessons-continue"],
+    queryFn: () => api.lessons.getContinue(),
+    enabled: canAccessLessons,
+    staleTime: 60_000,
+    retry: false,
+  });
   const hasAnimated = useRef(false);
   const [activeSession, setActiveSession] = useState<{ kind: "quiz" | "simulado"; url: string } | null>(null);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
@@ -878,6 +904,70 @@ export function DashboardClient({
               )}
             </div>
           </motion.section>
+
+          {/* CONTINUAR ASSISTINDO (PRIVADO AO PROPRIETARIO) */}
+          {canAccessLessons && continueLessonData?.lesson && (
+            <motion.section
+              variants={itemVariants}
+              className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="inline-flex items-center gap-1 font-bold text-accent">
+                    <ClinicalIcon name="play_circle" className="w-3.5 h-3.5" />
+                    {continueLessonData.reason === "in_progress"
+                      ? "Continuar assistindo"
+                      : continueLessonData.reason === "planner_week"
+                      ? `Próxima aula • Semana ${continueLessonData.planner_week ?? ""}`
+                      : "Próxima aula pendente"}
+                  </span>
+                  {continueLessonData.lesson.progress.bookmark_seconds > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-xs bg-warning/15 text-warning font-mono-lab font-semibold">
+                      Parou em {formatBookmarkMmSs(continueLessonData.lesson.progress.bookmark_seconds)}
+                    </span>
+                  )}
+                  {continueLessonData.lesson.duration_seconds && (
+                    <span className="text-ink-muted font-mono-lab">
+                      {formatCompactDuration(continueLessonData.lesson.duration_seconds)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-bold text-ink-primary truncate" title={continueLessonData.lesson.title}>
+                  {continueLessonData.lesson.title}
+                </p>
+                <p className="text-xs text-ink-secondary truncate">
+                  {continueLessonData.lesson.module_name}
+                  {continueLessonData.stats.primary_total > 0 && (
+                    <>
+                      {" • "}
+                      {continueLessonData.stats.primary_completed}/{continueLessonData.stats.primary_total} do Extensivo
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/aulas?lesson=${continueLessonData.lesson.id}&course=${encodeURIComponent(
+                    continueLessonData.lesson.course_key
+                  )}${
+                    continueLessonData.lesson.subtema
+                      ? `&subtema=${encodeURIComponent(continueLessonData.lesson.subtema)}`
+                      : ""
+                  }`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xs bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+                >
+                  <ClinicalIcon name="play_arrow" className="w-3.5 h-3.5" />
+                  <span>Retomar aula</span>
+                </Link>
+                <Link
+                  href="/aulas"
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xs border border-line-subtle bg-canvas hover:bg-elevated text-ink-secondary hover:text-ink-primary text-xs font-semibold transition-colors"
+                >
+                  Videoteca
+                </Link>
+              </div>
+            </motion.section>
+          )}
 
           {/* CADERNO DE ERROS & RETIFICAÇÃO ATIVA */}
           <motion.section variants={itemVariants} className="shrink-0 bg-surface border border-line-subtle rounded-sm p-4 sm:p-5 shadow-2xs">

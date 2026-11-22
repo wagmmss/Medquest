@@ -62,6 +62,45 @@ def configured_curator_emails() -> frozenset[str]:
         if email.strip()
     )
 
+
+def configured_lessons_allowed_user_ids() -> frozenset[str]:
+    """Read allowlisted Clerk user IDs (`sub`) for private video lessons."""
+    return frozenset(
+        uid.strip()
+        for uid in os.environ.get("LESSONS_ALLOWED_USER_IDS", "").split(",")
+        if uid.strip()
+    )
+
+
+def configured_lessons_allowed_emails() -> frozenset[str]:
+    """Read allowlisted verified emails for private video lessons access (fail-closed when unset)."""
+    return frozenset(
+        email.strip().lower()
+        for email in os.environ.get("LESSONS_ALLOWED_EMAILS", "").split(",")
+        if email.strip()
+    )
+
+
+def can_access_lessons_request() -> bool:
+    """Restrict private video lessons strictly to allowlisted authenticated accounts (fail-closed)."""
+    user_id = str(getattr(g, "user_id", "") or "").strip()
+    if not user_id or user_id.startswith("guest:"):
+        return False
+
+    if _is_testing_env(current_app) and hasattr(g, "can_access_lessons"):
+        return bool(g.can_access_lessons)
+
+    allowed_ids = configured_lessons_allowed_user_ids()
+    if allowed_ids:
+        return user_id in allowed_ids
+
+    allowed_emails = configured_lessons_allowed_emails()
+    if allowed_emails:
+        user_email = (getattr(g, "user_email", None) or "").strip().lower()
+        return bool(user_email and user_email in allowed_emails)
+
+    return False
+
 def _is_testing_env(app) -> bool:
     """Verifica se o ambiente de teste está ativo de forma estritamente isolada de produção."""
     return bool(
@@ -74,7 +113,6 @@ def _is_testing_env(app) -> bool:
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        from flask import current_app
         if _is_testing_env(current_app):
             if "X-User-ID" in request.headers:
                 g.user_id = request.headers["X-User-ID"]
@@ -137,12 +175,14 @@ def require_auth(f):
                 return jsonify({"error": "Unauthorized"}), 401
             g.user_id = sub.strip()
             
-            # Extract email if present in JWT claims
-            if not g.user_email:
-                if "email" in data and isinstance(data["email"], str):
-                    g.user_email = data["email"].strip().lower()
-                elif "primary_email" in data and isinstance(data["primary_email"], str):
-                    g.user_email = data["primary_email"].strip().lower()
+            # Extract email from verified JWT claims (takes precedence over proxy header)
+            jwt_email = ""
+            if "email" in data and isinstance(data["email"], str):
+                jwt_email = data["email"].strip().lower()
+            elif "primary_email" in data and isinstance(data["primary_email"], str):
+                jwt_email = data["primary_email"].strip().lower()
+            if jwt_email:
+                g.user_email = jwt_email
         except Exception as exc:
             logger.info("JWT validation failed: %s", type(exc).__name__)
             return jsonify({"error": "Unauthorized"}), 401
@@ -157,24 +197,35 @@ bp = Blueprint("auth", __name__)
 @bp.route("/auth/me")
 @require_auth
 def auth_me():
-    from flask import current_app
     user_email = (getattr(g, "user_email", None) or "").strip().lower()
     curator_emails = configured_curator_emails()
     is_curator = bool(user_email and user_email in curator_emails)
     if _is_testing_env(current_app) and hasattr(g, "is_curator"):
         is_curator = bool(g.is_curator)
-    return jsonify({
+    resp = jsonify({
         "user_id": g.user_id,
         "email": user_email,
         "is_curator": is_curator,
+        "can_access_lessons": can_access_lessons_request(),
     })
+    resp.headers["Cache-Control"] = "private, no-store"
+    return resp
+
+
+def require_lessons_access(f):
+    @wraps(f)
+    @require_auth
+    def decorated(*args, **kwargs):
+        if not can_access_lessons_request():
+            return jsonify({"error": "Forbidden: Acesso restrito às aulas privadas"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 def require_curator(f):
     @wraps(f)
     @require_auth
     def decorated(*args, **kwargs):
-        from flask import current_app
         user_email = (getattr(g, "user_email", None) or "").strip().lower()
         if _is_testing_env(current_app):
             if not getattr(g, "is_curator", True):

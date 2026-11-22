@@ -71,7 +71,14 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     headers.set("Authorization", `Bearer ${token}`);
     try {
       const user = await getServerCurrentUser();
-      const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
+      const verifiedPrimary =
+        user?.primaryEmailAddress?.verification?.status === "verified"
+          ? user.primaryEmailAddress.emailAddress
+          : undefined;
+      const verifiedFallback = user?.emailAddresses?.find(
+        (addr) => addr.verification?.status === "verified"
+      )?.emailAddress;
+      const email = verifiedPrimary || verifiedFallback;
       if (email) {
         headers.set("X-User-Email", email);
       }

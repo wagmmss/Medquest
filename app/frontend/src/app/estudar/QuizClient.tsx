@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult } from "@/types/api";
-import { api, OfflineQueuedError } from "@/lib/api";
+import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
 import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2 } from "lucide-react";
 import clsx from "clsx";
@@ -107,6 +107,7 @@ export interface SavedQuizState {
   timeSpent: number;
   savedAt: number;
   eliminatedAlternatives?: Record<number, string[]>;
+  pendingSubmits?: Record<number, { key: string; body: AttemptPayload }>;
 }
 
 function isSavedQuizState(value: unknown): value is SavedQuizState {
@@ -236,7 +237,12 @@ export function QuizClient({
   const [togglingFavorite, setTogglingFavorite] = useState(false);
   const detailRequestRef = useRef(0);
   const queueRequestRef = useRef(0);
-  const attemptLockRef = useRef(false);
+  // Envios de tentativa em voo, por questão. Um booleano global travava a sessão
+  // inteira quando o aluno navegava durante o envio (o finally só liberava se
+  // ainda estivesse na mesma questão) e permitia um 2º envio ao voltar.
+  const inFlightAttemptsRef = useRef<Set<number>>(new Set());
+  const [pendingSubmits, setPendingSubmits] = useState<Record<number, { key: string; body: AttemptPayload }>>({});
+  const pendingSubmitsRef = useRef<Record<number, { key: string; body: AttemptPayload }>>({});
   const reviewLockRef = useRef(false);
   const favoriteLockRef = useRef(false);
   const reviewedQuestionsRef = useRef<Set<number>>(new Set());
@@ -312,7 +318,6 @@ export function QuizClient({
   const loadQuestionDetail = useCallback(async (id: number) => {
     const requestId = ++detailRequestRef.current;
     reviewLockRef.current = false;
-    attemptLockRef.current = false;
 
     const prevDetail = currentDetailRef.current;
     if (prevDetail && prevDetail.id !== id) {
@@ -320,10 +325,11 @@ export function QuizClient({
     }
 
     const savedAns = sessionAnswersRef.current[id];
+    const pendingSubmit = pendingSubmitsRef.current[id];
     const savedTip = attendingTipsByQidRef.current[id] ?? savedAns?.attendingTip ?? null;
     const savedChat = chatMessagesByQidRef.current[id] ?? [];
-    const savedWritten = savedAns?.writtenAnswer ?? draftWrittenByQidRef.current[id] ?? "";
-    const savedLetter = savedAns?.letter ?? draftSelectedByQidRef.current[id] ?? null;
+    const savedWritten = savedAns?.writtenAnswer ?? pendingSubmit?.body.user_answer_text ?? draftWrittenByQidRef.current[id] ?? "";
+    const savedLetter = savedAns?.letter ?? pendingSubmit?.body.selected_letter ?? draftSelectedByQidRef.current[id] ?? null;
     const targetTime = timeSpentByQidRef.current[id] ?? 0;
 
     setDetailError(null);
@@ -331,6 +337,7 @@ export function QuizClient({
     setSelectedLetter(savedLetter);
     setUserWrittenAnswer(savedWritten);
     setIsOfflineSaved(Boolean(savedAns?.isOffline));
+    setSubmitting(inFlightAttemptsRef.current.has(id));
     setChatMessages(savedChat);
     setPreceptorInput("");
     setAttendingTip(savedTip);
@@ -460,6 +467,8 @@ export function QuizClient({
         draftSelectedByQidRef.current = {};
         timeSpentByQidRef.current = {};
         sessionAnswersRef.current = {};
+        pendingSubmitsRef.current = {};
+        setPendingSubmits({});
         setQueue(qList);
         currentIndexRef.current = 0;
         setCurrentIndex(0);
@@ -649,12 +658,16 @@ export function QuizClient({
             attendingTipsByQidRef.current[Number(qidStr)] = ans.attendingTip;
           }
         }
-        setSelectedLetter(saved.selectedLetter);
-        setUserWrittenAnswer(saved.userWrittenAnswer || "");
+        const restoredPending = saved.pendingSubmits ? { ...saved.pendingSubmits } : {};
+        pendingSubmitsRef.current = restoredPending;
+        setPendingSubmits(restoredPending);
+        const targetQ = saved.queue[saved.currentIndex];
+        const pendingForTarget = targetQ ? restoredPending[targetQ.id] : undefined;
+        setSelectedLetter(pendingForTarget?.body.selected_letter ?? saved.selectedLetter);
+        setUserWrittenAnswer(pendingForTarget?.body.user_answer_text ?? saved.userWrittenAnswer ?? "");
         if (saved.eliminatedAlternatives) {
           setEliminatedAlternatives(saved.eliminatedAlternatives);
         }
-        const targetQ = saved.queue[saved.currentIndex];
         const restoredTip =
           saved.attendingTip ||
           (targetQ ? attendingTipsByQidRef.current[targetQ.id] || saved.sessionAnswers[targetQ.id]?.attendingTip : null) ||
@@ -719,12 +732,16 @@ export function QuizClient({
           attendingTipsByQidRef.current[Number(qidStr)] = ans.attendingTip;
         }
       }
-      setSelectedLetter(saved.selectedLetter);
-      setUserWrittenAnswer(saved.userWrittenAnswer || "");
+      const restoredPending = saved.pendingSubmits ? { ...saved.pendingSubmits } : {};
+      pendingSubmitsRef.current = restoredPending;
+      setPendingSubmits(restoredPending);
+      const targetQ = saved.queue[saved.currentIndex];
+      const pendingForTarget = targetQ ? restoredPending[targetQ.id] : undefined;
+      setSelectedLetter(pendingForTarget?.body.selected_letter ?? saved.selectedLetter);
+      setUserWrittenAnswer(pendingForTarget?.body.user_answer_text ?? saved.userWrittenAnswer ?? "");
       if (saved.eliminatedAlternatives) {
         setEliminatedAlternatives(saved.eliminatedAlternatives);
       }
-      const targetQ = saved.queue[saved.currentIndex];
       const restoredTip =
         saved.attendingTip ||
         (targetQ ? attendingTipsByQidRef.current[targetQ.id] || saved.sessionAnswers[targetQ.id]?.attendingTip : null) ||
@@ -871,7 +888,6 @@ export function QuizClient({
     queueRequestRef.current++;
     detailRequestRef.current++;
     reviewLockRef.current = false;
-    attemptLockRef.current = false;
     setShowFinishModal(false);
     ensureCurrentQuestionReviewed();
     removeLearningSession("quiz");
@@ -886,6 +902,8 @@ export function QuizClient({
     draftSelectedByQidRef.current = {};
     timeSpentByQidRef.current = {};
     sessionAnswersRef.current = {};
+    pendingSubmitsRef.current = {};
+    setPendingSubmits({});
     setQueue([]);
     currentIndexRef.current = 0;
     setCurrentIndex(0);
@@ -955,6 +973,7 @@ export function QuizClient({
         timeSpent: getCurrentTime(),
         savedAt: Date.now(),
         eliminatedAlternatives,
+        pendingSubmits: pendingSubmitsRef.current,
       } satisfies SavedQuizState);
     } else if (state === "FILTERS" && !hasSavedState) {
       removeLearningSession("quiz");
@@ -989,13 +1008,14 @@ export function QuizClient({
           timeSpent: getCurrentTime(),
           savedAt: Date.now(),
           eliminatedAlternatives: s.eliminatedAlternatives,
+          pendingSubmits: pendingSubmitsRef.current,
         } satisfies SavedQuizState);
       }
     };
   }, [getCurrentTime]);
 
   const toggleEliminateAlternative = useCallback((letter: string) => {
-    if (!currentDetail || attemptResult || submitting) return;
+    if (!currentDetail || attemptResult || submitting || pendingSubmitsRef.current[currentDetail.id]) return;
     const qid = currentDetail.id;
     setEliminatedAlternatives((prev) => {
       const currentList = prev[qid] || [];
@@ -1012,7 +1032,7 @@ export function QuizClient({
   }, [currentDetail, attemptResult, submitting, selectedLetter]);
 
   const selectAlternative = useCallback((letter: string) => {
-    if (attemptResult || submitting) return;
+    if (attemptResult || submitting || (currentDetail && pendingSubmitsRef.current[currentDetail.id])) return;
     if (currentDetail) {
       const qid = currentDetail.id;
       draftSelectedByQidRef.current[qid] = letter;
@@ -1082,28 +1102,51 @@ export function QuizClient({
   }, [loadQueue]);
 
   const handleAttempt = useCallback(async () => {
-    if (attemptLockRef.current || attemptResult || isOfflineSaved || submitting || !currentDetail || !selectedLetter) return;
-    attemptLockRef.current = true;
-    
-    setSubmitting(true);
+    if (attemptResult || isOfflineSaved || submitting || !currentDetail || !selectedLetter) return;
     const targetQid = currentDetail.id;
+    if (inFlightAttemptsRef.current.has(targetQid)) return;
+    inFlightAttemptsRef.current.add(targetQid);
+
+    setSubmitting(true);
     const targetTwinId = currentDetail.twin_for_question_id;
-    const targetLetter = selectedLetter;
     const targetWritten = userWrittenAnswer;
     const targetTip = attendingTip || attendingTipsByQidRef.current[targetQid] || null;
     const isAssistedAttempt = Boolean(targetTip);
 
+    const existingPending = pendingSubmitsRef.current[targetQid];
+    let key: string;
+    let body: AttemptPayload;
+    if (existingPending) {
+      key = existingPending.key;
+      body = existingPending.body;
+    } else {
+      key = crypto.randomUUID();
+      body = {
+        selected_letter: selectedLetter,
+        time_spent_ms: getCurrentTime() * 1000,
+        confidence: "defer",
+        ...(targetTwinId ? { twin_for_question_id: targetTwinId } : {}),
+        assisted: isAssistedAttempt,
+      };
+      const nextPending = { ...pendingSubmitsRef.current, [targetQid]: { key, body } };
+      pendingSubmitsRef.current = nextPending;
+      setPendingSubmits(nextPending);
+      persistSession(body.selected_letter);
+    }
+
+    const targetLetter = body.selected_letter;
+    const clearPending = () => {
+      if (!pendingSubmitsRef.current[targetQid]) return;
+      const nextPending = { ...pendingSubmitsRef.current };
+      delete nextPending[targetQid];
+      pendingSubmitsRef.current = nextPending;
+      setPendingSubmits(nextPending);
+      persistSession(targetLetter);
+    };
+
     try {
-      const res = await api.questions.submitAttempt(
-        targetQid,
-        targetLetter,
-        getCurrentTime() * 1000,
-        "defer",
-        undefined,
-        undefined,
-        targetTwinId,
-        isAssistedAttempt
-      );
+      const res = await api.questions.postAttempt(targetQid, body, key);
+      clearPending();
       const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
       if (currentDetailRef.current?.id === targetQid) {
         setAttemptResult(enrichedRes);
@@ -1122,6 +1165,7 @@ export function QuizClient({
 
     } catch (err) {
       if (err instanceof OfflineQueuedError) {
+        clearPending();
         toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
         if (currentDetailRef.current?.id === targetQid) {
           setIsOfflineSaved(true);
@@ -1137,38 +1181,62 @@ export function QuizClient({
           }
         }));
       } else {
-        toast.error("Erro ao enviar resposta.");
+        toast.error("Não foi possível confirmar o envio. Sua escolha foi mantida — toque em Tentar de novo.");
       }
     } finally {
-      attemptLockRef.current = false;
+      inFlightAttemptsRef.current.delete(targetQid);
       if (currentDetailRef.current?.id === targetQid) {
         setSubmitting(false);
       }
     }
-  }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime, attendingTip]);
+  }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime, attendingTip, persistSession]);
 
   const handleDiscursiveReveal = useCallback(async () => {
-    if (attemptLockRef.current || attemptResult || isOfflineSaved || submitting || !currentDetail) return;
-    attemptLockRef.current = true;
-    
-    setSubmitting(true);
+    if (attemptResult || isOfflineSaved || submitting || !currentDetail) return;
     const targetQid = currentDetail.id;
+    if (inFlightAttemptsRef.current.has(targetQid)) return;
+    inFlightAttemptsRef.current.add(targetQid);
+
+    setSubmitting(true);
     const targetTwinId = currentDetail.twin_for_question_id;
-    const targetWritten = userWrittenAnswer;
     const targetTip = attendingTip || attendingTipsByQidRef.current[targetQid] || null;
     const isAssistedAttempt = Boolean(targetTip);
 
+    const existingPending = pendingSubmitsRef.current[targetQid];
+    let key: string;
+    let body: AttemptPayload;
+    if (existingPending) {
+      key = existingPending.key;
+      body = existingPending.body;
+    } else {
+      key = crypto.randomUUID();
+      body = {
+        selected_letter: "A",
+        time_spent_ms: getCurrentTime() * 1000,
+        confidence: "defer",
+        ...(userWrittenAnswer ? { user_answer_text: userWrittenAnswer } : {}),
+        ...(targetTwinId ? { twin_for_question_id: targetTwinId } : {}),
+        assisted: isAssistedAttempt,
+      };
+      const nextPending = { ...pendingSubmitsRef.current, [targetQid]: { key, body } };
+      pendingSubmitsRef.current = nextPending;
+      setPendingSubmits(nextPending);
+      persistSession(selectedLetter);
+    }
+
+    const targetWritten = body.user_answer_text ?? userWrittenAnswer;
+    const clearPending = () => {
+      if (!pendingSubmitsRef.current[targetQid]) return;
+      const nextPending = { ...pendingSubmitsRef.current };
+      delete nextPending[targetQid];
+      pendingSubmitsRef.current = nextPending;
+      setPendingSubmits(nextPending);
+      persistSession(selectedLetter);
+    };
+
     try {
-      const res = await api.questions.submitAttempt(
-        targetQid, 
-        "A", 
-        getCurrentTime() * 1000, 
-        "defer", 
-        null,
-        targetWritten,
-        targetTwinId,
-        isAssistedAttempt
-      );
+      const res = await api.questions.postAttempt(targetQid, body, key);
+      clearPending();
       const enrichedRes: AttemptResult = { ...res, assisted: res.assisted ?? isAssistedAttempt };
       if (currentDetailRef.current?.id === targetQid) {
         setAttemptResult(enrichedRes);
@@ -1187,6 +1255,7 @@ export function QuizClient({
       }));
     } catch (e: unknown) {
       if (e instanceof OfflineQueuedError) {
+        clearPending();
         if (currentDetailRef.current?.id === targetQid) {
           setIsOfflineSaved(true);
         }
@@ -1203,15 +1272,15 @@ export function QuizClient({
         }));
         toast("Resposta salva neste dispositivo; será sincronizada quando a conexão voltar.");
       } else {
-        toast.error("Erro ao enviar resposta.");
+        toast.error("Não foi possível confirmar o envio. Sua escolha foi mantida — toque em Tentar de novo.");
       }
     } finally {
-      attemptLockRef.current = false;
+      inFlightAttemptsRef.current.delete(targetQid);
       if (currentDetailRef.current?.id === targetQid) {
         setSubmitting(false);
       }
     }
-  }, [attemptResult, isOfflineSaved, submitting, currentDetail, userWrittenAnswer, getCurrentTime, attendingTip]);
+  }, [attemptResult, isOfflineSaved, submitting, currentDetail, selectedLetter, userWrittenAnswer, getCurrentTime, attendingTip, persistSession]);
 
   const handleOpenLabs = useCallback(() => {
     setLabsOpen(true);
@@ -1492,6 +1561,8 @@ export function QuizClient({
           draftSelectedByQidRef.current = {};
           timeSpentByQidRef.current = {};
           sessionAnswersRef.current = {};
+          pendingSubmitsRef.current = {};
+          setPendingSubmits({});
           setSessionAnswers({});
           setEliminatedAlternatives({});
           setSelectedLetter(null);
@@ -1514,6 +1585,7 @@ export function QuizClient({
 
   // PLAYING STATE
   const q = currentDetail;
+  const hasPendingSubmit = Boolean(q && pendingSubmits[q.id]);
   const completedCount = Object.values(sessionAnswers).filter(answer => answer.result || answer.isOffline).length;
   const extraCaseImages = filterExtraImages(q?.clinical_case?.images, q?.clinical_case?.stem);
   const extraStemImages = filterExtraImages(q?.images, q?.stem);
@@ -1839,7 +1911,9 @@ export function QuizClient({
                   </p>
                   <textarea
                     value={userWrittenAnswer}
+                    readOnly={hasPendingSubmit}
                     onChange={(e) => {
+                      if (hasPendingSubmit) return;
                       const val = e.target.value;
                       if (q) {
                         draftWrittenByQidRef.current[q.id] = val;
@@ -1866,7 +1940,7 @@ export function QuizClient({
                     ) : (
                       <>
                         <ClinicalIcon name="checkCircle" size={14} />
-                        Confirmar Resposta & Ver Padrão da Banca
+                        {hasPendingSubmit ? "Tentar de novo" : "Confirmar Resposta & Ver Padrão da Banca"}
                       </>
                     )}
                   </button>
@@ -1896,7 +1970,7 @@ export function QuizClient({
                     {submitting ? (
                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      "Confirmar Resposta [Enter]"
+                      hasPendingSubmit ? "Tentar de novo" : "Confirmar Resposta [Enter]"
                     )}
                   </button>
                 )}

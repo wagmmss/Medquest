@@ -26,6 +26,7 @@ from .schemas import (
     ValidationError,
     validation_errors,
 )
+from .timezones import DEFAULT_TZ, local_day_bounds_utc
 from .webpush import get_vapid_public_key, send_web_push
 
 bp = Blueprint("notifications", __name__)
@@ -69,12 +70,12 @@ def _fetch_subscriptions_by_user(db, active_user_ids: list[str]) -> dict:
     return subs_by_user
 
 
-def _fetch_due_user_ids(db, today_date: str) -> set[str]:
-    """Retorna conjunto de IDs de usuários com revisões pendentes para hoje."""
+def _fetch_due_user_ids(db, cutoff_iso: str) -> set[str]:
+    """Retorna conjunto de IDs de usuários com revisões pendentes até o fim do dia local."""
     due_users_query = """
-        SELECT DISTINCT user_id FROM spaced_repetition WHERE next_review_date <= ?
+        SELECT DISTINCT user_id FROM spaced_repetition WHERE next_review_date < ?
     """
-    due_users_rows = db.execute(due_users_query, (today_date,)).fetchall()
+    due_users_rows = db.execute(due_users_query, (cutoff_iso,)).fetchall()
     return {str(row["user_id"] if "user_id" in row else row[0]) for row in due_users_rows}
 
 
@@ -327,9 +328,12 @@ def cron_dispatch():
         return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
 
     now_utc = datetime.now(timezone.utc)
-    today_date = now_utc.strftime("%Y-%m-%d")
-    current_hour = now_utc.hour
-    current_weekday = now_utc.weekday()  # 0=Segunda, 6=Domingo
+    now_local = now_utc.astimezone(DEFAULT_TZ)
+    today_date = now_local.strftime("%Y-%m-%d")
+    current_hour = now_local.hour
+    current_weekday = now_local.weekday()  # 0=Segunda, 6=Domingo
+    _, day_end_utc = local_day_bounds_utc(now_utc, DEFAULT_TZ)
+    cutoff_iso = day_end_utc.isoformat()
 
     db = get_db()
 
@@ -358,7 +362,7 @@ def cron_dispatch():
         "tag": "medquest-fsrs-review",
     }
 
-    due_user_ids = _fetch_due_user_ids(db, today_date)
+    due_user_ids = _fetch_due_user_ids(db, cutoff_iso)
 
     for cfg in configs:
         user_id = str(cfg["user_id"])

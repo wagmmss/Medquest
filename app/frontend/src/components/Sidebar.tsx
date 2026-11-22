@@ -12,6 +12,7 @@ import { OfflineModal } from "./OfflineModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { useZenMode } from "@/hooks/useZenMode";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import Image from "next/image";
@@ -49,6 +50,8 @@ export function Sidebar() {
   );
   const { isOffline, forcedOffline } = useOfflineStatus();
   const { isZenMode, toggleZenMode } = useZenMode();
+  const { canAccessLessons } = useLessonsAccess();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.requiresLessonsAccess || canAccessLessons);
 
   const toggleCollapse = () => {
     try {
@@ -110,7 +113,7 @@ export function Sidebar() {
 
         {/* NAVEGACAO PRINCIPAL */}
         <nav className="flex-1 flex flex-col gap-1 overflow-y-auto px-0.5 py-1" aria-label="Navegação principal">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

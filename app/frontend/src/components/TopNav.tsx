@@ -11,6 +11,7 @@ import { useZenMode } from "@/hooks/useZenMode";
 import Image from "next/image";
 import clsx from "clsx";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
+import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 
@@ -94,6 +95,8 @@ export default function TopNav() {
 
   const { isOffline, forcedOffline } = useOfflineStatus();
   const { isInstallable, installApp } = usePwaInstall();
+  const { canAccessLessons } = useLessonsAccess();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.requiresLessonsAccess || canAccessLessons);
 
   return (
     <>
@@ -237,7 +240,7 @@ export default function TopNav() {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="Navegação principal">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link 

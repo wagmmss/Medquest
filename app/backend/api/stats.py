@@ -28,6 +28,7 @@ from .tri_engine import evaluate_tri_performance
 from .db import get_db, db_transaction
 from .questions import invalidate_user_caches
 from .observability import emit
+from .timezones import resolve_tz_offset_minutes
 from .edital_profiles import (
     EditalProfile,
     get_edital_profile,
@@ -303,10 +304,8 @@ def _get_streak_and_target_info(db, user_id: str, now_utc: datetime, tz_offset: 
 
 @bp.route("/stats/overview")
 def overview():
-    try:
-        tz_offset = int(request.args.get('tz_offset', -180))
-    except (ValueError, TypeError):
-        tz_offset = 0
+    now_utc = datetime.now(timezone.utc)
+    tz_offset = resolve_tz_offset_minutes(request.args, now_utc)
 
     cache_key = (g.user_id, "overview", tz_offset)
     cached = overview_cache.get(cache_key)
@@ -314,7 +313,6 @@ def overview():
         return jsonify(cached)
 
     db = get_db()
-    now_utc = datetime.now(timezone.utc)
 
     metrics = _get_overview_metrics(db, g.user_id, now_utc)
     streak_info = _get_streak_and_target_info(db, g.user_id, now_utc, tz_offset)
@@ -404,9 +402,28 @@ def breakdown():
     return jsonify(_breakdown(db, col, label_col))
 
 
-def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
-    date_filter = "AND answered_at >= date('now', ?)" if days is not None else ""
-    params = (user_id, f'-{days} days') if days is not None else (user_id,)
+def _get_timeline_data(
+    db,
+    user_id: str,
+    days: int | None = None,
+    tz_offset: int = -180,
+    now_utc: datetime | None = None,
+) -> list[dict]:
+    sign = "+" if tz_offset >= 0 else "-"
+    offset_str = f"{sign}{abs(tz_offset)} minutes"
+    date_filter = ""
+    params: tuple = (offset_str, offset_str, user_id)
+    if days is not None:
+        ref_now = now_utc if now_utc is not None else datetime.now(timezone.utc)
+        local_today = (ref_now + timedelta(minutes=tz_offset)).date()
+        window_start_local = local_today - timedelta(days=days)
+        window_start_utc = (
+            datetime(window_start_local.year, window_start_local.month, window_start_local.day, tzinfo=timezone.utc)
+            - timedelta(minutes=tz_offset)
+        ).isoformat()
+        date_filter = "AND answered_at >= ?"
+        params = (offset_str, offset_str, user_id, window_start_utc)
+
     has_assisted = _has_assisted_column(db)
     assisted_col = "COALESCE(assisted, 0) AS assisted" if has_assisted else "0 AS assisted"
     assisted_sum = (
@@ -417,13 +434,13 @@ def _get_timeline_data(db, user_id: str, days: int | None = None) -> list[dict]:
     rows = db.execute(f"""
         WITH ranked AS (
             SELECT
-                substr(answered_at, 1, 10) AS day,
+                date(answered_at, ?) AS day,
                 question_id,
                 is_correct,
                 {assisted_col},
                 time_spent_ms,
                 ROW_NUMBER() OVER (
-                    PARTITION BY substr(answered_at, 1, 10), question_id
+                    PARTITION BY date(answered_at, ?), question_id
                     ORDER BY answered_at DESC, id DESC
                 ) AS rn
             FROM attempts
@@ -470,12 +487,14 @@ def timeline():
         days = int(days_param) if days_param else None
     except ValueError:
         days = None
-    cache_key = (g.user_id, "timeline", days)
+    now_utc = datetime.now(timezone.utc)
+    tz_offset = resolve_tz_offset_minutes(request.args, now_utc)
+    cache_key = (g.user_id, "timeline", days, tz_offset)
     cached = overview_cache.get(cache_key)
     if cached is not None:
         return jsonify(cached)
     db = get_db()
-    data = _get_timeline_data(db, g.user_id, days=days)
+    data = _get_timeline_data(db, g.user_id, days=days, tz_offset=tz_offset, now_utc=now_utc)
     overview_cache.set(cache_key, data)
     return jsonify(data)
 
@@ -1529,10 +1548,7 @@ def dashboard_summary():
     db = get_db()
     user_id = g.user_id
     now_utc = datetime.now(timezone.utc)
-    try:
-        tz_offset = int(request.args.get("tz_offset", 0))
-    except (ValueError, TypeError):
-        tz_offset = 0
+    tz_offset = resolve_tz_offset_minutes(request.args, now_utc)
 
     cache_key = (user_id, "dashboard_summary", tz_offset)
     cached_payload = overview_cache.get(cache_key)
@@ -2017,17 +2033,14 @@ def analysis_summary():
     user_id = g.user_id
     raw_inst = request.args.get("institution", "").strip()[:64]
     raw_compare = request.args.get("compare_institution", "").strip()[:64]
-    try:
-        tz_offset = int(request.args.get("tz_offset", -180))
-    except (ValueError, TypeError):
-        tz_offset = -180
+    now_utc = datetime.now(timezone.utc)
+    tz_offset = resolve_tz_offset_minutes(request.args, now_utc)
 
     cache_key = (user_id, "analysis_summary", raw_inst, raw_compare, tz_offset)
     cached = overview_cache.get(cache_key)
     if cached is not None:
         return jsonify(cached)
 
-    now_utc = datetime.now(timezone.utc)
     rollup = _fetch_attempt_rollup(db, user_id, now_utc)
     config_row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
     raw_config = dict(config_row) if config_row else {}
@@ -2052,7 +2065,7 @@ def analysis_summary():
         "weak_topics": _get_weak_topics_data(db, user_id, min_attempts=5),
         "distractors": _get_distractors_data(db, user_id),
         "at_risk": _get_at_risk_data(db, user_id),
-        "timeline_180": _get_timeline_data(db, user_id, days=180),
+        "timeline_180": _get_timeline_data(db, user_id, days=180, tz_offset=tz_offset, now_utc=now_utc),
         "coverage": _get_coverage_data(db, user_id, area_filter="", summary_only=False),
     }
     overview_cache.set(cache_key, payload)

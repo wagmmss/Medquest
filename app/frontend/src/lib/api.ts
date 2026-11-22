@@ -9,7 +9,10 @@ import {
   InstitutionRadarResponse, AnalysisSummaryResponse,
   AuthMeResponse, DashboardSummaryResponse, PreceptorFocusResponse,
   BlindspotsResponse, TriEvaluationResponse, TriEvaluationPayload,
-  OfficialExam, SimuladoSessionItem
+  OfficialExam, SimuladoSessionItem,
+  LessonsListResponse, LessonDetailResponse, SubtemaLessonsResponse,
+  LessonsSummaryBySubtemaResponse, ContinueLessonResponse, CurrentWeekLessonsResponse,
+  SaveLessonProgressPayload, LessonProgressStatus
 } from "@/types/api";
 
 
@@ -36,8 +39,19 @@ export class ApiHttpError extends Error {
   }
 }
 
+export interface AttemptPayload {
+  selected_letter: string;
+  time_spent_ms: number;
+  confidence: string;
+  is_correct?: boolean;
+  user_answer_text?: string;
+  twin_for_question_id?: number;
+  assisted?: boolean;
+}
+
 interface ApiFetchOptions extends RequestInit {
   timeoutMs?: number;
+  idempotencyKey?: string;
 }
 
 // Mapa em memória para deduplicar requisições GET idênticas em voo (evita tempestade de rede em trocas rápidas de rota/foco)
@@ -48,10 +62,11 @@ const inFlightRequests: Record<string, Promise<unknown> | undefined> = {};
  */
 async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): Promise<T> {
   options?.signal?.throwIfAborted();
+  const { timeoutMs: optionTimeoutMs, idempotencyKey: optionIdempotencyKey, ...fetchOptions } = options ?? {};
   const requestOwner = typeof window !== "undefined" ? getLocalOwnerId() : undefined;
   const url = `${API_BASE}${endpoint}`;
 
-  const isMutation = options?.method && ["POST", "PUT", "PATCH", "DELETE"].includes(options.method.toUpperCase());
+  const isMutation = fetchOptions.method && ["POST", "PUT", "PATCH", "DELETE"].includes(fetchOptions.method.toUpperCase());
   const isIdempotentEndpoint = isMutation && (
     endpoint.includes("/attempt") ||
     endpoint.includes("/review") ||
@@ -61,14 +76,14 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
   );
 
   let idempotencyKey: string | undefined;
-  const headers = new Headers(options?.headers);
+  const headers = new Headers(fetchOptions.headers);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (!headers.has("X-Request-ID") && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     headers.set("X-Request-ID", crypto.randomUUID());
   }
 
   if (isIdempotentEndpoint) {
-    idempotencyKey = crypto.randomUUID();
+    idempotencyKey = optionIdempotencyKey ?? crypto.randomUUID();
     headers.set("X-Idempotency-Key", idempotencyKey);
   }
 
@@ -76,13 +91,13 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
   if (isDeviceOffline()) {
     if (isIdempotentEndpoint) {
       console.warn("[API] Offline imediato detectado (Modo Plantão), enfileirando:", endpoint);
-      const localId = await syncManager.enqueue(url, { ...options, headers }, idempotencyKey!);
+      const localId = await syncManager.enqueue(url, { ...fetchOptions, headers }, idempotencyKey!);
       throw new OfflineQueuedError(localId);
     }
     throw new TypeError("Falha de rede: Modo Plantão offline ativo");
   }
 
-  const timeoutMs = options?.timeoutMs ?? (
+  const timeoutMs = optionTimeoutMs ?? (
     endpoint.includes("/ask_ai") || endpoint.includes("/ai") ? 35000 :
     endpoint.includes("/batch") || endpoint.includes("/generate") ? 15000 :
     8000
@@ -109,7 +124,7 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
     });
@@ -148,7 +163,7 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
 
     if (typeof window !== "undefined" && isIdempotentEndpoint && isNetworkOrTimeout && getLocalOwnerId() === requestOwner) {
       console.warn("[API] Erro de rede ou timeout detectado, adicionando à fila offline:", endpoint);
-      const localId = await syncManager.enqueue(url, { ...options, headers }, idempotencyKey!);
+      const localId = await syncManager.enqueue(url, { ...fetchOptions, headers }, idempotencyKey!);
       throw new OfflineQueuedError(localId);
     }
 
@@ -181,6 +196,15 @@ async function apiFetch<T>(endpoint: string, options?: ApiFetchOptions): Promise
   return executeApiFetch<T>(endpoint, options);
 }
 
+function getClientTimeZone(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * API endpoints
  */
@@ -195,8 +219,11 @@ export const api = {
   },
   stats: {
     getOverview: () => apiFetch<OverviewStats>("/api/stats/overview", { cache: 'no-store' }),
-    getDashboardSummary: (signal?: AbortSignal) =>
-      apiFetch<DashboardSummaryResponse>("/api/dashboard/summary", { cache: 'no-store', timeoutMs: 45000, signal }),
+    getDashboardSummary: (signal?: AbortSignal) => {
+      const tz = getClientTimeZone();
+      const qs = tz ? `?${new URLSearchParams({ tz }).toString()}` : "";
+      return apiFetch<DashboardSummaryResponse>(`/api/dashboard/summary${qs}`, { cache: 'no-store', timeoutMs: 45000, signal });
+    },
     getAnalysisSummary: (institution?: string, compareInstitution?: string, signal?: AbortSignal) => {
       const params = new URLSearchParams();
       if (institution) params.append("institution", institution);
@@ -204,6 +231,8 @@ export const api = {
       if (typeof window !== "undefined") {
         params.append("tz_offset", String(-new Date().getTimezoneOffset()));
       }
+      const tz = getClientTimeZone();
+      if (tz) params.append("tz", tz);
       const qs = params.toString();
       return apiFetch<AnalysisSummaryResponse>(`/api/stats/analysis-summary${qs ? `?${qs}` : ""}`, {
         cache: "no-store",
@@ -222,8 +251,12 @@ export const api = {
       );
     },
     getCoverage: () => apiFetch<CoverageResponse>("/api/coverage", { cache: 'no-store' }),
-    getTimeline: (days: number = 14, signal?: AbortSignal) =>
-      apiFetch<TimelineStat[]>(`/api/stats/timeline?days=${days}`, { cache: 'no-store', signal }),
+    getTimeline: (days: number = 14, signal?: AbortSignal) => {
+      const params = new URLSearchParams({ days: String(days) });
+      const tz = getClientTimeZone();
+      if (tz) params.append("tz", tz);
+      return apiFetch<TimelineStat[]>(`/api/stats/timeline?${params.toString()}`, { cache: 'no-store', signal });
+    },
     getWeakTopics: () => apiFetch<WeakTopic[]>("/api/stats/weak-topics", { cache: 'no-store' }),
     getRecommendations: () => apiFetch<Recommendation[]>("/api/stats/recommendations", { cache: 'no-store' }),
     getDistractors: () => apiFetch<DistractorStat[]>("/api/stats/distractors", { cache: 'no-store' }),
@@ -522,19 +555,24 @@ export const api = {
         throw err;
       }
     },
-    submitAttempt: (id: number, selected_letter: string, time_spent_ms: number, confidence: string = "defer", is_correct?: boolean | null, user_answer_text?: string, twin_for_question_id?: number | null, assisted?: boolean) =>
+    postAttempt: (id: number, body: AttemptPayload, idempotencyKey: string) =>
       apiFetch<AttemptResult>(`/api/questions/${id}/attempt`, {
         method: "POST",
-        body: JSON.stringify({
-          selected_letter,
-          time_spent_ms,
-          confidence,
-          ...(is_correct !== undefined && is_correct !== null ? { is_correct } : {}),
-          ...(user_answer_text ? { user_answer_text } : {}),
-          ...(twin_for_question_id ? { twin_for_question_id } : {}),
-          ...(assisted !== undefined ? { assisted: Boolean(assisted) } : {})
-        }),
+        body: JSON.stringify(body),
+        idempotencyKey,
       }),
+    submitAttempt: (id: number, selected_letter: string, time_spent_ms: number, confidence: string = "defer", is_correct?: boolean | null, user_answer_text?: string, twin_for_question_id?: number | null, assisted?: boolean) => {
+      const body: AttemptPayload = {
+        selected_letter,
+        time_spent_ms,
+        confidence,
+        ...(is_correct !== undefined && is_correct !== null ? { is_correct } : {}),
+        ...(user_answer_text ? { user_answer_text } : {}),
+        ...(twin_for_question_id ? { twin_for_question_id } : {}),
+        ...(assisted !== undefined ? { assisted: Boolean(assisted) } : {})
+      };
+      return api.questions.postAttempt(id, body, crypto.randomUUID());
+    },
     reviewFSRS: (id: number, confidence: string, is_correct?: boolean, twin_for_question_id?: number | null, attempt_id?: number | null, assisted?: boolean) =>
       apiFetch<{success: boolean, next_review_date: string, is_correct?: boolean, assisted?: boolean}>(`/api/questions/${id}/review`, {
         method: "POST",
@@ -681,9 +719,10 @@ export const api = {
     deleteSimuladoSession: (sessionId: string) => apiFetch<{ success: boolean; deleted: boolean }>(`/api/simulado/sessions/${sessionId}`, {
       method: "DELETE"
     }),
-    submitAttemptBatch: (attempts: BatchAttemptItem[]) => apiFetch<BatchAttemptResult>(`/api/attempt/batch`, {
+    submitAttemptBatch: (attempts: BatchAttemptItem[], idempotencyKey?: string) => apiFetch<BatchAttemptResult>(`/api/attempt/batch`, {
       method: "POST",
-      body: JSON.stringify({ attempts })
+      body: JSON.stringify({ attempts }),
+      idempotencyKey,
     }),
     getBatch: async (ids: number[], force_4_options: boolean = false) => {
       const getLocalFallback = async () => {
@@ -855,6 +894,73 @@ export const api = {
     remove: (qid: number) =>
       apiFetch<{ deleted: boolean; question_id: number }>(`/api/questions/${qid}/note`, {
         method: "DELETE",
+      }),
+  },
+  lessons: {
+    list: (params?: {
+      course?: string;
+      area?: string;
+      subtema?: string;
+      q?: string;
+      status?: string;
+      essential_only?: boolean;
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.course) qs.set("course", params.course);
+      if (params?.area) qs.set("area", params.area);
+      if (params?.subtema) qs.set("subtema", params.subtema);
+      if (params?.q) qs.set("q", params.q);
+      if (params?.status) qs.set("status", params.status);
+      if (params?.essential_only) qs.set("essential_only", "1");
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return apiFetch<LessonsListResponse>(`/api/lessons${suffix}`, { cache: "no-store" });
+    },
+    get: (lessonId: number) =>
+      apiFetch<LessonDetailResponse>(`/api/lessons/${lessonId}`, { cache: "no-store" }),
+    bySubtema: (subtema: string) =>
+      apiFetch<SubtemaLessonsResponse>(
+        `/api/lessons/by-subtema?subtema=${encodeURIComponent(subtema)}`,
+        { cache: "no-store" }
+      ),
+    summaryBySubtema: () =>
+      apiFetch<LessonsSummaryBySubtemaResponse>("/api/lessons/summary-by-subtema", {
+        cache: "no-store",
+      }),
+    getContinue: () =>
+      apiFetch<ContinueLessonResponse>("/api/lessons/continue", {
+        cache: "no-store",
+      }),
+    getCurrentWeek: () =>
+      apiFetch<CurrentWeekLessonsResponse>("/api/lessons/current-week", {
+        cache: "no-store",
+      }),
+    saveProgress: (lessonId: number, payload: SaveLessonProgressPayload) =>
+      apiFetch<{
+        lesson_id: number;
+        status: LessonProgressStatus;
+        bookmark_seconds: number;
+        notes: string;
+        has_notes?: boolean;
+        completed_at: string | null;
+        updated_at: string;
+        theme_theory_completed: boolean;
+      }>(`/api/lessons/${lessonId}/progress`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    updateMapping: (
+      lessonId: number,
+      payload: { subtema?: string | null; is_essential?: boolean }
+    ) =>
+      apiFetch<{
+        lesson_id: number;
+        area: string;
+        subtema: string | null;
+        is_essential: boolean;
+        updated_at: string;
+      }>(`/api/lessons/${lessonId}/mapping`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
       }),
   },
 };

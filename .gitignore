@@ -94,6 +94,9 @@ archive/legacy/data/
 
 # ── Runtime local / autoloop / agentes ───────────────────────────────
 data/
+!app/backend/data/
+app/backend/data/*
+!app/backend/data/lessons_mapping_overrides.json
 app/backend/data/medway_extracted/
 docs/audits/*.json
 !app/backend/data/osce/
