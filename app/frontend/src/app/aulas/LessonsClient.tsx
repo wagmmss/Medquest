@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -308,6 +308,15 @@ export default function LessonsClient() {
     notes: string;
   } | null>(null);
   const [savingProgress, setSavingProgress] = useState<boolean>(false);
+  const [forceDriveEmbed, setForceDriveEmbed] = useState<boolean>(false);
+  const [failedStreamLessonId, setFailedStreamLessonId] = useState<number | null>(null);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const seekAppliedForLessonRef = useRef<number | null>(null);
+  const lastAutoSavedRef = useRef<{ lessonId: number; seconds: number }>({
+    lessonId: 0,
+    seconds: 0,
+  });
 
   // Atalho de teclado T para Modo Teatro no Modo Sala de Aula
   useEffect(() => {
@@ -738,9 +747,10 @@ export default function LessonsClient() {
       bookmark_seconds?: number;
       notes?: string;
     },
-    advanceNext?: LessonItem | null
+    advanceNext?: LessonItem | null,
+    silent?: boolean
   ) => {
-    setSavingProgress(true);
+    if (!silent) setSavingProgress(true);
     try {
       const res = await api.lessons.saveProgress(targetLesson.id, overrides);
 
@@ -803,21 +813,49 @@ export default function LessonsClient() {
         queryClient.invalidateQueries({ queryKey: ["theme-progress"] }),
       ]);
 
-      if (res.theme_theory_completed && targetLesson.subtema) {
-        toast.success(`Teoria de "${targetLesson.subtema}" concluída automaticamente!`);
-      } else if (overrides.status === "completed") {
-        toast.success("Aula marcada como concluída.");
-      } else if (overrides.bookmark_seconds !== undefined || overrides.notes !== undefined) {
-        toast.success("Anotações e ponto da aula salvos.");
+      if (!silent) {
+        if (res.theme_theory_completed && targetLesson.subtema) {
+          toast.success(`Teoria de "${targetLesson.subtema}" concluída automaticamente!`);
+        } else if (overrides.status === "completed") {
+          toast.success("Aula marcada como concluída.");
+        } else if (overrides.bookmark_seconds !== undefined || overrides.notes !== undefined) {
+          toast.success("Anotações e ponto da aula salvos.");
+        }
       }
       if (advanceNext) {
         handleSelectLesson(advanceNext);
       }
     } catch {
-      toast.error("Não foi possível salvar o progresso da aula.");
+      if (!silent) {
+        toast.error("Não foi possível salvar o progresso da aula.");
+      }
     } finally {
-      setSavingProgress(false);
+      if (!silent) setSavingProgress(false);
     }
+  };
+
+  const handleAutoBookmarkFromVideo = (lesson: LessonItem, currentSeconds: number, immediate: boolean) => {
+    const sec = Math.max(0, Math.floor(currentSeconds));
+    if (sec < 5) return;
+    const prev =
+      lastAutoSavedRef.current.lessonId === lesson.id
+        ? lastAutoSavedRef.current.seconds
+        : lesson.progress.bookmark_seconds || 0;
+    const minDelta = immediate ? 3 : 25;
+    if (Math.abs(sec - prev) < minDelta) return;
+
+    lastAutoSavedRef.current = { lessonId: lesson.id, seconds: sec };
+    const nextStatus: LessonProgressStatus =
+      lesson.progress.status === "not_started" ? "in_progress" : lesson.progress.status;
+    void handleSaveProgress(
+      lesson,
+      {
+        status: nextStatus,
+        bookmark_seconds: sec,
+      },
+      undefined,
+      true
+    );
   };
 
   const handleToggleQuickComplete = (lesson: LessonItem) => {
@@ -965,16 +1003,140 @@ export default function LessonsClient() {
               </div>
             ) : (
               <>
-                <div className="relative w-full aspect-video bg-black">
-                  <iframe
-                    key={activeLesson.drive_file_id}
-                    src={playerPreviewUrl}
-                    title={activeLesson.title}
-                    allow="autoplay; fullscreen"
-                    allowFullScreen
-                    className="w-full h-full border-0"
-                  />
-                </div>
+                {(() => {
+                  const canUseNativeStream =
+                    Boolean(activeLesson.stream_url) &&
+                    !forceDriveEmbed &&
+                    failedStreamLessonId !== activeLesson.id;
+
+                  return (
+                    <>
+                      <div className="relative w-full aspect-video bg-black">
+                        {canUseNativeStream ? (
+                          <video
+                            ref={videoRef}
+                            key={`native-${activeLesson.id}`}
+                            src={activeLesson.stream_url!}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full bg-black"
+                            onLoadedMetadata={(e) => {
+                              const vid = e.currentTarget;
+                              vid.playbackRate = playbackRate;
+                              if (
+                                seekAppliedForLessonRef.current !== activeLesson.id &&
+                                activeLesson.progress.bookmark_seconds > 5
+                              ) {
+                                seekAppliedForLessonRef.current = activeLesson.id;
+                                const maxSeek = Math.max(
+                                  0,
+                                  (Number.isFinite(vid.duration) ? vid.duration : 86400) - 8
+                                );
+                                vid.currentTime = Math.min(
+                                  activeLesson.progress.bookmark_seconds,
+                                  maxSeek
+                                );
+                              }
+                            }}
+                            onTimeUpdate={(e) => {
+                              handleAutoBookmarkFromVideo(
+                                activeLesson,
+                                e.currentTarget.currentTime,
+                                false
+                              );
+                            }}
+                            onPause={(e) => {
+                              const sec = Math.floor(e.currentTarget.currentTime);
+                              if (sec >= 5) {
+                                setDraftEdit((prev) => ({
+                                  lessonId: activeLesson.id,
+                                  bookmark: formatSecondsToMmSs(sec),
+                                  notes:
+                                    prev?.lessonId === activeLesson.id
+                                      ? prev.notes
+                                      : activeLesson.progress.notes || "",
+                                }));
+                              }
+                              handleAutoBookmarkFromVideo(activeLesson, sec, true);
+                            }}
+                            onError={() => {
+                              setFailedStreamLessonId(activeLesson.id);
+                            }}
+                          />
+                        ) : (
+                          <iframe
+                            key={activeLesson.drive_file_id}
+                            src={playerPreviewUrl}
+                            title={activeLesson.title}
+                            allow="autoplay; fullscreen"
+                            allowFullScreen
+                            className="w-full h-full border-0"
+                          />
+                        )}
+                      </div>
+
+                      {/* Barra de Qualidade HD / Velocidade / Alternância de Player */}
+                      <div className="px-4 py-2 bg-canvas border-b border-line-subtle flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={clsx(
+                              "px-2 py-0.5 rounded-xs font-semibold border text-[11px]",
+                              canUseNativeStream
+                                ? "bg-success/10 text-success border-success/30"
+                                : "bg-elevated text-ink-secondary border-line-subtle"
+                            )}
+                          >
+                            {canUseNativeStream
+                              ? "HD Original (720p/1080p • Auto-save ativo)"
+                              : "Player Google Drive (Embed)"}
+                          </span>
+
+                          {canUseNativeStream && (
+                            <div className="inline-flex items-center gap-1 ml-1">
+                              <span className="text-[11px] text-ink-muted">Velocidade:</span>
+                              {[1, 1.25, 1.5, 1.75, 2].map((rate) => (
+                                <button
+                                  key={rate}
+                                  type="button"
+                                  onClick={() => {
+                                    setPlaybackRate(rate);
+                                    if (videoRef.current) {
+                                      videoRef.current.playbackRate = rate;
+                                    }
+                                  }}
+                                  className={clsx(
+                                    "px-1.5 py-0.5 rounded-xs font-mono-lab text-[11px] border transition-colors cursor-pointer",
+                                    playbackRate === rate
+                                      ? "bg-primary text-primary-foreground border-primary font-bold"
+                                      : "bg-surface text-ink-secondary border-line-subtle hover:text-ink-primary"
+                                  )}
+                                >
+                                  {rate}x
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {activeLesson.stream_url && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFailedStreamLessonId(null);
+                              setForceDriveEmbed((v) => !v);
+                            }}
+                            className="text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+                          >
+                            {canUseNativeStream
+                              ? "Alternar para player do Drive"
+                              : "Usar Player HD Original (720p/1080p)"}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="p-4 sm:p-5 space-y-5">
                   <div className="space-y-1.5 border-b border-line-subtle pb-4">

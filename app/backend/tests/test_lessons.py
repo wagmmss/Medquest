@@ -399,3 +399,60 @@ def test_lessons_mapping_patch_and_manual_preservation(app, client, seeded_lesso
         assert row["subtema"] == OTHER_THEME
         assert row["is_essential"] == 0
         assert row["mapping_source"] == "manual"
+
+
+def test_lesson_native_hd_stream_and_signed_token(client, seeded_lessons, monkeypatch):
+    """Valida stream_url assinado com HMAC, suporte a HTTP 206 Range e bloqueio de tokens inválidos."""
+    from api import lessons as lessons_mod
+
+    monkeypatch.setenv("LESSONS_ALLOWED_USER_IDS", ALLOWED_SUB)
+    monkeypatch.setenv("GOOGLE_DRIVE_CLIENT_ID", "cid-test")
+    monkeypatch.setenv("GOOGLE_DRIVE_CLIENT_SECRET", "csec-test")
+    monkeypatch.setenv("GOOGLE_DRIVE_REFRESH_TOKEN", "rtok-test")
+    headers = {"X-User-ID": ALLOWED_SUB, "X-User-Email": ALLOWED_EMAIL}
+    id1 = seeded_lessons["drive-id-1"]
+    id2 = seeded_lessons["drive-id-2"]
+
+    detail = client.get(f"/api/lessons/{id1}", headers=headers).get_json()
+    stream_url = detail["lesson"]["stream_url"]
+    assert stream_url and f"/api/lessons/{id1}/stream?st=" in stream_url
+
+    # Token assinado para id1 NÃO pode funcionar em id2 (401)
+    st_token = stream_url.split("?st=", 1)[1]
+    assert client.get(f"/api/lessons/{id2}/stream?st={st_token}").status_code == 401
+    assert client.get(f"/api/lessons/{id1}/stream?st=invalido").status_code == 401
+
+    # Mock do OAuth e do stream HTTP 206 da Google Drive API v3
+    monkeypatch.setattr(lessons_mod, "_get_drive_access_token", lambda force_refresh=False: "fake-drive-access-token")
+
+    class _FakeUpstreamResp:
+        status_code = 206
+        headers = {
+            "Content-Type": "video/mp4",
+            "Content-Length": "11",
+            "Content-Range": "bytes 0-10/100000",
+        }
+
+        def iter_content(self, chunk_size=262144):
+            yield b"0123456789A"
+
+        def close(self):
+            pass
+
+    captured_headers = {}
+
+    def _fake_requests_get(url, headers=None, stream=True, timeout=None):
+        captured_headers.update(headers or {})
+        return _FakeUpstreamResp()
+
+    monkeypatch.setattr(lessons_mod.requests, "get", _fake_requests_get)
+
+    resp = client.get(stream_url, headers={"Range": "bytes=0-10"})
+    assert resp.status_code == 206
+    assert resp.data == b"0123456789A"
+    assert resp.headers.get("Content-Type") == "video/mp4"
+    assert resp.headers.get("Content-Range") == "bytes 0-10/100000"
+    assert resp.headers.get("Accept-Ranges") == "bytes"
+    assert resp.headers.get("Cache-Control") == "private, no-store"
+    assert captured_headers.get("Range") == "bytes=0-10"
+    assert captured_headers.get("Authorization") == "Bearer fake-drive-access-token"

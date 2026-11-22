@@ -661,6 +661,7 @@ export interface LessonItem {
   drive_path?: string;
   size_bytes?: number;
   duration_seconds: number | null;
+  stream_url?: string | null;
   preview_url?: string;
   open_url?: string;
   progress: LessonProgressState;

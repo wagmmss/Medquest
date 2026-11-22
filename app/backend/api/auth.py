@@ -1,7 +1,10 @@
 import base64
+import hashlib
 import hmac
 import logging
 import os
+import re
+import time
 import uuid
 from functools import wraps
 
@@ -110,9 +113,94 @@ def _is_testing_env(app) -> bool:
     )
 
 
+_STREAM_PATH_RE = re.compile(r"^/api(?:/v1)?/lessons/(\d+)/stream$")
+
+
+def _get_stream_signing_secret() -> str | None:
+    secret = (
+        os.environ.get("FLASK_API_PROXY_SECRET")
+        or os.environ.get("TURSO_AUTH_TOKEN")
+        or os.environ.get("SECRET_KEY")
+        or ""
+    ).strip()
+    if secret:
+        return secret
+    try:
+        if _is_testing_env(current_app):
+            return "medquest-test-stream-secret"
+    except RuntimeError:
+        pass
+    return None
+
+
+def create_lesson_stream_token(
+    lesson_id: int,
+    user_id: str,
+    user_email: str = "",
+    ttl_seconds: int = 21600,
+) -> str | None:
+    """Gera token HMAC-SHA256 de curta duração vinculado a lesson_id e user_id para tag <video>."""
+    secret = _get_stream_signing_secret()
+    uid = (user_id or "").strip()
+    if not secret or not uid or uid.startswith("guest:") or lesson_id <= 0:
+        return None
+    exp = int(time.time()) + max(60, int(ttl_seconds))
+    uid_b64 = base64.urlsafe_b64encode(uid.encode("utf-8")).decode("ascii").rstrip("=")
+    em_b64 = base64.urlsafe_b64encode((user_email or "").strip().lower().encode("utf-8")).decode("ascii").rstrip("=")
+    payload = f"lesson-stream:{lesson_id}:{exp}:{uid_b64}:{em_b64}".encode("utf-8")
+    sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+    return f"{lesson_id}.{exp}.{uid_b64}.{em_b64}.{sig}"
+
+
+def verify_lesson_stream_token(token: str, expected_lesson_id: int) -> tuple[str, str] | None:
+    """Valida token HMAC-SHA256 de stream de aula e retorna (user_id, user_email) ou None."""
+    secret = _get_stream_signing_secret()
+    if not secret or not token or expected_lesson_id <= 0:
+        return None
+    parts = token.strip().split(".")
+    if len(parts) != 5:
+        return None
+    lid_str, exp_str, uid_b64, em_b64, sig = parts
+    try:
+        lid = int(lid_str)
+        exp = int(exp_str)
+    except ValueError:
+        return None
+    if lid != expected_lesson_id or exp < int(time.time()):
+        return None
+    expected_payload = f"lesson-stream:{lid}:{exp}:{uid_b64}:{em_b64}".encode("utf-8")
+    expected_sig = hmac.new(secret.encode("utf-8"), expected_payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected_sig, sig):
+        return None
+    try:
+        uid_pad = uid_b64 + "=" * ((4 - len(uid_b64) % 4) % 4)
+        user_id = base64.urlsafe_b64decode(uid_pad.encode("ascii")).decode("utf-8").strip()
+        if em_b64:
+            em_pad = em_b64 + "=" * ((4 - len(em_b64) % 4) % 4)
+            user_email = base64.urlsafe_b64decode(em_pad.encode("ascii")).decode("utf-8").strip().lower()
+        else:
+            user_email = ""
+    except Exception:
+        return None
+    if not user_id or user_id.startswith("guest:"):
+        return None
+    return user_id, user_email
+
+
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        stream_match = _STREAM_PATH_RE.match(request.path or "")
+        if stream_match and "st" in request.args:
+            verified = verify_lesson_stream_token(
+                request.args.get("st", ""),
+                int(stream_match.group(1)),
+            )
+            if not verified:
+                return jsonify({"error": "Unauthorized"}), 401
+            g.user_id, g.user_email = verified
+            return f(*args, **kwargs)
+
         if _is_testing_env(current_app):
             if "X-User-ID" in request.headers:
                 g.user_id = request.headers["X-User-ID"]
