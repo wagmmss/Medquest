@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "baseline_keyword_report": {
-    "total_cases": 64,
-    "total_items": 772,
-    "items_within_tolerance": 677,
-    "overall_accuracy_pct": 87.7,
-    "negated_false_positives": 23,
+    "total_cases": 76,
+    "total_items": 916,
+    "items_within_tolerance": 789,
+    "overall_accuracy_pct": 86.1,
+    "negated_false_positives": 27,
     "accuracy_by_case_type": {
-      "correct_paraphrased": 62.7,
-      "partial": 100.0,
-      "negated": 88.1,
+      "correct_paraphrased": 59.0,
+      "partial": 97.4,
+      "negated": 88.2,
       "omitted": 100.0
     }
   },
@@ -5187,6 +5187,969 @@
               "tolerance": 0.0
             }
           ]
+        }
+      ]
+    },
+    {
+      "code": "USP-RP-2025-PREV-BIO",
+      "cases": [
+        {
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Camila acolhendo sua angústia com confidencialidade e explico o baixo risco quando tratamos no prazo. Avalio acidente por instrumento oco com sangue visível há sessenta minutos e história vacinal de hepatite viral B sem exame prévio. Indico higienização imediata com solução neutra proibindo comprimir ou cortar a pele lesionada. Peço testes rápidos da pessoa-fonte consentidos para imunodeficiência humana, vírus B e vírus C. Colho sorologias iniciais da profissional incluindo pesquisa de anticorpos protetores contra vírus B. Indico profilaxia antirretroviral de urgência sem esperar exame laboratorial tardio respeitando as primeiras horas. Prescrevo esquema tríplice oral diário com tenofovir, lamivudina e dolutegravir por quatro semanas. Avalio necessidade de reforço imunizante e soro específico hiperimune caso a fonte seja reagente e a profissional sem resposta. Esclareço inexistência de quimioprofilaxia para hepatite viral C programando acompanhamento molecular. Oriento barreiras sexuais, suspensão temporária de doação sanguínea e possíveis reações gástricas. Providencio abertura oficial da documentação trabalhista ocupacional e preencho notificação epidemiológica com retornos em trinta e noventa dias.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            }
+          ],
+          "case_id": "USP-RP-2025-PREV-BIO__correct_paraphrased"
+        },
+        {
+          "case_type": "partial",
+          "conduct_notes": "Acolho Camila, avalio agulha oca com sangue e vacina de hepatite B. Oriento lavar com água e sabão sem espremer. Solicito testes rápidos do paciente-fonte e da acidentada. Prescrevo PEP com Tenofovir, Lamivudina e Dolutegravir por 28 dias.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ],
+          "case_id": "USP-RP-2025-PREV-BIO__partial"
+        },
+        {
+          "case_type": "negated",
+          "conduct_notes": "Não acolho nem garanto sigilo. Recomendo espremer o ferimento perfurocortante e passar éter. Não solicito teste rápido do paciente-fonte nem da acidentada. Vou atrasar o início da PEP para HIV aguardando resultado laboratorial demorado em 7 dias. Não prescrevo Tenofovir, Lamivudina nem Dolutegravir. Não avalio Hepatite B nem imunoglobulina, não falo sobre Hepatite C, não emito CAT e não notifico no SINAN.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "USP-RP-2025-PREV-BIO__negated"
+        },
+        {
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "USP-RP-2025-PREV-BIO__omitted"
+        }
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-PREV-RAIVA",
+      "cases": [
+        {
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Marcos cordialmente explicando cada etapa do cuidado com sua mão. Confirmo mordedura profunda por cão errante que fugiu sem chance de vigilância por dez dias. Investigo imunizações prévias contra tétano e vírus rábico. Afero dados circulatórios e testo movimento tendíneo, sensibilidade e circulação distal dos dedos. Enquadro a lesão como categoria de alto risco por atingir extremidade palmar profunda. Indico higiene exaustiva prolongada com água limpa e sabonete neutro antes da antissepsia. Mantenho a ferida aberta evitando pontos primários oclusivos. Prescrevo imunização antirrábica em quatro aplicações intramusculares no músculo deltoide nos dias zero, três, sete e catorze. Associo aplicação de soro hiperimune ou imunoglobulina específica infiltrada diretamente ao redor das perfurações. Atualizo reforço antitetânico com dupla adulto e inicio cobertura antimicrobiana com amoxicilina associada a clavulanato. Registro a ficha epidemiológica obrigatória no sistema nacional e combino adesão rigorosa às datas e alerta infeccioso.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            }
+          ],
+          "case_id": "UNIFESP-2025-PREV-RAIVA__correct_paraphrased"
+        },
+        {
+          "case_type": "partial",
+          "conduct_notes": "Avalio cão de rua desaparecido, classifico como acidente grave em mão, oriento lavagem com água e sabão e deixo ferida aberta sem sutura. Prescrevo vacina antirrábica 4 doses.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ],
+          "case_id": "UNIFESP-2025-PREV-RAIVA__partial"
+        },
+        {
+          "case_type": "negated",
+          "conduct_notes": "Não classifico como acidente grave. Vou dispensar o paciente apenas com observação domiciliar do cão por 10 dias. Realizo sutura primária fechada da mordedura agora mesmo sem soro antirrábico. Não prescrevo vacina antirrábica, soro nem imunoglobulina, não prescrevo antibiótico nem reforço de tétano e não notifico no SINAN.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "UNIFESP-2025-PREV-RAIVA__negated"
+        },
+        {
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "UNIFESP-2025-PREV-RAIVA__omitted"
+        }
+      ]
+    },
+    {
+      "code": "UNICAMP-2025-CM-TB",
+      "cases": [
+        {
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Recebo Roberto sem estigmas esclarecendo a possibilidade de cura gratuita pelo sistema público. Investigo tosse crônica há um mês, febre de fim de tarde, suores noturnos, perda ponderal e moradores infantis no lar. Verifico peso corporal de sessenta e dois quilos, etilismo, tabagismo e realizo ausculta respiratória apical. Requisito teste molecular rápido no escarro além de baciloscopia e cultura microbacteriana. Peço estudo radiográfico torácico, avaliação sorológica anti-HIV obrigatória e função hepática inicial. Estabeleço confirmação de tuberculose pulmonar ativa transmissível. Prescrevo esquema quádruplo básico por seis meses com quatro comprimidos diários em jejum na fase intensiva seguido de manutenção dupla. Organizo acompanhamento supervisionado diário pela equipe de atenção primária com controle mensal do escarro. Explico coloração alaranjada esperada nas secreções e sinais de alerta hepático como icterícia. Convoco esposa e criança de três anos residente para rastreamento clínico, radiológico e teste cutâneo para infecção latente. Preencho registro epidemiológico compulsório e indico repouso laboral nas primeiras duas semanas em ambiente arejado.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 1.4,
+              "tolerance": 0.7
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            }
+          ],
+          "case_id": "UNICAMP-2025-CM-TB__correct_paraphrased"
+        },
+        {
+          "case_type": "partial",
+          "conduct_notes": "Investigo tosse há 4 semanas, febre vespertina e sudorese noturna. Solicito TRM-TB, baciloscopia de escarro, radiografia de tórax e teste rápido de HIV. Diagnostico tuberculose pulmonar e prescrevo esquema RIPE.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.84
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ],
+          "case_id": "UNICAMP-2025-CM-TB__partial"
+        },
+        {
+          "case_type": "negated",
+          "conduct_notes": "Não solicito TRM-TB, baciloscopia nem radiografia de tórax. Não vou solicitar sorologia ou teste rápido de HIV neste caso. Não prescrevo esquema RIPE nem TDO, ignoro a investigação de contatos intradomiciliares com a criança e não notifico no SINAN.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "UNICAMP-2025-CM-TB__negated"
+        },
+        {
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ],
+          "case_id": "UNICAMP-2025-CM-TB__omitted"
         }
       ]
     }

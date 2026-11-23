@@ -528,6 +528,56 @@ def evaluate_critical_safety_violations(
             ):
                 flagged = True
 
+        elif "atrasar" in err_norm and "pep" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["atrasar o inicio da pep", "aguardar resultado laboratorial demorado", "esperar resultado em 7 dias"],
+            ):
+                flagged = True
+
+        elif "espremer" in err_norm and "ferimento" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["espremer o ferimento", "espremer", "cortar o ferimento", "injetar eter"],
+            ):
+                flagged = True
+
+        elif "sutura primaria" in err_norm and "mordedura" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["sutura primaria fechada", "suturar a mordedura", "dar pontos imediatamente"],
+            ):
+                flagged = True
+
+        elif "observacao" in err_norm and "cao" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["apenas com observacao domiciliar", "observar o cao por 10 dias", "dispensar sem vacina"],
+            ):
+                flagged = True
+
+        elif "teste rapido de hiv" in err_norm and "tuberculose" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["hiv", "sorologia", "teste rapido de hiv"]
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["nao solicito hiv", "dispenso teste de hiv"]
+            ):
+                flagged = True
+
+        elif "contatos intradomiciliares" in err_norm and (
+            _has_negated_mention(
+                norm_evidence, ["contatos", "contatos intradomiciliares", "convocacao"]
+            )
+            or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["ignoro a investigacao de contatos", "sem investigar contatos"]
+            )
+        ):
+            flagged = True
+
         if flagged and err not in detected_violations:
             detected_violations.append(err)
 

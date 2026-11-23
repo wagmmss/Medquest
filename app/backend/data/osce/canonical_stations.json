@@ -6456,6 +6456,924 @@
           "content": "Hiperemia vulvar sem lacerações com sangramento ativo discreto (realizado apenas após consentimento prévio da paciente)."
         }
       ]
+    },
+    {
+      "code": "USP-RP-2025-PREV-BIO",
+      "title": "Acidente de Trabalho com Material Biológico (Perfurocortante)",
+      "area": "Medicina Preventiva",
+      "subtema": "Vigilância em Saúde do Trabalhador e PEP Ocupacional",
+      "institution": "USP-RP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 300,
+      "station_kind": "ambulatorio",
+      "source": "PCDT Profilaxia Pós-Exposição (PEP) ao HIV, Hepatites Virais e ISTs / Ministério da Saúde / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: AMBULATÓRIO DE SAÚDE OCUPACIONAL / PRONTO ATENDIMENTO (HC-FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico de plantão no atendimento ao trabalhador do HC-FMRP-USP.\n\n**Cenário**:\n- Paciente: Camila Alves, 29 anos, técnica de enfermagem da enfermaria clínica.\n- Queixa: Sofreu acidente perfurocortante no dedo indicador direito há cerca de 1 hora ao retirar agulha oca com sangue visível de paciente-fonte internado sem sorologias prévias no prontuário.\n\n**Sua Tarefa**:\n1. Realize o acolhimento e a anamnese dirigida do acidente ocupacional e da situação vacinal.\n2. Oriente os cuidados locais imediatos e solicite os testes rápidos do paciente-fonte e da acidentada.\n3. Indique e prescreva as profilaxias pós-exposição (HIV e Hepatite B) e orientações de Hepatite C.\n4. Realize os registros legais obrigatórios (CAT e SINAN) e defina o seguimento.\n\n*Tempo de prova: 5 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize o acolhimento e a anamnese dirigida do acidente ocupacional e da situação vacinal."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Oriente os cuidados locais imediatos e solicite os testes rápidos do paciente-fonte e da acidentada."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Indique e prescreva as profilaxias pós-exposição (HIV e Hepatite B) e orientações de Hepatite C."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Realize os registros legais obrigatórios (CAT e SINAN) e defina o seguimento."
+        }
+      ],
+      "patient_persona": {
+        "name": "Camila Alves",
+        "age": 29,
+        "gender": "feminino",
+        "chief_complaint": "Doutor, furei o dedo agora há pouco tirando um acesso cheio de sangue... tô apavorada de pegar HIV ou hepatite...",
+        "past_medical_history": "Saudável. Vacinada para hepatite B na escola técnica (3 doses), nunca dosou Anti-HBs.",
+        "allergies": "Sem alergias conhecidas."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, furei o dedo agora há pouco tirando um acesso cheio de sangue... tô apavorada de pegar HIV ou hepatite...",
+        "emotional_state": "Ansiosa e assustada, segurando gaze limpa sobre o indicador direito, teme adoecer e perder o emprego.",
+        "only_reveal_if_asked": {
+          "mecanismo_acidente": "Aconteceu há 1 hora ao descartar jelco/agulha oca com sangue visível na parede da agulha.",
+          "cuidados_realizados": "Lavou rapidamente em água corrente na pia do posto, mas ficou na dúvida se devia espremer.",
+          "dados_paciente_fonte": "Paciente idoso internado por pneumonia, lúcido, sem sorologias prévias conhecidas e sem acesso imediato ao resultado ainda.",
+          "vacinacao_hepatite_b": "Tomou as 3 doses da vacina de Hepatite B há 6 anos, mas nunca dosou Anti-HBs para saber se soroconverteu.",
+          "alergias_gestacao": "Nega alergias medicamentosas, não está gestante e usa DIU hormonal."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "124x78 mmHg",
+          "fc": "96 bpm",
+          "fr": "16 irpm",
+          "sato2": "99%",
+          "temp": "36.5 °C"
+        },
+        "findings": {
+          "geral": "Lúcida, ansiosa, corada, sem sinais sistêmicos.",
+          "extremidades": "Lesão puntiforme pequena na polpa digital do 2º quirodáctilo direito, sem sangramento ativo ou corpo estranho."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia"
+            ],
+            "finding": "Lúcida, ansiosa, corada, hidratada."
+          },
+          "inspecao_ferimento": {
+            "label": "Inspeção Local do Ferimento no Dedo",
+            "triggers": [
+              "inspecao do ferimento",
+              "exame da mao",
+              "exame do dedo",
+              "inspecao local",
+              "lesao"
+            ],
+            "finding": "Lesão puntiforme superficial com mínimo halo eritematoso em polpa do 2º dedo direito, sem corpo estranho ou sangramento ativo."
+          }
+        }
+      },
+      "lab_imaging": {
+        "testes_rapidos_fonte": {
+          "title": "Testes Rápidos do Paciente-Fonte e Acidentada",
+          "available": true,
+          "triggers": [
+            "teste rapido",
+            "sorologia",
+            "hiv",
+            "hbsag",
+            "anti-hcv",
+            "anti-hbs",
+            "paciente fonte"
+          ],
+          "result_text": "Acidentada: HIV TR não reagente, HBsAg não reagente, Anti-HCV não reagente, Anti-HBs aguardando. Paciente-fonte: teste rápido indisponível imediatamente (coleta enviada ao laboratório central)."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "pressao arterial"
+          ],
+          "content": "PA 124x78 mmHg, FC 96 bpm, FR 16 irpm, SatO2 99%, Temp 36.5 °C"
+        },
+        {
+          "id": "card_pe_lesion",
+          "kind": "physical_exam",
+          "title": "Inspeção Local do Ferimento",
+          "triggers": [
+            "inspecao do ferimento",
+            "exame do dedo",
+            "inspecao local"
+          ],
+          "content": "Lesão puntiforme superficial no indicador direito sem corpo estranho ou sangramento ativo."
+        },
+        {
+          "id": "card_lab_tr",
+          "kind": "lab_imaging",
+          "title": "Painel de Testes Rápidos (Fonte e Acidentada)",
+          "triggers": [
+            "teste rapido",
+            "sorologia",
+            "paciente fonte"
+          ],
+          "content": "Acidentada: HIV/HBsAg/HCV não reagentes no momento. Fonte: resultado rápido ainda indisponível imediatamente."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Acolhimento Empático e Redução da Ansiedade",
+          "description": "Apresenta-se, acolhe a profissional com empatia, garante sigilo e explica o baixo risco percentual com conduta oportuna.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "acolhimento",
+            "sigilo",
+            "tranquila",
+            "camila",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Anamnese do Acidente Perfurocortante e Status Vacinal",
+          "description": "Investiga agulha oca, sangue visível, tempo decorrido (< 2h), situação clínica da fonte e histórico de vacinação para Hepatite B.",
+          "weight": 0.8,
+          "category": "anamnese",
+          "keywords": [
+            "agulha oca",
+            "sangue visível",
+            "tempo decorrido",
+            "hepatite b",
+            "anti-hbs"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Cuidados Locais Corretos Sem Espremer Ferimento",
+          "description": "Orienta lavagem com água e sabão neutro ou solução fisiológica e proíbe expressamente espremer, cortar ou usar éter/hipoclorito.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "água e sabão",
+            "não espremer",
+            "proibido espremer",
+            "cuidados locais"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Solicitação de Testes Rápidos do Paciente-Fonte (com Consentimento)",
+          "description": "Solicita testes rápidos para HIV, Hepatite B (HBsAg) e Hepatite C (Anti-HCV) do paciente-fonte após consentimento.",
+          "weight": 0.9,
+          "category": "exames_complementares",
+          "keywords": [
+            "paciente-fonte",
+            "teste rápido da fonte",
+            "hbsag",
+            "anti-hcv",
+            "consentimento da fonte"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Coleta Basal da Acidentada (HIV, HBV, Anti-HBs e HCV)",
+          "description": "Solicita exames basais da trabalhadora (HIV, HBsAg, Anti-HBs e Anti-HCV) no momento zero.",
+          "weight": 0.8,
+          "category": "exames_complementares",
+          "keywords": [
+            "sorologia basal",
+            "anti-hbs",
+            "exames basais",
+            "acidentada"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Indicação Imediata de PEP HIV dentro da Janela (Ideal < 2h, Máx 72h)",
+          "description": "Indica início imediato da PEP para HIV sem aguardar laboratório demorado da fonte, respeitando janela de até 72h.",
+          "weight": 1.1,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "pep imediata",
+            "início imediato",
+            "até 2 horas",
+            "72 horas",
+            "não aguardar"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Prescrição Completa da PEP HIV (TDF + 3TC + DTG por 28 dias)",
+          "description": "Prescreve Tenofovir 300 mg + Lamivudina 300 mg + Dolutegravir 50 mg por via oral 1x/dia durante 28 dias.",
+          "weight": 1.2,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "tenofovir",
+            "lamivudina",
+            "dolutegravir",
+            "28 dias"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Avaliação da Profilaxia para Hepatite B (Vacina / IGHAHB)",
+          "description": "Avalia esquema vacinal e Anti-HBs da trabalhadora indicando dose de reforço e Imunoglobulina Anti-Hepatite B (0,06 mL/kg) se fonte HBsAg+ e não respondedora.",
+          "weight": 0.9,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "imunoglobulina",
+            "ighahb",
+            "reforço vacinal",
+            "hepatite b"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Orientação Correta Sobre Hepatite C (Sem Profilaxia Pós-Exposição)",
+          "description": "Esclarece que não existe vacina nem profilaxia medicamentosa pós-exposição para Hepatite C, programando seguimento com Anti-HCV/ALT/RNA-HCV.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "hepatite c",
+            "sem profilaxia",
+            "não existe vacina",
+            "rna-hcv"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Orientações de Prevenção Secundária e Efeitos Adversos",
+          "description": "Orienta uso de preservativo, não doar sangue/órgãos durante o seguimento e explica adesão/efeitos gastrointestinais dos antirretrovirais.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "preservativo",
+            "não doar sangue",
+            "adesão",
+            "efeitos adversos"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Emissão Obrigatória da CAT (Comunicação de Acidente de Trabalho)",
+          "description": "Solicita e garante emissão imediata da Comunicação de Acidente de Trabalho (CAT) pelo acidente ocupacional.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "comunicação de acidente de trabalho",
+            "emitir cat",
+            "abertura de cat"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Notificação Compulsória no SINAN e Seguimento Sorológico (30 e 90 dias)",
+          "description": "Realiza notificação compulsória de acidente com material biológico no SINAN e agenda reavaliação clínica/sorológica em 30 e 90 dias.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "notificação compulsória",
+            "sinan",
+            "retorno em 30",
+            "90 dias"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Atrasar o início da PEP para HIV aguardando resultado laboratorial demorado quando o teste rápido da fonte não está disponível de imediato",
+        "Recomendar espremer, cortar ou injetar antisséptico cáustico/éter dentro do ferimento perfurocortante"
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-PREV-RAIVA",
+      "title": "Profilaxia de Raiva Humana Pós-Mordedura de Cão e Notificação",
+      "area": "Medicina Preventiva",
+      "subtema": "Vigilância de Zoonoses e Profilaxia Antirrábica",
+      "institution": "UNIFESP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 480,
+      "station_kind": "ambulatorio",
+      "source": "Guia de Vigilância em Saúde / Normas Técnicas de Profilaxia da Raiva Humana - Ministério da Saúde / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: PRONTO ATENDIMENTO / ATENÇÃO PRIMÁRIA (UNIFESP)\n\n**Candidato(a)**:\nVocê é o médico de plantão no Pronto Atendimento da Vila Mariana.\n\n**Cenário**:\n- Paciente: Marcos Pereira, 34 anos, entregador de aplicativo.\n- Queixa: Mordido na mão direita há 3 horas ao tentar entregar encomenda em rua sem saída; o cão era de rua, não tinha coleira e fugiu imediatamente, sem possibilidade de observação.\n\n**Sua Tarefa**:\n1. Realize acolhimento, anamnese do acidente/animal e exame físico da mão acometida.\n2. Classifique a gravidade do acidente antirrábico e oriente os cuidados locais e cirúrgicos da ferida.\n3. Prescreva corretamente a profilaxia antirrábica (vacina e soro/imunoglobulina) com vias e doses.\n4. Avalie profilaxia antitetânica, antibioticoterapia e realize a notificação compulsória.\n\n*Tempo de prova: 8 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize acolhimento, anamnese do acidente/animal e exame físico da mão acometida."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Classifique a gravidade do acidente antirrábico e oriente os cuidados locais e cirúrgicos da ferida."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva corretamente a profilaxia antirrábica (vacina e soro/imunoglobulina) com vias e doses."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Avalie profilaxia antitetânica, antibioticoterapia e realize a notificação compulsória."
+        }
+      ],
+      "patient_persona": {
+        "name": "Marcos Pereira",
+        "age": 34,
+        "gender": "masculino",
+        "chief_complaint": "Doutor, um cachorro de rua avançou na minha mão direita faz 3 horas... tá sangrando e doendo muito, quero saber se precisa dar ponto e vacina.",
+        "past_medical_history": "Nunca tomou vacina antirrábica. Último reforço de tétano foi há mais de 12 anos.",
+        "allergies": "Sem alergias a medicamentos."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, um cachorro de rua avançou na minha mão direita faz 3 horas... tá sangrando e doendo muito, quero saber se precisa dar ponto e vacina.",
+        "emotional_state": "Preocupado com a mão (usa para pilotar moto e trabalhar) e ansioso para fechar o corte com pontos.",
+        "only_reveal_if_asked": {
+          "condicao_animal": "Cachorro vira-lata de rua, desconhecido, agressivo sem provocação, fugiu correndo e não é possível encontrá-lo ou observá-lo.",
+          "caracteristica_ferimento": "Mordedura profunda em região tenar e dorso do polegar direito, com dois furos profundos.",
+          "vacinacao_anterior": "Nunca recebeu vacina contra raiva; última vacina antitetânica foi na adolescência (> 10 anos).",
+          "cuidados_previos": "Só enrolou um pano limpo na mão até chegar aqui.",
+          "alergias_comorbidades": "Sem diabetes, sem imunossupressão e sem alergia a penicilina ou outros fármacos."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "130x82 mmHg",
+          "fc": "88 bpm",
+          "fr": "16 irpm",
+          "sato2": "99%",
+          "temp": "36.6 °C"
+        },
+        "findings": {
+          "geral": "Lúcido, bom estado geral, fácies de dor leve.",
+          "mao_direita": "Dois ferimentos perfurocontusos profundos em região tenar e base do polegar direito (cerca de 1,5 cm cada), sem lesão tendínea ou déficit neurovascular distal."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral"
+            ],
+            "finding": "Lúcido, orientado, fácies de dor leve, normocorado."
+          },
+          "exame_mao": {
+            "label": "Inspeção e Exame Neurovascular da Mão Direita",
+            "triggers": [
+              "exame da mao",
+              "inspecao da mao",
+              "inspecao do ferimento",
+              "sensibilidade",
+              "motricidade",
+              "perfusao"
+            ],
+            "finding": "Dois ferimentos puntiformes profundos em região tenar e polegar direitos, sangramento discreto controlado; flexoextensão preservada, sensibilidade tátil mantida e enchimento capilar < 2s."
+          }
+        }
+      },
+      "lab_imaging": {},
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "pressao arterial"
+          ],
+          "content": "PA 130x82 mmHg, FC 88 bpm, FR 16 irpm, SatO2 99%, Temp 36.6 °C"
+        },
+        {
+          "id": "card_pe_mao",
+          "kind": "physical_exam",
+          "title": "Exame Físico da Mão Direita",
+          "triggers": [
+            "exame da mao",
+            "inspecao do ferimento",
+            "motricidade"
+          ],
+          "content": "Dois ferimentos puntiformes profundos em região tenar/polegar direito; perfusão e motricidade tendínea preservadas."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Apresentação e Acolhimento Empático",
+          "description": "Apresenta-se pelo nome ao paciente, acolhe sua dor e explica calmamente as etapas do atendimento.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "marcos",
+            "sou o médico",
+            "acolhimento",
+            "explico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Anamnese do Animal e Localização/Profundidade da Ferida",
+          "description": "Investiga se o cão é observável por 10 dias (cão de rua desaparecido), local anatômico (mão) e tempo do acidente.",
+          "weight": 0.8,
+          "category": "anamnese",
+          "keywords": [
+            "cão de rua",
+            "desaparecido",
+            "não observável",
+            "observável por 10 dias",
+            "profundo"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "História Vacinal Antitetânica e Antirrábica Prévia",
+          "description": "Questiona esquema prévio de vacina contra raiva e data da última dose antitetânica (> 10 anos).",
+          "weight": 0.7,
+          "category": "anamnese",
+          "keywords": [
+            "vacina de tétano",
+            "antitetânica",
+            "antirrábica prévia",
+            "há mais de 10 anos"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Exame Físico Funcional e Neurovascular da Mão",
+          "description": "Solicita sinais vitais e avalia integridade tendínea, nervosa e perfusão distal da mão direita.",
+          "weight": 0.7,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "exame da mão",
+            "tendínea",
+            "perfusão",
+            "sensibilidade"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Classificação Correta como Acidente Grave (Mãos + Animal Não Observável)",
+          "description": "Classifica explicitamente como Acidente Grave pelo envolvimento de mãos/polpas digitais e ferimento profundo por animal não observável.",
+          "weight": 1.0,
+          "category": "diagnostico",
+          "keywords": [
+            "acidente grave",
+            "gravidade",
+            "mãos",
+            "polpas digitais"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Lavagem Abundante Imediata com Água e Sabão",
+          "description": "Indica lavagem exaustiva da ferida com água corrente abundante e sabão/detergente neutro por vários minutos e antissepsia.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "água e sabão",
+            "lavagem abundante",
+            "água corrente",
+            "antissepsia"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Contraindicação de Sutura Primária Fechada da Ferida",
+          "description": "Explica e mantém a ferida aberta sem sutura primária (salvo aproximação mínima apenas 1h após infiltração de soro).",
+          "weight": 1.0,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "não suturar",
+            "sem sutura",
+            "ferida aberta",
+            "contraindicada sutura"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Prescrição de Vacina Antirrábica Humana (4 doses: D0, D3, D7, D14)",
+          "description": "Prescreve esquema vacinal intramuscular no deltoide (nunca glúteo) em 4 doses nos dias 0, 3, 7 e 14.",
+          "weight": 1.2,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "vacina antirrábica",
+            "4 doses",
+            "dias 0, 3, 7 e 14",
+            "deltoide"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Prescrição e Infiltração Local de Soro (SAR 40 UI/kg) ou IGHAR (20 UI/kg)",
+          "description": "Prescreve Soro Antirrábico (40 UI/kg) ou Imunoglobulina Antirrábica (20 UI/kg) infiltrando o máximo possível dentro e ao redor da lesão.",
+          "weight": 1.2,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "soro antirrábico",
+            "imunoglobulina antirrábica",
+            "40 ui/kg",
+            "20 ui/kg",
+            "infiltração"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Reforço Antitetânico (dT) e Antibiótico para Mordedura em Mão",
+          "description": "Prescreve dose de reforço de dT (tétano > 5 anos em ferimento de risco) e Amoxicilina-Clavulanato profilático/terapêutico para mordedura em mão.",
+          "weight": 0.9,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "amoxicilina-clavulanato",
+            "amoxicilina com clavulanato",
+            "dupla adulto",
+            "reforço de tétano"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Notificação Compulsória de Atendimento Antirrábico (SINAN)",
+          "description": "Realiza o preenchimento da ficha de notificação compulsória de atendimento antirrábico humano no SINAN.",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "notificação compulsória",
+            "sinan",
+            "ficha antirrábica"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Orientação de Adesão às Doses Subsequentes e Sinais de Infecção",
+          "description": "Orienta o paciente a comparecer exatamente nos dias 3, 7 e 14 e retornar imediatamente se houver piora de dor, pus ou febre.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sinais de infecção",
+            "completar as doses",
+            "retorno",
+            "explico ao paciente"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Realizar sutura primária fechada de mordedura grave de cão desaparecido sem infiltração prévia de soro antirrábico",
+        "Dispensar o paciente apenas com observação domiciliar quando o cão agressor é de rua e não passível de observação por 10 dias"
+      ]
+    },
+    {
+      "code": "UNICAMP-2025-CM-TB",
+      "title": "Tuberculose Pulmonar, Esquema RIPE, Contatos e Notificação",
+      "area": "Clínica Médica",
+      "subtema": "Tuberculose Pulmonar e Vigilância Epidemiológica",
+      "institution": "UNICAMP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 600,
+      "station_kind": "ambulatorio",
+      "source": "Manual de Recomendações para o Controle da Tuberculose no Brasil / Ministério da Saúde / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: AMBULATÓRIO / UNIDADE BÁSICA DE SAÚDE (HC-UNICAMP)\n\n**Candidato(a)**:\nVocê é o médico atendendo no ambulatório de referência da UNICAMP.\n\n**Cenário**:\n- Paciente: Roberto Silva, 46 anos, pedreiro, peso 62 kg.\n- Queixa: Tosse produtiva há 4 semanas, febre baixa no fim da tarde e suor noturno que molha o lençol; emagreceu 5 kg no último mês.\n\n**Sua Tarefa**:\n1. Conduza anamnese dirigida (sintomas, contatos, comorbidades) e exame físico respiratório.\n2. Solicite os exames diagnósticos para tuberculose e rastreio de coinfecções obrigatórias.\n3. Estabeleça o diagnóstico e prescreva o esquema terapêutico completo conforme faixa de peso.\n4. Defina TDO, efeitos adversos, conduta com contatos intradomiciliares e notificação.\n\n*Tempo de prova: 10 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Conduza anamnese dirigida (sintomas, contatos, comorbidades) e exame físico respiratório."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite os exames diagnósticos para tuberculose e rastreio de coinfecções obrigatórias."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Estabeleça o diagnóstico e prescreva o esquema terapêutico completo conforme faixa de peso."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Defina TDO, efeitos adversos, conduta com contatos intradomiciliares e notificação."
+        }
+      ],
+      "patient_persona": {
+        "name": "Roberto Silva",
+        "age": 46,
+        "gender": "masculino",
+        "chief_complaint": "Doutor, tô com uma tosse com catarro faz umas 4 semanas, uma febrinha de tarde e acordo ensopado de suor.",
+        "past_medical_history": "Tabagista 20 maços-ano, etilismo social nos fins de semana. Sem tratamento prévio de tuberculose.",
+        "allergies": "Sem alergias."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, tô com uma tosse com catarro faz umas 4 semanas, uma febrinha de tarde e acordo ensopado de suor.",
+        "emotional_state": "Preocupado com perda de 5 kg e com medo de passar a doença para o neto pequeno que mora na mesma casa.",
+        "only_reveal_if_asked": {
+          "contatos_domiciliares": "Mora com a esposa de 44 anos (sem sintomas) e o neto de 3 anos (saudável, assintomático).",
+          "antecedentes_tb": "Nunca tratou tuberculose antes; trabalhou com colega que tossiu muito há 3 meses.",
+          "peso_comorbidades": "Pesa 62 kg atualmente (perdeu 5 kg em 1 mês); nega diabetes, uso de corticoides ou transfusões.",
+          "habitos": "Fuma 1 maço/dia há 20 anos e toma cerveja aos sábados.",
+          "alergias": "Não tem alergias a medicamentos."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "118x74 mmHg",
+          "fc": "86 bpm",
+          "fr": "18 irpm",
+          "sato2": "97%",
+          "temp": "37.6 °C"
+        },
+        "findings": {
+          "geral": "Emagrecido, lúcido, corado, hidratado.",
+          "respiratorio": "Estertores crepitantes finos em ápice pulmonar direito, murmúrio vesicular preservado nos demais campos."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia"
+            ],
+            "finding": "Emagrecido, lúcido, corado, acianótico."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "murmurio vesicular"
+            ],
+            "finding": "Estertores crepitantes finos localizados em terço superior/ápice de hemitórax direito."
+          }
+        }
+      },
+      "lab_imaging": {
+        "escarro_trm": {
+          "title": "Teste Rápido Molecular para Tuberculose (TRM-TB) e Baciloscopia",
+          "available": true,
+          "triggers": [
+            "trm-tb",
+            "trm",
+            "genexpert",
+            "teste rapido molecular",
+            "baciloscopia",
+            "escarro",
+            "cultura de escarro"
+          ],
+          "result_text": "TRM-TB (GeneXpert): Mycobacterium tuberculosis DETECTADO, sensível à Rifampicina (sem mutação rpoB). Baciloscopia de escarro: BAAR positivo (3+)."
+        },
+        "rx_torax": {
+          "title": "Radiografia de Tórax PA e Perfil",
+          "available": true,
+          "triggers": [
+            "rx de torax",
+            "radiografia de torax",
+            "raio-x de torax",
+            "rx torax"
+          ],
+          "result_text": "Opacidade heterogênea com imagem cavitária de paredes espessas em lobo superior direito, sugestiva de tuberculose pulmonar ativa."
+        },
+        "teste_rapido_hiv": {
+          "title": "Teste Rápido para HIV e Bioquímica Basal",
+          "available": true,
+          "triggers": [
+            "hiv",
+            "teste rapido de hiv",
+            "sorologia hiv",
+            "funcao hepatica",
+            "tgo",
+            "tgp"
+          ],
+          "result_text": "Teste rápido HIV: Não reagente. TGO 24 U/L, TGP 22 U/L, creatinina 0,8 mg/dL, glicemia de jejum 92 mg/dL."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "peso"
+          ],
+          "content": "PA 118x74 mmHg, FC 86 bpm, FR 18 irpm, SatO2 97%, Temp 37.6 °C (Peso: 62 kg)."
+        },
+        {
+          "id": "card_pe_pulm",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria"
+          ],
+          "content": "Crepitantes finos em ápice pulmonar direito."
+        },
+        {
+          "id": "card_lab_tb",
+          "kind": "lab_imaging",
+          "title": "TRM-TB / Baciloscopia e RX Tórax e HIV",
+          "triggers": [
+            "trm-tb",
+            "baciloscopia",
+            "rx de torax",
+            "hiv"
+          ],
+          "content": "TRM-TB detectável sensível à Rifampicina; BAAR 3+; cavitação em LSD; HIV não reagente."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Acolhimento sem Estigma e Comunicação Empática",
+          "description": "Apresenta-se, acolhe Roberto sem preconceito e tranquiliza explicando que a doença tem cura com tratamento gratuito no SUS.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "roberto",
+            "sou o médico",
+            "tem cura",
+            "sem preconceito",
+            "acalme-se"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Anamnese Dirigida de Sintomático Respiratório e Contatos",
+          "description": "Investiga tosse >= 3 semanas, febre vespertina, sudorese noturna, emagrecimento, tratamento prévio e moradores da casa (esposa e neto de 3 anos).",
+          "weight": 0.8,
+          "category": "anamnese",
+          "keywords": [
+            "4 semanas",
+            "febre vespertina",
+            "sudorese noturna",
+            "contatos",
+            "neto",
+            "tratamento prévio"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Verificação de Peso, Comorbidades e Exame Respiratório",
+          "description": "Verifica peso corporal (62 kg para ajuste da dose), hábitos (etilismo/tabagismo) e realiza ausculta pulmonar.",
+          "weight": 0.7,
+          "category": "exame_fisico",
+          "keywords": [
+            "62 kg",
+            "peso",
+            "sinais vitais",
+            "ausculta pulmonar"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Solicitação de TRM-TB (GeneXpert) e Baciloscopia/Cultura de Escarro",
+          "description": "Solicita Teste Rápido Molecular para Tuberculose (TRM-TB) com pesquisa de resistência à rifampicina e baciloscopia/cultura de escarro.",
+          "weight": 1.0,
+          "category": "exames_complementares",
+          "keywords": [
+            "trm-tb",
+            "genexpert",
+            "teste rápido molecular",
+            "baciloscopia",
+            "escarro"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Solicitação Obrigatória de Teste Rápido de HIV e Radiografia de Tórax",
+          "description": "Solicita radiografia de tórax e obrigatoriamente teste rápido/sorologia para HIV em todo caso de TB, além de bioquímica hepática/renal basal.",
+          "weight": 1.0,
+          "category": "exames_complementares",
+          "keywords": [
+            "teste rápido de hiv",
+            "sorologia hiv",
+            "radiografia de tórax",
+            "rx de tórax",
+            "tgo"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Diagnóstico de Tuberculose Pulmonar Bacilífera",
+          "description": "Verbaliza corretamente o diagnóstico de Tuberculose Pulmonar ativa sensível à rifampicina.",
+          "weight": 0.7,
+          "category": "diagnostico",
+          "keywords": [
+            "tuberculose pulmonar",
+            "tb pulmonar",
+            "bacilífera"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Prescrição do Esquema Básico RIPE (2RHZE / 4RH, 4 comp/dia > 50kg)",
+          "description": "Prescreve esquema básico por 6 meses (2 meses de RHZE: Rifampicina, Isoniazida, Pirazinamida, Etambutol + 4 meses de RH), 4 comprimidos em jejum para > 50 kg.",
+          "weight": 1.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "esquema ripe",
+            "rhze",
+            "rifampicina",
+            "isoniazida",
+            "pirazinamida",
+            "etambutol",
+            "4 comprimidos"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Indicação de Tratamento Diretamente Observado (TDO)",
+          "description": "Indica e organiza o Tratamento Diretamente Observado (TDO) pela equipe da UBS e controle mensal com baciloscopia.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "tratamento diretamente observado",
+            "tdo",
+            "ubs",
+            "baciloscopia de controle"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Orientação de Efeitos Adversos (Urina Alaranjada / Hepatotoxicidade)",
+          "description": "Orienta que urina/suor/lágrima alaranjados pela rifampicina são esperados e alerta para sinais de hepatotoxicidade (icterícia/vômitos).",
+          "weight": 0.7,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "urina alaranjada",
+            "efeitos adversos",
+            "hepatotoxicidade",
+            "icterícia"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Convocação e Conduta nos Contatos Intradomiciliares (Esposa e Neto)",
+          "description": "Convoca esposa e neto de 3 anos para avaliação clínica, radiografia e Prova Tuberculínica (PT/PPD) para rastreio de TB ativa ou ILTB (quimioprofilaxia).",
+          "weight": 1.1,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "contatos intradomiciliares",
+            "prova tuberculínica",
+            "ppd",
+            "iltb",
+            "neto de 3 anos"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Notificação Compulsória no SINAN",
+          "description": "Preenche a ficha de notificação compulsória de Tuberculose no SINAN.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "notificação compulsória",
+            "sinan",
+            "notificar tuberculose"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Afastamento Laboral Inicial, Etiqueta Respiratória e Ventilação",
+          "description": "Orienta afastamento do trabalho nos primeiros 15 dias de tratamento efetivo (fase bacilífera), ambientes ventilados e uso de máscara cirúrgica pelo paciente em locais fechados.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "afastamento",
+            "15 dias",
+            "ventilado",
+            "máscara",
+            "transmissão"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Não solicitar sorologia ou teste rápido de HIV em paciente com diagnóstico novo de tuberculose pulmonar",
+        "Ignorar a convocação e investigação de contatos intradomiciliares (incluindo criança menor de 5 anos exposta)"
+      ]
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [
