@@ -46,14 +46,6 @@ from .osce_data import (
 
 def seed_osce_stations(db, force: bool = False) -> int:
     """Insere ou atualiza o catálogo canônico de estações de prova prática."""
-    if not force:
-        try:
-            row = db.execute("SELECT COUNT(*) AS n FROM osce_stations").fetchone()
-            if row and int(row["n"] or 0) >= len(CANONICAL_STATIONS):
-                return 0
-        except Exception:
-            pass
-
     inserted = 0
     with db_transaction(db, immediate=True):
         for st in CANONICAL_STATIONS:
@@ -211,6 +203,152 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
     return station
 
 
+def collect_candidate_evidence(
+    transcript: list[dict[str, Any]],
+    actions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Extrai exclusivamente falas, prescrições e ações executadas pelo candidato."""
+    spoken_texts: list[str] = []
+    prescribed_texts: list[str] = []
+    action_texts: list[str] = []
+    segments: list[dict[str, Any]] = []
+
+    for item in transcript:
+        if item.get("sender") != "candidato":
+            continue
+        msg = str(item.get("message") or "").strip()
+        if not msg:
+            continue
+        spoken_texts.append(msg)
+        raw_elapsed = item.get("elapsed_seconds")
+        segments.append({
+            "elapsed_seconds": int(raw_elapsed) if raw_elapsed is not None else None,
+            "text": msg,
+            "norm_text": _normalize_text(msg),
+            "source": "speech",
+        })
+
+    allowed_action_types = {
+        "vitals",
+        "physical_exam",
+        "lab_imaging",
+        "exam",
+        "procedure",
+        "cardioversion",
+    }
+
+    for act in actions:
+        act_type = str(act.get("action_type") or "").strip()
+        raw_elapsed = act.get("elapsed_seconds")
+        elapsed_val = int(raw_elapsed) if raw_elapsed is not None else None
+
+        if act_type == "prescription":
+            for p in act.get("prescription_items", []):
+                p_text = (
+                    f"{p.get('drug_name', '')} {p.get('dose', '')} "
+                    f"{p.get('unit', '')} {p.get('route', '')} {p.get('notes', '')}"
+                ).strip()
+                if p_text:
+                    prescribed_texts.append(p_text)
+                    segments.append({
+                        "elapsed_seconds": elapsed_val,
+                        "text": p_text,
+                        "norm_text": _normalize_text(p_text),
+                        "source": "prescription",
+                    })
+        elif act_type in allowed_action_types:
+            a_text = (
+                f"{act_type} {act.get('action_target', '')} "
+                f"{act.get('procedure_type', '')} {act.get('anatomical_site', '')}"
+            ).strip()
+            if a_text:
+                action_texts.append(a_text)
+                segments.append({
+                    "elapsed_seconds": elapsed_val,
+                    "text": a_text,
+                    "norm_text": _normalize_text(a_text),
+                    "source": "action",
+                })
+
+    all_parts = spoken_texts + prescribed_texts + action_texts
+    all_text = " ".join(all_parts)
+
+    return {
+        "spoken_texts": spoken_texts,
+        "prescribed_texts": prescribed_texts,
+        "action_texts": action_texts,
+        "segments": segments,
+        "all_text": all_text,
+        "norm_all_text": _normalize_text(all_text),
+        "norm_spoken": _normalize_text(" ".join(spoken_texts)),
+        "norm_prescribed": _normalize_text(" ".join(prescribed_texts)),
+    }
+
+
+def score_checklist_items(
+    checklist_items: list[dict[str, Any]],
+    evidence: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Calcula a pontuação item a item do barema a partir da evidência consolidada do candidato."""
+    norm_evidence = evidence.get("norm_all_text", "")
+    segments = evidence.get("segments", [])
+    scored_items: list[dict[str, Any]] = []
+
+    for item in checklist_items:
+        weight = float(item.get("weight", 1.0))
+        keywords = item.get("keywords", [])
+        matches = [kw for kw in keywords if _normalize_text(kw) in norm_evidence]
+        match_ratio = len(matches) / max(1, len(keywords))
+
+        if match_ratio >= 0.4 or len(matches) >= 2:
+            earned = weight
+            status_internal = "cumprido_total"
+            status_code = "FULL"
+            evidence_desc = f"Identificado na conduta do candidato: termos [{', '.join(matches[:4])}]."
+        elif match_ratio > 0.15 or len(matches) == 1:
+            earned = round(weight * 0.5, 2)
+            status_internal = "cumprido_parcial"
+            status_code = "PARTIAL"
+            evidence_desc = f"Cumprimento parcial identificado com o termo [{matches[0]}]."
+        else:
+            earned = 0.0
+            status_internal = "nao_cumprido"
+            status_code = "NONE"
+            evidence_desc = "Critério não contemplado nas falas ou ações do candidato durante o tempo de prova."
+
+        timestamp_achieved_sec: Optional[int] = None
+        if status_code != "NONE" and matches:
+            norm_matches = [_normalize_text(m) for m in matches]
+            for seg in segments:
+                seg_norm = seg.get("norm_text", "")
+                if any(nm in seg_norm for nm in norm_matches):
+                    if seg.get("elapsed_seconds") is not None:
+                        timestamp_achieved_sec = int(seg["elapsed_seconds"])
+                    break
+
+        scored_items.append({
+            "id": item.get("id"),
+            "criterion_id": str(item.get("id", "")),
+            "code": str(item.get("code", item.get("id", "ITEM"))),
+            "title": item.get("title"),
+            "description": item.get("description", item.get("title", "")),
+            "category": item.get("category", "Geral"),
+            "weight": weight,
+            "max_score": weight,
+            "score_earned": earned,
+            "awarded_score": earned,
+            "completed": status_code != "NONE",
+            "status_internal": status_internal,
+            "status": status_code,
+            "matched_keywords": matches[:3],
+            "timestamp_achieved_sec": timestamp_achieved_sec,
+            "evidence": evidence_desc,
+            "evidence_citation": evidence_desc,
+        })
+
+    return scored_items
+
+
 def evaluate_live_barema_progress(
     checklist_items: list[dict[str, Any]],
     transcript: list[dict[str, Any]],
@@ -218,46 +356,25 @@ def evaluate_live_barema_progress(
     elapsed_seconds: int = 0
 ) -> dict[str, Any]:
     """Avalia o progresso em tempo real do barema para o Modo Treino com Preceptor Fantasma."""
-    candidate_texts = [
-        t.get("message", "").lower() for t in transcript if t.get("sender") == "candidato"
-    ]
-    actions_texts = [
-        f"{a.get('action_type', '')} {a.get('action_target', '')} {a.get('findings', '')}".lower() for a in actions
-    ]
-    for a in actions:
-        if a.get("action_type") == "prescription":
-            for p in a.get("prescription_items", []):
-                actions_texts.append(f"{p.get('drug_name', '')} {p.get('dose', '')} {p.get('unit', '')} {p.get('route', '')} {p.get('notes', '')}".lower())
-
-    all_evidence = " ".join(candidate_texts + actions_texts)
-    norm_evidence = _normalize_text(all_evidence)
+    evidence = collect_candidate_evidence(transcript, actions)
+    scored = score_checklist_items(checklist_items, evidence)
 
     items_status = []
     total_earned = 0.0
     total_weight = 0.0
 
-    for item in checklist_items:
-        weight = float(item.get("weight", 1.0))
-        total_weight += weight
-        keywords = item.get("keywords", [])
-        matches = [kw for kw in keywords if _normalize_text(kw) in norm_evidence]
-        match_ratio = len(matches) / max(1, len(keywords))
-
-        is_completed = match_ratio >= 0.4 or len(matches) >= 2
-        is_partial = not is_completed and (match_ratio > 0.15 or len(matches) == 1)
-
-        score_earned = weight if is_completed else (round(weight * 0.5, 2) if is_partial else 0.0)
-        total_earned += score_earned
-
+    for it in scored:
+        total_weight += float(it["weight"])
+        total_earned += float(it["score_earned"])
         items_status.append({
-            "id": item.get("id"),
-            "title": item.get("title"),
-            "category": item.get("category"),
-            "weight": weight,
-            "score_earned": score_earned,
-            "completed": is_completed or is_partial,
-            "status": "cumprido_total" if is_completed else ("cumprido_parcial" if is_partial else "nao_cumprido"),
-            "matched_keywords": matches[:3]
+            "id": it["id"],
+            "title": it["title"],
+            "category": it["category"],
+            "weight": it["weight"],
+            "score_earned": it["score_earned"],
+            "completed": it["completed"],
+            "status": it["status_internal"],
+            "matched_keywords": it["matched_keywords"],
         })
 
     # Dicas e Alertas Proativos do Preceptor Fantasma baseados no tempo e itens pendentes
@@ -1002,59 +1119,32 @@ def finish_osce_session(
             "elapsed_seconds": int(sess["elapsed_seconds"] or 0)
         })
 
-    # Reúne todo o texto produzido pelo aluno e ações realizadas
-    candidate_texts = [
-        str(t.get("message") or "").lower() for t in transcript if t.get("sender") == "candidato"
+    # Reúne todo o texto produzido pelo aluno, prescrições e ações executadas
+    evidence_data = collect_candidate_evidence(transcript, actions)
+    all_evidence_corpus = evidence_data["all_text"]
+
+    scored_items = score_checklist_items(checklist_items, evidence_data)
+    total_score = sum(float(it["score_earned"]) for it in scored_items)
+    max_score = sum(float(it["weight"]) for it in scored_items)
+    evaluated_items = [
+        {
+            "id": it["id"],
+            "criterion_id": it["criterion_id"],
+            "code": it["code"],
+            "title": it["title"],
+            "description": it["description"],
+            "category": it["category"],
+            "weight": it["weight"],
+            "max_score": it["max_score"],
+            "score_earned": it["score_earned"],
+            "awarded_score": it["awarded_score"],
+            "status": it["status"],
+            "timestamp_achieved_sec": it["timestamp_achieved_sec"],
+            "evidence": it["evidence"],
+            "evidence_citation": it["evidence_citation"],
+        }
+        for it in scored_items
     ]
-    actions_texts = [
-        f"{a.get('action_type', '')} {a.get('action_target', '')} {a.get('anatomical_site', '')} {a.get('findings', '')}".lower()
-        for a in actions
-    ]
-    all_evidence_corpus = " ".join(candidate_texts + actions_texts)
-    norm_evidence_corpus = _normalize_text(all_evidence_corpus)
-
-    total_score = 0.0
-    max_score = 0.0
-    evaluated_items = []
-
-    for item in checklist_items:
-        weight = float(item.get("weight", 1.0))
-        max_score += weight
-        keywords = item.get("keywords", [])
-
-        matches = [kw for kw in keywords if _normalize_text(kw) in norm_evidence_corpus]
-        match_ratio = len(matches) / max(1, len(keywords))
-
-        if match_ratio >= 0.4 or len(matches) >= 2:
-            earned = weight
-            status = "cumprido_total"
-            evidence = f"Identificado na conduta do candidato: termos [{', '.join(matches[:4])}]."
-        elif match_ratio > 0.15 or len(matches) == 1:
-            earned = round(weight * 0.5, 2)
-            status = "cumprido_parcial"
-            evidence = f"Cumprimento parcial identificado com o termo [{matches[0]}]."
-        else:
-            earned = 0.0
-            status = "nao_cumprido"
-            evidence = "Critério não contemplado nas falas ou ações do candidato durante o tempo de prova."
-
-        total_score += earned
-        evaluated_items.append({
-            "id": item.get("id"),
-            "criterion_id": str(item.get("id", "")),
-            "code": str(item.get("code", item.get("id", "ITEM"))),
-            "title": item.get("title"),
-            "description": item.get("description", item.get("title", "")),
-            "category": item.get("category", "Geral"),
-            "weight": weight,
-            "max_score": weight,
-            "score_earned": earned,
-            "awarded_score": earned,
-            "status": "FULL" if status == "cumprido_total" else ("PARTIAL" if status == "cumprido_parcial" else "NONE"),
-            "timestamp_achieved_sec": int(sess["elapsed_seconds"] or 0) if status != "nao_cumprido" else None,
-            "evidence": evidence,
-            "evidence_citation": evidence
-        })
 
     raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
