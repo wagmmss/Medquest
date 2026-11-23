@@ -107,7 +107,7 @@ def test_osce_session_lifecycle_and_barema(app):
         act_pulm = osce.execute_osce_action(
             db, session_id, user_id,
             action_type="physical_exam",
-            action_target="respiratorio",
+            action_target="ausculta pulmonar",
             elapsed_seconds=90
         )
         assert "murmúrio" in act_pulm["examiner_message"].lower()

@@ -68,6 +68,10 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   const [activeTab, setActiveTab] = useState<"physical" | "procedures" | "labs" | "conduct">("physical");
   const [vitals, setVitals] = useState<Record<string, string> | null>(null);
   const [selectedExam, setSelectedExam] = useState<{ title: string; image_url?: string; result_text?: string } | null>(null);
+  const [physicalInput, setPhysicalInput] = useState("");
+  const [labInput, setLabInput] = useState("");
+  const [requestedPhysicalExams, setRequestedPhysicalExams] = useState<Array<{ target: string; finding: string }>>([]);
+  const [requestedLabs, setRequestedLabs] = useState<Array<{ title: string; result_text: string; image_url?: string }>>([]);
   const [report, setReport] = useState<OsceFinishResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -213,14 +217,18 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             setVitals(act.payload.vitals as Record<string, string>);
           }
           if (act.action_type === "lab_imaging" && act.payload?.title) {
-            setSelectedExam({
+            const examObj = {
               title: String(act.payload.title),
               image_url: act.payload.image_url ? String(act.payload.image_url) : undefined,
               result_text: act.payload.result_text ? String(act.payload.result_text) : undefined
-            });
+            };
+            setSelectedExam(examObj);
+            setRequestedLabs((prev) => [...prev, { title: examObj.title, result_text: examObj.result_text || "Normal / não disponível.", image_url: examObj.image_url }]);
             setActiveTab("labs");
           }
           if (act.action_type === "physical_exam") {
+            const findingStr = String(act.payload?.finding || act.examiner_message || "Sem alterações.");
+            setRequestedPhysicalExams((prev) => [...prev, { target: String(act.target || "Exame Físico"), finding: findingStr }]);
             setActiveTab("physical");
           }
           if (act.action_type === "procedure") {
@@ -477,12 +485,20 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           setVitals(res.payload.vitals as Record<string, string>);
         }
       }
+      if (actionType === "physical_exam") {
+        const findingStr = String(res.payload?.finding || res.examiner_message || "Sem alterações.");
+        setRequestedPhysicalExams((prev) => [...prev, { target, finding: findingStr }]);
+        setPhysicalInput("");
+      }
       if (actionType === "lab_imaging" && res.payload.title) {
-        setSelectedExam({
+        const examObj = {
           title: String(res.payload.title),
           image_url: res.payload.image_url ? String(res.payload.image_url) : undefined,
           result_text: res.payload.result_text ? String(res.payload.result_text) : undefined
-        });
+        };
+        setSelectedExam(examObj);
+        setRequestedLabs((prev) => [...prev, { title: examObj.title, result_text: examObj.result_text || res.examiner_message, image_url: examObj.image_url }]);
+        setLabInput("");
       }
     } catch (err) {
       console.error("Falha ao executar ação:", err);
@@ -1090,23 +1106,54 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                       </div>
                     )}
 
-                    {/* Estetoscópio Virtual & Áreas Anatômicas */}
-                    <div className="space-y-2">
+                    {/* Pedido Livre de Manobra Semiológica (Sem menu de spoilers) */}
+                    <div className="space-y-2.5">
                       <span className="text-muted-foreground font-semibold block">
-                        Estetoscópio & Exame Segmentar (Clique para auscultar/palpar):
+                        Solicitar Manobra do Exame Físico ao Examinador:
                       </span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {station.physical_exam_categories.map((cat) => (
-                          <button
-                            key={cat}
-                            onClick={() => handleClinicalAction("physical_exam", cat)}
-                            className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted hover:border-primary/40 text-left font-medium capitalize transition-colors flex items-center justify-between"
-                          >
-                            <span>{cat.replace("_", " ")}</span>
-                            <Stethoscope className="w-3.5 h-3.5 text-primary" />
-                          </button>
-                        ))}
-                      </div>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const clean = physicalInput.trim();
+                          if (clean && !isLoading) {
+                            handleClinicalAction("physical_exam", clean);
+                          }
+                        }}
+                        className="flex gap-2"
+                      >
+                        <input
+                          type="text"
+                          value={physicalInput}
+                          onChange={(e) => setPhysicalInput(e.target.value)}
+                          placeholder="Ex: ausculta pulmonar, palpação abdominal profunda, percussão torácica..."
+                          className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isLoading || !physicalInput.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-[11px] hover:bg-primary/90 disabled:opacity-50 shrink-0 cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Stethoscope className="w-3.5 h-3.5" />
+                          <span>Solicitar Manobra</span>
+                        </button>
+                      </form>
+                      <p className="text-[11px] text-muted-foreground">
+                        Especifique a manobra desejada. Pedidos vagos como &ldquo;abdome&rdquo; ou &ldquo;exame físico&rdquo; exigem detalhamento.
+                      </p>
+
+                      {requestedPhysicalExams.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                            Achados Entregues pela Banca
+                          </span>
+                          {requestedPhysicalExams.map((pe, idx) => (
+                            <div key={idx} className="p-3 rounded-xl border border-border bg-card space-y-1">
+                              <div className="font-bold text-primary text-[11px] capitalize">{pe.target}</div>
+                              <p className="text-foreground/90 leading-relaxed">{pe.finding}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1133,30 +1180,61 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                 {activeTab === "labs" && (
                   <div className="space-y-4">
                     <span className="text-muted-foreground font-semibold block">
-                      Solicitar Exames à Banca Examinadora:
+                      Solicitar Exame Complementar à Banca Examinadora:
                     </span>
-                    <div className="space-y-2">
-                      {station.lab_imaging_catalog.map((lab) => (
-                        <button
-                          key={lab.key}
-                          onClick={() => handleClinicalAction("lab_imaging", lab.key)}
-                          className="w-full p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-left font-medium flex items-center justify-between transition-colors"
-                        >
-                          <span>{lab.title}</span>
-                          <FileText className="w-3.5 h-3.5 text-primary" />
-                        </button>
-                      ))}
-                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const clean = labInput.trim();
+                        if (clean && !isLoading) {
+                          handleClinicalAction("lab_imaging", clean);
+                        }
+                      }}
+                      className="flex gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={labInput}
+                        onChange={(e) => setLabInput(e.target.value)}
+                        placeholder="Ex: ECG 12 derivações, gasometria arterial, RX de tórax em PA, troponina..."
+                        className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !labInput.trim()}
+                        className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-[11px] hover:bg-primary/90 disabled:opacity-50 shrink-0 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Solicitar Exame</span>
+                      </button>
+                    </form>
+                    <p className="text-[11px] text-muted-foreground">
+                      Digite exatamente o exame que deseja pedir. Exames não previstos na estação retornam laudo neutro.
+                    </p>
 
                     {/* Visualizador de Exame Selecionado */}
                     {selectedExam && (
-                      <div className="p-3.5 rounded-xl border-2 border-primary/20 bg-card space-y-2 mt-4">
+                      <div className="p-3.5 rounded-xl border-2 border-primary/20 bg-card space-y-2 mt-2">
                         <div className="font-bold text-foreground text-xs border-b border-border pb-1">
                           {selectedExam.title}
                         </div>
                         <p className="text-foreground/90 font-medium leading-relaxed">
                           {selectedExam.result_text}
                         </p>
+                      </div>
+                    )}
+
+                    {requestedLabs.length > 1 && (
+                      <div className="space-y-2 pt-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                          Histórico de Exames Solicitados
+                        </span>
+                        {requestedLabs.slice(0, -1).reverse().map((lab, idx) => (
+                          <div key={idx} className="p-2.5 rounded-xl border border-border bg-muted/30 space-y-1">
+                            <div className="font-semibold text-foreground text-[11px]">{lab.title}</div>
+                            <p className="text-muted-foreground text-[11px]">{lab.result_text}</p>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

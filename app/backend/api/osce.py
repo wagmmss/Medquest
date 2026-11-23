@@ -205,12 +205,17 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
             "gender": patient_persona.get("gender"),
             "chief_complaint": patient_persona.get("chief_complaint"),
         },
-        "physical_exam_categories": list(physical_exam.get("findings", {}).keys()),
+        "physical_exam_categories": (
+            list((physical_exam.get("maneuvers") or physical_exam.get("findings") or {}).keys())
+            if include_barema
+            else []
+        ),
         "vitals_available": bool(physical_exam.get("vitals")),
-        "lab_imaging_catalog": [
-            {"key": k, "title": v.get("title", k)}
-            for k, v in lab_imaging.items()
-        ],
+        "lab_imaging_catalog": (
+            [{"key": k, "title": v.get("title", k)} for k, v in lab_imaging.items()]
+            if include_barema
+            else []
+        ),
         "physiology_engine": _build_physiology_engine(physical_exam, row["subtema"], row["title"]),
         "auscultation_foci": _build_auscultation_foci(physical_exam, row["subtema"], row["title"])
     }
@@ -749,6 +754,155 @@ def interact_osce_session(
     return res_payload
 
 
+_SPECIFIC_MANEUVER_TERMS = (
+    "ausculta", "auscultar", "palpacao", "palpar", "percussao", "percutir",
+    "inspecao", "inspecionar", "ectoscopia", "toque", "especular", "valvas",
+    "reflexo", "reflexos", "clonus", "descompressao", "blumberg", "jobert",
+    "prega", "turgor", "pulsos", "pulso", "perfusao", "enchimento capilar", "tec",
+    "otoscopia", "oroscopia", "orofaringe", "glasgow", "pupilas", "pupila",
+    "tiragem", "bcf", "batimentos cardiofetais", "altura uterina", "edema",
+    "cacifo", "halito", "mucosas", "nivel de consciencia", "estado geral",
+    "colar cervical", "via aerea", "pelve", "estabilidade pelvica", "traqueia",
+    "turgencia jugular", "jugular", "kussmaul", "atls", "fundo uterino",
+    "tonus uterino", "dinamica uterina", "leopold", "linfonodo", "virchow",
+    "panturrilha", "homans", "giordano", "murphy", "rovsing", "psoas",
+    "lasègue", "lasegue", "kernig", "brudzinski", "babinski", "livedo",
+    "exame ginecologico", "exame genital", "exame neurologico", "manobra",
+)
+
+_VAGUE_LAB_TERMS = {
+    "exame", "exames", "exames de sangue", "exames laboratoriais",
+    "laboratorio", "exames complementares", "imagem", "exame de imagem",
+    "rotina", "bioquimica",
+}
+
+
+def _resolve_physical_exam_maneuver(exam: dict[str, Any], action_target: str) -> dict[str, Any]:
+    """Exige manobra semiológica específica e só entrega achados correspondentes."""
+    norm_target = _normalize_text(action_target)
+    maneuvers = exam.get("maneuvers") or {}
+    findings = exam.get("findings") or {}
+
+    has_specific_term = any(
+        re.search(rf"\b{re.escape(_normalize_text(term))}\b", norm_target)
+        for term in _SPECIFIC_MANEUVER_TERMS
+    )
+    direct_key_match = any(
+        norm_target == _normalize_text(k) for k in maneuvers.keys()
+    )
+
+    if not norm_target or (not has_specific_term and not direct_key_match):
+        msg = (
+            "Examinador: Especifique a manobra semiológica desejada "
+            "(ex.: ausculta pulmonar, palpação abdominal profunda, percussão torácica, inspeção geral)."
+        )
+        return {
+            "examiner_message": msg,
+            "finding": msg,
+            "requires_specificity": True,
+            "available": False,
+            "matched_keys": [],
+        }
+
+    matched_entries: list[tuple[str, str, str]] = []
+    if maneuvers:
+        for k, meta in maneuvers.items():
+            norm_k = _normalize_text(k).replace("_", " ")
+            norm_label = _normalize_text(meta.get("label", ""))
+            triggers = [_normalize_text(t) for t in meta.get("triggers", [])]
+            candidates = [norm_k, norm_label, *triggers]
+            if any(
+                cand and (
+                    cand in norm_target
+                    or norm_target in cand
+                    or all(tok in norm_target for tok in cand.split() if len(tok) >= 4)
+                )
+                for cand in candidates
+                if len(cand) >= 3
+            ):
+                matched_entries.append((k, meta.get("label", k), str(meta.get("finding", ""))))
+
+    if not matched_entries and findings and direct_key_match:
+        for k, v in findings.items():
+            if _normalize_text(k) == norm_target:
+                matched_entries.append((k, k, str(v)))
+
+    if not matched_entries and findings and not maneuvers:
+        for k, v in findings.items():
+            norm_k = _normalize_text(k)
+            if norm_target in norm_k or norm_k in norm_target:
+                matched_entries.append((k, k, str(v)))
+
+    if matched_entries:
+        combined_finding = " ".join(f"{lbl}: {txt}" if len(matched_entries) > 1 else txt for _, lbl, txt in matched_entries)
+        return {
+            "examiner_message": f"Exame Físico ({action_target}): {combined_finding}",
+            "finding": combined_finding,
+            "requires_specificity": False,
+            "available": True,
+            "matched_keys": [k for k, _, _ in matched_entries],
+        }
+
+    neutral_msg = "Normal / sem alterações (ou não disponível)."
+    return {
+        "examiner_message": f"Exame Físico ({action_target}): {neutral_msg}",
+        "finding": neutral_msg,
+        "requires_specificity": False,
+        "available": True,
+        "matched_keys": [],
+    }
+
+
+def _resolve_lab_imaging_order(labs: dict[str, Any], action_target: str) -> dict[str, Any]:
+    """Resolve pedido livre de exame complementar sem vazar lista de exames da banca."""
+    norm_target = _normalize_text(action_target)
+    if not norm_target or norm_target in _VAGUE_LAB_TERMS:
+        msg = "Examinador: Especifique qual exame complementar deseja solicitar."
+        return {
+            "found": False,
+            "requires_specificity": True,
+            "examiner_message": msg,
+            "title": action_target,
+            "result_text": "Especifique qual exame complementar deseja solicitar.",
+            "image_url": None,
+        }
+
+    for k, v in labs.items():
+        norm_k = _normalize_text(k).replace("_", " ")
+        norm_raw_k = _normalize_text(k)
+        norm_title = _normalize_text(v.get("title", ""))
+        triggers = [_normalize_text(t) for t in v.get("triggers", [])]
+        candidates = [norm_raw_k, norm_k, norm_title, *triggers]
+        if any(
+            cand and (
+                norm_target == cand
+                or (len(cand) >= 3 and re.search(rf"\b{re.escape(cand)}\b", norm_target))
+                or (len(norm_target) >= 4 and norm_target in cand)
+            )
+            for cand in candidates
+        ):
+            if v.get("available", True):
+                return {
+                    "found": True,
+                    "requires_specificity": False,
+                    "key": k,
+                    "examiner_message": f"Examinador entrega: {v.get('title', action_target)}. Resultado: {v.get('result_text')}",
+                    "title": v.get("title", action_target),
+                    "result_text": v.get("result_text"),
+                    "image_url": v.get("image_url"),
+                }
+
+    neutral = "Normal / não disponível."
+    return {
+        "found": False,
+        "requires_specificity": False,
+        "examiner_message": f"Examinador ({action_target}): {neutral}",
+        "title": action_target,
+        "result_text": neutral,
+        "image_url": None,
+    }
+
+
 def execute_osce_action(
     db,
     session_id: str,
@@ -806,46 +960,39 @@ def execute_osce_action(
         result_payload = {"vitals": vitals}
 
     elif action_type == "physical_exam":
-        findings = exam.get("findings", {})
-        norm_target = _normalize_text(action_target)
-        finding_text = None
-        for k, v in findings.items():
-            norm_k = _normalize_text(k)
-            if norm_target in norm_k or norm_k in norm_target:
-                finding_text = v
-                break
+        resolved = _resolve_physical_exam_maneuver(exam, action_target)
+        audio_key = None
+        for mk in resolved.get("matched_keys", []):
+            audio_key = exam.get("auscultation_audio", {}).get(mk) or audio_key
+        if not audio_key:
+            audio_key = exam.get("auscultation_audio", {}).get(target_clean)
 
-        if not finding_text:
-            finding_text = "Sem anormalidades detectáveis nesta área."
-
-        audio_key = exam.get("auscultation_audio", {}).get(target_clean)
-        examiner_message = f"Exame Físico ({action_target}): {finding_text}"
+        examiner_message = resolved["examiner_message"]
         result_payload = {
-            "finding": finding_text,
+            "finding": resolved["finding"],
             "target": action_target,
-            "audio_key": audio_key
+            "audio_key": audio_key,
+            "requires_specificity": resolved["requires_specificity"],
+            "available": resolved["available"],
         }
 
-    elif action_type == "lab_imaging":
-        lab_item = None
-        norm_target = _normalize_text(action_target)
-        for k, v in labs.items():
-            norm_k = _normalize_text(k)
-            norm_title = _normalize_text(v.get("title", ""))
-            if norm_target in norm_k or norm_k in norm_target or norm_target in norm_title or norm_title in norm_target:
-                lab_item = v
-                break
-
-        if lab_item and lab_item.get("available", True):
-            examiner_message = f"Examinador entrega: {lab_item.get('title', action_target)}. Resultado: {lab_item.get('result_text')}"
+    elif action_type in ("lab_imaging", "exam"):
+        lab_res = _resolve_lab_imaging_order(labs, action_target)
+        examiner_message = lab_res["examiner_message"]
+        if lab_res["found"]:
             result_payload = {
-                "title": lab_item.get("title", action_target),
-                "result_text": lab_item.get("result_text"),
-                "image_url": lab_item.get("image_url")
+                "title": lab_res["title"],
+                "result_text": lab_res["result_text"],
+                "image_url": lab_res["image_url"],
+                "available": True,
             }
         else:
-            examiner_message = f"Examinador informa: O exame '{action_target}' não está disponível de imediato ou não foi fornecido pela banca nesta estação."
-            result_payload = {"available": False, "title": action_target}
+            result_payload = {
+                "available": False,
+                "title": lab_res["title"],
+                "result_text": lab_res["result_text"],
+                "requires_specificity": lab_res["requires_specificity"],
+            }
 
     # Registra ação e intervenção do examinador
     actions.append(action_record)
@@ -980,28 +1127,44 @@ def dispatch_osce_speech(
                     "text": act_res["examiner_message"]
                 })
 
-    # 4. Detecta Exame Físico / Ausculta
-    findings = exam.get("findings", {})
-    for segment, desc in findings.items():
-        norm_seg = _normalize_text(segment)
-        seg_triggers = [norm_seg]
-        if norm_seg == "cardiovascular":
-            seg_triggers.extend(["ausculta cardiaca", "coracao", "bulhas", "sopros"])
-        elif norm_seg == "respiratorio":
-            seg_triggers.extend(["ausculta pulmonar", "pulmao", "murmurio", "respiracao", "estertores", "sibilos"])
-        elif norm_seg == "abdome":
-            seg_triggers.extend(["palpacao do abdome", "palpar abdome", "exame do abdome", "descompressao", "blumberg", "ruidos hidroaereos"])
-        elif norm_seg == "geral":
-            seg_triggers.extend(["exame geral", "estado geral", "aspecto geral", "hidratacao", "mucosas"])
+    # 4. Detecta Exame Físico / Manobras Semiológicas
+    maneuvers = exam.get("maneuvers") or {}
+    if maneuvers:
+        for man_key, man_meta in maneuvers.items():
+            triggers = [_normalize_text(t) for t in man_meta.get("triggers", [])]
+            if any(
+                trig and re.search(rf"\b{re.escape(trig)}\b", norm_msg)
+                for trig in triggers
+            ):
+                if not any(a.get("action_type") == "physical_exam" and a.get("target") == man_key for a in actions_executed):
+                    act_res = execute_osce_action(db, session_id, user_id, "physical_exam", man_key, elapsed_seconds)
+                    actions_executed.append(act_res)
+                    spoken_queue.append({
+                        "speaker": "examinador",
+                        "text": act_res["examiner_message"]
+                    })
+    else:
+        findings = exam.get("findings", {})
+        for segment, desc in findings.items():
+            norm_seg = _normalize_text(segment)
+            seg_triggers = [norm_seg]
+            if norm_seg == "cardiovascular":
+                seg_triggers.extend(["ausculta cardiaca", "bulhas", "sopros"])
+            elif norm_seg == "respiratorio":
+                seg_triggers.extend(["ausculta pulmonar", "murmurio vesicular", "estertores", "sibilos"])
+            elif norm_seg == "abdome":
+                seg_triggers.extend(["palpacao do abdome", "palpacao abdominal", "descompressao brusca", "blumberg", "ruidos hidroaereos"])
+            elif norm_seg == "geral":
+                seg_triggers.extend(["inspecao geral", "estado geral", "ectoscopia"])
 
-        if any(trig in norm_msg for trig in seg_triggers):
-            if not any(a.get("target") == segment for a in actions_executed):
-                act_res = execute_osce_action(db, session_id, user_id, "physical_exam", segment, elapsed_seconds)
-                actions_executed.append(act_res)
-                spoken_queue.append({
-                    "speaker": "examinador",
-                    "text": act_res["examiner_message"]
-                })
+            if any(trig in norm_msg for trig in seg_triggers):
+                if not any(a.get("target") == segment for a in actions_executed):
+                    act_res = execute_osce_action(db, session_id, user_id, "physical_exam", segment, elapsed_seconds)
+                    actions_executed.append(act_res)
+                    spoken_queue.append({
+                        "speaker": "examinador",
+                        "text": act_res["examiner_message"]
+                    })
 
         # 4.5 Detecta Procedimentos Beira-Leito e Manequim por Voz
     proc_triggers = [

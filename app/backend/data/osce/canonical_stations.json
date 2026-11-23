@@ -83,18 +83,108 @@
           "respiratorio": "Hiperpneia profunda e rápida com incursões toracoabdominais amplas (respiração ácida de Kussmaul), murmúrio vesicular simétrico sem ruídos adventícios.",
           "cardiovascular": "Taquicardia sinusal rítmica, bulhas normofonéticas, pulsos periféricos finos, tempo de enchimento capilar de 3 segundos.",
           "abdome": "Abdome difusamente doloroso à palpação profunda porém flácido, sem visceromegalias ou sinais de irritação peritoneal (dor decorrente da cetose e acidose)."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Hálito",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "nivel de consciencia",
+              "halito",
+              "mucosas",
+              "desidratacao",
+              "ectoscopia"
+            ],
+            "finding": "Torporoso, abertura ocular ao chamado verbal, hálito cetônico marcante (odor de maçã podre), desidratação grave 3+/4+ com mucosas secas e olhos encovados."
+          },
+          "inspecao_toracica": {
+            "label": "Inspeção Respiratória / Padrão Ventilatório",
+            "triggers": [
+              "inspecao toracica",
+              "inspecao do torax",
+              "padrao respiratorio",
+              "incursoes",
+              "kussmaul"
+            ],
+            "finding": "Hiperpneia profunda e rápida com incursões toracoabdominais amplas (respiração ácida de Kussmaul)."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "auscultar pulmao",
+              "ausculta do torax",
+              "murmurio vesicular"
+            ],
+            "finding": "Murmúrio vesicular simétrico bilateralmente, sem ruídos adventícios."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "auscultar coracao",
+              "bulhas",
+              "ausculta precordial"
+            ],
+            "finding": "Taquicardia sinusal rítmica, bulhas normofonéticas em 2 tempos, sem sopros."
+          },
+          "perfusao_pulsos": {
+            "label": "Palpação de Pulsos e Perfusão Periférica",
+            "triggers": [
+              "pulsos",
+              "palpacao de pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "tec"
+            ],
+            "finding": "Pulsos periféricos finos e simétricos, tempo de enchimento capilar de 3 segundos."
+          },
+          "palpacao_abdominal": {
+            "label": "Palpação Abdominal Profunda e Superficial",
+            "triggers": [
+              "palpacao abdominal",
+              "palpacao do abdome",
+              "palpar abdome",
+              "descompressao brusca",
+              "blumberg",
+              "irritacao peritoneal"
+            ],
+            "finding": "Abdome difusamente doloroso à palpação profunda, porém flácido, sem visceromegalias e com descompressão brusca negativa."
+          }
         }
       },
       "lab_imaging": {
         "gasometria_eletrólitos": {
           "title": "Gasometria Arterial e Eletrólitos Séricos",
           "available": true,
-          "result_text": "pH 7.12, pCO2 24 mmHg, HCO3 9 mEq/L, BE -16 mEq/L. Na: 132 mEq/L, K: 4.2 mEq/L, Cl: 99 mEq/L. Ânion Gap calculado: 24 mEq/L (Acidose Metabólica Grave com Ânion Gap Elevado). Cetonúria: 4+."
+          "result_text": "pH 7.12, pCO2 24 mmHg, HCO3 9 mEq/L, BE -16 mEq/L. Na: 132 mEq/L, K: 4.2 mEq/L, Cl: 99 mEq/L. Ânion Gap calculado: 24 mEq/L (Acidose Metabólica Grave com Ânion Gap Elevado). Cetonúria: 4+.",
+          "triggers": [
+            "gasometria",
+            "gasometria arterial",
+            "gaso",
+            "eletrolitos",
+            "potassio",
+            "sodio",
+            "bicarbonato",
+            "ph",
+            "anion gap",
+            "cetonuria"
+          ]
         },
         "funcao_renal": {
           "title": "Função Renal e Glicemia Sérica",
           "available": true,
-          "result_text": "Glicemia sérica: 580 mg/dL. Ureia: 64 mg/dL. Creatinina: 1.4 mg/dL. Lactato: 1.8 mmol/L."
+          "result_text": "Glicemia sérica: 580 mg/dL. Ureia: 64 mg/dL. Creatinina: 1.4 mg/dL. Lactato: 1.8 mmol/L.",
+          "triggers": [
+            "funcao renal",
+            "ureia",
+            "creatinina",
+            "glicemia",
+            "glicemia serica",
+            "lactato"
+          ]
         }
       },
       "checklist_barema": [
@@ -223,6 +313,43 @@
           "geral": "Lúcida, ansiosa, sudorética, corada, eupneica em repouso.",
           "cardiovascular": "Ritmo cardíaco regular em 2 tempos, presença de B4 à ausculta no foco mitral (sobrecarga/disfunção diastólica), ausência de sopros ou atrito pericárdico.",
           "respiratorio": "Murmúrio vesicular limpo bilateralmente, sem estertores (Killip I)."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia",
+              "fácies",
+              "facies",
+              "sudorese"
+            ],
+            "finding": "Lúcida, ansiosa, sudorética, corada, eupneica em repouso."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "auscultar coracao",
+              "bulhas",
+              "sopros",
+              "b4",
+              "atrito"
+            ],
+            "finding": "Ritmo cardíaco regular em 2 tempos, presença de B4 à ausculta em foco mitral, ausência de sopros ou atrito pericárdico."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "murmurio vesicular",
+              "estertores",
+              "killip"
+            ],
+            "finding": "Murmúrio vesicular limpo bilateralmente, sem estertores (Killip I)."
+          }
         }
       },
       "lab_imaging": {
@@ -230,12 +357,28 @@
           "title": "Eletrocardiograma de 12 Derivações",
           "available": true,
           "result_text": "Ritmo sinusal regular, FC 78 bpm. Presença de infradesnivelamento horizontal do segmento ST de 1,5 mm nas derivações V4, V5 e V6, associado a inversão de onda T assimétrica. Ausência de supradesnivelamento de ST.",
-          "image_url": "/images/osce/ecg_infra_st.png"
+          "image_url": "/images/osce/ecg_infra_st.png",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ]
         },
         "troponina": {
           "title": "Troponina Ultrassensível e Escore GRACE",
           "available": true,
-          "result_text": "Troponina I: 0.28 ng/mL (limite de corte: 0.04 ng/mL - curva em ascensão). Escore GRACE calculado: 146 pontos (> 140 = Alto Risco de Eventos Isquêmicos Maiores)."
+          "result_text": "Troponina I: 0.28 ng/mL (limite de corte: 0.04 ng/mL - curva em ascensão). Escore GRACE calculado: 146 pontos (> 140 = Alto Risco de Eventos Isquêmicos Maiores).",
+          "triggers": [
+            "troponina",
+            "curva de troponina",
+            "enzimas cardiacas",
+            "marcadores de necrose",
+            "grace"
+          ]
         }
       },
       "checklist_barema": [
@@ -439,18 +582,103 @@
           "atls_c": "Choque Hemorrágico Grau III: palidez cutânea 3+/4+, sudorese fria, pulsos radiais filiformes. Abdome distendido com equimose importante no hipocôndrio e flanco esquerdos (sinal do cinto de segurança), dor intensa à palpação profunda com descompressão duvidosa.",
           "atls_d": "Glasgow 14 (confuso), pupilas isocóricas e fotorreagentes.",
           "atls_e": "Pelve estável, sem sangramento em meato uretral, aquecimento do paciente com mantas térmicas."
+        },
+        "maneuvers": {
+          "avaliacao_via_aerea": {
+            "label": "Inspeção de Via Aérea e Coluna Cervical (ATLS A)",
+            "triggers": [
+              "via aerea",
+              "colar cervical",
+              "imobilizacao cervical",
+              "atls a",
+              "inspecao cervical"
+            ],
+            "finding": "Via aérea pérvia, falando com voz pastosa, colar cervical bem posicionado e alinhado."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar e Inspeção/Palpação Torácica (ATLS B)",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "palpacao toracica",
+              "inspecao toracica",
+              "atls b",
+              "murmurio vesicular"
+            ],
+            "finding": "Tórax estável à palpação, murmúrio vesicular universalmente audível e simétrico, sem sinais de pneumotórax ou hemotórax."
+          },
+          "perfusao_pulsos": {
+            "label": "Avaliação Circulatória, Pulsos e Perfusão (ATLS C)",
+            "triggers": [
+              "pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "palpacao de pulsos",
+              "atls c",
+              "palidez",
+              "tec"
+            ],
+            "finding": "Choque Hemorrágico Grau III: palidez cutânea 3+/4+, sudorese fria, pulsos radiais filiformes e taquicárdicos."
+          },
+          "inspecao_palpacao_abdominal": {
+            "label": "Inspeção e Palpação Abdominal (Sinal do Cinto / Irritação Peritoneal)",
+            "triggers": [
+              "inspecao abdominal",
+              "palpacao abdominal",
+              "palpacao do abdome",
+              "palpar abdome",
+              "descompressao",
+              "cinto de seguranca"
+            ],
+            "finding": "Abdome distendido com equimose importante em hipocôndrio e flanco esquerdos (sinal do cinto de segurança), dor intensa à palpação profunda com descompressão duvidosa."
+          },
+          "avaliacao_neurologica_glasgow": {
+            "label": "Exame Neurológico (Glasgow e Pupilas - ATLS D)",
+            "triggers": [
+              "glasgow",
+              "pupilas",
+              "exame neurologico",
+              "nivel de consciencia",
+              "atls d"
+            ],
+            "finding": "Glasgow 14 (confuso), pupilas isocóricas e fotorreagentes."
+          },
+          "palpacao_pelvica_exposicao": {
+            "label": "Estabilidade Pélvica, Meato Uretral e Exposição (ATLS E)",
+            "triggers": [
+              "pelve",
+              "estabilidade pelvica",
+              "meato uretral",
+              "exposicao",
+              "atls e"
+            ],
+            "finding": "Pelve estável à compressão delicada, sem sangramento em meato uretral; aquecimento com mantas térmicas."
+          }
         }
       },
       "lab_imaging": {
         "e_fast": {
           "title": "E-FAST Beira-Leito (Sala Vermelha)",
           "available": true,
-          "result_text": "Janela pericárdica: sem derrame. Espaço hepatorrenal (Morison): lâmina fina de líquido livre. Espaço esplenorrenal (recesso de Koller): presença de grande quantidade de líquido livre anecoico circundando o baço com laceração esplênica visível. Pelve: líquido livre em fundo de saco retrovesical. FAST POSITIVO."
+          "result_text": "Janela pericárdica: sem derrame. Espaço hepatorrenal (Morison): lâmina fina de líquido livre. Espaço esplenorrenal (recesso de Koller): presença de grande quantidade de líquido livre anecoico circundando o baço com laceração esplênica visível. Pelve: líquido livre em fundo de saco retrovesical. FAST POSITIVO.",
+          "triggers": [
+            "e-fast",
+            "efast",
+            "fast",
+            "ultrassom beira leito",
+            "pocus"
+          ]
         },
         "gaso_lactato": {
           "title": "Gasometria e Lactato da Admissão",
           "available": true,
-          "result_text": "pH 7.24, BE -9 mEq/L, Lactato: 4.2 mmol/L. Hemoglobina inicial: 8.2 g/dL."
+          "result_text": "pH 7.24, BE -9 mEq/L, Lactato: 4.2 mmol/L. Hemoglobina inicial: 8.2 g/dL.",
+          "triggers": [
+            "gasometria",
+            "lactato",
+            "gaso",
+            "gasometria e lactato"
+          ]
         }
       },
       "checklist_barema": [
@@ -598,6 +826,61 @@
           "respiratorio": "Presença de batimento de asa de nariz leve, tiragem subcostal e intercostal moderadas. Ausculta pulmonar com tempo expiratório prolongado, sibilos expiratórios bilaterais e estertores subcrepitantes difusos em ambas as bases.",
           "cardiovascular": "Ritmo cardíaco regular em 2 tempos, sem sopros, pulsos cheios.",
           "orofaringe_otoscopia": "Presença de secreção hialina abundante em fossas nasais, membranas timpânicas íntegras e translúcidas."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Hidratação",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "hidratacao",
+              "ectoscopia"
+            ],
+            "finding": "Lactente reativo, irritado durante o exame, afebril no momento, hidratado."
+          },
+          "inspecao_toracica": {
+            "label": "Inspeção Respiratória (Tiragens / BAN)",
+            "triggers": [
+              "inspecao toracica",
+              "tiragem",
+              "batimento de asa de nariz",
+              "ban",
+              "esforco respiratorio"
+            ],
+            "finding": "Presença de batimento de asa de nariz leve, tiragem subcostal e intercostal moderadas."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "sibilos",
+              "estertores",
+              "murmurio vesicular"
+            ],
+            "finding": "Tempo expiratório prolongado, sibilos expiratórios bilaterais e estertores subcrepitantes difusos em ambas as bases."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca e Pulsos",
+            "triggers": [
+              "ausculta cardiaca",
+              "bulhas",
+              "pulsos",
+              "perfusao"
+            ],
+            "finding": "Ritmo cardíaco regular em 2 tempos, sem sopros, pulsos cheios."
+          },
+          "oroscopia_otoscopia": {
+            "label": "Oroscopia, Rinoscopia e Otoscopia",
+            "triggers": [
+              "otoscopia",
+              "oroscopia",
+              "orofaringe",
+              "membrana timpanica",
+              "fossas nasais"
+            ],
+            "finding": "Secreção hialina abundante em fossas nasais, orofaringe sem exsudato, membranas timpânicas íntegras e translúcidas."
+          }
         }
       },
       "lab_imaging": {},
@@ -745,6 +1028,43 @@
           "geral": "Pálida 2+/4+, sudorética, taquicárdica, sonolenta.",
           "exame_abdominal": "Útero hipotônico, flácido, amolecido à palpação, localizado a cerca de 4 cm acima da cicatriz umbilical ('útero ensacado').",
           "exame_especular": "Exame com valvas afasta lacerações de trajeto (colo uterino e paredes vaginais íntegros, sem hematomas). Sangramento ativo volumoso exteriorizando-se pelo orifício cervical externo."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Estado Volêmico",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "mucosas",
+              "palidez",
+              "consciencia"
+            ],
+            "finding": "Pálida 2+/4+, sudorética, taquicárdica, sonolenta."
+          },
+          "palpacao_uterina": {
+            "label": "Palpação Abdominal / Fundo Uterino",
+            "triggers": [
+              "palpacao uterina",
+              "fundo uterino",
+              "tonus uterino",
+              "palpacao abdominal",
+              "palpar utero",
+              "globo de seguranca"
+            ],
+            "finding": "Útero hipotônico, flácido e amolecido à palpação, localizado cerca de 4 cm acima da cicatriz umbilical ('útero ensacado')."
+          },
+          "exame_especular": {
+            "label": "Exame Especular e Revisão de Canal de Parto",
+            "triggers": [
+              "exame especular",
+              "especular",
+              "revisao de canal",
+              "valvas",
+              "laceracoes",
+              "toque vaginal"
+            ],
+            "finding": "Exame com valvas afasta lacerações de trajeto (colo uterino e paredes vaginais íntegros, sem hematomas); sangramento ativo volumoso pelo orifício cervical externo."
+          }
         }
       },
       "lab_imaging": {},
@@ -880,6 +1200,19 @@
         },
         "findings": {
           "geral": "Fácies de cansaço extremo, postura encurvada, choro fácil durante a conversa, sem déficits neurológicos ou alterações orgânicas ao exame físico."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Exame Clínico Dirigido",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia",
+              "exame fisico dirigido",
+              "exame neurologico"
+            ],
+            "finding": "Fácies de cansaço extremo, postura encurvada, choro fácil durante a conversa, sem déficits neurológicos ou alterações orgânicas."
+          }
         }
       },
       "lab_imaging": {},
@@ -1027,6 +1360,69 @@
         "auscultation_audio": {
           "cardiac": "bulhas_normais",
           "pulmonary": "murmurio_limpo"
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia",
+              "sudorese",
+              "cianose"
+            ],
+            "finding": "Em decúbito elevado, sudorético, fácies de dor, ansioso, acianótico, anictérico."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "bulhas",
+              "sopros",
+              "auscultar coracao"
+            ],
+            "finding": "Ritmo cardíaco regular em 2 tempos, bulhas normofonéticas, sem sopros audíveis ou B3/B4."
+          },
+          "perfusao_pulsos": {
+            "label": "Palpação de Pulsos Periféricos",
+            "triggers": [
+              "pulsos",
+              "palpacao de pulsos",
+              "perfusao",
+              "enchimento capilar"
+            ],
+            "finding": "Pulsos periféricos simétricos e cheios."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "murmurio vesicular",
+              "estertores"
+            ],
+            "finding": "Murmúrio vesicular universalmente audível, sem ruídos adventícios (Killip I)."
+          },
+          "palpacao_abdominal": {
+            "label": "Palpação Abdominal",
+            "triggers": [
+              "palpacao abdominal",
+              "palpacao do abdome",
+              "palpar abdome"
+            ],
+            "finding": "Abdome plano, flácido, indolor à palpação, sem visceromegalias."
+          },
+          "inspecao_palpacao_membros": {
+            "label": "Inspeção e Palpação de Membros Inferiores",
+            "triggers": [
+              "edema de membros",
+              "palpacao de panturrilha",
+              "panturrilhas",
+              "homans",
+              "empastamento"
+            ],
+            "finding": "Membros inferiores sem edemas, empastamento ou sinais de trombose venosa profunda."
+          }
         }
       },
       "lab_imaging": {
@@ -1034,17 +1430,42 @@
           "title": "Eletrocardiograma de 12 derivações",
           "available": true,
           "result_text": "Ritmo sinusal regular, FC 92 bpm, eixo normal. Supradesnivelamento do segmento ST de 4 mm nas derivações V1 a V4 (parede anterior extensa), sem alterações em derivações direitas (V3R/V4R) ou posteriores.",
-          "image_url": "/images/osce/ecg_supra_anterior.png"
+          "image_url": "/images/osce/ecg_supra_anterior.png",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ]
         },
         "rx_torax": {
           "title": "Radiografia de Tórax no Leito",
           "available": true,
-          "result_text": "Área cardíaca normal, parênquima pulmonar sem consolidações ou sinais de congestão vascular, cúpulas diafragmáticas livres."
+          "result_text": "Área cardíaca normal, parênquima pulmonar sem consolidações ou sinais de congestão vascular, cúpulas diafragmáticas livres.",
+          "triggers": [
+            "rx de torax",
+            "rx torax",
+            "raio-x de torax",
+            "raio x de torax",
+            "radiografia de torax",
+            "radiografia",
+            "cupulas"
+          ]
         },
         "troponina": {
           "title": "Marcadores de Necrose Miocárdica (Troponina I)",
           "available": true,
-          "result_text": "Amostra enviada ao laboratório (resultado em 45 minutos). Nota da banca: Em IAM com supra de ST, a terapia de reperfusão NÃO deve aguardar o resultado de biomarcadores."
+          "result_text": "Amostra enviada ao laboratório (resultado em 45 minutos). Nota da banca: Em IAM com supra de ST, a terapia de reperfusão NÃO deve aguardar o resultado de biomarcadores.",
+          "triggers": [
+            "troponina",
+            "curva de troponina",
+            "enzimas cardiacas",
+            "marcadores de necrose",
+            "grace"
+          ]
         }
       },
       "checklist_barema": [
@@ -1245,6 +1666,79 @@
         "auscultation_audio": {
           "cardiac": "taquicardia_sinusal",
           "pulmonary": "murmurio_limpo"
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia",
+              "posicao antalgica",
+              "sudorese"
+            ],
+            "finding": "Posição antálgica imóvel no leito, fácies de sofrimento agudo, sudorese fria, taquicárdico e taquipneico."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "bulhas",
+              "sopros"
+            ],
+            "finding": "Taquicardia sinusal rítmica, sem sopros audíveis."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta e Inspeção Respiratória",
+            "triggers": [
+              "ausculta pulmonar",
+              "inspecao toracica",
+              "padrao respiratorio"
+            ],
+            "finding": "Respiração superficial e rápida limitada pela dor abdominal; murmúrio vesicular preservado bilateralmente."
+          },
+          "palpacao_abdominal": {
+            "label": "Palpação Abdominal e Descompressão Brusca",
+            "triggers": [
+              "palpacao abdominal",
+              "palpacao do abdome",
+              "palpar abdome",
+              "descompressao brusca",
+              "blumberg",
+              "defesa abdominal",
+              "abdome em tabua"
+            ],
+            "finding": "Abdome tenso, com defesa involuntária difusa ('abdome em tábua'). Descompressão brusca difusamente positiva (sinal de Blumberg generalizado)."
+          },
+          "percussao_abdominal": {
+            "label": "Percussão Abdominal (Sinal de Jobert)",
+            "triggers": [
+              "percussao abdominal",
+              "percussao do abdome",
+              "percutir abdome",
+              "jobert",
+              "macicez hepatica"
+            ],
+            "finding": "Perda da macicez hepática à percussão, com timpanismo em hipocôndrio direito (Sinal de Jobert presente)."
+          },
+          "ausculta_abdominal": {
+            "label": "Ausculta Abdominal (Ruídos Hidroaéreos)",
+            "triggers": [
+              "ausculta abdominal",
+              "ausculta do abdome",
+              "ruidos hidroaereos",
+              "rha"
+            ],
+            "finding": "Ruídos hidroaéreos abolidos à ausculta abdominal."
+          },
+          "toque_retal": {
+            "label": "Toque Retal",
+            "triggers": [
+              "toque retal",
+              "exame proctologico"
+            ],
+            "finding": "Toque retal sem massas palpáveis; dor intensa em fundo de saco de Douglas."
+          }
         }
       },
       "lab_imaging": {
@@ -1252,12 +1746,27 @@
           "title": "Radiografia de Tórax em PA (em cúpulas)",
           "available": true,
           "result_text": "Presença de ar livre subdiafragmático bilateral evidente sob as cúpulas (pneumoperitônio maciço), sem derrame pleural.",
-          "image_url": "/images/osce/rx_pneumoperitonio.png"
+          "image_url": "/images/osce/rx_pneumoperitonio.png",
+          "triggers": [
+            "rx de torax",
+            "rx torax",
+            "raio-x de torax",
+            "raio x de torax",
+            "radiografia de torax",
+            "radiografia",
+            "cupulas"
+          ]
         },
         "hemograma": {
           "title": "Hemograma e Bioquímica",
           "available": true,
-          "result_text": "Leucócitos: 16.800/mm³ com 10% de bastões. PCR: 145 mg/L. Creatinina: 1,1 mg/dL. Lactato: 2,2 mmol/L."
+          "result_text": "Leucócitos: 16.800/mm³ com 10% de bastões. PCR: 145 mg/L. Creatinina: 1,1 mg/dL. Lactato: 2,2 mmol/L.",
+          "triggers": [
+            "hemograma",
+            "leucograma",
+            "plaquetas",
+            "bioquimica"
+          ]
         }
       },
       "checklist_barema": [
@@ -1434,6 +1943,61 @@
         "auscultation_audio": {
           "cardiac": "taquicardia_sinusal",
           "pulmonary": "estridor_e_sibilos"
+        },
+        "maneuvers": {
+          "inspecao_via_aerea": {
+            "label": "Inspeção de Via Aérea, Lábios e Orofaringe",
+            "triggers": [
+              "via aerea",
+              "inspecao oral",
+              "oroscopia",
+              "estridor",
+              "angioedema",
+              "labios"
+            ],
+            "finding": "Edema de lábios e pálpebras, rouquidão intensa e estridor inspiratório marcante."
+          },
+          "inspecao_toracica": {
+            "label": "Inspeção Respiratória / Tiragens",
+            "triggers": [
+              "inspecao toracica",
+              "tiragem",
+              "esforco respiratorio"
+            ],
+            "finding": "Tiragem intercostal e de fúrcula moderada a grave."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "sibilos",
+              "murmurio vesicular"
+            ],
+            "finding": "Ausculta pulmonar com sibilos inspiratórios e expiratórios difusos."
+          },
+          "perfusao_pulsos": {
+            "label": "Palpação de Pulsos e Perfusão Periférica",
+            "triggers": [
+              "pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "tec",
+              "ausculta cardiaca"
+            ],
+            "finding": "Taquicardia acentuada, pulsos radiais finos, tempo de enchimento capilar de 4 segundos."
+          },
+          "inspecao_pele": {
+            "label": "Inspeção Cutânea (Urticária)",
+            "triggers": [
+              "inspecao de pele",
+              "inspecao cutanea",
+              "ectoscopia de pele",
+              "urticaria",
+              "placas"
+            ],
+            "finding": "Placas eritematosas, elevadas e pruriginosas (urticária) disseminadas por todo o corpo e angioedema facial."
+          }
         }
       },
       "lab_imaging": {},
@@ -1582,13 +2146,79 @@
         "auscultation_audio": {
           "cardiac": "bulhas_normais",
           "bcf": "bcf_normal_140"
+        },
+        "maneuvers": {
+          "reflexos_osteotendineos": {
+            "label": "Exame Neurológico e Reflexos Osteotendíneos (Patelar / Clônus)",
+            "triggers": [
+              "reflexo patelar",
+              "reflexos",
+              "clonus",
+              "exame neurologico",
+              "hiperreflexia"
+            ],
+            "finding": "Consciente e orientada, queixa de escotomas cintilantes; reflexo patelar hiperativo com clônus esgotável de 3 batimentos."
+          },
+          "altura_uterina_palpacao": {
+            "label": "Altura Uterina e Palpação Obstétrica (Tônus / Dinâmica)",
+            "triggers": [
+              "altura uterina",
+              "palpacao obstetrica",
+              "tonus uterino",
+              "dinamica uterina",
+              "manobras de leopold"
+            ],
+            "finding": "Altura uterina de 32 cm, tônus uterino normal, ausência de dinâmica de trabalho de parto."
+          },
+          "ausculta_bcf": {
+            "label": "Ausculta de Batimentos Cardiofetais (BCF)",
+            "triggers": [
+              "bcf",
+              "batimentos cardiofetais",
+              "ausculta fetal",
+              "sonar"
+            ],
+            "finding": "Batimentos cardiofetais (BCF) de 142 bpm, rítmicos."
+          },
+          "exame_especular_toque_vaginal": {
+            "label": "Exame Especular e Toque Vaginal",
+            "triggers": [
+              "toque vaginal",
+              "exame especular",
+              "colo uterino"
+            ],
+            "finding": "Colo grosso, posterior e fechado, sem perdas líquidas ou sangramento vaginal."
+          },
+          "pesquisa_edema": {
+            "label": "Pesquisa de Edema (Sinal do Cacifo / Face)",
+            "triggers": [
+              "pesquisa de edema",
+              "cacifo",
+              "edema de membros",
+              "edema facial"
+            ],
+            "finding": "Edema em membros inferiores 3+/4+ com cacifo positivo e edema facial visível."
+          }
         }
       },
       "lab_imaging": {
         "laboratorio_urgencia": {
           "title": "Painel Laboratorial de Pré-Eclâmpsia",
           "available": true,
-          "result_text": "Plaquetas: 135.000/mm³. TGO: 68 U/L, TGP: 72 U/L. Creatinina: 1,0 mg/dL. Ácido úrico: 6,8 mg/dL. Fita urinária: Proteinúria 3+."
+          "result_text": "Plaquetas: 135.000/mm³. TGO: 68 U/L, TGP: 72 U/L. Creatinina: 1,0 mg/dL. Ácido úrico: 6,8 mg/dL. Fita urinária: Proteinúria 3+.",
+          "triggers": [
+            "hemograma",
+            "plaquetas",
+            "tgo",
+            "tgp",
+            "transaminases",
+            "ldh",
+            "proteinuria",
+            "creatinina",
+            "acido urico",
+            "painel de pre-eclampsia",
+            "painel laboratorial"
+          ]
         }
       },
       "checklist_barema": [
@@ -1737,13 +2367,42 @@
         "findings": {
           "geral": "Paciente lúcido, corado, emagrecido, aparentando ansiedade contida.",
           "exame_fisico": "Sem linfonodomegalias palpáveis em fossas supraclaviculares (ausência de nódulo de Virchow) ou periumbilicais (sem nódulo da Irmã Maria José)."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia"
+            ],
+            "finding": "Paciente lúcido, corado, emagrecido, aparentando ansiedade contida."
+          },
+          "palpacao_linfonodal_abdominal": {
+            "label": "Palpação de Cadeias Linfonodais e Abdome",
+            "triggers": [
+              "palpacao de linfonodos",
+              "virchow",
+              "fossa supraclavicular",
+              "palpacao abdominal",
+              "irma maria jose"
+            ],
+            "finding": "Sem linfonodomegalias palpáveis em fossas supraclaviculares (ausência de nódulo de Virchow) ou periumbilicais."
+          }
         }
       },
       "lab_imaging": {
         "biopsia": {
           "title": "Laudo Anatomopatológico de Biópsia Gástrica",
           "available": true,
-          "result_text": "Fragmentos de mucosa gástrica exibindo Adenocarcinoma Tubular Invasivo, moderadamente diferenciado. Pesquisa de Helicobacter pylori positiva."
+          "result_text": "Fragmentos de mucosa gástrica exibindo Adenocarcinoma Tubular Invasivo, moderadamente diferenciado. Pesquisa de Helicobacter pylori positiva.",
+          "triggers": [
+            "biopsia",
+            "anatomopatologico",
+            "laudo anatomopatologico",
+            "laudo da biopsia",
+            "biopsia gastrica"
+          ]
         }
       },
       "checklist_barema": [
@@ -1964,6 +2623,49 @@
           "geral": "Sonolenta, má perfusão periférica, tempo de enchimento capilar de 4 segundos, sudorese profusa e pele fria.",
           "cardiovascular": "Ritmo cardíaco taquicárdico com pulsos centrais presentes porém finos e filiformes.",
           "respiratorio": "Estertores crepitantes em terço inferior de ambos os hemitórax."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Consciência",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "nivel de consciencia",
+              "glasgow",
+              "sudorese"
+            ],
+            "finding": "Sonolenta, sudorese profusa e pele fria."
+          },
+          "perfusao_pulsos": {
+            "label": "Palpação de Pulsos e Perfusão Periférica",
+            "triggers": [
+              "pulsos",
+              "palpacao de pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "tec"
+            ],
+            "finding": "Má perfusão periférica, tempo de enchimento capilar de 4 segundos; pulsos centrais presentes porém finos e filiformes."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "bulhas",
+              "sopros"
+            ],
+            "finding": "Ritmo cardíaco taquicárdico acelerado, bulhas hipofonéticas."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "estertores",
+              "crepitantes"
+            ],
+            "finding": "Estertores crepitantes em terço inferior de ambos os hemitórax."
+          }
         }
       },
       "lab_imaging": {
@@ -1971,7 +2673,16 @@
           "title": "Monitor Cardíaco e ECG de Ritmo",
           "available": true,
           "result_text": "Taquicardia de QRS largo regular (> 120 ms) com frequência de 180 bpm, concordância positiva precordial e dissociação atrioventricular (Taquicardia Ventricular Monomórfica Sustentada).",
-          "image_url": "/images/osce/ecg_tv_monomorfica.png"
+          "image_url": "/images/osce/ecg_tv_monomorfica.png",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ]
         }
       },
       "checklist_barema": [
@@ -2079,13 +2790,63 @@
           "geral": "Sonolento, respondendo apenas a estímulos dolorosos, tempo de enchimento capilar de 4 segundos, livedo reticular em membros inferiores.",
           "respiratorio": "Murmúrio diminuído em base direita com estertores crepitantes abundantes no terço médio e inferior.",
           "cardiovascular": "Taquicardia sinusal, sem sopros audíveis."
+        },
+        "maneuvers": {
+          "avaliacao_neurologica_glasgow": {
+            "label": "Avaliação Neurológica / Nível de Consciência",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "nivel de consciencia",
+              "glasgow"
+            ],
+            "finding": "Sonolento, respondendo apenas a estímulos dolorosos."
+          },
+          "perfusao_pulsos": {
+            "label": "Perfusão Periférica, TEC e Livedo",
+            "triggers": [
+              "perfusao",
+              "enchimento capilar",
+              "tec",
+              "livedo",
+              "pulsos",
+              "membros"
+            ],
+            "finding": "Tempo de enchimento capilar de 4 segundos, livedo reticular em membros inferiores, extremidades frias."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "estertores",
+              "murmurio vesicular"
+            ],
+            "finding": "Murmúrio diminuído em base direita com estertores crepitantes abundantes no terço médio e inferior."
+          },
+          "ausculta_cardiaca": {
+            "label": "Ausculta Cardíaca",
+            "triggers": [
+              "ausculta cardiaca",
+              "bulhas",
+              "sopros"
+            ],
+            "finding": "Taquicardia sinusal, sem sopros audíveis."
+          }
         }
       },
       "lab_imaging": {
         "gasometria_lactato": {
           "title": "Gasometria Arterial e Lactato Sérico",
           "available": true,
-          "result_text": "pH 7.28, pCO2 30, HCO3 16, BE -8, Lactato arterial 3.8 mmol/L (hiperlactatemia acentuada por hipoperfusão)."
+          "result_text": "pH 7.28, pCO2 30, HCO3 16, BE -8, Lactato arterial 3.8 mmol/L (hiperlactatemia acentuada por hipoperfusão).",
+          "triggers": [
+            "gasometria",
+            "gasometria arterial",
+            "lactato",
+            "lactato serico",
+            "gaso"
+          ]
         }
       },
       "checklist_barema": [
@@ -2191,6 +2952,61 @@
           "atls_a": "Via aérea pérvia, coluna cervical imobilizada.",
           "atls_b": "Dispneia extrema, cianose, desvio de traqueia visível para o lado esquerdo, turgência jugular patológica bilateral. Hemitórax direito hiperinsuflado, com hipertimpanismo à percussão e murmúrio vesicular completamente abolido à direita.",
           "atls_c": "Choque obstrutivo com pulsos periféricos impalpáveis e taquicardia extrema."
+        },
+        "maneuvers": {
+          "avaliacao_via_aerea": {
+            "label": "Avaliação de Via Aérea e Cervical (ATLS A)",
+            "triggers": [
+              "via aerea",
+              "colar cervical",
+              "atls a"
+            ],
+            "finding": "Via aérea pérvia, coluna cervical imobilizada com colar rígido."
+          },
+          "inspecao_cervical_toracica": {
+            "label": "Inspeção Cervical e Torácica (Traqueia / Turgência Jugular)",
+            "triggers": [
+              "inspecao cervical",
+              "inspecao toracica",
+              "desvio de traqueia",
+              "traqueia",
+              "turgencia jugular",
+              "jugular",
+              "cianose"
+            ],
+            "finding": "Dispneia extrema, cianose, desvio de traqueia visível para o lado esquerdo, turgência jugular patológica bilateral e hemitórax direito hiperinsuflado."
+          },
+          "percussao_toracica": {
+            "label": "Percussão Torácica",
+            "triggers": [
+              "percussao toracica",
+              "percussao do torax",
+              "percutir torax",
+              "hipertimpanismo",
+              "timpanismo"
+            ],
+            "finding": "Hipertimpanismo à percussão em todo o hemitórax direito."
+          },
+          "ausculta_pulmonar": {
+            "label": "Ausculta Pulmonar",
+            "triggers": [
+              "ausculta pulmonar",
+              "ausculta respiratoria",
+              "murmurio vesicular",
+              "auscultar pulmao"
+            ],
+            "finding": "Murmúrio vesicular completamente abolido no hemitórax direito; presente à esquerda."
+          },
+          "perfusao_pulsos": {
+            "label": "Avaliação Circulatória e Pulsos (ATLS C)",
+            "triggers": [
+              "pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "atls c"
+            ],
+            "finding": "Choque obstrutivo com pulsos periféricos impalpáveis e taquicardia extrema."
+          }
         }
       },
       "lab_imaging": {},
@@ -2305,6 +3121,42 @@
           "geral": "Letárgico, olhos muito fundos, sem lágrimas no choro, boca e língua extremamente secas.",
           "pele": "Sinal da prega cutânea desaparece muito lentamente (> 2 segundos).",
           "perfusao": "Pulsos radiais débeis, extremidades frias, tempo de enchimento capilar de 4 segundos."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral, Olhos e Mucosas",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "olhos",
+              "lagrimas",
+              "mucosas",
+              "boca",
+              "lingua"
+            ],
+            "finding": "Letárgico, olhos muito fundos, sem lágrimas ao choro, boca e língua extremamente secas."
+          },
+          "sinal_da_prega": {
+            "label": "Pesquisa do Sinal da Prega Cutânea (Turgor)",
+            "triggers": [
+              "sinal da prega",
+              "prega cutanea",
+              "turgor",
+              "elasticidade da pele"
+            ],
+            "finding": "Sinal da prega cutânea desaparece muito lentamente (> 2 segundos)."
+          },
+          "perfusao_pulsos": {
+            "label": "Palpação de Pulsos e Tempo de Enchimento Capilar",
+            "triggers": [
+              "pulsos",
+              "perfusao",
+              "enchimento capilar",
+              "tec",
+              "extremidades"
+            ],
+            "finding": "Pulsos radiais débeis, extremidades frias, tempo de enchimento capilar de 4 segundos."
+          }
         }
       },
       "lab_imaging": {},
@@ -2407,6 +3259,29 @@
         "findings": {
           "geral": "Muito abalada emocionalmente, chorosa, com escoriações leves em punhos e joelhos.",
           "ginecologico": "Hiperemia vulvar sem lacerações com sangramento ativo (exame genital realizado apenas com consentimento prévio da paciente)."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral e Ectoscopia de Lesões",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "ectoscopia",
+              "escoriacoes",
+              "lesoes"
+            ],
+            "finding": "Muito abalada emocionalmente, chorosa, com escoriações leves em punhos e joelhos."
+          },
+          "exame_ginecologico_inspecao": {
+            "label": "Exame Ginecológico (com Consentimento Prévio)",
+            "triggers": [
+              "exame ginecologico",
+              "inspecao genital",
+              "exame genital",
+              "exame especular"
+            ],
+            "finding": "Hiperemia vulvar sem lacerações com sangramento ativo discreto (realizado apenas após consentimento prévio da paciente)."
+          }
         }
       },
       "lab_imaging": {},
@@ -2865,12 +3740,28 @@
           "title": "Eletrocardiograma de 12 Derivações de Emergência",
           "available": true,
           "result_text": "Bradicardia sinusal a 46 bpm. Ondas T apiculadas, simétricas e de base estreita ('em tenda') difusas, achatamento da onda P e alargamento de QRS (130 ms). Alto risco iminente de assistolia ou fibrilação ventricular.",
-          "image_url": "/images/osce/ecg_hipercalemia.png"
+          "image_url": "/images/osce/ecg_hipercalemia.png",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ]
         },
         "eletrolitos_gaso": {
           "title": "Gasometria Venosa e Eletrólitos Séricos Urgentes",
           "available": true,
-          "result_text": "Potássio (K+): 7.9 mEq/L (Normal: 3.5 a 5.0). Sódio: 136 mEq/L. Cálcio Iônico: 1.15 mmol/L. pH: 7.28, HCO3: 16 mEq/L, Ureia: 142 mg/dL, Creatinina: 4.8 mg/dL."
+          "result_text": "Potássio (K+): 7.9 mEq/L (Normal: 3.5 a 5.0). Sódio: 136 mEq/L. Cálcio Iônico: 1.15 mmol/L. pH: 7.28, HCO3: 16 mEq/L, Ureia: 142 mg/dL, Creatinina: 4.8 mg/dL.",
+          "triggers": [
+            "gasometria",
+            "gasometria venosa",
+            "eletrolitos",
+            "potassio",
+            "sodio"
+          ]
         }
       },
       "barema_items": [
@@ -2997,7 +3888,11 @@
         "gasometria_arterial": {
           "title": "Gasometria Arterial sob Máscara de O2",
           "available": true,
-          "result_text": "pH 7.24, pO2 58 mmHg, pCO2 49 mmHg, HCO3 20 mEq/L, SatO2 88%. Insuficiência respiratória mista por broncorreia maciça e broncoespasmo colinérgico."
+          "result_text": "pH 7.24, pO2 58 mmHg, pCO2 49 mmHg, HCO3 20 mEq/L, SatO2 88%. Insuficiência respiratória mista por broncorreia maciça e broncoespasmo colinérgico.",
+          "triggers": [
+            "gasometria",
+            "gasometria arterial"
+          ]
         }
       },
       "barema_items": [
@@ -3123,7 +4018,14 @@
           "title": "Radiografia Simples de Abdome (Rotina de Abdome Agudo)",
           "available": true,
           "result_text": "Alça colônica maciçamente dilatada em forma de 'U' invertido com as pontas voltadas para a pelve ('sinal do grão de café' ou 'sinal da câmara de ar dupla'). Ausência de pneumoperitônio.",
-          "image_url": "/images/osce/rx_volvo_sigmoide.png"
+          "image_url": "/images/osce/rx_volvo_sigmoide.png",
+          "triggers": [
+            "rx de abdome",
+            "rx abdome",
+            "raio-x de abdome",
+            "radiografia de abdome",
+            "rotina de abdome agudo"
+          ]
         }
       },
       "barema_items": [
@@ -3482,7 +4384,13 @@
         "hemograma_urgente": {
           "title": "Hemograma Completo com Hematócrito de Urgência",
           "available": true,
-          "result_text": "Hematócrito (Ht): 52% (Concentrado - aumento > 20% do basal). Hemoglobina: 16.8 g/dL. Leucócitos: 2.800/mm³ com linfocitose atípica. Plaquetas: 48.000/mm³ (Trombocitopenia moderada a grave)."
+          "result_text": "Hematócrito (Ht): 52% (Concentrado - aumento > 20% do basal). Hemoglobina: 16.8 g/dL. Leucócitos: 2.800/mm³ com linfocitose atípica. Plaquetas: 48.000/mm³ (Trombocitopenia moderada a grave).",
+          "triggers": [
+            "hemograma",
+            "hematocrito",
+            "plaquetas",
+            "hemoglobina"
+          ]
         }
       },
       "barema_items": [

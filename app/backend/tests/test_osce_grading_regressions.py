@@ -338,3 +338,41 @@ def test_circuit_plan_variety_unseen_priority_and_institution_fallback(app):
         assert unicamp_plan["total_steps"] == 5
         assert len(unicamp_plan["warnings"]) >= 2
         assert any(s.get("is_fallback_institution") for s in unicamp_plan["stations"])
+
+
+def test_free_text_physical_exam_and_lab_orders_require_specificity_and_neutral_unavailable(app):
+    """Sala não entrega menu de exames, exige manobra específica e responde neutro para exame não previsto."""
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'UNICAMP-2023-CG-PERF'").fetchone()
+        assert st is not None
+
+        student_view = osce.get_osce_station(db, st["id"], include_barema=False)
+        assert student_view["physical_exam_categories"] == []
+        assert student_view["lab_imaging_catalog"] == []
+
+        user_id = "reg_free_orders_user"
+        session_id = osce.start_osce_session(db, st["id"], user_id, mode="blind")["session_id"]
+
+        # Pedido vago de região ("abdome") não entrega o achado
+        vague_pe = osce.execute_osce_action(db, session_id, user_id, "physical_exam", "abdome", 20)
+        assert vague_pe["payload"]["requires_specificity"] is True
+        assert "especifique" in vague_pe["examiner_message"].lower()
+        assert "jobert" not in vague_pe["examiner_message"].lower()
+        assert "blumberg" not in vague_pe["examiner_message"].lower()
+
+        # Manobra específica entrega apenas o achado daquela manobra
+        palp_pe = osce.execute_osce_action(db, session_id, user_id, "physical_exam", "palpação abdominal profunda", 35)
+        assert palp_pe["payload"].get("requires_specificity") is False
+        assert "blumberg" in palp_pe["examiner_message"].lower()
+        assert "jobert" not in palp_pe["examiner_message"].lower()
+
+        perc_pe = osce.execute_osce_action(db, session_id, user_id, "physical_exam", "percussão abdominal", 45)
+        assert "jobert" in perc_pe["examiner_message"].lower()
+
+        # Exame complementar não previsto recebe resposta neutra
+        missing_lab = osce.execute_osce_action(db, session_id, user_id, "lab_imaging", "ressonância magnética de crânio", 60)
+        assert missing_lab["payload"]["available"] is False
+        assert "normal / não disponível" in missing_lab["examiner_message"].lower()
+        assert "fornecido pela banca" not in missing_lab["examiner_message"].lower()
