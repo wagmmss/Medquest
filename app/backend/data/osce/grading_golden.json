@@ -2,16 +2,16 @@
   "schema_version": "1.0",
   "baseline_keyword_report": {
     "total_cases": 64,
-    "total_items": 420,
-    "items_within_tolerance": 346,
-    "overall_accuracy_pct": 82.4,
+    "total_items": 432,
+    "items_within_tolerance": 360,
+    "overall_accuracy_pct": 83.3,
+    "negated_false_positives": 20,
     "accuracy_by_case_type": {
-      "correct_paraphrased": 53.3,
-      "partial": 96.2,
-      "negated": 80.0,
+      "correct_paraphrased": 56.5,
+      "partial": 95.4,
+      "negated": 81.5,
       "omitted": 100.0
-    },
-    "negated_false_positives": 21
+    }
   },
   "stations": [
     {
@@ -21,43 +21,49 @@
         {
           "case_id": "USP-RP-2024-CM-CAD__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Paciente com rebaixamento leve do sensório, padrão respiratório profundo e acelerado e hálito frutado característico. Fecho hipótese de descompensação hiperglicêmica aguda com cetose e acidemia metabólica grave. Inicio hidratação venosa vigorosa com solução salina isotônica a 0,9% na dose de um litro na primeira hora. Checo a calemia sérica antes e associo suplementação venosa do eletrólito na solução hidratante para evitar hipocalemia grave. Prescrevo hormônio insulínico regular endovenoso em taxa contínua de 0,1 unidades por quilo por hora visando queda glicêmica gradual. Quando a glicemia capilar atingir valores próximos de duzentos a duzentos e cinquenta miligramas por decilitro, associo solução glicosada a 5% sem desligar a terapia hormonal até normalizar o bicarbonato.",
+          "conduct_notes": "Paciente com rebaixamento leve do sensório, padrão respiratório profundo e acelerado e hálito frutado característico. Fecho hipótese de descompensação hiperglicêmica aguda com cetose e acidemia metabólica grave. Inicio hidratação venosa vigorosa com solução salina isotônica a 0,9% na dose de um litro na primeira hora. Checo a calemia sérica antes e associo suplementação venosa do eletrólito na solução hidratante para evitar hipocalemia grave. Prescrevo hormônio insulínico regular endovenoso em taxa contínua de 0,1 unidades por quilo por hora visando queda glicêmica gradual. Quando a glicemia capilar atingir valores próximos de duzentos a duzentos e cinquenta miligramas por decilitro, associo solução glicosada a 5% sem desligar a terapia hormonal até normalizar o bicarbonato. Solicito hemograma, urina tipo I e culturas para rastrear o fator desencadeante infeccioso além da suspensão da insulina.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
               "expected_score": 1.0,
-              "tolerance": 0.5
+              "tolerance": 0.9
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
               "expected_score": 1.5,
-              "tolerance": 0.75
+              "tolerance": 0.9
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.8,
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.8,
+              "tolerance": 0.9
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.7,
+              "tolerance": 0.9
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.9
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.9
             }
           ]
         },
@@ -70,44 +76,50 @@
               "id": "item_1",
               "expected_status": "FULL",
               "expected_score": 1.0,
-              "tolerance": 0.5
+              "tolerance": 0.9
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
               "expected_score": 1.5,
-              "tolerance": 0.75
+              "tolerance": 0.9
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.8,
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.9
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.9
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.9
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.9
             }
           ]
         },
         {
           "case_id": "USP-RP-2024-CM-CAD__negated",
           "case_type": "negated",
-          "conduct_notes": "Não vou avaliar respiração de Kussmaul nem nível de consciência ou hálito cetônico. Não é cetoacidose diabética nem acidose metabólica. Não prescrevo soro fisiológico nem hidratação venosa na primeira hora. Não vou dosar nem repor potássio ou cloreto de potássio. Não inicio insulina regular em bomba de infusão contínua. Não associo soro glicosado quando a glicemia baixar de duzentos e cinquenta miligramas por decilitro.",
+          "conduct_notes": "Não vou avaliar respiração de Kussmaul nem nível de consciência ou hálito cetônico. Não é cetoacidose diabética nem acidose metabólica. Não prescrevo soro fisiológico nem hidratação venosa na primeira hora. Não vou dosar nem repor potássio ou cloreto de potássio. Não inicio insulina regular em bomba de infusão contínua. Não associo soro glicosado quando a glicemia baixar de duzentos e cinquenta miligramas por decilitro. Não investigo fator desencadeante nem foco infeccioso ou culturas.",
           "expected_items": [
             {
               "id": "item_1",
@@ -141,6 +153,12 @@
             },
             {
               "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -184,6 +202,12 @@
             },
             {
               "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -579,25 +603,25 @@
         {
           "case_id": "REVALIDA-2023-GO-PEP__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Recebo a paciente em ambiente reservado assegurando confidencialidade médica total e esclareço que o cuidado em saúde não exige registro policial prévio. Prescrevo pílula hormonal de emergência com progestágeno em tomada única oral para prevenir gestação indesejada dentro de 72 horas. Inicio esquema tríplice antirretroviral preventivo contra o vírus da imunodeficiência humana por quatro semanas consecutivas. Prescrevo esquema antibiótico combinado para cobertura de gonorreia, clamidiose e tricomoníase. Indico imunização ativa e passiva com vacina e soro específico contra hepatite viral B além de acompanhamento com psicóloga e serviço social.",
+          "conduct_notes": "Recebo a paciente em ambiente reservado assegurando confidencialidade médica total e esclareço que o cuidado em saúde não exige registro policial prévio. Prescrevo pílula hormonal de emergência com progestágeno em tomada única oral para prevenir gestação indesejada dentro de 72 horas. Inicio esquema tríplice antirretroviral preventivo contra o vírus da imunodeficiência humana por quatro semanas consecutivas. Prescrevo esquema antibiótico combinado para cobertura de gonorreia, clamidiose, tricomoníase e sífilis incluindo penicilina G benzatina intramuscular. Indico imunização ativa e passiva com vacina e soro específico contra hepatite viral B além de acompanhamento com psicóloga e serviço social. Preencho imediatamente a ficha de notificação compulsória no SINAN para a vigilância epidemiológica em até 24 horas.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
+              "expected_score": 1.5,
               "tolerance": 1.0
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
+              "expected_score": 1.5,
               "tolerance": 1.0
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 2.0,
+              "tolerance": 1.0
             },
             {
               "id": "item_4",
@@ -609,7 +633,13 @@
               "id": "item_5",
               "expected_status": "FULL",
               "expected_score": 1.5,
-              "tolerance": 0.75
+              "tolerance": 1.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 1.5,
+              "tolerance": 1.0
             }
           ]
         },
@@ -621,39 +651,45 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.5,
+              "tolerance": 0.75
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.5,
+              "tolerance": 0.75
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.75
             }
           ]
         },
         {
           "case_id": "REVALIDA-2023-GO-PEP__negated",
           "case_type": "negated",
-          "conduct_notes": "Não garanto sigilo nem acolhimento e exijo boletim de ocorrência policial antes do atendimento. Não prescrevo levonorgestrel nem anticoncepção de emergência. Não prescrevo profilaxia antirretroviral para HIV por 28 dias. Não prescrevo ceftriaxona, azitromicina nem metronidazol para infecções sexualmente transmissíveis. Não indico vacina ou imunoglobulina contra hepatite B nem apoio psicológico.",
+          "conduct_notes": "Não garanto sigilo nem acolhimento e exijo boletim de ocorrência policial antes do atendimento. Não prescrevo levonorgestrel nem anticoncepção de emergência. Não prescrevo profilaxia antirretroviral para HIV por 28 dias. Não prescrevo ceftriaxona, azitromicina nem metronidazol para infecções sexualmente transmissíveis. Não indico vacina ou imunoglobulina contra hepatite B nem apoio psicológico. Não prescrevo penicilina benzatina para sífilis e não realizo notificação compulsória no SINAN.",
           "expected_items": [
             {
               "id": "item_1",
@@ -681,6 +717,12 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -718,6 +760,12 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -760,6 +808,12 @@
               "tolerance": 0.75
             },
             {
+              "id": "item_4b",
+              "expected_status": "FULL",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
               "id": "item_5",
               "expected_status": "FULL",
               "expected_score": 1.5,
@@ -769,7 +823,7 @@
               "id": "item_6",
               "expected_status": "FULL",
               "expected_score": 1.0,
-              "tolerance": 0.5
+              "tolerance": 0.75
             },
             {
               "id": "item_7",
@@ -806,25 +860,31 @@
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
+              "tolerance": 0.75
+            },
+            {
+              "id": "item_4b",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
               "tolerance": 0.0
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             }
           ]
         },
@@ -853,6 +913,12 @@
             },
             {
               "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4b",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -902,6 +968,12 @@
             },
             {
               "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4b",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2931,7 +3003,7 @@
         {
           "case_id": "REVALIDA-2024-PED-DESID__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Examino a criança notando prostração acentuada, globos oculares encovados, ausência de choro lacrimal, mucosas ressecadas e prega cutânea lenta. Enquadro o quadro no estágio mais grave de perda hidroeletrolítica com comprometimento hemodinâmico inicial. Prescrevo reposição venosa acelerada totalizando cem mililitros por quilo divididos em fase inicial rápida e fase complementar com cristaloide isotônico. Suspendo ingestão oral somente durante o ataque venoso inicial retomando a amamentação materna logo após recuperação clínica. Prescrevo suplementação oral diária do micronutriente zinco por dez a quatorze dias para reduzir recorrência.",
+          "conduct_notes": "Examino a criança notando prostração acentuada, globos oculares encovados, ausência de choro lacrimal, mucosas ressecadas e prega cutânea lenta. Enquadro o quadro no estágio mais grave de perda hidroeletrolítica com comprometimento hemodinâmico inicial. Prescrevo reposição venosa pelo Plano C para menor de 1 ano com 30 ml/kg em 1 hora seguidos de 70 ml/kg em 5 horas com cristaloide isotônico. Suspendo ingestão oral somente durante o ataque venoso inicial retomando a amamentação materna logo após recuperação clínica. Prescrevo suplementação oral diária do micronutriente zinco por dez a quatorze dias para reduzir recorrência.",
           "expected_items": [
             {
               "id": "item_1",
@@ -2949,19 +3021,19 @@
               "id": "item_3",
               "expected_status": "FULL",
               "expected_score": 3.0,
-              "tolerance": 1.5
+              "tolerance": 1.0
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
               "expected_score": 1.5,
-              "tolerance": 0.75
+              "tolerance": 1.0
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
               "expected_score": 1.5,
-              "tolerance": 0.75
+              "tolerance": 1.0
             }
           ]
         },

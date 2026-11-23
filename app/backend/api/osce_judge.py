@@ -525,6 +525,8 @@ def _run_block0_fallback(
             "category": it["category"],
             "weight": it["weight"],
             "max_score": it["max_score"],
+            "optional": bool(it.get("optional", False)),
+            "clinical_note": str(it.get("clinical_note", "")).strip(),
             "score_earned": it["score_earned"],
             "awarded_score": it["awarded_score"],
             "status": it["status"],
@@ -575,6 +577,8 @@ def _build_judge_prompts(
             "title": it.get("title"),
             "description": it.get("description"),
             "weight": it.get("weight"),
+            "optional": bool(it.get("optional", False)),
+            "clinical_note": str(it.get("clinical_note", "")).strip(),
             "keywords": it.get("keywords", []),
             "inverse": bool(it.get("inverse", False)),
             "forbidden_terms": it.get("forbidden_terms", []),
@@ -684,7 +688,9 @@ def evaluate_session_with_judge(
     evaluated_items: list[dict[str, Any]] = []
     for item in checklist_items:
         item_id = str(item.get("id", ""))
-        weight = float(item.get("weight", 1.0))
+        is_optional = bool(item.get("optional", False)) or float(item.get("weight", 1.0)) <= 0.0
+        weight = 0.0 if is_optional else float(item.get("weight", 1.0))
+        clinical_note = str(item.get("clinical_note", "")).strip()
         is_inverse = bool(item.get("inverse", False))
         forbidden_terms = [str(ft) for ft in item.get("forbidden_terms", [])]
 
@@ -732,11 +738,19 @@ def evaluate_session_with_judge(
         else:
             awarded = 0.0
 
-        citation_text = (
-            f'"{verified_quote}"' + (f" — {rationale}" if rationale else "")
-            if verified_quote
-            else (rationale or "Critério não contemplado nas falas ou ações do candidato.")
+        default_unmatched = (
+            clinical_note
+            or ("Item opcional/neutro (sem penalidade na nota)." if is_optional else "Critério não contemplado nas falas ou ações do candidato.")
         )
+        citation_text = (
+            f'"{verified_quote}"'
+            + (f" — {rationale}" if rationale else "")
+            + (f" ({clinical_note})" if clinical_note else "")
+            if verified_quote
+            else (rationale or default_unmatched)
+        )
+        if not verified_quote and is_optional and not rationale:
+            rationale = default_unmatched
 
         evaluated_items.append({
             "id": item.get("id"),
@@ -747,6 +761,8 @@ def evaluate_session_with_judge(
             "category": item.get("category", "Geral"),
             "weight": weight,
             "max_score": weight,
+            "optional": is_optional,
+            "clinical_note": clinical_note,
             "score_earned": awarded,
             "awarded_score": awarded,
             "status": raw_status,

@@ -64,6 +64,8 @@ def seed_osce_stations(db, force: bool = False) -> int:
                 "critical_errors": st.get("critical_errors", []),
                 "station_kind": st.get("station_kind", "emergencia"),
                 "tasks": st.get("tasks", []),
+                "source": st.get("source", ""),
+                "clinical_review_date": st.get("clinical_review_date", ""),
             }, ensure_ascii=False)
 
             if existing:
@@ -297,6 +299,8 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
         barema = json.loads(row["checklist_barema_json"] or "{}")
         station["checklist_barema"] = barema.get("items", [])
         station["critical_errors"] = barema.get("critical_errors", [])
+        station["source"] = barema.get("source", "")
+        station["clinical_review_date"] = barema.get("clinical_review_date", "")
         station["patient_persona_full"] = patient_persona
         station["physical_exam_full"] = physical_exam
         station["lab_imaging_full"] = lab_imaging
@@ -427,7 +431,9 @@ def score_checklist_items(
     scored_items: list[dict[str, Any]] = []
 
     for item in checklist_items:
-        weight = float(item.get("weight", 1.0))
+        is_optional = bool(item.get("optional", False)) or float(item.get("weight", 1.0)) <= 0.0
+        weight = 0.0 if is_optional else float(item.get("weight", 1.0))
+        clinical_note = str(item.get("clinical_note", "")).strip()
         keywords = item.get("keywords", [])
         negated_keywords = item.get("negated_keywords", [])
         is_inverse = bool(item.get("inverse", False))
@@ -482,7 +488,16 @@ def score_checklist_items(
             earned = 0.0
             status_internal = "nao_cumprido"
             status_code = "NONE"
-            evidence_desc = "Critério não contemplado nas falas ou ações do candidato durante o tempo de prova."
+            evidence_desc = (
+                clinical_note
+                or (
+                    "Item opcional/neutro (sem penalidade na nota)."
+                    if is_optional
+                    else "Critério não contemplado nas falas ou ações do candidato durante o tempo de prova."
+                )
+            )
+        if status_code != "NONE" and clinical_note:
+            evidence_desc = f"{evidence_desc} {clinical_note}"
 
         timestamp_achieved_sec: Optional[int] = None
         if status_code != "NONE" and matched_polarity:
@@ -501,6 +516,8 @@ def score_checklist_items(
             "category": item.get("category", "Geral"),
             "weight": weight,
             "max_score": weight,
+            "optional": is_optional,
+            "clinical_note": clinical_note,
             "score_earned": earned,
             "awarded_score": earned,
             "completed": status_code != "NONE",
@@ -531,13 +548,15 @@ def evaluate_live_barema_progress(
     total_weight = 0.0
 
     for it in scored:
-        total_weight += float(it["weight"])
+        if not it.get("optional"):
+            total_weight += float(it["weight"])
         total_earned += float(it["score_earned"])
         items_status.append({
             "id": it["id"],
             "title": it["title"],
             "category": it["category"],
             "weight": it["weight"],
+            "optional": bool(it.get("optional", False)),
             "score_earned": it["score_earned"],
             "completed": it["completed"],
             "status": it["status_internal"],
@@ -551,7 +570,7 @@ def evaluate_live_barema_progress(
     t3 = int(safe_duration * 0.625)
 
     proactive_hints = []
-    uncompleted_categories = set(i["category"] for i in items_status if not i["completed"])
+    uncompleted_categories = set(i["category"] for i in items_status if not i["completed"] and not i.get("optional"))
 
     if elapsed_seconds >= t1 and "exame_fisico" in uncompleted_categories:
         proactive_hints.append(f"⚠️ Preceptor Fantasma: Já se passaram {round(t1 / 60)} minutos! Não se esqueça de checar os sinais vitais e o exame físico segmentar.")
@@ -1520,7 +1539,11 @@ def finish_osce_session(
     grading_notice = str(judge_res.get("grading_notice") or ("Corrigido com IA" if graded_with_ai else "Corrigido sem IA"))
 
     total_score = sum(float(it.get("score_earned", it.get("awarded_score", 0.0))) for it in evaluated_items)
-    max_score = sum(float(it.get("weight", it.get("max_score", 1.0))) for it in checklist_items)
+    max_score = sum(
+        float(it.get("weight", it.get("max_score", 1.0)))
+        for it in checklist_items
+        if not it.get("optional")
+    )
     raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
     # Se exigir BO em violência sexual, anula pontuação do acolhimento (item_1)

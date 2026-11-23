@@ -1160,7 +1160,10 @@ def build_chief_preceptor_review(
     unfulfilled = [
         str(it.get("title"))
         for it in evaluated_items
-        if it.get("status") in ("NONE", "nao_cumprido") and it.get("title")
+        if it.get("status") in ("NONE", "nao_cumprido")
+        and it.get("title")
+        and not it.get("optional")
+        and float(it.get("max_score", it.get("weight", 1.0)) or 0.0) > 0.0
     ]
     rf_descriptions = [str(rf.get("description")) for rf in red_flags if rf.get("description")]
     critical_corrections: list[str] = []
@@ -1169,7 +1172,7 @@ def build_chief_preceptor_review(
             critical_corrections.append(entry)
 
     canonical_lines = [
-        f"{idx}. {it.get('title')}: {it.get('description')}"
+        f"{idx}. {it.get('title')}{' [Opcional / Neutro]' if it.get('optional') else ''}: {it.get('description')}"
         for idx, it in enumerate(evaluated_items, 1)
         if it.get("title") or it.get("description")
     ]

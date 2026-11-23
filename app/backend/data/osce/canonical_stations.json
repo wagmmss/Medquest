@@ -219,7 +219,7 @@
           "id": "item_3",
           "title": "Prescrição Imediata de Hidratação Venosa Rápida (Soro Fisiológico 0,9%)",
           "description": "Prescreve infusão rápida de Soro Fisiológico 0,9% (1000 a 1500 ml na primeira hora - 15 a 20 ml/kg) para expansão volêmica.",
-          "weight": 2.0,
+          "weight": 1.8,
           "category": "conduta_tratamento",
           "keywords": [
             "soro fisiológico",
@@ -233,8 +233,8 @@
         {
           "id": "item_4",
           "title": "Manejo Obrigatório do Potássio Sérico ANTES/DURANTE a Insulina",
-          "description": "Avalia o K+ sérico (4.2 mEq/L) e prescreve reposição de 20-30 mEq de KCl por litro de soro, sabendo que a insulina desloca o potássio para o meio intracelular.",
-          "weight": 2.0,
+          "description": "Avalia o K+ sérico antes da insulina e orienta reposição de 20-30 mEq de KCl por litro de soro. Suspende insulina e repõe K+ antes se K+ < 3,3 mEq/L (Medway/bancas nacionais) ou < 3,5 mEq/L (Consenso ADA 2024).",
+          "weight": 1.8,
           "category": "conduta_tratamento",
           "keywords": [
             "potássio",
@@ -243,14 +243,17 @@
             "reposição de potássio",
             "cloreto de potássio",
             "20 meq",
-            "repor potássio"
-          ]
+            "repor potássio",
+            "3,3 meq",
+            "3,5 meq"
+          ],
+          "clinical_note": "Divergência aceita no espelho: Medway e bancas nacionais adotam K+ < 3,3 mEq/L como corte para adiar insulina; o Consenso ADA/EASD 2024 elevou o limiar para < 3,5 mEq/L. Ambas as referências pontuam integralmente."
         },
         {
           "id": "item_5",
           "title": "Insulinoterapia Venosa Contínua com Insulina Regular",
           "description": "Prescreve Insulina Regular em bomba de infusão contínua (0,1 U/kg/h ou bólus de 0,1 U/kg seguido de 0,1 U/kg/h) com meta de queda glicêmica de 50 a 70 mg/dL/h.",
-          "weight": 2.0,
+          "weight": 1.7,
           "category": "conduta_tratamento",
           "keywords": [
             "insulina regular",
@@ -262,18 +265,35 @@
         },
         {
           "id": "item_6",
-          "title": "Introdução de Soro Glicosado a 5% ao Atingir Glicemia 200-250 mg/dL",
-          "description": "Verbaliza a regra de ouro da USP-RP: associar SG 5% quando a glicemia atingir 200-250 mg/dL mantendo a insulina para fechar o ânion gap sem hipoglicemia.",
-          "weight": 1.5,
+          "title": "Soro Glicosado a 5% e Critérios Atualizados de Resolução (ADA 2024)",
+          "description": "Associa SG 5% quando glicemia atingir 200-250 mg/dL mantendo a insulina e só suspende insulina venosa após critérios de resolução (glicemia < 200 mg/dL + ao menos 2 critérios: pH ≥ 7,3, HCO3 ≥ 18 mEq/L, beta-hidroxibutirato < 0,6 mmol/L ou ânion gap ≤ 12).",
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "soro glicosado",
             "sg 5%",
-            "200 mg/dl",
-            "glicemia 200",
-            "250 mg/dl",
-            "glicemia de 250",
-            "fechar ânion gap"
+            "ânion gap",
+            "glicemia 250",
+            "bicarbonato",
+            "beta-hidroxibutirato",
+            "critério de resolução",
+            "ph >= 7,3"
+          ],
+          "clinical_note": "Critério de resolução ADA 2024: cetonemia/beta-hidroxibutirato < 0,6 mmol/L e/ou pH ≥ 7,3 com HCO3 ≥ 18 mEq/L (ou fechamento do ânion gap ≤ 12) + glicemia < 200 mg/dL."
+        },
+        {
+          "id": "item_7",
+          "title": "Investigação Ativa do Fator Desencadeante da CAD",
+          "description": "Identifica a omissão da insulina como gatilho e investiga ativamente possíveis focos infecciosos/desencadeantes (solicitação de hemograma, urina I, culturas e radiografia se sintomático).",
+          "weight": 1.0,
+          "category": "diagnostico",
+          "keywords": [
+            "fator desencadeante",
+            "foco infeccioso",
+            "culturas",
+            "infecção",
+            "omissão",
+            "suspensão da insulina"
           ]
         }
       ],
@@ -304,7 +324,9 @@
           "step": 4,
           "description": "Prescreva a insulinoterapia em bomba e estabeleça os critérios de vigilância."
         }
-      ]
+      ],
+      "source": "Protocolo HC-FMRP-USP / Consenso ADA-EASD 2024 (Crises Hiperglicêmicas) / Medway",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "USP-RP-2024-CM-SCA",
@@ -446,18 +468,32 @@
         },
         {
           "id": "item_4",
-          "title": "Dupla Antiagregação Plaquetária Imediata",
-          "description": "Prescreve AAS mastigável (200-300 mg) associado a Inibidor de P2Y12 (Ticagrelor 180 mg ou Clopidogrel 300-600 mg).",
+          "title": "Antiagregação Inicial Obrigatória com AAS Mastigável",
+          "description": "Prescreve dose de ataque de AAS mastigável (200 a 300 mg) imediatamente após afastar contraindicações.",
           "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
-            "ácido acetilsalicílico",
             "aas 200",
             "aas 300",
             "aas mastigável",
+            "ácido acetilsalicílico",
             "aspirina",
+            "antiagregação"
+          ]
+        },
+        {
+          "id": "item_4b",
+          "title": "Inibidor de P2Y12 antes do Cateterismo (Opcional / Neutro)",
+          "description": "Item opcional/neutro: na SAMSST encaminhada a cateterismo precoce (< 24h), diretrizes atuais (ESC/AHA/SBC) não recomendam pré-tratamento rotineiro com P2Y12 antes da cineangiocoronariografia.",
+          "weight": 0.0,
+          "optional": true,
+          "clinical_note": "Atualização de diretriz (ESC 2023 / SBC): em SAMSST com estratégia invasiva precoce planejada, postergar o P2Y12 até definir a anatomia coronariana reduz risco de sangramento se houver indicação cirúrgica; por isso este item é opcional/neutro e não penaliza a nota.",
+          "category": "conduta_tratamento",
+          "keywords": [
             "ticagrelor",
             "clopidogrel",
+            "prasugrel",
+            "p2y12",
             "dupla antiagregação"
           ]
         },
@@ -527,7 +563,9 @@
           "step": 4,
           "description": "Estabeleça a conduta antitrombótica, anti-isquêmica e o momento da estratificação invasiva."
         }
-      ]
+      ],
+      "source": "Diretriz SBC / ESC 2023-2024 de Síndromes Coronarianas Agudas / Protocolo HC-FMRP-USP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "USP-RP-2023-CG-FAST",
@@ -861,7 +899,9 @@
           "step": 4,
           "description": "Defina a conduta cirúrgica imediata e o destino seguro do paciente."
         }
-      ]
+      ],
+      "source": "ATLS 10ª Edição / Protocolo CRASH-2 / Sala de Trauma HC-UE FMRP-USP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "USP-RP-2024-PED-BVA",
@@ -1089,7 +1129,9 @@
           "step": 4,
           "description": "Decida a necessidade de exames complementares e local de internação/observação."
         }
-      ]
+      ],
+      "source": "Diretriz SBP / AAP de Bronquiolite Viral Aguda / HC-Criança FMRP-USP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "USP-RP-2023-GO-HPP",
@@ -1285,7 +1327,9 @@
           "step": 4,
           "description": "Indique as medidas mecânicas e cirúrgicas caso ocorra refratariedade."
         }
-      ]
+      ],
+      "source": "Protocolo Mater HC-FMRP-USP / OPAS-MS (Estratégia Zero Morte Materna por Hemorragia)",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "USP-RP-2024-PREV-MCCP",
@@ -1455,7 +1499,9 @@
           "step": 4,
           "description": "Estabeleça um plano de cuidados conjunto com foco em prevenção quaternária."
         }
-      ]
+      ],
+      "source": "Método Clínico Centrado na Pessoa (Stewart et al.) / Tratado de MFC / CSE Sumarezinho FMRP-USP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNICAMP-2024-CM-SCA",
@@ -1784,7 +1830,9 @@
           "step": 4,
           "description": "Estabeleça a conduta terapêutica imediata, prescrição de emergência e rota de reperfusão."
         }
-      ]
+      ],
+      "source": "Diretriz SBC / ESC de IAM com Supradesnivelamento de ST / HC-UNICAMP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNICAMP-2023-CG-PERF",
@@ -2085,7 +2133,9 @@
           "step": 4,
           "description": "Indique as medidas de suporte imediato e a conduta cirúrgica definitiva."
         }
-      ]
+      ],
+      "source": "Sabiston / Diretriz WSES de Úlcera Péptica Perfurada / Cirurgia Geral HC-UNICAMP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNICAMP-2024-PED-ANAF",
@@ -2311,7 +2361,9 @@
           "step": 4,
           "description": "Estabeleça as condutas secundárias e orientação à mãe."
         }
-      ]
+      ],
+      "source": "Diretriz SBP / WAO de Anafilaxia / Emergência Pediátrica HC-UNICAMP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNIFESP-2024-GO-PREECL",
@@ -2563,7 +2615,9 @@
           "step": 4,
           "description": "Indique o manejo pressórico e os parâmetros de vigilância clínica."
         }
-      ]
+      ],
+      "source": "Protocolo FEBRASGO / ACOG / MS de Síndromes Hipertensivas na Gestação / UNIFESP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNIFESP-2023-PREV-SPIKES",
@@ -2745,7 +2799,9 @@
           "step": 4,
           "description": "Estabeleça os próximos passos da linha de cuidado oncológico compartilhado."
         }
-      ]
+      ],
+      "source": "Protocolo SPIKES (Baile et al.) / Comunicação em Oncologia e Atenção Primária UNIFESP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "UNIFESP-2024-CM-TV",
@@ -3031,7 +3087,9 @@
           "step": 4,
           "description": "Indique as medidas de segurança e analgesia/sedação pré-procedimento."
         }
-      ]
+      ],
+      "source": "ACLS AHA 2020-2024 (Taquiarritmias com Instabilidade) / Pronto-Socorro UNIFESP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "EINSTEIN-2024-CM-SEPSE",
@@ -3212,7 +3270,9 @@
           "step": 3,
           "description": "Indique as metas hemodinâmicas e destino do paciente."
         }
-      ]
+      ],
+      "source": "Surviving Sepsis Campaign 2021 / ILAS (Pacote de 1 Hora) / HIAE",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "EINSTEIN-2023-CG-PNEUMO",
@@ -3399,7 +3459,9 @@
           "step": 3,
           "description": "Execute o procedimento cirúrgico/descompressivo salvador de vida imediato."
         }
-      ]
+      ],
+      "source": "ATLS 10ª Edição (Trauma Torácico com Risco Iminente) / HIAE",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "REVALIDA-2024-PED-DESID",
@@ -3497,17 +3559,18 @@
         },
         {
           "id": "item_3",
-          "title": "Prescrição Correta do Volume da Fase Rápida (100 ml/kg)",
-          "description": "Prescreve hidratação venosa imediata: 30 ml/kg em 30 minutos + 70 ml/kg em 2h30 (criança < 1 ano) com SF 0,9% ou Ringer Lactato.",
+          "title": "Prescrição Correta do Plano C em Menores de 1 Ano (100 ml/kg)",
+          "description": "Prescreve hidratação venosa imediata pelo Plano C para lactente < 1 ano segundo o Ministério da Saúde: 30 ml/kg em 1 hora + 70 ml/kg em 5 horas (total 100 ml/kg em 6 horas com SF 0,9% ou Ringer Lactato).",
           "weight": 3.0,
           "category": "conduta_tratamento",
           "keywords": [
-            "100 ml/kg",
+            "plano c",
             "30 ml/kg",
             "70 ml/kg",
-            "soro fisiológico",
+            "1 hora",
+            "5 horas",
             "ringer lactato",
-            "fase rápida"
+            "soro fisiológico"
           ]
         },
         {
@@ -3557,7 +3620,9 @@
           "step": 3,
           "description": "Forneça as orientações complementares de alimentação e suplementação."
         }
-      ]
+      ],
+      "source": "Manual de Manejo das Diarreias Agudas - Ministério da Saúde / SBP / Revalida INEP",
+      "clinical_review_date": "2026-11-23"
     },
     {
       "code": "REVALIDA-2023-GO-PEP",
@@ -3616,65 +3681,57 @@
           "id": "item_1",
           "title": "Acolhimento Humanizado e Consentimento Livre",
           "description": "Garante sigilo, acolhimento sem julgamentos e esclarece que o atendimento em saúde independe de boletim de ocorrência ou perícia policial.",
-          "weight": 2.0,
+          "weight": 1.5,
           "category": "relacao_medico_paciente",
           "keywords": [
             "sigilo",
+            "boletim de ocorrência",
             "acolhimento",
             "consentimento",
-            "atendimento sem boletim",
-            "dispensa boletim"
-          ],
-          "negated_keywords": [
-            "boletim de ocorrência",
-            "exigir boletim",
-            "exigir bo"
+            "não precisa de bo"
           ]
         },
         {
           "id": "item_2",
           "title": "Anticoncepção de Emergência Precoce",
           "description": "Prescreve Levonorgestrel 1,5 mg dose única por via oral para prevenção de gravidez (tempo decorrido < 72 horas).",
-          "weight": 2.0,
+          "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
             "levonorgestrel",
-            "1,5 mg",
             "anticoncepção de emergência",
-            "pílula do dia seguinte"
+            "pílula do dia seguinte",
+            "1,5 mg"
           ]
         },
         {
           "id": "item_3",
           "title": "Profilaxia Pós-Exposição para HIV (PEP)",
           "description": "Prescreve PEP com Tenofovir (TDF) + Lamivudina (3TC) + Dolutegravir (DTG) por 28 dias iniciado em até 72 horas.",
-          "weight": 2.5,
+          "weight": 2.0,
           "category": "conduta_tratamento",
           "keywords": [
-            "profilaxia pós-exposição",
-            "profilaxia hiv",
-            "antirretroviral",
-            "vírus hiv",
             "tenofovir",
             "lamivudina",
             "dolutegravir",
-            "28 dias"
+            "28 dias",
+            "profilaxia pós-exposição"
           ]
         },
         {
           "id": "item_4",
-          "title": "Profilaxia de Infecções Sexualmente Transmissíveis Não Virais",
-          "description": "Prescreve Ceftriaxona 500 mg IM (gonococo) + Azitromicina 1g VO (clamídia) + Metronidazol 2g VO (tricomoníase).",
+          "title": "Profilaxia de ISTs Não Virais (Incluindo Penicilina Benzatina)",
+          "description": "Prescreve Ceftriaxona 500 mg IM (gonococo) + Azitromicina 1g VO (clamídia) + Metronidazol 2g VO (tricomoníase) + Penicilina G Benzatina 2,4 milhões UI IM (sífilis).",
           "weight": 2.0,
           "category": "conduta_tratamento",
           "keywords": [
             "ceftriaxona",
             "azitromicina",
             "metronidazol",
-            "gonococo",
-            "clamídia",
-            "infecções sexualmente transmissíveis",
-            "profilaxia de ist"
+            "penicilina benzatina",
+            "penicilina g benzatina",
+            "2,4 milhões",
+            "sífilis"
           ]
         },
         {
@@ -3685,11 +3742,23 @@
           "category": "conduta_tratamento",
           "keywords": [
             "hepatite b",
-            "vacina",
             "imunoglobulina",
-            "ighb",
-            "psicologia",
-            "assistência social"
+            "vacina",
+            "psicológico"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Notificação Compulsória Imediata (SINAN)",
+          "description": "Realiza a notificação compulsória imediata (ficha SINAN em até 24 horas) do agravo de violência sexual à vigilância epidemiológica, preservando o sigilo clínico.",
+          "weight": 1.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "notificação compulsória",
+            "notificacao compulsoria",
+            "sinan",
+            "notificar",
+            "vigilância epidemiológica"
           ]
         }
       ],
@@ -3719,7 +3788,9 @@
           "step": 4,
           "description": "Indique o seguimento multiprofissional."
         }
-      ]
+      ],
+      "source": "PCDT Atenção Integral às Pessoas em Situação de Violência Sexual / Ministério da Saúde / Revalida INEP",
+      "clinical_review_date": "2026-11-23"
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [

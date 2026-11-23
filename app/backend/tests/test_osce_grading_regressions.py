@@ -207,7 +207,8 @@ def test_empty_session_honest_radar_and_review(app):
                 "Prescrevo soro fisiológico 0,9% 1000 ml na primeira hora para expansão. "
                 "Avaliei potássio e prescrevo repor potássio com cloreto de potássio 20 mEq por litro. "
                 "Inicio insulina regular em bomba de infusão contínua 0,1 U/kg/h. "
-                "Quando atingir glicemia de 250 mg/dL, associar soro glicosado SG 5% para fechar ânion gap."
+                "Quando atingir glicemia de 250 mg/dL, associar soro glicosado SG 5% para fechar ânion gap. "
+                "Investigo fator desencadeante infeccioso com hemograma e culturas além da omissão da insulina."
             ),
         )
         assert res_gold["final_score"] == 10.0
@@ -455,3 +456,66 @@ def test_no_broken_image_urls_in_canonical_stations():
                     assert (public_dir / rel_path).is_file(), (
                         f"Imagem inexistente referenciada em {st.get('code') or st.get('title')} ({lab_key}): {rel_path}"
                     )
+
+
+def test_clinical_corrections_3_1(app):
+    """Valida correções clínicas 3.1 (PEP, Plano C < 1 ano, CAD ADA 2024, SAMSST P2Y12 opcional e fontes)."""
+    canon_map = {s["code"]: s for s in CANONICAL_STATIONS}
+    for st in CANONICAL_STATIONS:
+        assert str(st.get("source") or "").strip(), f"{st['code']} sem campo source"
+        assert str(st.get("clinical_review_date") or "").strip(), f"{st['code']} sem clinical_review_date"
+
+    # 1. Violência sexual: penicilina benzatina, notificação compulsória e erro crítico de BO
+    pep_items = canon_map["REVALIDA-2023-GO-PEP"]["checklist_barema"]
+    pep_text = " ".join(f"{it['title']} {it['description']}" for it in pep_items).lower()
+    assert "penicilina" in pep_text and "benzatina" in pep_text
+    assert "notificação compulsória" in pep_text
+    assert any("boletim de ocorrência" in e.lower() for e in canon_map["REVALIDA-2023-GO-PEP"]["critical_errors"])
+
+    # 2. Plano C < 1 ano: 30 ml/kg em 1h e 70 ml/kg em 5h
+    desid_items = canon_map["REVALIDA-2024-PED-DESID"]["checklist_barema"]
+    desid_text = " ".join(f"{it['title']} {it['description']}" for it in desid_items).lower()
+    assert "30 ml/kg em 1 hora" in desid_text
+    assert "70 ml/kg em 5 horas" in desid_text
+    assert "2h30" not in desid_text and "30 minutos" not in desid_text
+
+    # 3. CAD: aceita K+ 3,3 e 3,5, critério de resolução ADA 2024 e fator desencadeante
+    cad_items = canon_map["USP-RP-2024-CM-CAD"]["checklist_barema"]
+    cad_text = " ".join(
+        f"{it['title']} {it['description']} {it.get('clinical_note', '')}" for it in cad_items
+    ).lower()
+    assert "3,3" in cad_text and "3,5" in cad_text
+    assert "beta-hidroxibutirato" in cad_text or "ânion gap" in cad_text
+    assert any("desencadeante" in it["title"].lower() for it in cad_items)
+
+    # 4. SCA sem supra: P2Y12 pré-CATE opcional/neutro (peso 0.0) não penaliza conduta sem P2Y12 prévio
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-SCA'").fetchone()
+        assert st is not None
+        detail = osce.get_osce_station(db, st["id"], include_barema=True)
+        assert detail["source"]
+        assert detail["clinical_review_date"]
+
+        p2y12_item = next(it for it in detail["checklist_barema"] if it["id"] == "item_4b")
+        assert p2y12_item["optional"] is True
+        assert float(p2y12_item["weight"]) == 0.0
+
+        sess = osce.start_osce_session(db, st["id"], "reg_samsst_user", mode="blind")
+        res = osce.finish_osce_session(
+            db,
+            sess["session_id"],
+            "reg_samsst_user",
+            conduct_notes=(
+                "Paciente com dor torácica em repouso prolongada (> 20 min) compatível com SCA sem supra de ST. "
+                "ECG com infradesnivelamento de ST lateral em V4-V6 e inversão de onda T. "
+                "Alto risco pelo escore GRACE > 140 e troponina positiva. "
+                "Prescrevo AAS 300mg mastigável, enoxaparina 1 mg/kg SC 12/12h, nitrato sublingual, betabloqueador oral e atorvastatina 80 mg. "
+                "Indico cateterismo precoce em até 24 horas sem pré-tratamento rotineiro antes da anatomia."
+            ),
+        )
+        assert res["final_score"] >= 8.5
+        p2y12_eval = next(it for it in res["evaluated_items"] if it["id"] == "item_4b")
+        assert p2y12_eval["optional"] is True
+        assert p2y12_eval["max_score"] == 0.0
