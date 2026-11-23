@@ -51,7 +51,7 @@ export function OscePostMortemAndRadar({ timeline, radar }: OscePostMortemAndRad
 
     // Polígono de Dados do Candidato
     const dataPoints = dimensions.map((dim, i) => {
-      const { x, y } = getCoordinates(i, dim.percentage);
+      const { x, y } = getCoordinates(i, dim.percentage ?? 0);
       return `${x},${y}`;
     }).join(" ");
 
@@ -103,8 +103,9 @@ export function OscePostMortemAndRadar({ timeline, radar }: OscePostMortemAndRad
 
           {/* Marcadores e Vértices */}
           {dimensions.map((dim, i) => {
-            const { x, y } = getCoordinates(i, dim.percentage);
-            const isHigh = dim.percentage >= 70;
+            const pct = dim.percentage ?? 0;
+            const { x, y } = getCoordinates(i, pct);
+            const isHigh = pct >= 70;
             return (
               <g key={i}>
                 <circle
@@ -138,7 +139,7 @@ export function OscePostMortemAndRadar({ timeline, radar }: OscePostMortemAndRad
                 textAnchor={textAnchor}
                 className="text-[9px] font-bold fill-foreground/90 uppercase tracking-tighter select-none"
               >
-                {dim.name.split(" ")[0]} ({dim.percentage.toFixed(0)}%)
+                {dim.name.split(" ")[0]} ({dim.percentage !== null ? `${dim.percentage.toFixed(0)}%` : "N/A"})
               </text>
             );
           })}
@@ -291,8 +292,9 @@ export function OscePostMortemAndRadar({ timeline, radar }: OscePostMortemAndRad
             {/* Direita: Breakdown das 6 Competências (7 cols) */}
             <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {radar.dimensions.map((dim) => {
-                const isExc = dim.percentage >= 80;
-                const isSat = dim.percentage >= 60;
+                const pct = dim.percentage ?? 0;
+                const isExc = dim.percentage !== null && pct >= 80;
+                const isSat = dim.percentage !== null && pct >= 60;
                 return (
                   <div 
                     key={dim.key} 
@@ -303,22 +305,24 @@ export function OscePostMortemAndRadar({ timeline, radar }: OscePostMortemAndRad
                         {dim.name}
                       </span>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                        isExc 
+                        dim.percentage === null
+                          ? "bg-muted text-muted-foreground"
+                          : isExc 
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : isSat 
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                           : "bg-rose-500/15 text-rose-500"
                       }`}>
-                        {dim.percentage.toFixed(0)}%
+                        {dim.percentage !== null ? `${pct.toFixed(0)}%` : "Sem evidência"}
                       </span>
                     </div>
 
                     <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                       <div 
                         className={`h-full ${
-                          isExc ? "bg-emerald-500" : isSat ? "bg-amber-500" : "bg-rose-500"
+                          dim.percentage === null ? "bg-muted-foreground/30" : isExc ? "bg-emerald-500" : isSat ? "bg-amber-500" : "bg-rose-500"
                         }`}
-                        style={{ width: `${dim.percentage}%` }}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
 

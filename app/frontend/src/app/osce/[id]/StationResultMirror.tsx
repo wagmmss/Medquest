@@ -14,7 +14,14 @@ import {
   FileText,
   Activity,
   HeartPulse,
+  Stethoscope,
+  Pill,
+  Zap,
+  Hourglass,
+  Target,
+  Filter,
 } from "lucide-react";
+import { OsceTimelinePostMortem } from "@/types/api";
 import {
   PreceptorFeedback,
   CompetencyRadarScores,
@@ -24,6 +31,7 @@ import {
 
 interface StationResultMirrorProps {
   feedback: PreceptorFeedback;
+  timeline?: OsceTimelinePostMortem;
   stationTitle: string;
   institution: string;
   area: string;
@@ -38,11 +46,11 @@ interface StationResultMirrorProps {
 // =========================================================================
 function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
   const safeScores: CompetencyRadarScores = scores || {
-    clinical_reasoning: 75,
-    communication_empathy: 70,
-    surgical_semiotics: 70,
-    patient_safety: 80,
-    sus_time_efficiency: 75,
+    clinical_reasoning: null,
+    communication_empathy: null,
+    surgical_semiotics: null,
+    patient_safety: null,
+    sus_time_efficiency: null,
   };
 
   const axes = [
@@ -50,7 +58,7 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
     { key: "communication_empathy", label: "Comunicação & Empatia", value: safeScores.communication_empathy },
     { key: "surgical_semiotics", label: "Semiotécnica & Prática", value: safeScores.surgical_semiotics },
     { key: "patient_safety", label: "Segurança do Paciente", value: safeScores.patient_safety },
-    { key: "sus_time_efficiency", label: "Eficiência SUS / Tempo", value: safeScores.sus_time_efficiency },
+    { key: "sus_time_efficiency", label: "Eficiência / Tempo", value: safeScores.sus_time_efficiency },
   ];
 
   const size = 320;
@@ -58,9 +66,10 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
   const maxRadius = 100;
   const totalAxes = axes.length;
 
-  const getCoordinates = (index: number, valuePct: number) => {
+  const getCoordinates = (index: number, valuePct: number | null | undefined) => {
     const angle = (index * (2 * Math.PI)) / totalAxes - Math.PI / 2;
-    const r = (Math.max(0, Math.min(100, valuePct)) / 100) * maxRadius;
+    const numeric = valuePct !== null && valuePct !== undefined && Number.isFinite(valuePct) ? valuePct : 0;
+    const r = (Math.max(0, Math.min(100, numeric)) / 100) * maxRadius;
     return {
       x: center + r * Math.cos(angle),
       y: center + r * Math.sin(angle),
@@ -105,6 +114,7 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
         {axes.map((axis, i) => {
           const end = getCoordinates(i, 100);
           const labelPos = getCoordinates(i, 122);
+          const hasValue = axis.value !== null && axis.value !== undefined && Number.isFinite(axis.value);
           return (
             <g key={axis.key}>
               <line
@@ -122,7 +132,7 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
                 dominantBaseline="middle"
                 className="fill-ink-secondary text-[9px] font-mono font-bold uppercase tracking-wider"
               >
-                {axis.label} ({Math.round(Number.isFinite(axis.value) ? axis.value : 0)}%)
+                {axis.label} ({hasValue ? `${Math.round(Number(axis.value))}%` : "Sem evidência"})
               </text>
             </g>
           );
@@ -137,6 +147,7 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
 
         {/* Pontos nos vértices */}
         {axes.map((axis, i) => {
+          if (axis.value === null || axis.value === undefined) return null;
           const pt = getCoordinates(i, axis.value);
           return (
             <circle
@@ -154,10 +165,11 @@ function CompetencyRadarSVG({ scores }: { scores?: CompetencyRadarScores }) {
 }
 
 // =========================================================================
-// COMPONENTE PRINCIPAL: ESPELHO OFICIAL DE CORREÇÃO (2ª FASE)
+// COMPONENTE PRINCIPAL: ESPELHO DE CORREÇÃO (2ª FASE)
 // =========================================================================
 export function StationResultMirror({
   feedback,
+  timeline,
   stationTitle,
   institution,
   area,
@@ -167,6 +179,7 @@ export function StationResultMirror({
   onGoBack,
 }: StationResultMirrorProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [timelineFilter, setTimelineFilter] = useState<"all" | "gaps" | "timely">("all");
 
   const verdictStyles = {
     "APROVADO COM DISTINÇÃO": {
@@ -261,7 +274,7 @@ export function StationResultMirror({
             </span>
             <span className="text-xs font-mono text-ink-secondary flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-primary" />
-              ESPELHO OFICIAL DE 2ª FASE
+              ESPELHO DE CORREÇÃO
             </span>
             <span className="text-xs font-mono text-ink-muted">
               • Tempo Decorrido: {formatTime(elapsedSeconds)}
@@ -276,10 +289,10 @@ export function StationResultMirror({
           </div>
         </div>
 
-        {/* NOTA OFICIAL E VEREDITO */}
+        {/* NOTA E VEREDITO */}
         <div className={`p-5 rounded-xl border flex flex-col items-center justify-center min-w-[220px] text-center ${style.bg} ${style.border}`}>
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-80">
-            Nota Oficial da Banca
+            Nota da Estação
           </span>
           <div className="text-4xl md:text-5xl font-black font-mono my-1 tracking-tight tabular-nums">
             {safeFinalScore.toFixed(1)}
@@ -289,7 +302,7 @@ export function StationResultMirror({
             {currentVerdict}
           </span>
           <span className="text-[10px] font-mono text-ink-secondary mt-1">
-            Nota de Corte: {safeCutoffScore.toFixed(1)}
+            Referência de treino: {safeCutoffScore.toFixed(1)}
           </span>
         </div>
       </div>
@@ -353,15 +366,19 @@ export function StationResultMirror({
                 <HeartPulse className="w-3.5 h-3.5 text-destructive" /> Segurança do Paciente:
               </span>
               <span className="font-mono font-bold text-ink-primary">
-                {feedback?.competency_radar_5d?.patient_safety ?? 80}%
+                {feedback?.competency_radar_5d?.patient_safety !== null && feedback?.competency_radar_5d?.patient_safety !== undefined
+                  ? `${feedback.competency_radar_5d.patient_safety}%`
+                  : "Sem evidência"}
               </span>
             </div>
             <div className="flex justify-between text-ink-secondary">
               <span className="flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-primary" /> Semiotécnica & Prática:
+                <Activity className="w-3.5 h-3.5 text-primary" /> Semiotécnica &amp; Prática:
               </span>
               <span className="font-mono font-bold text-ink-primary">
-                {feedback?.competency_radar_5d?.surgical_semiotics ?? 70}%
+                {feedback?.competency_radar_5d?.surgical_semiotics !== null && feedback?.competency_radar_5d?.surgical_semiotics !== undefined
+                  ? `${feedback.competency_radar_5d.surgical_semiotics}%`
+                  : "Sem evidência"}
               </span>
             </div>
           </div>
@@ -371,7 +388,7 @@ export function StationResultMirror({
         <div className="lg:col-span-7 bg-surface border border-line-subtle rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-sm">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" /> Parecer do Preceptor Chefe
+              <BookOpen className="w-4 h-4 text-primary" /> Parecer do Preceptor
             </h2>
             <p className="text-xs text-ink-primary mt-2 leading-relaxed bg-canvas p-3 rounded-xl border border-line-subtle">
               {feedback?.chief_preceptor_review?.executive_summary || feedback?.summary}
@@ -383,22 +400,30 @@ export function StationResultMirror({
               <span className="font-bold text-success uppercase text-[10px] tracking-wider block">
                 ✓ Pontos Fortes na Estação
               </span>
-              <ul className="space-y-1 text-ink-secondary list-disc list-inside">
-                {(feedback?.chief_preceptor_review?.what_went_well || ["Abordagem inicial estruturada."]).map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
-              </ul>
+              {(feedback?.chief_preceptor_review?.what_went_well || []).length > 0 ? (
+                <ul className="space-y-1 text-ink-secondary list-disc list-inside">
+                  {(feedback?.chief_preceptor_review?.what_went_well || []).map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ink-muted italic">Nenhum critério foi cumprido integralmente nesta sessão.</p>
+              )}
             </div>
 
             <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3 space-y-1">
               <span className="font-bold text-destructive uppercase text-[10px] tracking-wider block">
                 ⚠ Correções Críticas
               </span>
-              <ul className="space-y-1 text-ink-secondary list-disc list-inside">
-                {(feedback?.chief_preceptor_review?.critical_corrections || ["Revisar passos operacionais do barema."]).map((c, i) => (
-                  <li key={i}>{c}</li>
-                ))}
-              </ul>
+              {(feedback?.chief_preceptor_review?.critical_corrections || []).length > 0 ? (
+                <ul className="space-y-1 text-ink-secondary list-disc list-inside">
+                  {(feedback?.chief_preceptor_review?.critical_corrections || []).map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ink-muted italic">Nenhuma correção pendente identificada.</p>
+              )}
             </div>
           </div>
 
@@ -422,10 +447,10 @@ export function StationResultMirror({
         <div className="p-5 border-b border-line-subtle flex flex-wrap justify-between items-center gap-4">
           <div>
             <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" /> Checklist Barema Oficial Itemizado
+              <FileText className="w-4 h-4 text-primary" /> Checklist Barema Itemizado
             </h2>
             <p className="text-xs text-ink-secondary">
-              Auditoria de cada critério da banca com carimbo de tempo e evidência capturada
+              Auditoria de cada critério da estação com carimbo de tempo e evidência capturada
             </p>
           </div>
 
@@ -500,7 +525,113 @@ export function StationResultMirror({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. FOOTER: PRESCRIÇÃO DE REMEDIAÇÃO NO MEDQUEST & RE-TREINO */}
+      {/* 5. LINHA DO TEMPO BEIRA-LEITO (INCORPORADA AO ESPELHO ÚNICO) */}
+      {/* ========================================================================= */}
+      {timeline && (
+        <div className="bg-surface border border-line-subtle rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-5 border-b border-line-subtle flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Linha do Tempo Beira-Leito
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary">
+                  {timeline.summary.pace_label}
+                </span>
+              </h2>
+              <p className="text-xs text-ink-secondary">
+                Cronologia das decisões, intervenções, pausas e omissões durante a estação
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px]">
+              <Filter className="w-3.5 h-3.5 text-ink-muted mr-0.5" />
+              <button
+                type="button"
+                onClick={() => setTimelineFilter("all")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                  timelineFilter === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Todos ({timeline.events.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineFilter("gaps")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                  timelineFilter === "gaps" ? "bg-rose-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Atrasos &amp; Falhas
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineFilter("timely")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                  timelineFilter === "timely" ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Oportunos ({timeline.summary.timely_count})
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-3">
+            {(timeline.events || [])
+              .filter((evt) => {
+                if (timelineFilter === "gaps") return evt.status === "delayed" || evt.status === "critical_gap";
+                if (timelineFilter === "timely") return evt.status === "timely";
+                return true;
+              })
+              .map((evt, idx) => {
+                const isTimely = evt.status === "timely";
+                const isDelayed = evt.status === "delayed";
+                const isGap = evt.status === "critical_gap";
+                const EventIcon =
+                  evt.event_type === "vitals" ? Activity :
+                  evt.event_type === "physical_exam" ? Stethoscope :
+                  evt.event_type === "lab_imaging" ? FileText :
+                  evt.event_type === "prescription" ? Pill :
+                  evt.event_type === "procedure" ? Zap :
+                  evt.event_type === "conduct" ? Target :
+                  evt.event_type === "hesitacao" ? Hourglass :
+                  evt.event_type === "omissao" ? ShieldAlert :
+                  Clock;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-xl border text-xs space-y-1 ${
+                      isGap
+                        ? "border-destructive/40 bg-destructive/5"
+                        : isDelayed
+                        ? "border-warning/40 bg-warning/5"
+                        : isTimely
+                        ? "border-success/30 bg-success/5"
+                        : "border-line-subtle bg-canvas"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 font-bold text-ink-primary">
+                        <EventIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-surface border border-line-subtle">
+                          {evt.time_formatted}
+                        </span>
+                        <span>{evt.title}</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-ink-secondary shrink-0">
+                        {evt.score_impact}
+                      </span>
+                    </div>
+                    <p className="text-ink-secondary">{evt.description}</p>
+                    <p className="text-[11px] text-ink-muted italic">{evt.feedback}</p>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. FOOTER: PRESCRIÇÃO DE REMEDIAÇÃO NO MEDQUEST & RE-TREINO */}
       {/* ========================================================================= */}
       <div className="bg-surface border border-primary/30 rounded-lg p-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="space-y-1">

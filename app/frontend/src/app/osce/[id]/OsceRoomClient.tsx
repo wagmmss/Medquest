@@ -38,10 +38,6 @@ const StationResultMirror = dynamic(
   () => import("./StationResultMirror").then((m) => m.StationResultMirror),
   { ssr: false }
 );
-const OscePostMortemAndRadar = dynamic(
-  () => import("./OscePostMortemAndRadar").then((m) => m.OscePostMortemAndRadar),
-  { ssr: false }
-);
 const MultiparameterMonitor = dynamic(
   () => import("./MultiparameterMonitor").then((m) => m.MultiparameterMonitor),
   { ssr: false }
@@ -82,10 +78,11 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
     return Math.max(0, duration - remaining);
   }, []);
 
-  // Estados do Modo Duplo (Prova Cega vs Treino Guiado com Preceptor Fantasma)
-  const [selectedMode, setSelectedMode] = useState<"blind" | "guided">("guided");
-  const [sessionMode, setSessionMode] = useState<"blind" | "guided">("guided");
+  // Estados do Modo Duplo (Prova Cega padrão vs Treino Guiado com Preceptor Fantasma)
+  const [selectedMode, setSelectedMode] = useState<"blind" | "guided">("blind");
+  const [sessionMode, setSessionMode] = useState<"blind" | "guided">("blind");
   const [liveFeedback, setLiveFeedback] = useState<OsceLiveFeedback | null>(null);
+  const neutralStationLabel = `${station.area} · ${station.institution} · Estação #${station.id}`;
 
   // Motor Fisiológico Dinâmico Beira-Leito (VitalStateEngine)
   const vitalEngine = useVitalStateEngine({
@@ -321,9 +318,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
     }
   }, [sessionId, conductText, getElapsedSeconds, playExamBell, stopRecognition]);
 
-  const timerMilestones = useMemo(
-    () => ({
-      180: () => playExamBell("warning"),
+  const timerMilestones = useMemo(() => {
+    const midWarningSeconds = Math.round(examTiming.duration * 0.375);
+    const map: Record<number, () => void> = {
       60: () => {
         playExamBell("warning");
         toast("Atenção: Falta 1 minuto para o término da estação! Conclua suas condutas e prescrição.", {
@@ -338,9 +335,12 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           ]);
         }
       },
-    }),
-    [playExamBell, voiceEnabled, speakSpokenQueue]
-  );
+    };
+    if (midWarningSeconds > 60) {
+      map[midWarningSeconds] = () => playExamBell("warning");
+    }
+    return map;
+  }, [examTiming.duration, playExamBell, voiceEnabled, speakSpokenQueue]);
 
   // Listener de atalhos de teclado: Abas (Alt+1..4), Microfone (Alt+M / Espaço) e Silenciar (Escape)
   useEffect(() => {
@@ -623,13 +623,17 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           </div>
 
           <h1 className="text-3xl md:text-4xl font-black text-foreground">
-            {station.title}
+            {selectedMode === "blind" ? neutralStationLabel : station.title}
           </h1>
 
           <div className="flex items-center justify-center gap-4 text-xs md:text-sm text-muted-foreground font-semibold">
             <span>{station.area}</span>
-            <span>•</span>
-            <span>{station.subtema}</span>
+            {selectedMode !== "blind" && (
+              <>
+                <span>•</span>
+                <span>{station.subtema}</span>
+              </>
+            )}
             <span>•</span>
             <span className="flex items-center gap-1 text-primary">
               <Clock className="w-4 h-4" />
@@ -709,10 +713,10 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                     <Eye className="w-5 h-5 text-muted-foreground" />
                     <div>
                       <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                        Prova Cega Oficial
+                        Prova Cega (Padrão)
                       </div>
                       <div className="text-[10px] font-bold text-muted-foreground uppercase">
-                        USP-RP / Unicamp / Banca Real
+                        Sem spoilers de tema ou barema
                       </div>
                     </div>
                   </div>
@@ -763,7 +767,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
               </span>
               <div>
                 <h2 className="text-sm md:text-base font-bold text-foreground line-clamp-1">
-                  {station.title}
+                  {sessionMode === "blind" ? neutralStationLabel : station.title}
                 </h2>
                 <p className="text-xs text-muted-foreground hidden md:block">
                   {station.patient_persona.name || "Paciente"}, {station.patient_persona.age || "Adulto"} anos
@@ -1208,12 +1212,12 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       {/* ========================================================================= */}
       {phase === "finished" && report && (
         <div className="flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full space-y-6 pb-32 animate-in fade-in duration-300 print:p-0 print:m-0 print:max-w-full print:pb-0 print:space-y-4">
-          {/* Cabeçalho Institucional Formal Exclusivo para Impressão / PDF */}
+          {/* Cabeçalho Formal Exclusivo para Impressão / PDF */}
           <div className="hidden print:block border-b-2 border-line-strong pb-4 text-ink-primary">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-xl font-black uppercase tracking-wider">MedQuest • Prova Prática Beira-Leito (OSCE)</h1>
-                <p className="text-xs font-bold text-ink-secondary">Comitê de Avaliação de 2ª Fase Presencial • Parecer Oficial da Banca</p>
+                <p className="text-xs font-bold text-ink-secondary">Simulador de 2ª Fase • Parecer da Estação</p>
               </div>
               <div className="text-right text-xs text-ink-muted font-mono">
                 <div>Data: {new Date().toLocaleDateString("pt-BR")}</div>
@@ -1227,9 +1231,10 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             </div>
           </div>
 
-          {/* Espelho Oficial de 2ª Fase & Radar de Competências (Etapa 4) */}
+          {/* Espelho Único de Correção (Barema + Radar + Timeline) */}
           <StationResultMirror
             feedback={report.preceptor_feedback as unknown as PreceptorFeedback}
+            timeline={report.timeline_post_mortem}
             stationTitle={station.title}
             institution={station.institution || "USP-RP"}
             area={station.area}
@@ -1238,14 +1243,6 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             onRetryStation={() => window.location.reload()}
             onGoBack={() => router.push("/osce")}
           />
-
-          {/* Linha do Tempo Beira-Leito (Post-Mortem) & Radar 6D */}
-          <div className="max-w-5xl mx-auto w-full px-4 md:px-6">
-            <OscePostMortemAndRadar
-              timeline={report.timeline_post_mortem}
-              radar={report.competency_radar}
-            />
-          </div>
 
           {/* Navegação Final & Ações */}
           <div className="flex items-center justify-between pt-4 border-t border-border print:hidden">
@@ -1302,13 +1299,13 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold uppercase tracking-wider">
                 <Award className="w-4 h-4" />
-                <span>Espelho Oficial de 2ª Fase Presencial • 5 Estações</span>
+                <span>Circuito Misto de Treino • 5 Estações</span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black text-foreground">
-                Resultado Global do Circuito
+                Resultado do Circuito de Treino
               </h2>
               <p className="text-xs text-muted-foreground">
-                Banca Examinadora • Faculdade de Medicina da FMRP-USP
+                Filtro de referência: {circuitPlan?.institution || station.institution || "Misto"}
               </p>
             </div>
 
@@ -1322,14 +1319,14 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                   {circuitSummary.total_score.toFixed(1)} <span className="text-xl text-muted-foreground">/ 50.0</span>
                 </div>
                 <div className="text-xs font-semibold text-foreground/80 mt-1">
-                  Aproveitamento Global: {circuitSummary.percentage}%
+                  Aproveitamento Global: {circuitSummary.percentage}% • Referência interna de treino: 35,0 / 50,0 pts
                 </div>
               </div>
 
               <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase text-center ${
                 circuitSummary.approved ? "bg-emerald-500 text-black" : "bg-rose-500 text-white"
               }`}>
-                {circuitSummary.approved ? "Aprovado na 2ª Fase ✓" : "Reprovado (Abaixo do Corte)"}
+                {circuitSummary.approved ? "Meta de Treino Atingida" : "Abaixo da Referência"}
               </div>
             </div>
 

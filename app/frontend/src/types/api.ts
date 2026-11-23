@@ -877,6 +877,8 @@ export interface OsceStation {
   duration_seconds: number;
   scenario_door_markdown: string;
   best_score: number | null;
+  first_blind_score?: number | null;
+  last_score?: number | null;
   completed_attempts: number;
 }
 
@@ -1130,8 +1132,8 @@ export interface OsceCompetencyDimension {
   name: string;
   score_earned: number;
   score_max: number;
-  percentage: number;
-  level: "Excelente" | "Satisfatório" | "Necessita Atenção";
+  percentage: number | null;
+  level: "Excelente" | "Satisfatório" | "Necessita Atenção" | "Sem evidência";
   description: string;
   feedback: string;
 }
@@ -1152,6 +1154,7 @@ export interface OsceCircuitStationItem {
   title: string;
   institution: string;
   duration_seconds?: number;
+  is_fallback_institution?: boolean;
 }
 
 export interface OsceCircuitPlanResponse {
@@ -1159,6 +1162,7 @@ export interface OsceCircuitPlanResponse {
   institution: string;
   total_steps: number;
   stations: OsceCircuitStationItem[];
+  warnings?: string[];
 }
 
 export interface OsceCircuitStationSummaryItem {

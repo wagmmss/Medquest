@@ -44,11 +44,11 @@ export interface RedFlagPenalty {
 }
 
 export interface CompetencyRadarScores {
-  clinical_reasoning: number;      // 0-100: Diagnóstico, exames pertinentes, correlação clínica
-  communication_empathy: number;   // 0-100: Linguagem com paciente e comando em alça fechada
-  surgical_semiotics: number;      // 0-100: Ausculta completa, técnica cirúrgica, marcos anatômicos
-  patient_safety: number;          // 0-100: Respeito ao ABCDE, ausência de iatrogenias
-  sus_time_efficiency: number;     // 0-100: Ritmo, Time-to-Needle e uso racional de insumos
+  clinical_reasoning: number | null;      // 0-100 ou null sem evidência
+  communication_empathy: number | null;   // 0-100 ou null sem evidência
+  surgical_semiotics: number | null;      // 0-100 ou null sem evidência
+  patient_safety: number | null;          // 0-100 ou null sem evidência
+  sus_time_efficiency: number | null;     // 0-100 ou null sem evidência
 }
 
 export interface ChiefPreceptorReview {

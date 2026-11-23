@@ -40,10 +40,10 @@ export function GhostPreceptorHUD({ feedback, mode }: GhostPreceptorHUDProps) {
       <div className="rounded-xl border border-border bg-card/60 p-2.5 px-3 flex items-center justify-between text-xs text-muted-foreground shadow-sm">
         <div className="flex items-center gap-2">
           <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="font-semibold text-foreground/80">Modo Prova Cega Oficial</span>
-          <span className="text-[11px] hidden sm:inline">• Barema e notas ocultos durante a avaliação</span>
+          <span className="font-semibold text-foreground/80">Modo Prova Cega</span>
+          <span className="text-[11px] hidden sm:inline">• Barema e notas ocultos durante o atendimento</span>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted font-mono font-medium">USP-RP / Banca Real</span>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted font-mono font-medium">Sem spoilers</span>
       </div>
     );
   }

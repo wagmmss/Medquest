@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { 
   Stethoscope, Clock, Award, AlertCircle, 
   CheckCircle2, ChevronRight, Play, Sparkles, Filter,
-  Loader2, RotateCcw
+  Loader2, RotateCcw, Eye, EyeOff
 } from "lucide-react";
 import { OsceStation } from "@/types/api";
 import { api } from "@/lib/api";
@@ -22,8 +22,7 @@ const INSTITUTIONS = [
   "UNICAMP",
   "UNIFESP",
   "Einstein",
-  "Revalida INEP",
-  "SCMSP"
+  "Revalida INEP"
 ];
 
 const AREAS = [
@@ -34,6 +33,23 @@ const AREAS = [
   "Ginecologia e Obstetrícia",
   "Medicina Preventiva"
 ];
+
+function getAreaShort(area: string): string {
+  switch (area) {
+    case "Clínica Médica":
+      return "CM";
+    case "Cirurgia Geral":
+      return "CG";
+    case "Pediatria":
+      return "PED";
+    case "Ginecologia e Obstetrícia":
+      return "GO";
+    case "Medicina Preventiva":
+      return "PREV";
+    default:
+      return area.slice(0, 4).toUpperCase();
+  }
+}
 
 export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
   const router = useRouter();
@@ -47,6 +63,11 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
   const [selectedInst, setSelectedInst] = useState<string>("Todas as Bancas");
   const [selectedArea, setSelectedArea] = useState<string>("Todas as Áreas");
   const [activeTab, setActiveTab] = useState<"avulso" | "circuito">("avulso");
+  const [revealedIds, setRevealedIds] = useState<Record<number, boolean>>({});
+
+  const toggleRevealTheme = (stationId: number) => {
+    setRevealedIds((prev) => ({ ...prev, [stationId]: !prev[stationId] }));
+  };
 
   const filteredStations = useMemo(() => {
     return stations.filter((st) => {
@@ -101,15 +122,15 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
           <div className="space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
               <Stethoscope className="w-3.5 h-3.5" />
-              <span>Simulador Oficial de 2ª Fase Prática (OSCE)</span>
+              <span>Simulador de 2ª Fase Prática (OSCE)</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-ink-primary">
               Arena OSCE &amp; Beira-Leito
             </h1>
             <p className="text-ink-secondary text-sm max-w-2xl leading-relaxed">
-              Treinamento de estações clínicas com paciente virtual falante, estetoscópio interativo, 
-              exames complementares reais e <strong>Espelho de Correção Oficial</strong> das bancas 
-              com 2ª fase presencial (<span className="text-ink-primary font-medium">UNICAMP, UNIFESP, Einstein, Revalida INEP, SCMSP e USP-RP</span>).
+              Treinamento de estações clínicas com paciente virtual, estetoscópio interativo, 
+              exames complementares e <strong>Espelho de Correção</strong> baseado em bancas 
+              com 2ª fase (<span className="text-ink-primary font-medium">UNICAMP, UNIFESP, Einstein, Revalida INEP e USP-RP</span>).
             </p>
           </div>
 
@@ -153,7 +174,7 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Circuito de Prova (5 Estações)</span>
+            <span>Circuito misto de treino (5 Estações)</span>
           </button>
         </div>
       </div>
@@ -165,12 +186,12 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-mono-lab uppercase font-bold">
                 <Award className="w-3.5 h-3.5" />
-                <span>Simulação do Dia da Prova Presencial</span>
+                <span>Circuito Misto de Treino • 5 Áreas</span>
               </div>
-              <h2 className="text-xl font-bold text-ink-primary">Circuito de Rotação Completo</h2>
+              <h2 className="text-xl font-bold text-ink-primary">Circuito misto de treino</h2>
               <p className="text-ink-secondary text-xs md:text-sm max-w-2xl leading-relaxed">
                 Você enfrentará 5 estações seguidas (Clínica Médica, Cirurgia Geral, Pediatria, Ginecologia/Obstetrícia e Preventiva). 
-                Ao fim de cada 8 minutos, o sino toca e você roda para a próxima sala. Ao final, receba o barema global da sua 2ª Fase (0 a 50 pontos).
+                Ao fim de cada estação, você avança para a próxima sala e ao final recebe o consolidado de treino (0 a 50 pontos; referência interna: 35/50).
               </p>
             </div>
             <button
@@ -179,7 +200,7 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md font-mono-lab text-xs font-bold bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white transition-colors shrink-0 cursor-pointer"
             >
               {isStartingCircuit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-              <span>{isStartingCircuit ? "Montando Circuito Oficial..." : "Entrar no Circuito Oficial"}</span>
+              <span>{isStartingCircuit ? "Montando Circuito..." : "Entrar no Circuito de Treino"}</span>
             </button>
           </div>
           {circuitError && (
@@ -204,7 +225,7 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-1.5 text-xs font-mono-lab font-semibold text-ink-tertiary uppercase tracking-wider">
           <Filter className="w-3.5 h-3.5" />
-          <span>Filtrar por Banca Oficial com 2ª Fase</span>
+          <span>Filtrar por Banca com 2ª Fase</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {INSTITUTIONS.map((inst) => (
@@ -257,6 +278,8 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredStations.map((station) => {
           const isPassed = station.best_score !== null && station.best_score >= 7.0;
+          const isRevealed = Boolean(revealedIds[station.id]);
+          const neutralName = `${getAreaShort(station.area)} · ${station.institution} · Estação ${station.id}`;
 
           return (
             <div
@@ -269,34 +292,68 @@ export function OsceHubClient({ initialStations = [] }: OsceHubClientProps) {
                   <span className="px-2 py-0.5 rounded-md text-xs font-mono-lab font-semibold uppercase bg-canvas border border-line-subtle text-ink-secondary">
                     {station.institution}
                   </span>
-                  <div className="flex items-center gap-1 text-xs font-mono-lab tabular-nums text-ink-tertiary">
-                    <Clock className="w-3 h-3" />
-                    <span>{Math.round(station.duration_seconds / 60)} min</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleRevealTheme(station.id)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono-lab text-ink-secondary hover:text-ink-primary bg-canvas border border-line-subtle cursor-pointer transition-colors"
+                      title={isRevealed ? "Ocultar tema da estação" : "Revelar tema para estudar por assunto"}
+                    >
+                      {isRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{isRevealed ? "Ocultar tema" : "Revelar tema"}</span>
+                    </button>
+                    <div className="flex items-center gap-1 text-xs font-mono-lab tabular-nums text-ink-tertiary">
+                      <Clock className="w-3 h-3" />
+                      <span>{Math.round(station.duration_seconds / 60)} min</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Título & Subtema */}
+                {/* Título & Subtema (Ocultos por padrão para treino cego) */}
                 <div>
                   <h3 className="text-sm font-semibold text-ink-primary group-hover:text-accent transition-colors line-clamp-2">
-                    {station.title}
+                    {isRevealed ? station.title : neutralName}
                   </h3>
                   <p className="text-xs text-ink-secondary mt-1 font-mono-lab">
-                    {station.area} • {station.subtema}
+                    {isRevealed ? `${station.area} • ${station.subtema}` : `${station.area} • Tema oculto (modo cego)`}
                   </p>
                 </div>
 
-                {/* Score Status */}
-                <div className="pt-2 border-t border-line-subtle flex items-center justify-between text-xs font-mono-lab">
-                  <span className="text-ink-tertiary">Desempenho Barema:</span>
-                  {station.best_score !== null ? (
-                    <span className={`font-bold tabular-nums flex items-center gap-1 ${
-                      isPassed ? "text-emerald-500" : "text-rose-500"
-                    }`}>
-                      {isPassed ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                      {station.best_score.toFixed(1)} / 10.0
-                    </span>
+                {/* Score Status separado */}
+                <div className="pt-2 border-t border-line-subtle text-xs font-mono-lab">
+                  {station.completed_attempts > 0 ? (
+                    <div className="grid grid-cols-3 gap-1.5 text-center">
+                      <div className="p-1 rounded bg-canvas border border-line-subtle">
+                        <div className="text-[10px] text-ink-tertiary">1ª Cega</div>
+                        <div className="font-bold tabular-nums text-ink-primary">
+                          {station.first_blind_score !== null && station.first_blind_score !== undefined
+                            ? station.first_blind_score.toFixed(1)
+                            : "—"}
+                        </div>
+                      </div>
+                      <div className="p-1 rounded bg-canvas border border-line-subtle">
+                        <div className="text-[10px] text-ink-tertiary">Última</div>
+                        <div className="font-bold tabular-nums text-ink-primary">
+                          {station.last_score !== null && station.last_score !== undefined
+                            ? station.last_score.toFixed(1)
+                            : "—"}
+                        </div>
+                      </div>
+                      <div className="p-1 rounded bg-canvas border border-line-subtle">
+                        <div className="text-[10px] text-ink-tertiary">Melhor</div>
+                        <div className={`font-bold tabular-nums flex items-center justify-center gap-0.5 ${
+                          isPassed ? "text-emerald-500" : "text-rose-500"
+                        }`}>
+                          {isPassed ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                          {station.best_score !== null ? station.best_score.toFixed(1) : "—"}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <span className="text-ink-tertiary/70 italic text-[11px]">Não realizada</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink-tertiary">Desempenho Barema:</span>
+                      <span className="text-ink-tertiary/70 italic text-[11px]">Não realizada</span>
+                    </div>
                   )}
                 </div>
               </div>

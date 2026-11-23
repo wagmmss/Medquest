@@ -111,6 +111,21 @@ def list_osce_stations(
                    WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
                ) as best_score,
                (
+                   SELECT sess.final_score
+                   FROM osce_sessions sess
+                   WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
+                     AND (sess.actions_taken_json LIKE '%"mode": "blind"%' OR sess.actions_taken_json NOT LIKE '%"mode": "guided"%')
+                   ORDER BY sess.start_time ASC
+                   LIMIT 1
+               ) as first_blind_score,
+               (
+                   SELECT sess.final_score
+                   FROM osce_sessions sess
+                   WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
+                   ORDER BY sess.start_time DESC
+                   LIMIT 1
+               ) as last_score,
+               (
                    SELECT COUNT(*)
                    FROM osce_sessions sess
                    WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
@@ -118,7 +133,8 @@ def list_osce_stations(
         FROM osce_stations s
         WHERE 1=1
     """
-    params: list[Any] = [user_id or "", user_id or ""]
+    uid = user_id or ""
+    params: list[Any] = [uid, uid, uid, uid]
 
     if area and area != "Todas as Áreas":
         query += " AND s.area = ?"
@@ -147,6 +163,8 @@ def list_osce_stations(
             "duration_seconds": r["duration_seconds"],
             "scenario_door_markdown": r["scenario_door_markdown"],
             "best_score": round(float(r["best_score"]), 1) if r["best_score"] is not None else None,
+            "first_blind_score": round(float(r["first_blind_score"]), 1) if r["first_blind_score"] is not None else None,
+            "last_score": round(float(r["last_score"]), 1) if r["last_score"] is not None else None,
             "completed_attempts": int(r["completed_attempts"] or 0),
         })
     return result
@@ -422,7 +440,8 @@ def evaluate_live_barema_progress(
     checklist_items: list[dict[str, Any]],
     transcript: list[dict[str, Any]],
     actions: list[dict[str, Any]],
-    elapsed_seconds: int = 0
+    elapsed_seconds: int = 0,
+    duration_seconds: int = 480,
 ) -> dict[str, Any]:
     """Avalia o progresso em tempo real do barema para o Modo Treino com Preceptor Fantasma."""
     evidence = collect_candidate_evidence(transcript, actions)
@@ -446,16 +465,22 @@ def evaluate_live_barema_progress(
             "matched_keywords": it["matched_keywords"],
         })
 
-    # Dicas e Alertas Proativos do Preceptor Fantasma baseados no tempo e itens pendentes
+    # Dicas e Alertas Proativos do Preceptor Fantasma proporcionais ao tempo total da estação
+    safe_duration = max(60, int(duration_seconds or 480))
+    t1 = int(safe_duration * 0.375)
+    t2 = int(safe_duration * 0.50)
+    t3 = int(safe_duration * 0.625)
+
     proactive_hints = []
     uncompleted_categories = set(i["category"] for i in items_status if not i["completed"])
 
-    if elapsed_seconds >= 180 and "exame_fisico" in uncompleted_categories:
-        proactive_hints.append("⚠️ Preceptor Fantasma: Já se passaram 3 minutos! Não se esqueça de checar os sinais vitais e o exame físico segmentar.")
-    if elapsed_seconds >= 240 and "exames_complementares" in uncompleted_categories:
+    if elapsed_seconds >= t1 and "exame_fisico" in uncompleted_categories:
+        proactive_hints.append(f"⚠️ Preceptor Fantasma: Já se passaram {round(t1 / 60)} minutos! Não se esqueça de checar os sinais vitais e o exame físico segmentar.")
+    if elapsed_seconds >= t2 and "exames_complementares" in uncompleted_categories:
         proactive_hints.append("⚠️ Preceptor Fantasma: Metade da estação decorrida! Lembre-se de solicitar o exame complementar essencial (ECG, Labs ou Imagem).")
-    if elapsed_seconds >= 300 and ("conduta_tratamento" in uncompleted_categories or "tratamento" in uncompleted_categories):
-        proactive_hints.append("🚨 Preceptor Fantasma: Faltam 3 minutos! Inicie a prescrição de urgência na prancheta ou verbalize as medidas terapêuticas imediatas.")
+    if elapsed_seconds >= t3 and ("conduta_tratamento" in uncompleted_categories or "tratamento" in uncompleted_categories):
+        rem_min = max(1, round((safe_duration - t3) / 60))
+        proactive_hints.append(f"🚨 Preceptor Fantasma: Faltam cerca de {rem_min} minutos! Inicie a prescrição de urgência na prancheta ou verbalize as medidas terapêuticas imediatas.")
 
     normalized_score = round(min(10.0, (total_earned / max(1.0, total_weight)) * 10.0), 1)
 
@@ -529,7 +554,9 @@ def start_osce_session(
 
     guided_feedback = None
     if session_mode == "guided":
-        guided_feedback = evaluate_live_barema_progress(checklist_items, initial_transcript, initial_actions, 0)
+        guided_feedback = evaluate_live_barema_progress(
+            checklist_items, initial_transcript, initial_actions, 0, int(station["duration_seconds"] or 480)
+        )
 
     return {
         "session_id": session_id,
@@ -549,7 +576,7 @@ def get_osce_live_feedback(db, session_id: str, user_id: str, elapsed_seconds: i
     """Retorna o progresso em tempo real do barema para o Modo Treino com Preceptor Fantasma."""
     sess = db.execute("""
         SELECT s.id, s.station_id, s.status, s.actions_taken_json, s.transcript_json,
-               st.checklist_barema_json
+               st.checklist_barema_json, st.duration_seconds
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
         WHERE s.id = ? AND s.user_id = ?
@@ -564,7 +591,9 @@ def get_osce_live_feedback(db, session_id: str, user_id: str, elapsed_seconds: i
     checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
 
     mode = get_session_mode(actions)
-    feedback = evaluate_live_barema_progress(checklist_items, transcript, actions, elapsed_seconds)
+    feedback = evaluate_live_barema_progress(
+        checklist_items, transcript, actions, elapsed_seconds, int(sess["duration_seconds"] or 480)
+    )
     feedback["mode"] = mode
     return feedback
 
@@ -581,7 +610,7 @@ def interact_osce_session(
     """Processa fala/pergunta do aluno roteada para o Paciente Virtual ou para a Banca Examinadora."""
     sess = db.execute("""
         SELECT s.id, s.station_id, s.user_id, s.status, s.transcript_json, s.actions_taken_json,
-               st.title, st.area, st.subtema, st.institution, st.patient_persona_json, st.scenario_door_markdown,
+               st.title, st.area, st.subtema, st.institution, st.duration_seconds, st.patient_persona_json, st.scenario_door_markdown,
                st.physical_exam_json, st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
@@ -712,7 +741,9 @@ def interact_osce_session(
     if get_session_mode(actions) == "guided":
         barema_raw = json.loads(sess["checklist_barema_json"] or "{}")
         checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
-        res_payload["guided_feedback"] = evaluate_live_barema_progress(checklist_items, transcript, actions, elapsed_seconds)
+        res_payload["guided_feedback"] = evaluate_live_barema_progress(
+            checklist_items, transcript, actions, elapsed_seconds, int(sess["duration_seconds"] or 480)
+        )
 
     return res_payload
 
@@ -733,7 +764,7 @@ def execute_osce_action(
     """
     sess = db.execute("""
         SELECT s.id, s.station_id, s.status, s.actions_taken_json, s.transcript_json,
-               st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json
+               st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json, st.duration_seconds
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
         WHERE s.id = ? AND s.user_id = ?
@@ -849,7 +880,9 @@ def execute_osce_action(
     if get_session_mode(actions) == "guided":
         barema_raw = json.loads(sess["checklist_barema_json"] or "{}")
         checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
-        res_payload["guided_feedback"] = evaluate_live_barema_progress(checklist_items, transcript, actions, elapsed_seconds)
+        res_payload["guided_feedback"] = evaluate_live_barema_progress(
+            checklist_items, transcript, actions, elapsed_seconds, int(sess["duration_seconds"] or 480)
+        )
 
     return res_payload
 
@@ -1090,7 +1123,7 @@ def dispatch_osce_speech(
 
     # Recupera o transcript e ações atualizados
     updated_sess = db.execute("""
-        SELECT s.transcript_json, s.actions_taken_json, st.checklist_barema_json
+        SELECT s.transcript_json, s.actions_taken_json, st.checklist_barema_json, st.duration_seconds
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
         WHERE s.id = ? AND s.user_id = ?
@@ -1111,7 +1144,9 @@ def dispatch_osce_speech(
     if get_session_mode(current_actions) == "guided":
         barema_raw = json.loads(updated_sess["checklist_barema_json"] or "{}")
         checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
-        res_dispatch["guided_feedback"] = evaluate_live_barema_progress(checklist_items, current_transcript, current_actions, elapsed_seconds)
+        res_dispatch["guided_feedback"] = evaluate_live_barema_progress(
+            checklist_items, current_transcript, current_actions, elapsed_seconds, int(updated_sess["duration_seconds"] or 480)
+        )
 
     return res_dispatch
 
@@ -1516,7 +1551,7 @@ def prescribe_osce_drugs(
     """
     sess = db.execute("""
         SELECT s.id, s.station_id, s.status, s.actions_taken_json, s.transcript_json,
-               st.code, st.title, st.checklist_barema_json, st.scenario_door_markdown
+               st.code, st.title, st.checklist_barema_json, st.scenario_door_markdown, st.duration_seconds
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
         WHERE s.id = ? AND s.user_id = ?
@@ -1621,7 +1656,9 @@ def prescribe_osce_drugs(
     }
 
     if get_session_mode(actions) == "guided":
-        res_presc["guided_feedback"] = evaluate_live_barema_progress(barema_items, transcript, actions, elapsed_seconds)
+        res_presc["guided_feedback"] = evaluate_live_barema_progress(
+            barema_items, transcript, actions, elapsed_seconds, int(sess["duration_seconds"] or 480)
+        )
 
     return res_presc
 
@@ -1639,7 +1676,7 @@ def perform_osce_procedure(
     """
     sess = db.execute("""
         SELECT s.id, s.station_id, s.status, s.actions_taken_json, s.transcript_json,
-               st.code, st.title, st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json
+               st.code, st.title, st.physical_exam_json, st.lab_imaging_json, st.checklist_barema_json, st.duration_seconds
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
         WHERE s.id = ? AND s.user_id = ?
@@ -1863,7 +1900,9 @@ def perform_osce_procedure(
     if get_session_mode(actions) == "guided":
         barema_raw = json.loads(sess["checklist_barema_json"] or "{}")
         c_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
-        res_proc["guided_feedback"] = evaluate_live_barema_progress(c_items, transcript, actions, elapsed_seconds)
+        res_proc["guided_feedback"] = evaluate_live_barema_progress(
+            c_items, transcript, actions, elapsed_seconds, int(sess["duration_seconds"] or 480)
+        )
 
     return res_proc
 
