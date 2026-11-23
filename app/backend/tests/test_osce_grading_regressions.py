@@ -196,19 +196,24 @@ def test_empty_session_honest_radar_and_review(app):
 
         # Sessão exemplar 10/10 na mesma estação deve gerar parecer e forças distintos
         sess_gold = _start_station_by_code(db, "USP-RP-2024-CM-CAD", user_id="reg_gold_sess")
+        osce.execute_osce_action(db, sess_gold, "reg_gold_sess", "vitals", "vitals", 15)
         osce.execute_osce_action(db, sess_gold, "reg_gold_sess", "lab_imaging", "gasometria_eletrólitos", 30)
+        osce.execute_osce_action(db, sess_gold, "reg_gold_sess", "lab_imaging", "funcao_renal", 35)
         res_gold = osce.finish_osce_session(
             db,
             sess_gold,
             "reg_gold_sess",
             conduct_notes=(
+                "Olá Lucas, sou o médico plantonista e vamos cuidar de você. Como suspendeu a insulina Glargina e Lispro há 2 dias no DM1, precisamos agir rápido. "
+                "Solicito monitorização contínua, dois acessos venosos calibrosos e glicemia capilar imediata além de função renal e cetonúria. "
                 "Paciente com respiração de Kussmaul, hálito cetônico e torpor. "
                 "Diagnóstico de cetoacidose diabética grave com acidose metabólica e ânion gap elevado. "
                 "Prescrevo soro fisiológico 0,9% 1000 ml na primeira hora para expansão. "
                 "Avaliei potássio e prescrevo repor potássio com cloreto de potássio 20 mEq por litro. "
                 "Inicio insulina regular em bomba de infusão contínua 0,1 U/kg/h. "
                 "Quando atingir glicemia de 250 mg/dL, associar soro glicosado SG 5% para fechar ânion gap. "
-                "Investigo fator desencadeante infeccioso com hemograma e culturas além da omissão da insulina."
+                "Investigo fator desencadeante infeccioso com hemograma e culturas além da omissão da insulina. "
+                "Mantenho glicemia horária e controle de eletrólitos a cada 2 horas, evitando não prescrever bicarbonato de rotina."
             ),
         )
         assert res_gold["final_score"] == 10.0
@@ -519,3 +524,38 @@ def test_clinical_corrections_3_1(app):
         p2y12_eval = next(it for it in res["evaluated_items"] if it["id"] == "item_4b")
         assert p2y12_eval["optional"] is True
         assert p2y12_eval["max_score"] == 0.0
+
+
+def test_standard_station_schema_validation():
+    """Valida o formato padrão 3.2 para todas as 16 estações (tarefas, actor_script, examiner_cards, 12-20 itens e tempo)."""
+    expected_durations = {
+        "USP-RP": 300,
+        "UNICAMP": 600,
+        "Revalida INEP": 600,
+        "UNIFESP": 480,
+        "Einstein": 480,
+    }
+    assert len(CANONICAL_STATIONS) == 16
+    for st in CANONICAL_STATIONS:
+        code = st["code"]
+        assert len(st.get("tasks", [])) >= 3, f"{code} sem tasks >= 3"
+        actor = st.get("actor_script") or {}
+        assert str(actor.get("opening_line", "")).strip(), f"{code} sem opening_line"
+        assert str(actor.get("emotional_state", "")).strip(), f"{code} sem emotional_state"
+        assert len(actor.get("only_reveal_if_asked") or {}) >= 4, f"{code} sem only_reveal_if_asked >= 4"
+
+        cards = st.get("examiner_cards") or []
+        assert len(cards) >= 2, f"{code} sem examiner_cards >= 2"
+        for card in cards:
+            assert card.get("id") and card.get("title") and card.get("content")
+            assert card.get("kind") in ("vitals", "physical_exam", "lab_imaging")
+
+        barema = st.get("checklist_barema") or []
+        assert 12 <= len(barema) <= 20, f"{code} fora da faixa 12-20 itens ({len(barema)})"
+        for it in barema:
+            assert len(str(it.get("description", "")).strip()) >= 25, f"{code}:{it.get('id')} sem descrição observável"
+
+        assert len(st.get("critical_errors") or []) >= 1, f"{code} sem critical_errors"
+        assert st.get("duration_seconds") == expected_durations[st["institution"]], f"{code} tempo incorreto"
+        assert str(st.get("source", "")).strip(), f"{code} sem source"
+        assert str(st.get("clinical_review_date", "")).strip(), f"{code} sem clinical_review_date"

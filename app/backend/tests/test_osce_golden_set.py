@@ -138,8 +138,9 @@ def test_judge_discards_non_existent_evidence_quote(monkeypatch):
     )
     assert res["graded_with_ai"] is True
     by_id = {it["id"]: it for it in res["evaluated_items"]}
+    expected_item2_w = next(float(it["weight"]) for it in station["checklist_barema"] if it["id"] == "item_2")
     assert by_id["item_2"]["status"] == "FULL"
-    assert by_id["item_2"]["awarded_score"] == 1.5
+    assert by_id["item_2"]["awarded_score"] == expected_item2_w
     assert by_id["item_3"]["status"] == "NONE"
     assert by_id["item_3"]["awarded_score"] == 0.0
     assert by_id["item_3"]["evidence_quote"] == ""

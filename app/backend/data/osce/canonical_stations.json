@@ -8,8 +8,8 @@
       "institution": "USP-RP",
       "year": 2024,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA / UNIDADE DE EMERGÊNCIA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico de plantão na Sala Vermelha da Unidade de Emergência do Hospital das Clínicas da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Lucas Silveira, 19 anos, estudante, portador de Diabetes Mellitus tipo 1.\n- Queixa: Vômitos intensos, dor abdominal difusa e sonolência progressiva iniciados há 2 dias após suspender a insulina por conta própria.\n\n**Sua Tarefa**:\n1. Realize a avaliação clínica inicial e identifique a complicação aguda do diabetes.\n2. Solicite e interprete os exames laboratoriais e a gasometria arterial.\n3. Prescreva o plano de hidratação venosa e o manejo hidroeletrolítico (Potássio).\n4. Prescreva a insulinoterapia em bomba e estabeleça os critérios de vigilância.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA / UNIDADE DE EMERGÊNCIA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico de plantão na Sala Vermelha da Unidade de Emergência do Hospital das Clínicas da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Lucas Silveira, 19 anos, estudante, portador de Diabetes Mellitus tipo 1.\n- Queixa: Vômitos intensos, dor abdominal difusa e sonolência progressiva iniciados há 2 dias após suspender a insulina por conta própria.\n\n**Sua Tarefa**:\n1. Realize a avaliação clínica inicial e identifique a complicação aguda do diabetes.\n2. Solicite e interprete os exames laboratoriais e a gasometria arterial.\n3. Prescreva o plano de hidratação venosa e o manejo hidroeletrolítico (Potássio).\n4. Prescreva a insulinoterapia em bomba e estabeleça os critérios de vigilância.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Lucas Silveira",
         "age": 19,
@@ -192,7 +192,7 @@
           "id": "item_1",
           "title": "Avaliação Inicial do Nível de Consciência e Respiração de Kussmaul",
           "description": "Identifica o torpor, a taquipneia profunda de Kussmaul e o hálito cetônico característicos da cetoacidose.",
-          "weight": 1.0,
+          "weight": 0.6,
           "category": "exame_fisico",
           "keywords": [
             "kussmaul",
@@ -206,7 +206,7 @@
           "id": "item_2",
           "title": "Diagnóstico Correto de Cetoacidose Diabética (CAD) Grave",
           "description": "Verbaliza o diagnóstico de CAD grave com base na tríade: hiperglicemia > 200 + acidose metabólica (pH < 7.3, HCO3 < 15) + cetonemia/cetonúria com ânion gap elevado.",
-          "weight": 1.5,
+          "weight": 0.8,
           "category": "diagnostico",
           "keywords": [
             "cetoacidose diabética",
@@ -267,7 +267,7 @@
           "id": "item_6",
           "title": "Soro Glicosado a 5% e Critérios Atualizados de Resolução (ADA 2024)",
           "description": "Associa SG 5% quando glicemia atingir 200-250 mg/dL mantendo a insulina e só suspende insulina venosa após critérios de resolução (glicemia < 200 mg/dL + ao menos 2 critérios: pH ≥ 7,3, HCO3 ≥ 18 mEq/L, beta-hidroxibutirato < 0,6 mmol/L ou ânion gap ≤ 12).",
-          "weight": 1.2,
+          "weight": 0.8,
           "category": "conduta_tratamento",
           "keywords": [
             "soro glicosado",
@@ -285,7 +285,7 @@
           "id": "item_7",
           "title": "Investigação Ativa do Fator Desencadeante da CAD",
           "description": "Identifica a omissão da insulina como gatilho e investiga ativamente possíveis focos infecciosos/desencadeantes (solicitação de hemograma, urina I, culturas e radiografia se sintomático).",
-          "weight": 1.0,
+          "weight": 0.7,
           "category": "diagnostico",
           "keywords": [
             "fator desencadeante",
@@ -294,6 +294,78 @@
             "infecção",
             "omissão",
             "suspensão da insulina"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Apresentação Empática e Identificação do Paciente",
+          "description": "Apresenta-se pelo nome como médico plantonista, confirma a identidade do paciente e mantém comunicação acolhedora.",
+          "weight": 0.3,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sou o médico",
+            "meu nome",
+            "como se chama",
+            "lucas",
+            "acalme-se",
+            "vamos cuidar"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Anamnese Dirigida da DM1 e Suspensão da Insulina",
+          "description": "Investiga tempo de diagnóstico de DM1, esquema habitual de insulina e há quantos dias suspendeu a aplicação.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "suspendeu",
+            "parou a insulina",
+            "glargina",
+            "lispro",
+            "diabetes tipo 1",
+            "quanto tempo"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Solicitação de Acesso Venoso, Monitorização e Sinais Vitais",
+          "description": "Solicita sinais vitais completos com glicemia capilar (HGT), monitorização multiparamétrica e dois acessos venosos calibrosos.",
+          "weight": 0.4,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "acesso venoso",
+            "monitorização",
+            "glicemia capilar",
+            "pressão arterial"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Solicitação e Interpretação de Gasometria Arterial e Eletrólitos",
+          "description": "Solicita gasometria arterial, eletrólitos séricos (Na+, K+, Cl-), função renal e cetonúria/cetonemia para estadiar a acidose.",
+          "weight": 0.4,
+          "category": "exames_complementares",
+          "keywords": [
+            "gasometria",
+            "eletrólitos",
+            "função renal",
+            "cetonúria",
+            "ph 7.12"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Vigilância Horária e Contraindicação ao Bicarbonato de Rotina",
+          "description": "Programa controle de HGT de hora em hora e eletrólitos/gasometria a cada 2-4 horas, evitando bicarbonato de sódio para pH 7,12.",
+          "weight": 0.3,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "glicemia horária",
+            "de hora em hora",
+            "cada 2",
+            "vigilância",
+            "não prescrever bicarbonato"
           ]
         }
       ],
@@ -326,7 +398,145 @@
         }
       ],
       "source": "Protocolo HC-FMRP-USP / Consenso ADA-EASD 2024 (Crises Hiperglicêmicas) / Medway",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Tô... com muita sede... a boca tá colando... a barriga dói demais...",
+        "emotional_state": "Torporoso, voz arrastada e fraca, respiração rápida e profunda visível, assustado com a sonolência.",
+        "only_reveal_if_asked": {
+          "historia_molestia_atual": "Começou com vômitos e dor na barriga há 2 dias, foi piorando e hoje ficou muito sonolento.",
+          "antecedentes_medicacoes": "Tem DM1 há 5 anos; usa insulina Glargina e Lispro, mas parou todas há 2 dias porque estava enjoado e achou que ia ter hipoglicemia.",
+          "sinais_infeccao_desencadeante": "Teve ardência ao urinar e urina mais escura nos últimos 3 dias.",
+          "alergias": "Não tem alergia a nenhum remédio ou alimento.",
+          "habitos_contexto": "Estudante universitário, mora em república, não fuma e não bebe desde que começou a passar mal."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 90x60 mmHg, FC: 128 bpm, FR: 32 irpm (Respiração de Kussmaul), SATO2: 97% em ar ambiente, TEMP: 36.2 °C, HGT: HI (> 500 mg/dL)"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Hálito",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "nivel de consciencia",
+            "halito",
+            "mucosas",
+            "desidratacao",
+            "ectoscopia"
+          ],
+          "content": "Torporoso, abertura ocular ao chamado verbal, hálito cetônico marcante (odor de maçã podre), desidratação grave 3+/4+ com mucosas secas e olhos encovados."
+        },
+        {
+          "id": "card_pe_inspecao_toracica",
+          "kind": "physical_exam",
+          "title": "Inspeção Respiratória / Padrão Ventilatório",
+          "triggers": [
+            "inspecao toracica",
+            "inspecao do torax",
+            "padrao respiratorio",
+            "incursoes",
+            "kussmaul"
+          ],
+          "content": "Hiperpneia profunda e rápida com incursões toracoabdominais amplas (respiração ácida de Kussmaul)."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "auscultar pulmao",
+            "ausculta do torax",
+            "murmurio vesicular"
+          ],
+          "content": "Murmúrio vesicular simétrico bilateralmente, sem ruídos adventícios."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "auscultar coracao",
+            "bulhas",
+            "ausculta precordial"
+          ],
+          "content": "Taquicardia sinusal rítmica, bulhas normofonéticas em 2 tempos, sem sopros."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Palpação de Pulsos e Perfusão Periférica",
+          "triggers": [
+            "pulsos",
+            "palpacao de pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "tec"
+          ],
+          "content": "Pulsos periféricos finos e simétricos, tempo de enchimento capilar de 3 segundos."
+        },
+        {
+          "id": "card_pe_palpacao_abdominal",
+          "kind": "physical_exam",
+          "title": "Palpação Abdominal Profunda e Superficial",
+          "triggers": [
+            "palpacao abdominal",
+            "palpacao do abdome",
+            "palpar abdome",
+            "descompressao brusca",
+            "blumberg",
+            "irritacao peritoneal"
+          ],
+          "content": "Abdome difusamente doloroso à palpação profunda, porém flácido, sem visceromegalias e com descompressão brusca negativa."
+        },
+        {
+          "id": "card_lab_gasometria_eletrólitos",
+          "kind": "lab_imaging",
+          "title": "Gasometria Arterial e Eletrólitos Séricos",
+          "triggers": [
+            "gasometria",
+            "gasometria arterial",
+            "gaso",
+            "eletrolitos",
+            "potassio",
+            "sodio",
+            "bicarbonato",
+            "ph",
+            "anion gap",
+            "cetonuria"
+          ],
+          "content": "pH 7.12, pCO2 24 mmHg, HCO3 9 mEq/L, BE -16 mEq/L. Na: 132 mEq/L, K: 4.2 mEq/L, Cl: 99 mEq/L. Ânion Gap calculado: 24 mEq/L (Acidose Metabólica Grave com Ânion Gap Elevado). Cetonúria: 4+."
+        },
+        {
+          "id": "card_lab_funcao_renal",
+          "kind": "lab_imaging",
+          "title": "Função Renal e Glicemia Sérica",
+          "triggers": [
+            "funcao renal",
+            "ureia",
+            "creatinina",
+            "glicemia",
+            "glicemia serica",
+            "lactato"
+          ],
+          "content": "Glicemia sérica: 580 mg/dL. Ureia: 64 mg/dL. Creatinina: 1.4 mg/dL. Lactato: 1.8 mmol/L."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-CM-SCA",
@@ -336,8 +546,8 @@
       "institution": "USP-RP",
       "year": 2024,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: UNIDADE CORONARIANA / CARDIOLOGIA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico plantonista da Cardiologia da Unidade de Emergência da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Dona Neusa, 64 anos, aposentada, hipertensa e diabética de longa data.\n- Queixa: Episódios de dor em aperto no peito no último mês aos esforços, que hoje iniciou em repouso há 2 horas com náuseas e sudorese.\n\n**Sua Tarefa**:\n1. Realize a anamnese e exame cardiovascular direcionados.\n2. Solicite e interprete o ECG de 12 derivações e biomarcadores.\n3. Estratifique o risco isquêmico através de escore validado (GRACE / TIMI).\n4. Estabeleça a conduta antitrombótica, anti-isquêmica e o momento da estratificação invasiva.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: UNIDADE CORONARIANA / CARDIOLOGIA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico plantonista da Cardiologia da Unidade de Emergência da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Dona Neusa, 64 anos, aposentada, hipertensa e diabética de longa data.\n- Queixa: Episódios de dor em aperto no peito no último mês aos esforços, que hoje iniciou em repouso há 2 horas com náuseas e sudorese.\n\n**Sua Tarefa**:\n1. Realize a anamnese e exame cardiovascular direcionados.\n2. Solicite e interprete o ECG de 12 derivações e biomarcadores.\n3. Estratifique o risco isquêmico através de escore validado (GRACE / TIMI).\n4. Estabeleça a conduta antitrombótica, anti-isquêmica e o momento da estratificação invasiva.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Neusa Maria",
         "age": 64,
@@ -430,7 +640,7 @@
           "id": "item_1",
           "title": "Identificação de Angina de Repouso e Crescendo",
           "description": "Caracteriza a dor como Síndrome Coronariana Aguda sem Supradesnivelamento de ST (SAMSST) com padrão de angina em repouso prolongada (> 20 min).",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "anamnese",
           "keywords": [
             "samsst",
@@ -444,7 +654,7 @@
           "id": "item_2",
           "title": "Interpretação Precisa do Eletrocardiograma",
           "description": "Identifica o infradesnivelamento do segmento ST em parede lateral (V4-V6) e inversão de onda T.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "exames_complementares",
           "keywords": [
             "infradesnivelamento",
@@ -457,7 +667,7 @@
           "id": "item_3",
           "title": "Estratificação de Alto Risco (Escore GRACE / TIMI)",
           "description": "Reconhece o alto risco isquêmico pelo escore GRACE > 140, alterações dinâmicas de ST e troponina positiva.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "grace",
@@ -470,7 +680,7 @@
           "id": "item_4",
           "title": "Antiagregação Inicial Obrigatória com AAS Mastigável",
           "description": "Prescreve dose de ataque de AAS mastigável (200 a 300 mg) imediatamente após afastar contraindicações.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "conduta_tratamento",
           "keywords": [
             "aas 200",
@@ -501,7 +711,7 @@
           "id": "item_5",
           "title": "Anticoagulação Plena com Enoxaparina",
           "description": "Prescreve Enoxaparina 1 mg/kg por via subcutânea de 12 em 12 horas (ajustando para função renal).",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "enoxaparina",
@@ -514,7 +724,7 @@
           "id": "item_6",
           "title": "Terapia Anti-isquêmica Otimizada e Estatina de Alta Potência",
           "description": "Prescreve Nitrato sublingual se dor torácica ativa, Betabloqueador oral precoce e Atorvastatina 80 mg.",
-          "weight": 1.0,
+          "weight": 0.8,
           "category": "conduta_tratamento",
           "keywords": [
             "nitrato",
@@ -527,13 +737,83 @@
           "id": "item_7",
           "title": "Indicação de Estratégia Invasiva Precoce (CATE em até 24 Horas)",
           "description": "Indica cineangiocoronariografia (cateterismo) precoce em até 24 horas decorrente do escore GRACE > 140 e troponina positiva.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "conduta_tratamento",
           "keywords": [
             "cateterismo",
             "cate",
             "24 horas",
             "estratégia invasiva precoce"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Apresentação e Acolhimento Humanizado à Paciente",
+          "description": "Apresenta-se cordialmente como médico da unidade, chama a paciente pelo nome e tranquiliza quanto ao atendimento imediato.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sou o médico",
+            "dona neusa",
+            "vamos cuidar",
+            "fique tranquila",
+            "bom dia"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Investigação de Fatores de Risco e Contraindicações",
+          "description": "Pergunta ativamente sobre HAS, DM, tabagismo, alergias e contraindicações a anticoagulantes ou nitratos.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "alergia",
+            "pressão alta",
+            "diabetes",
+            "sangramento",
+            "antecedentes",
+            "remédio"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Solicitação de Sinais Vitais e Ausculta Cardiopulmonar (Killip)",
+          "description": "Solicita sinais vitais e realiza ausculta cardíaca e pulmonar para classificar congestão (Killip I) e afastar sopros mecânicos.",
+          "weight": 0.4,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "ausculta cardíaca",
+            "ausculta pulmonar",
+            "killip",
+            "b4"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Solicitação Precoce de ECG 12 Derivações e Troponina Seriada",
+          "description": "Solicita ECG de 12 derivações em menos de 10 minutos da admissão e dosagem seriada de troponina ultrassensível.",
+          "weight": 0.4,
+          "category": "exames_complementares",
+          "keywords": [
+            "eletrocardiograma",
+            "ecg 12",
+            "troponina",
+            "curva de troponina"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Comunicação Clara do Diagnóstico e Plano à Paciente",
+          "description": "Explica à paciente em linguagem acessível a suspeita coronariana e a necessidade de internação em UCO para cateterismo.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "explico",
+            "coração",
+            "internação",
+            "cateterismo",
+            "unidade coronariana"
           ]
         }
       ],
@@ -565,7 +845,102 @@
         }
       ],
       "source": "Diretriz SBC / ESC 2023-2024 de Síndromes Coronarianas Agudas / Protocolo HC-FMRP-USP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, sinto um aperto no meio do peito que queima e vai pro pescoço. Já vinha sentindo quando varria o quintal, mas hoje deu sentado no sofá e não passa.",
+        "emotional_state": "Lúcida, ansiosa, mão sobre o esterno, sudorese leve na testa.",
+        "only_reveal_if_asked": {
+          "historia_molestia_atual": "A dor começou em repouso há cerca de 40 minutos, intensidade 8/10, piorou progressivamente esta semana.",
+          "antecedentes_medicacoes": "Hipertensa há 15 anos em uso de Losartana e Anlodipino; diabética tipo 2 há 10 anos usando Metformina.",
+          "sintomas_associados": "Sente um pouco de enjoo e falta de ar leve junto com o aperto, sem vômitos.",
+          "alergias_contraindicacoes": "Sem alergias conhecidas, nunca teve sangramento digestivo ou AVC prévio.",
+          "habitos_familia": "Não fuma; irmão mais velho infartou aos 55 anos."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 135x85 mmHg, FC: 78 bpm, FR: 18 irpm, SATO2: 96% em ar ambiente, TEMP: 36.5 °C"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia",
+            "fácies",
+            "facies",
+            "sudorese"
+          ],
+          "content": "Lúcida, ansiosa, sudorética, corada, eupneica em repouso."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "auscultar coracao",
+            "bulhas",
+            "sopros",
+            "b4",
+            "atrito"
+          ],
+          "content": "Ritmo cardíaco regular em 2 tempos, presença de B4 à ausculta em foco mitral, ausência de sopros ou atrito pericárdico."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "murmurio vesicular",
+            "estertores",
+            "killip"
+          ],
+          "content": "Murmúrio vesicular limpo bilateralmente, sem estertores (Killip I)."
+        },
+        {
+          "id": "card_lab_ecg",
+          "kind": "lab_imaging",
+          "title": "Eletrocardiograma de 12 Derivações",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ],
+          "content": "Ritmo sinusal regular, FC 78 bpm. Presença de infradesnivelamento horizontal do segmento ST de 1,5 mm nas derivações V4, V5 e V6, associado a inversão de onda T assimétrica. Ausência de supradesnivelamento de ST."
+        },
+        {
+          "id": "card_lab_troponina",
+          "kind": "lab_imaging",
+          "title": "Troponina Ultrassensível e Escore GRACE",
+          "triggers": [
+            "troponina",
+            "curva de troponina",
+            "enzimas cardiacas",
+            "marcadores de necrose",
+            "grace"
+          ],
+          "content": "Troponina I: 0.28 ng/mL (limite de corte: 0.04 ng/mL - curva em ascensão). Escore GRACE calculado: 146 pontos (> 140 = Alto Risco de Eventos Isquêmicos Maiores)."
+        }
+      ]
     },
     {
       "code": "USP-RP-2023-CG-FAST",
@@ -575,8 +950,8 @@
       "institution": "USP-RP",
       "year": 2023,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA DE TRAUMA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o cirurgião geral plantonista da Sala Vermelha de Trauma da Unidade de Emergência da FMRP-USP.\n\n**Cenário**:\n- Paciente: Carlos Eduardo, 32 anos, vítima de colisão auto x caminhão na Rodovia Anhanguera há 25 minutos.\n- Admitido pelo SAMU em prancha rígida e colar cervical, pálido, taquicárdico e hipotenso.\n\n**Sua Tarefa**:\n1. Conduza a avaliação primária do ATLS na ordem estrita ABCDE.\n2. Solicite e interprete o E-FAST beira-leito imediato na sala vermelha.\n3. Prescreva as medidas de ressuscitação hemostática e protocolo de transfusão maciça.\n4. Defina a conduta cirúrgica imediata e o destino seguro do paciente.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA DE TRAUMA (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o cirurgião geral plantonista da Sala Vermelha de Trauma da Unidade de Emergência da FMRP-USP.\n\n**Cenário**:\n- Paciente: Carlos Eduardo, 32 anos, vítima de colisão auto x caminhão na Rodovia Anhanguera há 25 minutos.\n- Admitido pelo SAMU em prancha rígida e colar cervical, pálido, taquicárdico e hipotenso.\n\n**Sua Tarefa**:\n1. Conduza a avaliação primária do ATLS na ordem estrita ABCDE.\n2. Solicite e interprete o E-FAST beira-leito imediato na sala vermelha.\n3. Prescreva as medidas de ressuscitação hemostática e protocolo de transfusão maciça.\n4. Defina a conduta cirúrgica imediata e o destino seguro do paciente.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Carlos Eduardo (Trauma)",
         "age": 32,
@@ -769,7 +1144,7 @@
           "id": "item_1",
           "title": "Sistematização do ATLS (Ordem ABCDE Rigorosa)",
           "description": "Verifica via aérea e coluna cervical (A), respiração e ausculta pulmonar (B) e foca na circulação e controle de sangramento (C).",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "exame_fisico",
           "keywords": [
             "atls",
@@ -783,7 +1158,7 @@
           "id": "item_2",
           "title": "Diagnóstico de Choque Hemorrágico Classe III",
           "description": "Reconhece os sinais de choque descompensado (PA 80x50, FC 134, hipotermia, acidose e lactato elevado).",
-          "weight": 1.0,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "choque hemorrágico",
@@ -796,7 +1171,7 @@
           "id": "item_3",
           "title": "Solicitação Imediata de E-FAST na Sala Vermelha",
           "description": "Solicita E-FAST beira-leito sem retirar o paciente da sala de reanimação.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "exames_complementares",
           "keywords": [
             "fast",
@@ -809,7 +1184,7 @@
           "id": "item_4",
           "title": "Interpretação do FAST: Hemoperitônio Maciço / Trauma Esplênico",
           "description": "Identifica líquido livre no espaço esplenorrenal e na pelve caracterizando hemoperitônio agudo no paciente chocado.",
-          "weight": 1.0,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "hemoperitônio",
@@ -823,7 +1198,7 @@
           "id": "item_5",
           "title": "Protocolo de Transfusão Maciça Balanceada (1:1:1)",
           "description": "Aciona protocolo de transfusão maciça com proporção 1:1:1 (Concentrado de Hemácias, Plasma Fresco Congelado e Plaquetas) e restringe infusão excessiva de cristaloides.",
-          "weight": 2.0,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "transfusão maciça",
@@ -837,7 +1212,7 @@
           "id": "item_6",
           "title": "Prescrição Imediata de Ácido Tranexâmico em < 3 Horas",
           "description": "Prescreve Ácido Tranexâmico 1g IV em bólus de 10 min seguido de 1g em 8 horas conforme protocolo CRASH-2 / ATLS.",
-          "weight": 1.0,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "ácido tranexâmico",
@@ -853,7 +1228,7 @@
           "id": "item_7",
           "title": "NÃO Solicitar Tomografia e Indicar Laparotomia Exploradora Imediata",
           "description": "Verbaliza enfaticamente: Paciente instável hemodinamicamente com FAST positivo NÃO pode ir à Tomografia! Encaminha imediatamente para Laparotomia Exploradora no Centro Cirúrgico.",
-          "weight": 2.0,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "não fazer tc",
@@ -870,6 +1245,77 @@
             "solicito tc",
             "tc de abdome",
             "tc"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Apresentação e Liderança na Sala de Trauma",
+          "description": "Identifica-se ao paciente/equipe, confirma via aérea perguntando o nome e coordena a abordagem inicial sistemática.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "carlos",
+            "sou o médico",
+            "equipe",
+            "olá",
+            "fale seu nome"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Anamnese AMPLA (Mecanismo, Alergias, Medicações e Refeição)",
+          "description": "Investiga cinemática do trauma (colisão frontal, cinto de segurança), alergias, anticoagulantes e última refeição.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "cinemática",
+            "mecanismo",
+            "cinto de segurança",
+            "alergias",
+            "anticoagulante",
+            "refeição"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Avaliação Abdominal e Estabilidade Pélvica (ATLS C/E)",
+          "description": "Realiza inspeção/palpação abdominal profunda (equimose de cinto de segurança) e testa estabilidade pélvica única.",
+          "weight": 0.4,
+          "category": "exame_fisico",
+          "keywords": [
+            "palpação abdominal",
+            "pelve",
+            "estabilidade pélvica",
+            "sinal do cinto",
+            "sinais vitais"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Coleta de Tipagem Sanguínea, Prova Cruzada e Lactato",
+          "description": "Solicita tipagem ABO/Rh, prova cruzada imediata e gasometria arterial com lactato para quantificar hipoperfusão.",
+          "weight": 0.4,
+          "category": "exames_complementares",
+          "keywords": [
+            "tipagem",
+            "prova cruzada",
+            "gasometria",
+            "lactato",
+            "hemograma"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Medidas de Prevenção de Hipotermia e Reserva de Centro Cirúrgico",
+          "description": "Indica aquecimento ativo com mantas térmicas/fluidos aquecidos e aciona anestesia e centro cirúrgico.",
+          "weight": 0.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "hipotermia",
+            "mantas térmicas",
+            "aquecimento",
+            "centro cirúrgico",
+            "anestesia"
           ]
         }
       ],
@@ -901,7 +1347,140 @@
         }
       ],
       "source": "ATLS 10ª Edição / Protocolo CRASH-2 / Sala de Trauma HC-UE FMRP-USP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Minha barriga... tá doendo muito do lado esquerdo... tô com frio...",
+        "emotional_state": "Confuso, pálido, voz pastosa e fraca, com tremores de frio e expressão de dor intensa à esquerda.",
+        "only_reveal_if_asked": {
+          "mecanismo_trauma": "Bateu o carro de frente contra um poste há 35 minutos sem abrir o airbag; estava com cinto de segurança.",
+          "localizacao_dor": "Dor muito forte no abdome superior esquerdo irradiando para o ombro esquerdo.",
+          "antecedentes_medicacoes": "Previamente saudável, não toma remédios contínuos nem anticoagulantes.",
+          "alergias": "Sem alergias medicamentosas.",
+          "ultima_refeicao_bebida": "Almoçou há cerca de 3 horas, nega uso de álcool ou drogas."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 80x50 mmHg, FC: 134 bpm, FR: 26 irpm, SATO2: 95% em máscara de O2 com colar cervical, TEMP: 35.8 °C (hipotermia)"
+        },
+        {
+          "id": "card_pe_avaliacao_via_aerea",
+          "kind": "physical_exam",
+          "title": "Inspeção de Via Aérea e Coluna Cervical (ATLS A)",
+          "triggers": [
+            "via aerea",
+            "colar cervical",
+            "imobilizacao cervical",
+            "atls a",
+            "inspecao cervical"
+          ],
+          "content": "Via aérea pérvia, falando com voz pastosa, colar cervical bem posicionado e alinhado."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar e Inspeção/Palpação Torácica (ATLS B)",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "palpacao toracica",
+            "inspecao toracica",
+            "atls b",
+            "murmurio vesicular"
+          ],
+          "content": "Tórax estável à palpação, murmúrio vesicular universalmente audível e simétrico, sem sinais de pneumotórax ou hemotórax."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Avaliação Circulatória, Pulsos e Perfusão (ATLS C)",
+          "triggers": [
+            "pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "palpacao de pulsos",
+            "atls c",
+            "palidez",
+            "tec"
+          ],
+          "content": "Choque Hemorrágico Grau III: palidez cutânea 3+/4+, sudorese fria, pulsos radiais filiformes e taquicárdicos."
+        },
+        {
+          "id": "card_pe_inspecao_palpacao_abdominal",
+          "kind": "physical_exam",
+          "title": "Inspeção e Palpação Abdominal (Sinal do Cinto / Irritação Peritoneal)",
+          "triggers": [
+            "inspecao abdominal",
+            "palpacao abdominal",
+            "palpacao do abdome",
+            "palpar abdome",
+            "descompressao",
+            "cinto de seguranca"
+          ],
+          "content": "Abdome distendido com equimose importante em hipocôndrio e flanco esquerdos (sinal do cinto de segurança), dor intensa à palpação profunda com descompressão duvidosa."
+        },
+        {
+          "id": "card_pe_avaliacao_neurologica_glasgow",
+          "kind": "physical_exam",
+          "title": "Exame Neurológico (Glasgow e Pupilas - ATLS D)",
+          "triggers": [
+            "glasgow",
+            "pupilas",
+            "exame neurologico",
+            "nivel de consciencia",
+            "atls d"
+          ],
+          "content": "Glasgow 14 (confuso), pupilas isocóricas e fotorreagentes."
+        },
+        {
+          "id": "card_pe_palpacao_pelvica_exposicao",
+          "kind": "physical_exam",
+          "title": "Estabilidade Pélvica, Meato Uretral e Exposição (ATLS E)",
+          "triggers": [
+            "pelve",
+            "estabilidade pelvica",
+            "meato uretral",
+            "exposicao",
+            "atls e"
+          ],
+          "content": "Pelve estável à compressão delicada, sem sangramento em meato uretral; aquecimento com mantas térmicas."
+        },
+        {
+          "id": "card_lab_e_fast",
+          "kind": "lab_imaging",
+          "title": "E-FAST Beira-Leito (Sala Vermelha)",
+          "triggers": [
+            "e-fast",
+            "efast",
+            "fast",
+            "ultrassom beira leito",
+            "pocus"
+          ],
+          "content": "Janela pericárdica: sem derrame. Espaço hepatorrenal (Morison): lâmina fina de líquido livre. Espaço esplenorrenal (recesso de Koller): presença de grande quantidade de líquido livre anecoico circundando o baço com laceração esplênica visível. Pelve: líquido livre em fundo de saco retrovesical. FAST POSITIVO."
+        },
+        {
+          "id": "card_lab_gaso_lactato",
+          "kind": "lab_imaging",
+          "title": "Gasometria e Lactato da Admissão",
+          "triggers": [
+            "gasometria",
+            "lactato",
+            "gaso",
+            "gasometria e lactato"
+          ],
+          "content": "pH 7.24, BE -9 mEq/L, Lactato: 4.2 mmol/L. Hemoglobina inicial: 8.2 g/dL."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-PED-BVA",
@@ -911,8 +1490,8 @@
       "institution": "USP-RP",
       "year": 2024,
       "difficulty": "medium",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: PRONTO-SOCORRO PEDIÁTRICO (HC-CRIANÇA FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico pediatra plantonista do HC-Criança da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Matheus, 4 meses (peso: 6.2 kg), acompanhado pela mãe.\n- Queixa: O bebê começou com coriza e febre baixa há 3 dias. Há 24 horas começou a tossir, ficar ofegante e cansadinho para mamar no peito.\n\n**Sua Tarefa**:\n1. Realize a anamnese e exame físico respiratório pediátrico.\n2. Estabeleça o diagnóstico com base na melhor evidência clínica.\n3. Prescreva o manejo terapêutico de suporte indicado pela Sociedade Brasileira de Pediatria e FMRP-USP.\n4. Decida a necessidade de exames complementares e local de internação/observação.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: PRONTO-SOCORRO PEDIÁTRICO (HC-CRIANÇA FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico pediatra plantonista do HC-Criança da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Matheus, 4 meses (peso: 6.2 kg), acompanhado pela mãe.\n- Queixa: O bebê começou com coriza e febre baixa há 3 dias. Há 24 horas começou a tossir, ficar ofegante e cansadinho para mamar no peito.\n\n**Sua Tarefa**:\n1. Realize a anamnese e exame físico respiratório pediátrico.\n2. Estabeleça o diagnóstico com base na melhor evidência clínica.\n3. Prescreva o manejo terapêutico de suporte indicado pela Sociedade Brasileira de Pediatria e FMRP-USP.\n4. Decida a necessidade de exames complementares e local de internação/observação.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Mãe do Matheus (Dona Priscila)",
         "age": 28,
@@ -997,7 +1576,7 @@
           "id": "item_1",
           "title": "Acolhimento da Mãe e Investigação de Fatores de Risco",
           "description": "Acolhe a mãe, confirma idade (4 meses), primeiro episódio de sibilância, ausência de prematuridade e contato com irmão resfriado.",
-          "weight": 1.0,
+          "weight": 1.1,
           "category": "anamnese",
           "keywords": [
             "primeiro episódio",
@@ -1011,7 +1590,7 @@
           "id": "item_2",
           "title": "Avaliação dos Sinais de Desconforto Respiratório e Hipoxemia",
           "description": "Verifica taquipneia (FR 62), tiragem subcostal, batimento de asa nasal e hipoxemia em ar ambiente (SatO2 88%).",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "exame_fisico",
           "keywords": [
             "tiragem",
@@ -1025,7 +1604,7 @@
           "id": "item_3",
           "title": "Diagnóstico Correto de Bronquiolite Viral Aguda (BVA)",
           "description": "Fecha o diagnóstico eminentemente clínico de BVA típica (provável VSR) em lactente jovem sem necessidade de radiografia de tórax de rotina.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "diagnostico",
           "keywords": [
             "bronquiolite viral aguda",
@@ -1038,7 +1617,7 @@
           "id": "item_4",
           "title": "Prescrição Imediata de Oxigenioterapia sob Cânula Nasal",
           "description": "Prescreve oxigênio suplementar em cânula nasal umidificada (0.5 a 1.0 L/min) com meta de manter SatO2 >= 90 a 92%.",
-          "weight": 2.0,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "oxigênio",
@@ -1052,7 +1631,7 @@
           "id": "item_5",
           "title": "Prescrição de Lavagem Nasal com Soro Fisiológico 0,9%",
           "description": "Prescreve desobstrução e lavagem nasal com Soro Fisiológico abundante antes das mamadas e sob demanda.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "lavagem nasal",
@@ -1078,7 +1657,7 @@
           "id": "item_7",
           "title": "NÃO Prescrever Corticoides, Broncodilatadores de Rotina ou Antibióticos",
           "description": "Adota a postura clássica da FMRP-USP de medicina baseada em evidências: contraindica corticoides (orais ou inalatórios), broncodilatadores e antibióticos na BVA típica.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "não prescrever corticoide",
@@ -1099,6 +1678,79 @@
             "ceftriaxona",
             "antibiotico",
             "salbutamol"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Apresentação e Acolhimento Empático à Mãe",
+          "description": "Apresenta-se à mãe, chama o lactente pelo nome e acolhe a angústia materna antes do exame físico.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "priscila",
+            "matheus",
+            "sou o médico",
+            "acolhimento",
+            "calma",
+            "vou examinar"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Investigação de Fatores de Risco de Gravidade no Lactente",
+          "description": "Questiona idade gestacional de nascimento, comorbidades, cardiopatias, aleitamento e vacinação.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "prematuro",
+            "termo",
+            "parto",
+            "aleitamento",
+            "vacinas",
+            "creche"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Aferição de Sinais Vitais, Oximetria e Frequência Respiratória",
+          "description": "Verifica oximetria de pulso (SpO2), frequência respiratória contada em 1 minuto, sinais de tiragem e hidratação.",
+          "weight": 0.4,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "oximetria",
+            "saturacao",
+            "frequência respiratória",
+            "oroscopia",
+            "otoscopia"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Prescrição de Suporte Hidroeletrolítico e Decisão sobre Internação",
+          "description": "Avalia necessidade de internação/observação hospitalar por desconforto moderado e garante hidratação se baixa aceitação oral.",
+          "weight": 0.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "internação",
+            "observação",
+            "hidratação",
+            "diurese",
+            "mamadas"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Orientação dos Sinais de Alarme e Retorno à Mãe",
+          "description": "Orienta claramente a mãe sobre sinais de gravidade respiratória, técnica de higiene nasal e prevenção de contágio.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sinais de alarme",
+            "piora",
+            "lavagem nasal",
+            "oriento a mãe",
+            "retorno"
           ]
         }
       ],
@@ -1131,7 +1783,96 @@
         }
       ],
       "source": "Diretriz SBP / AAP de Bronquiolite Viral Aguda / HC-Criança FMRP-USP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, ele tá com o peitinho afundando quando respira e não consegue mamar sem cansar. Começou com um resfriadinho faz 3 dias e piorou muito hoje.",
+        "emotional_state": "Mãe aflita e protetora segurando o lactente no colo; bebê choramingando e taquipneico.",
+        "only_reveal_if_asked": {
+          "evolucao_sintomas": "Começou com coriza clara e espirros há 3 dias; desde ontem surgiu tosse cheia, chiado e recusa das mamadas.",
+          "contato_respiratorio": "O irmão de 4 anos frequenta creche e esteve gripado na semana passada.",
+          "antecedentes_perinatais": "Nasceu de 39 semanas, parto normal sem intercorrências, nunca internou antes.",
+          "aleitamento_vacinas": "Em aleitamento materno exclusivo, todas as vacinas até os 4 meses em dia.",
+          "diurese_alergias": "Molhou 3 fraldas hoje (um pouco menos que o normal), sem alergias."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "FC: 148 bpm, FR: 62 irpm (Taquipneia), SATO2: 88% em ar ambiente, TEMP: 37.5 °C, PESO: 6.2 kg"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Hidratação",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "hidratacao",
+            "ectoscopia"
+          ],
+          "content": "Lactente reativo, irritado durante o exame, afebril no momento, hidratado."
+        },
+        {
+          "id": "card_pe_inspecao_toracica",
+          "kind": "physical_exam",
+          "title": "Inspeção Respiratória (Tiragens / BAN)",
+          "triggers": [
+            "inspecao toracica",
+            "tiragem",
+            "batimento de asa de nariz",
+            "ban",
+            "esforco respiratorio"
+          ],
+          "content": "Presença de batimento de asa de nariz leve, tiragem subcostal e intercostal moderadas."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "sibilos",
+            "estertores",
+            "murmurio vesicular"
+          ],
+          "content": "Tempo expiratório prolongado, sibilos expiratórios bilaterais e estertores subcrepitantes difusos em ambas as bases."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca e Pulsos",
+          "triggers": [
+            "ausculta cardiaca",
+            "bulhas",
+            "pulsos",
+            "perfusao"
+          ],
+          "content": "Ritmo cardíaco regular em 2 tempos, sem sopros, pulsos cheios."
+        },
+        {
+          "id": "card_pe_oroscopia_otoscopia",
+          "kind": "physical_exam",
+          "title": "Oroscopia, Rinoscopia e Otoscopia",
+          "triggers": [
+            "otoscopia",
+            "oroscopia",
+            "orofaringe",
+            "membrana timpanica",
+            "fossas nasais"
+          ],
+          "content": "Secreção hialina abundante em fossas nasais, orofaringe sem exsudato, membranas timpânicas íntegras e translúcidas."
+        }
+      ]
     },
     {
       "code": "USP-RP-2023-GO-HPP",
@@ -1141,8 +1882,8 @@
       "institution": "USP-RP",
       "year": 2023,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: CENTRO OBSTÉTRICO / SALA DE PARTO (MATER FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico obstetra plantonista da Sala de Parto do Hospital Mater da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Ana Paula, 26 anos, secundigesta, submetida a parto vaginal há 30 minutos de concepto com peso de 4.150g.\n- A puérpera apresenta sangramento vaginal abundante contínuo com saída de coágulos volumosos.\n\n**Sua Tarefa**:\n1. Reconheça a Hemorragia Pós-Parto (HPP) e investigue a causa pelos '4 Ts'.\n2. Execute a manobra física imediata de controle do sangramento.\n3. Prescreva as medicações uterotônicas de 1ª e 2ª linhas com doses corretas.\n4. Indique as medidas mecânicas e cirúrgicas caso ocorra refratariedade.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: CENTRO OBSTÉTRICO / SALA DE PARTO (MATER FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico obstetra plantonista da Sala de Parto do Hospital Mater da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Ana Paula, 26 anos, secundigesta, submetida a parto vaginal há 30 minutos de concepto com peso de 4.150g.\n- A puérpera apresenta sangramento vaginal abundante contínuo com saída de coágulos volumosos.\n\n**Sua Tarefa**:\n1. Reconheça a Hemorragia Pós-Parto (HPP) e investigue a causa pelos '4 Ts'.\n2. Execute a manobra física imediata de controle do sangramento.\n3. Prescreva as medicações uterotônicas de 1ª e 2ª linhas com doses corretas.\n4. Indique as medidas mecânicas e cirúrgicas caso ocorra refratariedade.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Ana Paula (Puérpera)",
         "age": 26,
@@ -1206,7 +1947,7 @@
           "id": "item_1",
           "title": "Acionamento Imediato de Ajuda e Código Vermelho Obstétrico",
           "description": "Pede ajuda imediata da equipe de enfermagem e anestesia, solicita 2 acessos venosos calibrosos (jelco 14 ou 16) e monitorização contínua.",
-          "weight": 1.0,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "código vermelho",
@@ -1220,7 +1961,7 @@
           "id": "item_2",
           "title": "Diagnóstico Etiológico Baseado nos 4 Ts (Atonia Uterina)",
           "description": "Investiga os 4 Ts (Tônus, Trauma, Tecido, Trombina) e identifica a Atonia Uterina (tônus) como a causa do sangramento.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "diagnostico",
           "keywords": [
             "4 ts",
@@ -1234,7 +1975,7 @@
           "id": "item_3",
           "title": "Realização da Massagem Uterina Bimanual (Manobra de Hamilton)",
           "description": "Executa imediatamente a compressão bimanual do útero (uma mão com punho cerrado na vagina e a outra comprimindo o fundo uterino pelo abdome).",
-          "weight": 2.0,
+          "weight": 1.5,
           "category": "exame_fisico",
           "keywords": [
             "hamilton",
@@ -1247,7 +1988,7 @@
           "id": "item_4",
           "title": "Prescrição Imediata de Ocitocina IV (1ª Linha)",
           "description": "Prescreve Ocitocina IV imediata (5 UI em bólus lento ou 20 a 40 UI diluídas em 500 ml de SF 0,9% em infusão contínua rápida).",
-          "weight": 2.0,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "ocitocina",
@@ -1260,7 +2001,7 @@
           "id": "item_5",
           "title": "Prescrição de Ácido Tranexâmico em até 3 Horas",
           "description": "Prescreve Ácido Tranexâmico 1g IV em bólus de 10 minutos para reduzir mortalidade materna por sangramento obstétrico (WOMAN Trial).",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "conduta_tratamento",
           "keywords": [
             "ácido tranexâmico",
@@ -1276,7 +2017,7 @@
           "id": "item_6",
           "title": "Uterotônicos de 2ª Linha e Sondagem Vesical de Alívio",
           "description": "Prescreve Misoprostol 800 mcg retal/sublingual (ou Metilergometrina 0.2 mg IM se não hipertensa) e realiza cateterismo vesical para esvaziar a bexiga.",
-          "weight": 1.0,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "misoprostol",
@@ -1298,6 +2039,79 @@
             "b-lynch",
             "histerectomia",
             "centro cirúrgico"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Comunicação Clara com a Puérpera e Acionamento da Equipe",
+          "description": "Identifica-se à paciente, explica brevemente os procedimentos realizados e aciona imediatamente a equipe da obstetrícia (código vermelho/HPP).",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "ana paula",
+            "equipe",
+            "ajuda",
+            "código",
+            "vamos cuidar",
+            "explico"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Revisão dos 4 Ts e Fatores Predisponentes da HPP",
+          "description": "Investiga sobredistensão uterina (macrossomia), trabalho de parto prolongado com ocitocina e integridade da placenta dequitada.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "4 ts",
+            "macrossomia",
+            "placenta",
+            "dequitação",
+            "parto prolongado",
+            "tônus"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Aferição de Sinais Vitais e Cálculo do Índice de Choque",
+          "description": "Solicita sinais vitais imediatos e reconhece instabilidade hemodinâmica (Índice de Choque = FC/PAS > 0,9).",
+          "weight": 0.4,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "índice de choque",
+            "choque",
+            "pressão arterial",
+            "perfusão"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Acessos Calibrosos, Tipagem Sanguínea e Hemocomponentes",
+          "description": "Estabelece dois acessos venosos calibrosos (14-16G), solicita hemograma, coagulograma, tipagem e reserva de concentrado de hemácias.",
+          "weight": 0.4,
+          "category": "exames_complementares",
+          "keywords": [
+            "dois acessos",
+            "tipagem",
+            "coagulograma",
+            "hemograma",
+            "concentrado de hemácias",
+            "reserva"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Checagem de Metas Pós-Reanimação e Vigilância do Globo de Segurança",
+          "description": "Garante sonda vesical de demora para controle de diurese, prevenção de hipotermia e monitorização contínua do tônus uterino.",
+          "weight": 0.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "sonda vesical",
+            "diurese",
+            "globo de segurança",
+            "monitorização",
+            "hipotermia"
           ]
         }
       ],
@@ -1329,7 +2143,74 @@
         }
       ],
       "source": "Protocolo Mater HC-FMRP-USP / OPAS-MS (Estratégia Zero Morte Materna por Hemorragia)",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, tô sentindo um calor descendo no meio das pernas... a cama tá encharcada de sangue... minha vista tá escurecendo...",
+        "emotional_state": "Muito pálida, sudorética, sonolenta, falando com voz fraca e sensação iminente de desmaio.",
+        "only_reveal_if_asked": {
+          "historico_parto": "Teve parto normal há 25 minutos, bebê nasceu grande (4.150 g) após trabalho de parto longo com ocitocina; a placenta já saiu.",
+          "antecedentes_obstetricos": "Segunda gestação e segundo parto normal (G2P2), sem cesáreas ou abortos.",
+          "sintomas_hipoperfusao": "Está enxergando escuro, sentindo tontura forte e zumbido nos ouvidos.",
+          "alergias_asma": "Não tem alergias nem asma ou hipertensão arterial.",
+          "coagulopatias": "Nunca teve sangramentos exagerados antes ou história familiar de distúrbio de coagulação."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 85x50 mmHg, FC: 122 bpm, FR: 22 irpm, SATO2: 97%"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Estado Volêmico",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "mucosas",
+            "palidez",
+            "consciencia"
+          ],
+          "content": "Pálida 2+/4+, sudorética, taquicárdica, sonolenta."
+        },
+        {
+          "id": "card_pe_palpacao_uterina",
+          "kind": "physical_exam",
+          "title": "Palpação Abdominal / Fundo Uterino",
+          "triggers": [
+            "palpacao uterina",
+            "fundo uterino",
+            "tonus uterino",
+            "palpacao abdominal",
+            "palpar utero",
+            "globo de seguranca"
+          ],
+          "content": "Útero hipotônico, flácido e amolecido à palpação, localizado cerca de 4 cm acima da cicatriz umbilical ('útero ensacado')."
+        },
+        {
+          "id": "card_pe_exame_especular",
+          "kind": "physical_exam",
+          "title": "Exame Especular e Revisão de Canal de Parto",
+          "triggers": [
+            "exame especular",
+            "especular",
+            "revisao de canal",
+            "valvas",
+            "laceracoes",
+            "toque vaginal"
+          ],
+          "content": "Exame com valvas afasta lacerações de trajeto (colo uterino e paredes vaginais íntegros, sem hematomas); sangramento ativo volumoso pelo orifício cervical externo."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-PREV-MCCP",
@@ -1339,8 +2220,8 @@
       "institution": "USP-RP",
       "year": 2024,
       "difficulty": "medium",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: ATENÇÃO PRIMÁRIA / CSE SUMAREZINHO (FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico residente de Medicina de Família e Comunidade do Centro de Saúde Escola Sumarezinho da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Dona Luzia, 52 anos, dona de casa, comparece à consulta com queixas inespecíficas de dor de cabeça, queimação no estômago e desânimo há 3 meses.\n- Já realizou diversos exames em prontos-atendimentos que vieram estritamente normais.\n\n**Sua Tarefa**:\n1. Conduza a consulta aplicando o Método Clínico Centrado na Pessoa (MCCP).\n2. Explore a experiência subjetiva da doença e os estressores psicossociais.\n3. Desenhe e utilize a ferramenta de abordagem familiar adequada (Genograma).\n4. Estabeleça um plano de cuidados conjunto com foco em prevenção quaternária.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 300,
+      "scenario_door_markdown": "### ESTAÇÃO: ATENÇÃO PRIMÁRIA / CSE SUMAREZINHO (FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico residente de Medicina de Família e Comunidade do Centro de Saúde Escola Sumarezinho da FMRP-USP (Ribeirão Preto).\n\n**Cenário**:\n- Paciente: Dona Luzia, 52 anos, dona de casa, comparece à consulta com queixas inespecíficas de dor de cabeça, queimação no estômago e desânimo há 3 meses.\n- Já realizou diversos exames em prontos-atendimentos que vieram estritamente normais.\n\n**Sua Tarefa**:\n1. Conduza a consulta aplicando o Método Clínico Centrado na Pessoa (MCCP).\n2. Explore a experiência subjetiva da doença e os estressores psicossociais.\n3. Desenhe e utilize a ferramenta de abordagem familiar adequada (Genograma).\n4. Estabeleça um plano de cuidados conjunto com foco em prevenção quaternária.\n\n*Tempo de prova: 5 minutos.*",
       "patient_persona": {
         "name": "Luzia Aparecida",
         "age": 52,
@@ -1379,7 +2260,7 @@
           "id": "item_1",
           "title": "Acolhimento Empático e Escuta Ativa sem Julgamentos",
           "description": "Recebe Dona Luzia com acolhimento, faz perguntas abertas e demonstra genuíno interesse por sua história de vida.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "relacao_medico_paciente",
           "keywords": [
             "acolhimento",
@@ -1393,7 +2274,7 @@
           "id": "item_2",
           "title": "Aplicação do MCCP: Explorando a Experiência da Doença (SIFE)",
           "description": "Explora Sentimentos (medo de adoecer), Ideias (o que acha que tem), Função (como afeta seu dia) e Expectativas (o que espera da consulta).",
-          "weight": 2.0,
+          "weight": 1.3,
           "category": "anamnese",
           "keywords": [
             "mccp",
@@ -1408,7 +2289,7 @@
           "id": "item_3",
           "title": "Abordagem Familiar: Construção e Investigação do Genograma",
           "description": "Pergunta sobre a dinâmica familiar e identifica a sobrecarga de cuidadora do marido sequelado e o filho com etilismo.",
-          "weight": 2.0,
+          "weight": 1.2,
           "category": "anamnese",
           "keywords": [
             "genograma",
@@ -1425,7 +2306,7 @@
           "id": "item_4",
           "title": "Validação do Sofrimento e Explicação da Somatização",
           "description": "Valida que as dores que ela sente são reais e explica com sensibilidade como o estresse contínuo e a sobrecarga física/emocional repercutem no corpo.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "sua dor é real",
@@ -1439,7 +2320,7 @@
           "id": "item_5",
           "title": "Prevenção Quaternária: Não Solicitar Exames Desnecessários",
           "description": "Evita iatrogenia e cascata diagnóstica (não pede endoscopia ou tomografia desnecessárias, pois os exames recentes já descartaram doença orgânica).",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "prevenção quaternária",
@@ -1460,7 +2341,7 @@
           "id": "item_6",
           "title": "Pactuação de Projeto Terapêutico Singular (PTS) e Apoio Domiciliar",
           "description": "Aciona o Programa de Atenção Domiciliar (PAD) para o marido acamado, encaminha para apoio psicológico/grupo de cuidadores no CSE Sumarezinho e agenda retorno breve com a mesma equipe.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "programa de atenção domiciliar",
@@ -1469,6 +2350,92 @@
             "retorno",
             "equipe multiprofissional",
             "cuidadores"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Apresentação Cordial e Abertura com Pergunta Ampla",
+          "description": "Apresenta-se, convida dona Luzia a sentar confortavelmente e inicia com pergunta aberta permitindo fala sem interrupções iniciais.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "luzia",
+            "como posso ajudar",
+            "fique à vontade",
+            "me conte",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Caracterização Clínica Mínima de Sinais de Alarme Orgânicos",
+          "description": "Investiga sinais de alarme da cefaleia e epigastralgia (déficits focais, hematêmese, perda ponderal) sem perder foco biopsicossocial.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "sinais de alarme",
+            "visão",
+            "vômitos",
+            "peso",
+            "febre",
+            "dor de cabeça"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Exame Físico Dirigido e Tranquilizador",
+          "description": "Verifica sinais vitais e exame neurológico/geral sucinto para assegurar ausência de doença orgânica aguda e legitimar o sofrimento.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "inspeção geral",
+            "exame físico",
+            "pressão arterial",
+            "neurológico"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Aplicação da Técnica FIFE Completa (Ideias e Expectativas)",
+          "description": "Investiga explicitamente ideias e expectativas da paciente para além do medo de infarto/AVC, validando suas frustrações no PS.",
+          "weight": 0.5,
+          "category": "anamnese",
+          "keywords": [
+            "expectativas",
+            "o que você espera",
+            "o que acha",
+            "sentimentos",
+            "fife"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Articulação com Rede de Apoio e Equipe Multiprofissional (NASF/eMulti)",
+          "description": "Propõe acionamento de serviço social, psicologia, agente comunitário (ACS) ou serviço de cuidado domiciliar para aliviar sobrecarga.",
+          "weight": 0.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "serviço social",
+            "psicologia",
+            "agente comunitário",
+            "emulti",
+            "nasf",
+            "apoio"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Checagem de Compreensão e Agendamento de Retorno Longitudinal",
+          "description": "Confirma o entendimento de dona Luzia sobre o plano conjunto e agenda retorno em curto prazo na UBS para continuidade do cuidado.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "retorno",
+            "entendeu",
+            "alguma dúvida",
+            "acompanhamento",
+            "longitudinal"
           ]
         }
       ],
@@ -1501,7 +2468,46 @@
         }
       ],
       "source": "Método Clínico Centrado na Pessoa (Stewart et al.) / Tratado de MFC / CSE Sumarezinho FMRP-USP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, venho porque não aguento mais essa dor de cabeça e essa pontada no estômago. No pronto-socorro me deram remédio na veia e disseram que não é nada, mas eu sinto que tem algo ruim em mim.",
+        "emotional_state": "Postura encurvada, exausta, choro fácil quando se sente verdadeiramente escutada.",
+        "only_reveal_if_asked": {
+          "contexto_familiar_cuidadora": "O marido sofreu AVC isquêmico há 4 meses, ficou acamado usando fraldas e depende exclusivamente dela.",
+          "preocupacoes_medos": "Morre de medo de ter um infarto ou derrame igual ao marido e deixá-lo desamparado.",
+          "sobrecarga_filho": "O filho caçula de 22 anos perdeu o emprego, voltou a morar com ela e tem bebido muito.",
+          "impacto_funcionalidade": "Dorme apenas 3 a 4 horas por noite, parou de caminhar e não consegue ir às próprias consultas.",
+          "expectativas_consulta": "Não quer apenas mais um analgésico; precisa ser ouvida e encontrar apoio real para dar conta da rotina."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 125x80 mmHg, FC: 74 bpm, FR: 16 irpm, TEMP: 36.4 °C"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Exame Clínico Dirigido",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia",
+            "exame fisico dirigido",
+            "exame neurologico"
+          ],
+          "content": "Fácies de cansaço extremo, postura encurvada, choro fácil durante a conversa, sem déficits neurológicos ou alterações orgânicas."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2024-CM-SCA",
@@ -1511,8 +2517,8 @@
       "institution": "UNICAMP",
       "year": 2024,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA / EMERGÊNCIA ADULTA\n\n**Candidato(a)**:\nVocê é o médico plantonista da Emergência do HC-UNICAMP.\n\n**Cenário**:\n- Paciente: Antônio Carlos, 58 anos, pedreiro.\n- Queixa: Dor precordial opressiva de forte intensidade iniciada há 45 minutos.\n\n**Sua Tarefa**:\n1. Realize a anamnese direcionada e exame físico pertinente.\n2. Solicite e interprete os exames complementares imediatos.\n3. Defina o diagnóstico sindrômico e topográfico.\n4. Estabeleça a conduta terapêutica imediata, prescrição de emergência e rota de reperfusão.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 600,
+      "scenario_door_markdown": "### ESTAÇÃO: SALA VERMELHA / EMERGÊNCIA ADULTA\n\n**Candidato(a)**:\nVocê é o médico plantonista da Emergência do HC-UNICAMP.\n\n**Cenário**:\n- Paciente: Antônio Carlos, 58 anos, pedreiro.\n- Queixa: Dor precordial opressiva de forte intensidade iniciada há 45 minutos.\n\n**Sua Tarefa**:\n1. Realize a anamnese direcionada e exame físico pertinente.\n2. Solicite e interprete os exames complementares imediatos.\n3. Defina o diagnóstico sindrômico e topográfico.\n4. Estabeleça a conduta terapêutica imediata, prescrição de emergência e rota de reperfusão.\n\n*Tempo de prova: 10 minutos.*",
       "patient_persona": {
         "name": "Antônio Carlos",
         "age": 58,
@@ -1655,7 +2661,7 @@
           "id": "item_1",
           "title": "Apresentação e Relação Médico-Paciente",
           "description": "Cumprimenta o paciente, se apresenta pelo nome e demonstra empatia com o sofrimento.",
-          "weight": 0.5,
+          "weight": 0.7,
           "category": "relacao_medico_paciente",
           "keywords": [
             "bom dia",
@@ -1669,7 +2675,7 @@
           "id": "item_2",
           "title": "Caracterização Completa da Dor Precordial",
           "description": "Investiga início, irradiação (braço/mandíbula), intensidade (0-10) e sintomas associados (sudorese, náuseas).",
-          "weight": 1.0,
+          "weight": 0.9,
           "category": "anamnese",
           "keywords": [
             "quando começou",
@@ -1686,7 +2692,7 @@
           "id": "item_3",
           "title": "Fatores de Risco Cardiovasculares e Medicamentos",
           "description": "Pergunta sobre tabagismo, hipertensão, diabetes, histórico familiar e uso de inibidores de fosfodiesterase (sildenafila).",
-          "weight": 0.5,
+          "weight": 0.9,
           "category": "anamnese",
           "keywords": [
             "fuma",
@@ -1702,7 +2708,7 @@
           "id": "item_4",
           "title": "Medidas Iniciais de Emergência",
           "description": "Solicita monitorização cardíaca contínua, oximetria de pulso e 2 acessos venosos periféricos calibrosos.",
-          "weight": 1.0,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "monitor",
@@ -1716,7 +2722,7 @@
           "id": "item_5",
           "title": "Solicitação Imediata de ECG em < 10 Minutos",
           "description": "Solicita ECG de 12 derivações em até 10 minutos da admissão hospitalar (meta porta-eletro).",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "exames_complementares",
           "keywords": [
             "ecg 12",
@@ -1730,7 +2736,7 @@
           "id": "item_6",
           "title": "Interpretação e Diagnóstico Correto de IAM com Supra",
           "description": "Identifica supradesnivelamento de ST em parede anterior (V1-V4) e verbaliza o diagnóstico sindrômico/topográfico.",
-          "weight": 1.0,
+          "weight": 0.7,
           "category": "diagnostico",
           "keywords": [
             "supra",
@@ -1746,7 +2752,7 @@
           "id": "item_7",
           "title": "Dupla Antiagregação Plaquetária Imediata",
           "description": "Prescreve AAS (200-300 mg mastigável) + Inibidor de P2Y12 (Ticagrelor 180 mg ou Clopidogrel 300-600 mg).",
-          "weight": 1.5,
+          "weight": 0.8,
           "category": "conduta_tratamento",
           "keywords": [
             "ácido acetilsalicílico",
@@ -1764,7 +2770,7 @@
           "id": "item_8",
           "title": "Anticoagulação Plena e Estratificação",
           "description": "Prescreve Enoxaparina (ou Heparina Não Fracionada) e estratifica Killip I (sem necessidade de O2 suplementar rotineiro).",
-          "weight": 1.0,
+          "weight": 0.7,
           "category": "conduta_tratamento",
           "keywords": [
             "enoxaparina",
@@ -1777,7 +2783,7 @@
           "id": "item_9",
           "title": "Indicação Rápida de Reperfusão Coronariana (Angioplastia Primária)",
           "description": "Aciona o laboratório de hemodinâmica para angioplastia primária em tempo porta-balão < 90 min (ou trombólise se porta-balão > 120 min).",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "angioplastia",
@@ -1791,7 +2797,7 @@
           "id": "item_10",
           "title": "Comunicação Clara do Plano ao Paciente",
           "description": "Explica o diagnóstico de infarto e a necessidade de desobstruir a artéria de forma calma e humanizada.",
-          "weight": 0.5,
+          "weight": 1.2,
           "category": "relacao_medico_paciente",
           "keywords": [
             "infarto",
@@ -1800,6 +2806,34 @@
             "desobstruir",
             "cateterismo",
             "procedimento"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Checagem de Alergias, Sinais Vitais e Saturação de O2",
+          "description": "Verifica alergias medicamentosas, solicita sinais vitais completos e indica O2 suplementar apenas se SpO2 < 90%.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "alergias",
+            "oxigênio",
+            "sato2",
+            "saturação"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Estabilização Final, Estatina Alta Potência e Comunicação",
+          "description": "Prescreve estatina de alta potência (atorvastatina 80 mg) e explica ao paciente a gravidade e o procedimento de reperfusão.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "atorvastatina",
+            "estatina",
+            "explico ao paciente",
+            "cateterismo",
+            "angioplastia"
           ]
         }
       ],
@@ -1832,7 +2866,149 @@
         }
       ],
       "source": "Diretriz SBC / ESC de IAM com Supradesnivelamento de ST / HC-UNICAMP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, parece que tem um elefante pisando no meu peito! Começou faz uns 45 minutos enquanto eu tava trabalhando.",
+        "emotional_state": "Ansioso, mão fechada sobre o tórax (sinal de Levine), sudorese fria intensa.",
+        "only_reveal_if_asked": {
+          "caracteristica_dor": "Dor em aperto e peso retroesternal, intensidade 9/10, irradiando para braço esquerdo e mandíbula, sem melhora em repouso.",
+          "sintomas_associados": "Sudorese fria, náuseas importantes e sensação de falta de ar.",
+          "fatores_risco": "Fuma 1 maço por dia há 30 anos; pressão às vezes ficava alta, mas nunca tratou regularmente.",
+          "uso_sildenafila": "Nega uso de sildenafila, tadalafila ou qualquer estimulante sexual nas últimas 48 horas.",
+          "alergias_sangramentos": "Sem alergias conhecidas e sem histórico de AVC, úlcera ativa ou sangramento recente."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 140x90 mmHg, FC: 92 bpm, FR: 20 irpm, SATO2: 96% em ar ambiente, TEMP: 36.4 °C, HGT: 126 mg/dL"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia",
+            "sudorese",
+            "cianose"
+          ],
+          "content": "Em decúbito elevado, sudorético, fácies de dor, ansioso, acianótico, anictérico."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "bulhas",
+            "sopros",
+            "auscultar coracao"
+          ],
+          "content": "Ritmo cardíaco regular em 2 tempos, bulhas normofonéticas, sem sopros audíveis ou B3/B4."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Palpação de Pulsos Periféricos",
+          "triggers": [
+            "pulsos",
+            "palpacao de pulsos",
+            "perfusao",
+            "enchimento capilar"
+          ],
+          "content": "Pulsos periféricos simétricos e cheios."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "murmurio vesicular",
+            "estertores"
+          ],
+          "content": "Murmúrio vesicular universalmente audível, sem ruídos adventícios (Killip I)."
+        },
+        {
+          "id": "card_pe_palpacao_abdominal",
+          "kind": "physical_exam",
+          "title": "Palpação Abdominal",
+          "triggers": [
+            "palpacao abdominal",
+            "palpacao do abdome",
+            "palpar abdome"
+          ],
+          "content": "Abdome plano, flácido, indolor à palpação, sem visceromegalias."
+        },
+        {
+          "id": "card_pe_inspecao_palpacao_membros",
+          "kind": "physical_exam",
+          "title": "Inspeção e Palpação de Membros Inferiores",
+          "triggers": [
+            "edema de membros",
+            "palpacao de panturrilha",
+            "panturrilhas",
+            "homans",
+            "empastamento"
+          ],
+          "content": "Membros inferiores sem edemas, empastamento ou sinais de trombose venosa profunda."
+        },
+        {
+          "id": "card_lab_ecg",
+          "kind": "lab_imaging",
+          "title": "Eletrocardiograma de 12 derivações",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ],
+          "content": "Ritmo sinusal regular, FC 92 bpm, eixo normal. Supradesnivelamento do segmento ST de 4 mm nas derivações V1 a V4 (parede anterior extensa), sem alterações em derivações direitas (V3R/V4R) ou posteriores."
+        },
+        {
+          "id": "card_lab_rx_torax",
+          "kind": "lab_imaging",
+          "title": "Radiografia de Tórax no Leito",
+          "triggers": [
+            "rx de torax",
+            "rx torax",
+            "raio-x de torax",
+            "raio x de torax",
+            "radiografia de torax",
+            "radiografia",
+            "cupulas"
+          ],
+          "content": "Área cardíaca normal, parênquima pulmonar sem consolidações ou sinais de congestão vascular, cúpulas diafragmáticas livres."
+        },
+        {
+          "id": "card_lab_troponina",
+          "kind": "lab_imaging",
+          "title": "Marcadores de Necrose Miocárdica (Troponina I)",
+          "triggers": [
+            "troponina",
+            "curva de troponina",
+            "enzimas cardiacas",
+            "marcadores de necrose",
+            "grace"
+          ],
+          "content": "Amostra enviada ao laboratório (resultado em 45 minutos). Nota da banca: Em IAM com supra de ST, a terapia de reperfusão NÃO deve aguardar o resultado de biomarcadores."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2023-CG-PERF",
@@ -1842,8 +3018,8 @@
       "institution": "UNICAMP",
       "year": 2023,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: PRONTO-SOCORRO DE CIRURGIA GERAL\n\n**Candidato(a)**:\nVocê é o médico plantonista da Cirurgia Geral do HC-UNICAMP.\n\n**Cenário**:\n- Paciente: Márcia Regina, 42 anos, balconista.\n- Queixa: Dor súbita e excruciante no estômago há 2 horas que se espalhou por toda a barriga.\n\n**Sua Tarefa**:\n1. Realize anamnese direcionada e exame físico abdominal completo.\n2. Solicite e interprete os exames de imagem pertinentes.\n3. Estabeleça o diagnóstico sindrômico e etiológico provável.\n4. Indique as medidas de suporte imediato e a conduta cirúrgica definitiva.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 600,
+      "scenario_door_markdown": "### ESTAÇÃO: PRONTO-SOCORRO DE CIRURGIA GERAL\n\n**Candidato(a)**:\nVocê é o médico plantonista da Cirurgia Geral do HC-UNICAMP.\n\n**Cenário**:\n- Paciente: Márcia Regina, 42 anos, balconista.\n- Queixa: Dor súbita e excruciante no estômago há 2 horas que se espalhou por toda a barriga.\n\n**Sua Tarefa**:\n1. Realize anamnese direcionada e exame físico abdominal completo.\n2. Solicite e interprete os exames de imagem pertinentes.\n3. Estabeleça o diagnóstico sindrômico e etiológico provável.\n4. Indique as medidas de suporte imediato e a conduta cirúrgica definitiva.\n\n*Tempo de prova: 10 minutos.*",
       "patient_persona": {
         "name": "Márcia Regina",
         "age": 42,
@@ -1980,7 +3156,7 @@
           "id": "item_1",
           "title": "Apresentação e Relação Médico-Paciente",
           "description": "Apresenta-se à paciente com respeito e tranquilidade em momento de dor aguda intensa.",
-          "weight": 0.5,
+          "weight": 0.7,
           "category": "relacao_medico_paciente",
           "keywords": [
             "bom dia",
@@ -1994,7 +3170,7 @@
           "id": "item_2",
           "title": "História de Uso Crônico de AINEs e Sintomas Pépticos",
           "description": "Investiga dor em facada súbita e pergunta ativamente sobre uso de anti-inflamatórios e histórico de queimação prévia.",
-          "weight": 1.0,
+          "weight": 0.9,
           "category": "anamnese",
           "keywords": [
             "anti-inflamatório",
@@ -2009,7 +3185,7 @@
           "id": "item_3",
           "title": "Exame Físico Abdominal Metódico",
           "description": "Verifica inspeção, palpação com defesa involuntária (abdome em tábua), descompressão brusca e percussão hepática (Jobert).",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "exame_fisico",
           "keywords": [
             "abdome em tábua",
@@ -2024,7 +3200,7 @@
           "id": "item_4",
           "title": "Solicitação Correta de Radiografia em Cúpulas Diafragmáticas",
           "description": "Solicita radiografia de tórax em cúpulas diafragmáticas em pé (ou decúbito com raios horizontais / Hjelm-Laurell se imóvel).",
-          "weight": 1.5,
+          "weight": 0.8,
           "category": "exames_complementares",
           "keywords": [
             "raio-x",
@@ -2053,7 +3229,7 @@
           "id": "item_6",
           "title": "Medidas Imediatas de Suporte Clínico",
           "description": "Prescreve jejum absoluto imediato, sonda nasogástrica (SNG) aberta e hidratação venosa rápida com cristaloide.",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "conduta_tratamento",
           "keywords": [
             "jejum",
@@ -2068,7 +3244,7 @@
           "id": "item_7",
           "title": "Antibioticoterapia de Amplo Espectro e Analgesia",
           "description": "Prescreve antibioticoterapia cobrindo gram-negativos e anaeróbios (ex: Ceftriaxona + Metronidazol ou Pip-Tazo) e analgesia venosa.",
-          "weight": 1.0,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "antibiótico",
@@ -2082,7 +3258,7 @@
           "id": "item_8",
           "title": "Indicação Cirúrgica de Urgência",
           "description": "Indica laparotomia ou laparoscopia exploradora imediata para fechamento da perfuração e lavagem da cavidade peritoneal.",
-          "weight": 1.5,
+          "weight": 0.8,
           "category": "conduta_tratamento",
           "keywords": [
             "cirurgia",
@@ -2096,7 +3272,7 @@
           "id": "item_9",
           "title": "Explicação e Termo de Consentimento à Paciente",
           "description": "Comunica a necessidade de cirurgia de urgência de forma clara à paciente e solicita reserva de concentrado e vaga de UTI.",
-          "weight": 0.5,
+          "weight": 1.2,
           "category": "relacao_medico_paciente",
           "keywords": [
             "cirurgia",
@@ -2104,6 +3280,47 @@
             "consentimento",
             "explicar",
             "família"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Verificação de Sinais Vitais e Acesso Venoso Imediato",
+          "description": "Solicita sinais vitais completos, acesso venoso calibroso e monitorização clínica diante do risco de sepse abdominal.",
+          "weight": 0.6,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "acesso venoso",
+            "monitorização",
+            "pressão arterial"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Prescrição de Analgesia Adequada e Inibidor de Bomba de Prótons EV",
+          "description": "Prescreve analgesia venosa (sem AINEs) e inibidor de bomba de prótons endovenoso (omeprazol/pantoprazol EV).",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "analgesia",
+            "omeprazol",
+            "pantoprazol",
+            "inibidor de bomba",
+            "suspender aine"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Esclarecimento da Cirurgia de Urgência e Consentimento à Paciente",
+          "description": "Explica à paciente de forma empática o diagnóstico de perfuração gástrica e a necessidade de cirurgia imediata.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "explico",
+            "consentimento",
+            "cirurgia",
+            "perfuração",
+            "márcia"
           ]
         }
       ],
@@ -2135,7 +3352,145 @@
         }
       ],
       "source": "Sabiston / Diretriz WSES de Úlcera Péptica Perfurada / Cirurgia Geral HC-UNICAMP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, foi de repente! Uma dor insuportável no estômago, parecia uma facada! Agora a barriga inteira tá dura e dói até pra respirar.",
+        "emotional_state": "Imóvel na maca em posição antálgica, fácies de dor aguda, evita tossir ou mexer o abdome.",
+        "only_reveal_if_asked": {
+          "inicio_dor": "Começou de forma súbita e excruciante há 4 horas no epigástrio e rapidamente tomou a barriga toda.",
+          "uso_aines": "Toma Diclofenaco e Ibuprofeno quase todos os dias há 6 meses por dor nas costas sem protetor gástrico.",
+          "sintomas_associados": "Teve náuseas e calafrios, sem diarreia ou vômitos fecaloides.",
+          "habitos_hpylori": "Fuma meio maço por dia e toma café forte; nunca fez endoscopia antes.",
+          "alergias_cirurgias": "Sem alergias a medicamentos e sem cirurgias abdominais prévias."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 100x60 mmHg, FC: 118 bpm, FR: 24 irpm, SATO2: 97% em ar ambiente, TEMP: 37.8 °C, HGT: 110 mg/dL"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia",
+            "posicao antalgica",
+            "sudorese"
+          ],
+          "content": "Posição antálgica imóvel no leito, fácies de sofrimento agudo, sudorese fria, taquicárdico e taquipneico."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "bulhas",
+            "sopros"
+          ],
+          "content": "Taquicardia sinusal rítmica, sem sopros audíveis."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta e Inspeção Respiratória",
+          "triggers": [
+            "ausculta pulmonar",
+            "inspecao toracica",
+            "padrao respiratorio"
+          ],
+          "content": "Respiração superficial e rápida limitada pela dor abdominal; murmúrio vesicular preservado bilateralmente."
+        },
+        {
+          "id": "card_pe_palpacao_abdominal",
+          "kind": "physical_exam",
+          "title": "Palpação Abdominal e Descompressão Brusca",
+          "triggers": [
+            "palpacao abdominal",
+            "palpacao do abdome",
+            "palpar abdome",
+            "descompressao brusca",
+            "blumberg",
+            "defesa abdominal",
+            "abdome em tabua"
+          ],
+          "content": "Abdome tenso, com defesa involuntária difusa ('abdome em tábua'). Descompressão brusca difusamente positiva (sinal de Blumberg generalizado)."
+        },
+        {
+          "id": "card_pe_percussao_abdominal",
+          "kind": "physical_exam",
+          "title": "Percussão Abdominal (Sinal de Jobert)",
+          "triggers": [
+            "percussao abdominal",
+            "percussao do abdome",
+            "percutir abdome",
+            "jobert",
+            "macicez hepatica"
+          ],
+          "content": "Perda da macicez hepática à percussão, com timpanismo em hipocôndrio direito (Sinal de Jobert presente)."
+        },
+        {
+          "id": "card_pe_ausculta_abdominal",
+          "kind": "physical_exam",
+          "title": "Ausculta Abdominal (Ruídos Hidroaéreos)",
+          "triggers": [
+            "ausculta abdominal",
+            "ausculta do abdome",
+            "ruidos hidroaereos",
+            "rha"
+          ],
+          "content": "Ruídos hidroaéreos abolidos à ausculta abdominal."
+        },
+        {
+          "id": "card_pe_toque_retal",
+          "kind": "physical_exam",
+          "title": "Toque Retal",
+          "triggers": [
+            "toque retal",
+            "exame proctologico"
+          ],
+          "content": "Toque retal sem massas palpáveis; dor intensa em fundo de saco de Douglas."
+        },
+        {
+          "id": "card_lab_rx_torax",
+          "kind": "lab_imaging",
+          "title": "Radiografia de Tórax em PA (em cúpulas)",
+          "triggers": [
+            "rx de torax",
+            "rx torax",
+            "raio-x de torax",
+            "raio x de torax",
+            "radiografia de torax",
+            "radiografia",
+            "cupulas"
+          ],
+          "content": "Presença de ar livre subdiafragmático bilateral evidente sob as cúpulas (pneumoperitônio maciço), sem derrame pleural."
+        },
+        {
+          "id": "card_lab_hemograma",
+          "kind": "lab_imaging",
+          "title": "Hemograma e Bioquímica",
+          "triggers": [
+            "hemograma",
+            "leucograma",
+            "plaquetas",
+            "bioquimica"
+          ],
+          "content": "Leucócitos: 16.800/mm³ com 10% de bastões. PCR: 145 mg/L. Creatinina: 1,1 mg/dL. Lactato: 2,2 mmol/L."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2024-PED-ANAF",
@@ -2145,8 +3500,8 @@
       "institution": "UNICAMP",
       "year": 2024,
       "difficulty": "hard",
-      "duration_seconds": 480,
-      "scenario_door_markdown": "### ESTAÇÃO: EMERGÊNCIA PEDIÁTRICA\n\n**Candidato(a)**:\nVocê é o médico de plantão na Sala de Urgência Pediátrica do Hospital de Clínicas da UNICAMP.\n\n**Cenário**:\n- Paciente: Lucas, 3 anos (peso estimado: 15 kg), trazido nos braços da mãe aos prantos.\n- Queixa: O menino comeu pasta de amendoim há 20 minutos e começou a vomitar, empolar o corpo inteiro e ficar roxo para respirar.\n\n**Sua Tarefa**:\n1. Execute a avaliação rápida da criança pela abordagem ABCDE.\n2. Reconheça a gravidade e estabeleça o diagnóstico sindrômico.\n3. Prescreva a medicação de primeira linha salvadora de vida com dose e via corretas.\n4. Estabeleça as condutas secundárias e orientação à mãe.\n\n*Tempo de prova: 8 minutos.*",
+      "duration_seconds": 600,
+      "scenario_door_markdown": "### ESTAÇÃO: EMERGÊNCIA PEDIÁTRICA\n\n**Candidato(a)**:\nVocê é o médico de plantão na Sala de Urgência Pediátrica do Hospital de Clínicas da UNICAMP.\n\n**Cenário**:\n- Paciente: Lucas, 3 anos (peso estimado: 15 kg), trazido nos braços da mãe aos prantos.\n- Queixa: O menino comeu pasta de amendoim há 20 minutos e começou a vomitar, empolar o corpo inteiro e ficar roxo para respirar.\n\n**Sua Tarefa**:\n1. Execute a avaliação rápida da criança pela abordagem ABCDE.\n2. Reconheça a gravidade e estabeleça o diagnóstico sindrômico.\n3. Prescreva a medicação de primeira linha salvadora de vida com dose e via corretas.\n4. Estabeleça as condutas secundárias e orientação à mãe.\n\n*Tempo de prova: 10 minutos.*",
       "patient_persona": {
         "name": "Mãe do Lucas (Dona Carla)",
         "age": 29,
@@ -2237,7 +3592,7 @@
           "id": "item_1",
           "title": "Acolhimento da Mãe e Avaliação Rápida ABCDE",
           "description": "Acolhe a mãe em desespero e inicia imediatamente a avaliação sistemática do triângulo pediátrico e ABCDE.",
-          "weight": 1.0,
+          "weight": 0.8,
           "category": "anamnese",
           "keywords": [
             "calma",
@@ -2265,7 +3620,7 @@
           "id": "item_3",
           "title": "Prescrição Imediata de Adrenalina IM (1ª Linha)",
           "description": "Prescreve Adrenalina 1:1000 sem diluição na dose de 0,01 mg/kg (0,15 ml para 15 kg) por via Intramuscular (IM) na face anterolateral da coxa.",
-          "weight": 2.5,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "adrenalina",
@@ -2282,7 +3637,7 @@
           "id": "item_4",
           "title": "Oxigenioterapia de Alto Fluxo e Posicionamento",
           "description": "Aplica oxigênio sob máscara com reservatório a 10-15 L/min e mantém a criança deitada com membros inferiores elevados.",
-          "weight": 1.5,
+          "weight": 1.9,
           "category": "conduta_tratamento",
           "keywords": [
             "oxigênio",
@@ -2296,7 +3651,7 @@
           "id": "item_5",
           "title": "Acesso Venoso e Ressuscitação Volêmica",
           "description": "Obtém acesso venoso (ou intraósseo se falha) e prescreve expansão rápida com Soro Fisiológico a 20 ml/kg em bólus.",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "acesso venoso",
@@ -2310,7 +3665,7 @@
           "id": "item_6",
           "title": "Medicamentos Coadjuvantes de 2ª Linha",
           "description": "Prescreve corticoide sistêmico (Metilprednisolona/Hidrocortisona) e anti-histamínico IV, ressaltando que são coadjuvantes pós-adrenalina.",
-          "weight": 1.0,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "corticoide",
@@ -2324,7 +3679,7 @@
           "id": "item_7",
           "title": "Orientação de Observação e Prescrição de Autoinjetor",
           "description": "Informa a necessidade de monitorização por pelo menos 6-12 horas pelo risco de reação bifásica e orienta caneta autoinjetora de adrenalina.",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "relacao_medico_paciente",
           "keywords": [
             "reação bifásica",
@@ -2332,6 +3687,78 @@
             "autoinjetor",
             "caneta",
             "alergista"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Investigação de Peso, Alimento Desencadeante e Alergias Prévias",
+          "description": "Pergunta à mãe o peso aproximado da criança (15 kg), o alimento ingerido, tempo de início e alergias anteriores.",
+          "weight": 0.5,
+          "category": "anamnese",
+          "keywords": [
+            "peso",
+            "15 kg",
+            "amendoim",
+            "alimento",
+            "quanto tempo",
+            "alergias"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Avaliação de Sinais Vitais, Via Aérea e Perfusão Periférica",
+          "description": "Verifica sinais vitais completos, inspeção de via aérea (estridor/angioedema) e tempo de enchimento capilar.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "via aérea",
+            "estridor",
+            "enchimento capilar",
+            "perfusão"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Posicionamento Adequado e Remoção do Alérgeno / Suporte O2",
+          "description": "Mantém criança em posição confortável/decúbito dorsal se hipotensa (sem sentar bruscamente) e fornece oxigênio em alto fluxo.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "oxigênio",
+            "máscara",
+            "decúbito",
+            "alto fluxo",
+            "posicionamento"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Prescrição de Anti-Histamínico/Corticoide apenas como Adjuvantes",
+          "description": "Reconhece que anti-histamínico e corticoide são exclusivamente adjuvantes após a adrenalina (nunca substituem epinefrina).",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "adjuvante",
+            "corticoide",
+            "anti-histamínico",
+            "hidrocortisona",
+            "prometazina"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Plano de Alta Seguro (Adrenalina Autoinjetável e Alergologia)",
+          "description": "Orienta plano de ação contra anafilaxia, prevenção de amendoim, prescrição de adrenalina autoinjetável e encaminhamento ao alergista.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "autoinjetável",
+            "epipen",
+            "alergista",
+            "alergologista",
+            "evitar amendoim",
+            "plano de ação"
           ]
         }
       ],
@@ -2363,7 +3790,96 @@
         }
       ],
       "source": "Diretriz SBP / WAO de Anafilaxia / Emergência Pediátrica HC-UNICAMP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, salva meu filho! Ele comeu um biscoito com amendoim na pracinha e começou a vomitar e tossir com um barulho estranho no pescoço! O rostinho dele tá todo inchado!",
+        "emotional_state": "Mãe em pânico segurando criança agitada, com voz rouca e respiração ruidosa.",
+        "only_reveal_if_asked": {
+          "exposicao_tempo": "Comeu um biscoito recheado com pasta de amendoim há 15 minutos e os sintomas começaram em 5 minutos.",
+          "sintomas_sistemicos": "Vomitou duas vezes, apareceu placas vermelhas coçando pelo corpo e chiado imediato.",
+          "antecedentes_alergicos": "Nunca tinha comido amendoim antes; tem dermatite atópica leve desde bebê.",
+          "peso_aproximado": "Pesou 15 kg na consulta de puericultura da semana passada.",
+          "medicacoes_previas": "Não tomou nenhum antialérgico ou corticoide em casa antes de correr para o pronto-socorro."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 78x45 mmHg, FC: 165 bpm, FR: 48 irpm, SATO2: 89% em ar ambiente, TEMP: 36.8 °C, PESO: 15 kg"
+        },
+        {
+          "id": "card_pe_inspecao_via_aerea",
+          "kind": "physical_exam",
+          "title": "Inspeção de Via Aérea, Lábios e Orofaringe",
+          "triggers": [
+            "via aerea",
+            "inspecao oral",
+            "oroscopia",
+            "estridor",
+            "angioedema",
+            "labios"
+          ],
+          "content": "Edema de lábios e pálpebras, rouquidão intensa e estridor inspiratório marcante."
+        },
+        {
+          "id": "card_pe_inspecao_toracica",
+          "kind": "physical_exam",
+          "title": "Inspeção Respiratória / Tiragens",
+          "triggers": [
+            "inspecao toracica",
+            "tiragem",
+            "esforco respiratorio"
+          ],
+          "content": "Tiragem intercostal e de fúrcula moderada a grave."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "sibilos",
+            "murmurio vesicular"
+          ],
+          "content": "Ausculta pulmonar com sibilos inspiratórios e expiratórios difusos."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Palpação de Pulsos e Perfusão Periférica",
+          "triggers": [
+            "pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "tec",
+            "ausculta cardiaca"
+          ],
+          "content": "Taquicardia acentuada, pulsos radiais finos, tempo de enchimento capilar de 4 segundos."
+        },
+        {
+          "id": "card_pe_inspecao_pele",
+          "kind": "physical_exam",
+          "title": "Inspeção Cutânea (Urticária)",
+          "triggers": [
+            "inspecao de pele",
+            "inspecao cutanea",
+            "ectoscopia de pele",
+            "urticaria",
+            "placas"
+          ],
+          "content": "Placas eritematosas, elevadas e pruriginosas (urticária) disseminadas por todo o corpo e angioedema facial."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2024-GO-PREECL",
@@ -2482,7 +3998,7 @@
           "id": "item_1",
           "title": "Acolhimento e Aferição Adequada da Pressão Arterial",
           "description": "Acolhe a gestante, confirma a PA em decúbito lateral esquerdo ou sentada com manguito adequado.",
-          "weight": 0.5,
+          "weight": 0.8,
           "category": "relacao_medico_paciente",
           "keywords": [
             "acolhimento",
@@ -2495,7 +4011,7 @@
           "id": "item_2",
           "title": "Identificação dos Sinais Premonitórios de Eclâmpsia",
           "description": "Identifica a tríade de cefaleia refratária + escotomas visuais + epigastralgia em barra associada à hiperreflexia.",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "anamnese",
           "keywords": [
             "cefaleia",
@@ -2509,7 +4025,7 @@
           "id": "item_3",
           "title": "Avaliação da Vitalidade Fetal e Exame Obstétrico",
           "description": "Realiza ausculta do BCF (142 bpm) e palpação obstétrica para avaliar tônus e contrações uterinas.",
-          "weight": 1.0,
+          "weight": 0.9,
           "category": "exame_fisico",
           "keywords": [
             "batimentos cardiofetais",
@@ -2522,7 +4038,7 @@
           "id": "item_4",
           "title": "Prescrição Imediata do Esquema de Sulfato de Magnésio",
           "description": "Prescreve Sulfato de Magnésio pelo esquema Zuspan (ataque 4g IV em 15-20 min + manutenção 1-2g/h em BIC contínua) ou Pritchard.",
-          "weight": 2.5,
+          "weight": 1.3,
           "category": "conduta_tratamento",
           "keywords": [
             "sulfato de magnésio",
@@ -2536,7 +4052,7 @@
           "id": "item_5",
           "title": "Prescrição de Anti-Hipertensivo de Ação Rápida",
           "description": "Prescreve Hidralazina IV (5 mg a cada 20 min) ou Nifedipino oral para PAD >= 110 mmHg, com meta de PAD entre 90 e 100 mmHg.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "hidralazina",
@@ -2549,7 +4065,7 @@
           "id": "item_6",
           "title": "Vigilância de Intoxicação por Magnésio e Antídoto Beira-Leito",
           "description": "Orienta monitorização de reflexo patelar, diurese horária (>25 ml/h) e FR (>16 irpm), deixando Gluconato de Cálcio 10% beira-leito.",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "gluconato de cálcio",
@@ -2563,7 +4079,7 @@
           "id": "item_7",
           "title": "Planejamento e Corticoterapia para Maturidade Pulmonar",
           "description": "Prescreve corticoterapia para maturação pulmonar fetal (Betametasona 12 mg IM) por se tratar de gestação de 34 semanas.",
-          "weight": 1.0,
+          "weight": 0.8,
           "category": "conduta_tratamento",
           "keywords": [
             "betametasona",
@@ -2576,7 +4092,7 @@
           "id": "item_8",
           "title": "Comunicação Empática do Risco e Internação em UTI/UCO",
           "description": "Informa a paciente e família sobre a necessidade de internação em unidade de terapia intensiva / cuidados obstétricos.",
-          "weight": 0.5,
+          "weight": 0.9,
           "category": "relacao_medico_paciente",
           "keywords": [
             "internação",
@@ -2585,6 +4101,64 @@
             "segurança",
             "bebê",
             "explicar"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Aferição da Pressão Arterial, Sinais Vitais e Edema",
+          "description": "Solicita aferição de PA (técnica adequada) e demais sinais vitais e pesquisa edema facial e de membros inferiores.",
+          "weight": 0.6,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "pressão arterial",
+            "edema",
+            "cacifo"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Verificação de Vitalidade Fetal (BCF) e Dinâmica Uterina",
+          "description": "Realiza ausculta dos batimentos cardiofetais (BCF) e palpação obstétrica/tônus uterino.",
+          "weight": 0.6,
+          "category": "exame_fisico",
+          "keywords": [
+            "bcf",
+            "batimentos cardiofetais",
+            "altura uterina",
+            "tônus uterino",
+            "vitalidade fetal"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Solicitação de Exames Laboratoriais de Lesão de Órgão-Alvo (HELLP)",
+          "description": "Solicita hemograma com plaquetas, TGO, TGP, LDH, bilirrubinas, creatinina e proteinúria para rastrear síndrome HELLP.",
+          "weight": 0.6,
+          "category": "exames_complementares",
+          "keywords": [
+            "plaquetas",
+            "tgo",
+            "tgp",
+            "ldh",
+            "hellp",
+            "proteinúria",
+            "creatinina"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Explicação Clara da Gravidade e Planejamento Obstétrico à Paciente",
+          "description": "Comunica com empatia à gestante o diagnóstico de pré-eclâmpsia grave, a necessidade do sulfato de magnésio e interrupção oportuna.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "explico",
+            "fernanda",
+            "bebê",
+            "internação",
+            "parto",
+            "pré-eclâmpsia"
           ]
         }
       ],
@@ -2617,7 +4191,113 @@
         }
       ],
       "source": "Protocolo FEBRASGO / ACOG / MS de Síndromes Hipertensivas na Gestação / UNIFESP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, minha cabeça tá explodindo! Começou ontem à noite e agora tô enxergando uns pontinhos piscando na minha frente e com uma queimação forte no estômago.",
+        "emotional_state": "Irritada pela dor intensa, mão na cabeça e no epigástrio, rosto e mãos visivelmente edemaciados.",
+        "only_reveal_if_asked": {
+          "idade_gestacional": "Primeira gestação, exatamente 34 semanas confirmadas por ultrassom de 1º trimestre.",
+          "sintomas_iminencia": "Cefaleia frontal pulsátil intensa, escotomas cintilantes e dor epigástrica em barra desde ontem.",
+          "movimentacao_fetal": "Sente o bebê mexer normalmente hoje, sem contrações regulares nem perda de líquido ou sangue.",
+          "pre_natal_pressao": "Pressão era 110x70 mmHg até a consulta passada; nunca foi hipertensa fora da gravidez.",
+          "alergias_diurese": "Sem alergias; notou que urinou menos desde ontem à noite."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 175x115 mmHg, FC: 88 bpm, FR: 18 irpm, SATO2: 98%, TEMP: 36.6 °C"
+        },
+        {
+          "id": "card_pe_reflexos_osteotendineos",
+          "kind": "physical_exam",
+          "title": "Exame Neurológico e Reflexos Osteotendíneos (Patelar / Clônus)",
+          "triggers": [
+            "reflexo patelar",
+            "reflexos",
+            "clonus",
+            "exame neurologico",
+            "hiperreflexia"
+          ],
+          "content": "Consciente e orientada, queixa de escotomas cintilantes; reflexo patelar hiperativo com clônus esgotável de 3 batimentos."
+        },
+        {
+          "id": "card_pe_altura_uterina_palpacao",
+          "kind": "physical_exam",
+          "title": "Altura Uterina e Palpação Obstétrica (Tônus / Dinâmica)",
+          "triggers": [
+            "altura uterina",
+            "palpacao obstetrica",
+            "tonus uterino",
+            "dinamica uterina",
+            "manobras de leopold"
+          ],
+          "content": "Altura uterina de 32 cm, tônus uterino normal, ausência de dinâmica de trabalho de parto."
+        },
+        {
+          "id": "card_pe_ausculta_bcf",
+          "kind": "physical_exam",
+          "title": "Ausculta de Batimentos Cardiofetais (BCF)",
+          "triggers": [
+            "bcf",
+            "batimentos cardiofetais",
+            "ausculta fetal",
+            "sonar"
+          ],
+          "content": "Batimentos cardiofetais (BCF) de 142 bpm, rítmicos."
+        },
+        {
+          "id": "card_pe_exame_especular_toque_vaginal",
+          "kind": "physical_exam",
+          "title": "Exame Especular e Toque Vaginal",
+          "triggers": [
+            "toque vaginal",
+            "exame especular",
+            "colo uterino"
+          ],
+          "content": "Colo grosso, posterior e fechado, sem perdas líquidas ou sangramento vaginal."
+        },
+        {
+          "id": "card_pe_pesquisa_edema",
+          "kind": "physical_exam",
+          "title": "Pesquisa de Edema (Sinal do Cacifo / Face)",
+          "triggers": [
+            "pesquisa de edema",
+            "cacifo",
+            "edema de membros",
+            "edema facial"
+          ],
+          "content": "Edema em membros inferiores 3+/4+ com cacifo positivo e edema facial visível."
+        },
+        {
+          "id": "card_lab_laboratorio_urgencia",
+          "kind": "lab_imaging",
+          "title": "Painel Laboratorial de Pré-Eclâmpsia",
+          "triggers": [
+            "hemograma",
+            "plaquetas",
+            "tgo",
+            "tgp",
+            "transaminases",
+            "ldh",
+            "proteinuria",
+            "creatinina",
+            "acido urico",
+            "painel de pre-eclampsia",
+            "painel laboratorial"
+          ],
+          "content": "Plaquetas: 135.000/mm³. TGO: 68 U/L, TGP: 72 U/L. Creatinina: 1,0 mg/dL. Ácido úrico: 6,8 mg/dL. Fita urinária: Proteinúria 3+."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2023-PREV-SPIKES",
@@ -2691,7 +4371,7 @@
           "id": "item_1",
           "title": "S - Setting (Preparação do Ambiente e Conexão Inicial)",
           "description": "Garante ambiente privativo, senta-se próximo, faz contato visual, desliga distrações e pergunta se o paciente gostaria da presença de acompanhante.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "relacao_medico_paciente",
           "keywords": [
             "privacidade",
@@ -2705,7 +4385,7 @@
           "id": "item_2",
           "title": "P - Perception (Exploração da Percepção do Paciente)",
           "description": "Pergunta o que o paciente já sabe sobre o quadro, o que ele entende sobre a investigação e como tem se sentido.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "anamnese",
           "keywords": [
             "o que o senhor sabe",
@@ -2718,7 +4398,7 @@
           "id": "item_3",
           "title": "I - Invitation (Convite e Consentimento para Informações)",
           "description": "Pergunta até onde o paciente gostaria de saber os detalhes do resultado e como prefere receber a notícia.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "relacao_medico_paciente",
           "keywords": [
             "gostaria de saber",
@@ -2731,7 +4411,7 @@
           "id": "item_4",
           "title": "K - Knowledge (Aviso Prévio e Transmissão em Linguagem Clara)",
           "description": "Utiliza frase de aviso prévio ('Infelizmente não trago boas notícias...'), comunica o tumor em termos acessíveis e faz pausas reflexivas.",
-          "weight": 2.0,
+          "weight": 1.4,
           "category": "diagnostico",
           "keywords": [
             "aviso prévio",
@@ -2746,7 +4426,7 @@
           "id": "item_5",
           "title": "E - Empathy (Acolhimento Empático e Validação de Sentimentos)",
           "description": "Respeita o silêncio, oferece suporte humano, valida as emoções ('Compreendo o seu medo, é natural se sentir assim').",
-          "weight": 2.0,
+          "weight": 1.3,
           "category": "relacao_medico_paciente",
           "keywords": [
             "compreendo",
@@ -2761,7 +4441,7 @@
           "id": "item_6",
           "title": "S - Strategy (Pactuação de Estratégia e Continuidade)",
           "description": "Apresenta o plano de estadiamento e encaminhamento para a equipe de oncologia/cirurgia com garantia de não abandono.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "encaminhamento",
@@ -2769,6 +4449,87 @@
             "estadiamento",
             "não vamos te abandonar",
             "próxima consulta"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Apresentação Pessoal e Confirmação da Identificação do Paciente",
+          "description": "Apresenta-se pelo nome ao paciente, chama-o pelo nome completo (Seu Valdir) e senta-se na mesma altura sem barreiras.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "valdir",
+            "sou o médico",
+            "sente-se",
+            "meu nome"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Escuta dos Sintomas e Perda Ponderal com Linguagem Acessível",
+          "description": "Explora disfagia e perda ponderal recente e evita jargões técnicos ('adenocarcinoma invasivo'), usando palavras compreensíveis.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "linguagem clara",
+            "sem jargões",
+            "emagrecimento",
+            "entalar",
+            "explicar de forma clara"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Pausa Estratégica Após Má Notícia e Validação Emocional",
+          "description": "Faz pausa de silêncio respeitoso imediatamente após comunicar o câncer e valida explicitamente a tristeza/medo sem promessas falsas.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "pausa",
+            "entendo sua tristeza",
+            "compreendo",
+            "é natural sentir",
+            "momento difícil"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Checagem de Dúvidas e Compreensão do Diagnóstico",
+          "description": "Pergunta ativamente o que Seu Valdir compreendeu do laudo e abre espaço para esclarecer dúvidas imediatas.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "alguma dúvida",
+            "ficou claro",
+            "gostaria de perguntar",
+            "compreendeu"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Identificação da Rede de Apoio Familiar",
+          "description": "Investiga quem compõe a rede de suporte (esposa/filha) e oferece acolhimento conjunto ou retorno acompanhado.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "família",
+            "esposa",
+            "filha",
+            "rede de apoio",
+            "trazer um familiar"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Garantia de Não Abandono e Retorno Programado na APS",
+          "description": "Assegura acompanhamento longitudinal contínuo na UBS em paralelo à oncologia, entregando resumo/encaminhamento organizado.",
+          "weight": 0.4,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "não vai ficar sozinho",
+            "retorno agendado",
+            "acompanhar na ubs",
+            "continuidade do cuidado"
           ]
         }
       ],
@@ -2801,7 +4562,70 @@
         }
       ],
       "source": "Protocolo SPIKES (Baile et al.) / Comunicação em Oncologia e Atenção Primária UNIFESP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, vim pegar o resultado daquele exame que fiz da garganta pro estômago. Tomara que seja só uma gastrite boba, né?",
+        "emotional_state": "Inicialmente tenta parecer calmo e otimista; emudece e mareja os olhos ao ouvir confirmação de câncer/malignidade.",
+        "only_reveal_if_asked": {
+          "percepcao_quadro": "Acha que é só gastrite, mas confessa estar preocupado porque perdeu 6 kg em 1 mês e a comida às vezes entala.",
+          "desejo_informacao": "Quer saber toda a verdade de forma direta e honesta, sem rodeios, mesmo que seja grave.",
+          "rede_apoio_familia": "Mora com a esposa e a filha de 18 anos; lamenta ter vindo sozinho hoje.",
+          "antecedentes_habitos": "Fumou por 25 anos e parou há 5; nega cirurgias prévias ou alergias.",
+          "principais_duvidas": "Quando entende o diagnóstico, teme sofrer com dor e pergunta se ainda existe chance de tratamento e cura."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 130x85 mmHg, FC: 76 bpm, FR: 16 irpm, TEMP: 36.5 °C"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia"
+          ],
+          "content": "Paciente lúcido, corado, emagrecido, aparentando ansiedade contida."
+        },
+        {
+          "id": "card_pe_palpacao_linfonodal_abdominal",
+          "kind": "physical_exam",
+          "title": "Palpação de Cadeias Linfonodais e Abdome",
+          "triggers": [
+            "palpacao de linfonodos",
+            "virchow",
+            "fossa supraclavicular",
+            "palpacao abdominal",
+            "irma maria jose"
+          ],
+          "content": "Sem linfonodomegalias palpáveis em fossas supraclaviculares (ausência de nódulo de Virchow) ou periumbilicais."
+        },
+        {
+          "id": "card_lab_biopsia",
+          "kind": "lab_imaging",
+          "title": "Laudo Anatomopatológico de Biópsia Gástrica",
+          "triggers": [
+            "biopsia",
+            "anatomopatologico",
+            "laudo anatomopatologico",
+            "laudo da biopsia",
+            "biopsia gastrica"
+          ],
+          "content": "Fragmentos de mucosa gástrica exibindo Adenocarcinoma Tubular Invasivo, moderadamente diferenciado. Pesquisa de Helicobacter pylori positiva."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2024-CM-TV",
@@ -2995,7 +4819,7 @@
           "id": "item_1",
           "title": "Reconhecimento dos 4 Sinais de Instabilidade do ACLS",
           "description": "Identifica a hipotensão arterial severa (PA 75x45), alteração do nível de consciência e congestão pulmonar.",
-          "weight": 2.0,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "hipotensão",
@@ -3009,7 +4833,7 @@
           "id": "item_2",
           "title": "Solicitação do Cardioversor / Desfibrilador Manual",
           "description": "Pede imediatamente o carrinho de parada com desfibrilador manual e pás adesivas no tórax.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "desfibrilador",
@@ -3023,7 +4847,7 @@
           "id": "item_3",
           "title": "Modo SINCRONIZADO Obrigatório",
           "description": "Ativa o botão de SINCRONIZAÇÃO no monitor para evitar o fenômeno R sobre T e fibrilação ventricular iatrogênica.",
-          "weight": 2.5,
+          "weight": 1.8,
           "category": "conduta_tratamento",
           "keywords": [
             "sincronizar",
@@ -3036,7 +4860,7 @@
           "id": "item_4",
           "title": "Sedação e Analgesia Rápida",
           "description": "Prescreve sedação rápida com Etomidato ou Midazolam + Fentanil antes do choque elétrico na paciente consciente.",
-          "weight": 1.5,
+          "weight": 1.2,
           "category": "conduta_tratamento",
           "keywords": [
             "sedação",
@@ -3050,7 +4874,7 @@
           "id": "item_5",
           "title": "Aplicação da Cardioversão Elétrica com Carga Correta",
           "description": "Aplica o choque elétrico sincronizado de 100 Joules (bifásico) com segurança da equipe ('afasta todos').",
-          "weight": 2.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "100 joules",
@@ -3058,6 +4882,98 @@
             "afasta",
             "cardioversão elétrica",
             "segurança"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Apresentação Rápida e Comunicação Direta à Paciente e Equipe",
+          "description": "Identifica-se rapidamente à paciente, checa consciência e orienta a equipe quanto à emergência arrítmica.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sebastiana",
+            "sou o médico",
+            "equipe",
+            "vamos cuidar"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Anamnese Dirigida em Emergência (Cardiopatia Prévia e Alergias)",
+          "description": "Questiona rapidamente história de infarto/IC prévia, uso de medicações e alergias enquanto prepara o desfibrilador.",
+          "weight": 0.5,
+          "category": "anamnese",
+          "keywords": [
+            "infarto",
+            "insuficiência cardíaca",
+            "alergias",
+            "remédios"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Monitorização Multiparamétrica, Acesso Venoso e Oxigenoterapia",
+          "description": "Solicita monitorização contínua (pás/eletrodos), dois acessos venosos e suporte de oxigênio em sala de emergência.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "monitorização",
+            "acesso venoso",
+            "oxigênio",
+            "sinais vitais"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Checagem de Pulso Central e Critérios dos 5 Ds de Instabilidade",
+          "description": "Palpa pulso central (presente, diferenciando TV com pulso de PCR) e identifica sinais de instabilidade (hipotensão, rebaixamento, congestão).",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "pulso central",
+            "tem pulso",
+            "perfusão",
+            "ausculta pulmonar"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Afastamento da Equipe e Segurança Elétrica Antes do Choque",
+          "description": "Verbaliza segurança da equipe ('todos afastados, fonte de O2 afastada') antes do disparo sincronizado.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "afastem-se",
+            "todos afastados",
+            "segurança",
+            "afastar oxigênio"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Reavaliação Pós-Cardioversão (Ritmo Sinusal, PA e ECG 12d)",
+          "description": "Reavalia ritmo no monitor, checa pulso e sinais vitais pós-choque e solicita ECG de 12 derivações após reversão.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "reavaliação",
+            "ritmo sinusal",
+            "pós-choque",
+            "ecg após"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Investigação de Causa Reversível (Eletrólitos/Isquemia) e Internação",
+          "description": "Solicita eletrólitos (K+, Mg2+) e troponina após estabilização e indica vaga de UTI coronariana / cardiologia.",
+          "weight": 0.5,
+          "category": "exames_complementares",
+          "keywords": [
+            "eletrólitos",
+            "magnésio",
+            "troponina",
+            "uti",
+            "cardiologia"
           ]
         }
       ],
@@ -3089,7 +5005,97 @@
         }
       ],
       "source": "ACLS AHA 2020-2024 (Taquiarritmias com Instabilidade) / Pronto-Socorro UNIFESP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Ai doutor... meu coração tá pulando fora do peito... a vista tá escurecendo... vou apagar...",
+        "emotional_state": "Sonolenta, voz débil e entrecortada, extremidades frias e sudorese profusa.",
+        "only_reveal_if_asked": {
+          "inicio_palpitacoes": "As palpitações começaram de repente há 20 minutos acompanhadas de falta de ar e tontura forte.",
+          "antecedentes_cardiacos": "Teve infarto agudo do miocárdio há 4 anos e tem insuficiência cardíaca com fração de ejeção baixa.",
+          "medicacoes_em_uso": "Usa Enalapril, Carvedilol, Espironolactona e Furosemida; às vezes esquece de tomar à noite.",
+          "dor_toracica": "Sente leve desconforto precordial com sensação de desmaio iminente.",
+          "alergias": "Nega alergia a medicamentos ou anestésicos."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 75x45 mmHg, FC: 180 bpm, FR: 26 irpm, SATO2: 91% em ar ambiente"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Consciência",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "nivel de consciencia",
+            "glasgow",
+            "sudorese"
+          ],
+          "content": "Sonolenta, sudorese profusa e pele fria."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Palpação de Pulsos e Perfusão Periférica",
+          "triggers": [
+            "pulsos",
+            "palpacao de pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "tec"
+          ],
+          "content": "Má perfusão periférica, tempo de enchimento capilar de 4 segundos; pulsos centrais presentes porém finos e filiformes."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "bulhas",
+            "sopros"
+          ],
+          "content": "Ritmo cardíaco taquicárdico acelerado, bulhas hipofonéticas."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "estertores",
+            "crepitantes"
+          ],
+          "content": "Estertores crepitantes em terço inferior de ambos os hemitórax."
+        },
+        {
+          "id": "card_lab_ecg",
+          "kind": "lab_imaging",
+          "title": "Monitor Cardíaco e ECG de Ritmo",
+          "triggers": [
+            "ecg",
+            "eletrocardiograma",
+            "ecg 12",
+            "12 derivacoes",
+            "tracado",
+            "monitor cardiaco",
+            "ecg de ritmo"
+          ],
+          "content": "Taquicardia de QRS largo regular (> 120 ms) com frequência de 180 bpm, concordância positiva precordial e dissociação atrioventricular (Taquicardia Ventricular Monomórfica Sustentada)."
+        }
+      ]
     },
     {
       "code": "EINSTEIN-2024-CM-SEPSE",
@@ -3184,7 +5190,7 @@
           "id": "item_1",
           "title": "Reconhecimento Imediato de Sepse com Hipoperfusão Tecidual",
           "description": "Verifica PAM < 65 mmHg e lactato > 2 mmol/L caracterizando choque séptico de foco pulmonar.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "diagnostico",
           "keywords": [
             "sepse",
@@ -3197,7 +5203,7 @@
           "id": "item_2",
           "title": "Coleta Imediata de Lactato e Hemoculturas",
           "description": "Solicita lactato sérico e coleta de 2 pares de hemoculturas e cultura de escarro/urina ANTES do antibiótico.",
-          "weight": 2.0,
+          "weight": 1.1,
           "category": "exames_complementares",
           "keywords": [
             "hemocultura",
@@ -3210,7 +5216,7 @@
           "id": "item_3",
           "title": "Antibioticoterapia de Amplo Espectro em < 1 Hora",
           "description": "Prescreve antibiótico venoso cobrindo patógenos nosocomiais/comunitários graves (ex: Pip-Tazo ou Cefepime) em até 60 minutos.",
-          "weight": 2.5,
+          "weight": 1.6,
           "category": "conduta_tratamento",
           "keywords": [
             "antibiótico",
@@ -3224,7 +5230,7 @@
           "id": "item_4",
           "title": "Ressuscitação Volêmica com Cristaloide (30 ml/kg)",
           "description": "Inicia infusão intravenosa rápida de 30 ml/kg de Ringer Lactato ou Soro Fisiológico nas primeiras 3 horas.",
-          "weight": 2.5,
+          "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
             "30 ml/kg",
@@ -3238,7 +5244,7 @@
           "id": "item_5",
           "title": "Vasopressor Precoce (Noradrenalina)",
           "description": "Indica início precoce de Noradrenalina se PAM permanecer < 65 mmHg durante ou após a expansão com meta de PAM >= 65 mmHg.",
-          "weight": 1.5,
+          "weight": 1.3,
           "category": "conduta_tratamento",
           "keywords": [
             "noradrenalina",
@@ -3246,6 +5252,100 @@
             "pam 65",
             "terapia intensiva",
             "leito de uti"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Apresentação ao Acompanhante e Explicação da Gravidade",
+          "description": "Apresenta-se ao cuidador/familiar e explica de forma objetiva a gravidade do quadro infeccioso sistêmico.",
+          "weight": 0.4,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sou o médico",
+            "geraldo",
+            "família",
+            "quadro grave",
+            "explico"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Anamnese Dirigida de Foco Infeccioso, Alergias e Diurese",
+          "description": "Investiga tempo de febre/tosse, alergia a betalactâmicos, uso recente de antibióticos e débito urinário.",
+          "weight": 0.5,
+          "category": "anamnese",
+          "keywords": [
+            "alergia",
+            "antibiótico prévio",
+            "catarro",
+            "diurese",
+            "fralda"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Exame Físico Direcionado (Ausculta Pulmonar, Glasgow e Perfusão)",
+          "description": "Solicita sinais vitais, realiza ausculta pulmonar (estertores em base direita) e avalia Glasgow e tempo de enchimento capilar.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "ausculta pulmonar",
+            "glasgow",
+            "enchimento capilar",
+            "livedo"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Coleta de Lactato Arterial e Culturas Antes do Antibiótico",
+          "description": "Solicita lactato sérico, gasometria e 2 pares de hemoculturas (sem atrasar antimicrobiano além de 45-60 min).",
+          "weight": 0.5,
+          "category": "exames_complementares",
+          "keywords": [
+            "lactato",
+            "hemoculturas",
+            "gasometria",
+            "radiografia de tórax"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Reavaliação Dinâmica da Fluido-Responsividade e Lactato (3-6h)",
+          "description": "Indica reavaliação volêmica beira-leito (POCUS/variação de pulso) e nova dosagem de lactato sérico para avaliar clareamento.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "clareamento",
+            "novo lactato",
+            "reavaliar",
+            "fluido-responsividade"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Vigilância de Metas (PAM >= 65 mmHg e Diurese >= 0,5 mL/kg/h)",
+          "description": "Estabelece metas hemodinâmicas explícitas com sonda vesical de demora e acesso arterial/PAI quando em droga vasoativa.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "pam >= 65",
+            "65 mmhg",
+            "diurese",
+            "sonda vesical",
+            "pressão arterial invasiva"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Solicitação de Vaga em UTI / Terapia Intensiva",
+          "description": "Indica internação imediata em Unidade de Terapia Intensiva após início do pacote de 1 hora.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "uti",
+            "terapia intensiva",
+            "internação em uti"
           ]
         }
       ],
@@ -3272,7 +5372,95 @@
         }
       ],
       "source": "Surviving Sepsis Campaign 2021 / ILAS (Pacote de 1 Hora) / HIAE",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Ele tá muito quente desde ontem e quase não acorda hoje, tossindo uma secreção amarelada grossa.",
+        "emotional_state": "Cuidadora/acompanhante apreensiva ao lado do leito; paciente sonolento respondendo apenas a estímulo doloroso.",
+        "only_reveal_if_asked": {
+          "foco_infeccioso": "Há 4 dias começou com tosse produtiva com catarro amarelo espesso, febre de 39 °C e piora progressiva da respiração.",
+          "evolucao_consciencia": "Ficou desorientado ontem à noite e hoje de manhã quase não abre os olhos.",
+          "antecedentes_comorbidades": "Hipertenso, diabético tipo 2 e teve AVC isquêmico há 3 anos com hemiparesia sequelar.",
+          "diurese_alergias": "Não urinou nada na fralda nas últimas 12 horas; sem alergia conhecida a antibióticos.",
+          "uso_previo_atb": "Não tomou nenhum antibiótico em casa nem esteve internado nos últimos 3 meses."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 80x48 mmHg (PAM 58 mmHg), FC: 124 bpm, FR: 28 irpm, SATO2: 90% em ar ambiente, TEMP: 38.9 °C"
+        },
+        {
+          "id": "card_pe_avaliacao_neurologica_glasgow",
+          "kind": "physical_exam",
+          "title": "Avaliação Neurológica / Nível de Consciência",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "nivel de consciencia",
+            "glasgow"
+          ],
+          "content": "Sonolento, respondendo apenas a estímulos dolorosos."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Perfusão Periférica, TEC e Livedo",
+          "triggers": [
+            "perfusao",
+            "enchimento capilar",
+            "tec",
+            "livedo",
+            "pulsos",
+            "membros"
+          ],
+          "content": "Tempo de enchimento capilar de 4 segundos, livedo reticular em membros inferiores, extremidades frias."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "estertores",
+            "murmurio vesicular"
+          ],
+          "content": "Murmúrio diminuído em base direita com estertores crepitantes abundantes no terço médio e inferior."
+        },
+        {
+          "id": "card_pe_ausculta_cardiaca",
+          "kind": "physical_exam",
+          "title": "Ausculta Cardíaca",
+          "triggers": [
+            "ausculta cardiaca",
+            "bulhas",
+            "sopros"
+          ],
+          "content": "Taquicardia sinusal, sem sopros audíveis."
+        },
+        {
+          "id": "card_lab_gasometria_lactato",
+          "kind": "lab_imaging",
+          "title": "Gasometria Arterial e Lactato Sérico",
+          "triggers": [
+            "gasometria",
+            "gasometria arterial",
+            "lactato",
+            "lactato serico",
+            "gaso"
+          ],
+          "content": "pH 7.28, pCO2 30, HCO3 16, BE -8, Lactato arterial 3.8 mmol/L (hiperlactatemia acentuada por hipoperfusão)."
+        }
+      ]
     },
     {
       "code": "EINSTEIN-2023-CG-PNEUMO",
@@ -3365,7 +5553,7 @@
           "id": "item_1",
           "title": "Avaliação Primária Sistemática (ABCDE do ATLS)",
           "description": "Verifica via aérea com controle da coluna cervical (A) e avança para a respiração e ventilação (B).",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "exame_fisico",
           "keywords": [
             "atls",
@@ -3378,7 +5566,7 @@
           "id": "item_2",
           "title": "Diagnóstico Clínico Imediato de Pneumotórax Hipertensivo",
           "description": "Reconhece a tétrade: murmúrio abolido + hipertimpanismo + desvio de traqueia + turgência jugular com choque obstrutivo.",
-          "weight": 2.5,
+          "weight": 1.2,
           "category": "diagnostico",
           "keywords": [
             "pneumotórax hipertensivo",
@@ -3391,7 +5579,7 @@
           "id": "item_3",
           "title": "NÃO Solicitar Radiografia / NÃO Atrasar a Conduta",
           "description": "Verbaliza enfaticamente que o diagnóstico é 100% clínico e que solicitar RX de tórax levaria o paciente à parada cardíaca.",
-          "weight": 1.5,
+          "weight": 1.8,
           "category": "diagnostico",
           "keywords": [
             "não pedir rx",
@@ -3413,7 +5601,7 @@
           "id": "item_4",
           "title": "Descompressão Torácica Imediata com Agulha (Toracocentese)",
           "description": "Realiza punção de alívio imediata com cateter agulhado calibroso (jelco 14/16) no 2º EIC na linha hemiclavicular ou 4º/5º EIC anterior à axilar média.",
-          "weight": 2.5,
+          "weight": 1.4,
           "category": "conduta_tratamento",
           "keywords": [
             "punção",
@@ -3428,13 +5616,106 @@
           "id": "item_5",
           "title": "Drenagem Torácica Tubular em Selo d'Água Definitiva",
           "description": "Executa a drenagem de tórax fechada em selo d'água no 5º EIC entre as linhas axilar anterior e média.",
-          "weight": 2.0,
+          "weight": 1.0,
           "category": "conduta_tratamento",
           "keywords": [
             "drenagem de tórax",
             "selo d'água",
             "dreno",
             "5º espaço"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Apresentação e Avaliação Inicial de Via Aérea (ATLS A)",
+          "description": "Identifica-se rapidamente ao paciente, avalia perviedade de via aérea pela resposta verbal e garante proteção da coluna cervical.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "rafael",
+            "via aérea",
+            "colar cervical",
+            "atls a",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Oxigenoterapia de Alto Fluxo Imediata (Máscara Não Reinalante)",
+          "description": "Prescreve imediatamente oxigênio a 100% em máscara não reinalante com reservatório e monitorização multiparamétrica.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "máscara não reinalante",
+            "oxigênio",
+            "alto fluxo",
+            "monitorização"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Anamnese Rápida do Trauma e Antecedentes (AMPLA)",
+          "description": "Confirma mecanismo de trauma fechado em tórax direito, alergias e ausência de uso de anticoagulantes.",
+          "weight": 0.4,
+          "category": "anamnese",
+          "keywords": [
+            "mecanismo",
+            "moto",
+            "alergias",
+            "anticoagulante"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Avaliação da Circulação e Reposição Volêmica se Necessário (ATLS C)",
+          "description": "Solicita sinais vitais, avalia pulsos e providencia dois acessos venosos calibrosos enquanto realiza descompressão.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "acesso venoso",
+            "pulsos",
+            "atls c"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Técnica Anatômica Segura da Toracocentese (Borda Superior)",
+          "description": "Especifica antissepsia e punção na borda superior da costela inferior (protegendo feixe vásculo-nervoso intercostal).",
+          "weight": 0.6,
+          "category": "procedimentos",
+          "keywords": [
+            "borda superior",
+            "feixe vásculo-nervoso",
+            "jelco",
+            "antissepsia"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Conexão do Dreno em Selo d'Água e Curativo Estéril",
+          "description": "Especifica conexão do dreno tubular em frasco com selo d'água (2 cm submerso), fixação segura e curativo oclusivo.",
+          "weight": 0.5,
+          "category": "procedimentos",
+          "keywords": [
+            "selo d'água",
+            "fixação",
+            "curativo",
+            "oscilação"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Controle Pós-Drenagem e Verificação de Reexpansão Pulmonar",
+          "description": "Solicita radiografia de tórax somente após drenagem para confirmar posicionamento do dreno e reexpansão pulmonar.",
+          "weight": 0.5,
+          "category": "exames_complementares",
+          "keywords": [
+            "após drenagem",
+            "depois da drenagem",
+            "rx de controle",
+            "reexpansão pulmonar",
+            "posicionamento do dreno"
           ]
         }
       ],
@@ -3461,7 +5742,96 @@
         }
       ],
       "source": "ATLS 10ª Edição (Trauma Torácico com Risco Iminente) / HIAE",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Tô... sufocando... peito vai explodir...",
+        "emotional_state": "Cianótico, agitado por hipóxia grave, falando palavras isoladas com extrema dificuldade respiratória.",
+        "only_reveal_if_asked": {
+          "mecanismo_trauma": "Moto colidiu contra lateral de ônibus há 20 minutos, impacto direto do guidão no hemitórax direito.",
+          "sintomas_imediatos": "Dor torácica aguda à direita e falta de ar progressiva desde o acidente.",
+          "antecedentes": "Previamente saudável, sem uso de medicações contínuas.",
+          "alergias": "Sem alergias conhecidas.",
+          "outras_queixas": "Sem trauma craniano com perda de consciência ou dor abdominal referida."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 70x40 mmHg, FC: 138 bpm, FR: 34 irpm, SATO2: 84% com colar cervical e máscara"
+        },
+        {
+          "id": "card_pe_avaliacao_via_aerea",
+          "kind": "physical_exam",
+          "title": "Avaliação de Via Aérea e Cervical (ATLS A)",
+          "triggers": [
+            "via aerea",
+            "colar cervical",
+            "atls a"
+          ],
+          "content": "Via aérea pérvia, coluna cervical imobilizada com colar rígido."
+        },
+        {
+          "id": "card_pe_inspecao_cervical_toracica",
+          "kind": "physical_exam",
+          "title": "Inspeção Cervical e Torácica (Traqueia / Turgência Jugular)",
+          "triggers": [
+            "inspecao cervical",
+            "inspecao toracica",
+            "desvio de traqueia",
+            "traqueia",
+            "turgencia jugular",
+            "jugular",
+            "cianose"
+          ],
+          "content": "Dispneia extrema, cianose, desvio de traqueia visível para o lado esquerdo, turgência jugular patológica bilateral e hemitórax direito hiperinsuflado."
+        },
+        {
+          "id": "card_pe_percussao_toracica",
+          "kind": "physical_exam",
+          "title": "Percussão Torácica",
+          "triggers": [
+            "percussao toracica",
+            "percussao do torax",
+            "percutir torax",
+            "hipertimpanismo",
+            "timpanismo"
+          ],
+          "content": "Hipertimpanismo à percussão em todo o hemitórax direito."
+        },
+        {
+          "id": "card_pe_ausculta_pulmonar",
+          "kind": "physical_exam",
+          "title": "Ausculta Pulmonar",
+          "triggers": [
+            "ausculta pulmonar",
+            "ausculta respiratoria",
+            "murmurio vesicular",
+            "auscultar pulmao"
+          ],
+          "content": "Murmúrio vesicular completamente abolido no hemitórax direito; presente à esquerda."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Avaliação Circulatória e Pulsos (ATLS C)",
+          "triggers": [
+            "pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "atls c"
+          ],
+          "content": "Choque obstrutivo com pulsos periféricos impalpáveis e taquicardia extrema."
+        }
+      ]
     },
     {
       "code": "REVALIDA-2024-PED-DESID",
@@ -3535,7 +5905,7 @@
           "id": "item_1",
           "title": "Avaliação dos Sinais Clínicos de Desidratação",
           "description": "Verifica estado geral (letargia), olhos fundos, lágrimas ausentes, boca seca e sinal da prega cutânea > 2s.",
-          "weight": 2.0,
+          "weight": 1.1,
           "category": "exame_fisico",
           "keywords": [
             "letargia",
@@ -3549,7 +5919,7 @@
           "id": "item_2",
           "title": "Classificação Correta: Desidratação Grave (Plano C)",
           "description": "Classifica a criança no Grupo C (Desidratação Grave com sinais de choque hipovolêmico inicial).",
-          "weight": 2.0,
+          "weight": 1.1,
           "category": "diagnostico",
           "keywords": [
             "desidratação grave",
@@ -3561,7 +5931,7 @@
           "id": "item_3",
           "title": "Prescrição Correta do Plano C em Menores de 1 Ano (100 ml/kg)",
           "description": "Prescreve hidratação venosa imediata pelo Plano C para lactente < 1 ano segundo o Ministério da Saúde: 30 ml/kg em 1 hora + 70 ml/kg em 5 horas (total 100 ml/kg em 6 horas com SF 0,9% ou Ringer Lactato).",
-          "weight": 3.0,
+          "weight": 2.0,
           "category": "conduta_tratamento",
           "keywords": [
             "plano c",
@@ -3577,7 +5947,7 @@
           "id": "item_4",
           "title": "Conduta Alimentar e Continuidade do Aleitamento",
           "description": "Orienta suspensão de líquidos orais apenas durante a infusão rápida inicial, com retorno precoce do aleitamento materno assim que hidratado.",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "aleitamento materno",
@@ -3589,13 +5959,107 @@
           "id": "item_5",
           "title": "Prescrição de Suplementação com Zinco",
           "description": "Prescreve suplementação com Sulfato de Zinco (20 mg/dia para >= 6 meses) por 10 a 14 dias para reduzir a duração e recorrência da diarreia.",
-          "weight": 1.5,
+          "weight": 0.9,
           "category": "conduta_tratamento",
           "keywords": [
             "zinco",
             "20 mg",
             "14 dias",
             "sulfato de zinco"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Apresentação Cordial e Acolhimento à Mãe",
+          "description": "Apresenta-se pelo nome à mãe de Cauã, acolhe a preocupação e explica a conduta emergencial.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "cauã",
+            "sou o médico",
+            "acolhimento",
+            "tranquila",
+            "vou examinar"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Anamnese Dirigida da Diarreia, Vômitos e Sinais de Alarme",
+          "description": "Investiga frequência das evacuações, presença de sangue/muco, aceitação oral, diurese e peso atual (10 kg).",
+          "weight": 0.6,
+          "category": "anamnese",
+          "keywords": [
+            "peso",
+            "10 kg",
+            "sangue nas fezes",
+            "vômitos",
+            "diurese",
+            "fralda"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Solicitação de Sinais Vitais, Perfusão e Sinal da Prega",
+          "description": "Verifica sinais vitais, tempo de enchimento capilar (4s), pulsos débeis e sinal da prega cutânea (> 2s).",
+          "weight": 0.6,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "enchimento capilar",
+            "pulsos",
+            "sinal da prega",
+            "perfusão"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Garantia de Acesso Venoso ou Intraósseo se Falha",
+          "description": "Estabelece acesso venoso imediato (considerando punção intraóssea em criança gravemente desidratada se falha em 90s).",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "acesso venoso",
+            "intraóssea",
+            "punção venosa"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Prescrição da Fase de Expansão Rápida em Volume Calculado (300 mL + 700 mL)",
+          "description": "Calcula corretamente os volumes para 10 kg (300 mL na 1ª hora e 700 mL nas 5 horas seguintes).",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "300 ml",
+            "700 ml",
+            "1000 ml",
+            "10 kg"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Reavaliação Clínica Contínua e Transição para TRO após Estabilização",
+          "description": "Programa reavaliações frequentes (a cada 15-30 min na fase inicial) e inicia SRO assim que a criança puder beber.",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "reavaliar",
+            "reavaliação",
+            "soro de reidratação oral",
+            "assim que beber"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Orientações Preventivas, Não Usar Antieméticos/Antibióticos e Sinais de Alarme",
+          "description": "Orienta higienização das mãos, proíbe antibiótico sem disenteria e reforça sinais de retorno imediato.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "higiene das mãos",
+            "sinais de alarme",
+            "não prescrevo antibiótico",
+            "vacina rotavírus"
           ]
         }
       ],
@@ -3622,7 +6086,73 @@
         }
       ],
       "source": "Manual de Manejo das Diarreias Agudas - Ministério da Saúde / SBP / Revalida INEP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Doutor, ele tá molinho, não quer mamar e a fralda tá seca desde de manhã cedo.",
+        "emotional_state": "Mãe cansada e muito preocupada; lactente letárgico no colo, chorando sem lágrimas.",
+        "only_reveal_if_asked": {
+          "caracteristica_diarreia": "Teve mais de 10 evacuações líquidas explosivas em 24 horas e 5 episódios de vômito, sem sangue ou muco nas fezes.",
+          "aceitacao_liquidos": "Não consegue segurar soro caseiro ou leite no estômago há 8 horas e está muito prostrado.",
+          "diurese": "Última fralda molhada foi há cerca de 10 horas.",
+          "antecedentes_alimentacao": "Tem 11 meses, pesa 10 kg, mama no peito e come papinha; vacinas (incluindo rotavírus) em dia.",
+          "alergias_febre": "Teve febre baixa (37,8 °C) ontem, sem alergias medicamentosas."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 65x40 mmHg, FC: 162 bpm, FR: 44 irpm, SATO2: 97%"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral, Olhos e Mucosas",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "olhos",
+            "lagrimas",
+            "mucosas",
+            "boca",
+            "lingua"
+          ],
+          "content": "Letárgico, olhos muito fundos, sem lágrimas ao choro, boca e língua extremamente secas."
+        },
+        {
+          "id": "card_pe_sinal_da_prega",
+          "kind": "physical_exam",
+          "title": "Pesquisa do Sinal da Prega Cutânea (Turgor)",
+          "triggers": [
+            "sinal da prega",
+            "prega cutanea",
+            "turgor",
+            "elasticidade da pele"
+          ],
+          "content": "Sinal da prega cutânea desaparece muito lentamente (> 2 segundos)."
+        },
+        {
+          "id": "card_pe_perfusao_pulsos",
+          "kind": "physical_exam",
+          "title": "Palpação de Pulsos e Tempo de Enchimento Capilar",
+          "triggers": [
+            "pulsos",
+            "perfusao",
+            "enchimento capilar",
+            "tec",
+            "extremidades"
+          ],
+          "content": "Pulsos radiais débeis, extremidades frias, tempo de enchimento capilar de 4 segundos."
+        }
+      ]
     },
     {
       "code": "REVALIDA-2023-GO-PEP",
@@ -3681,7 +6211,7 @@
           "id": "item_1",
           "title": "Acolhimento Humanizado e Consentimento Livre",
           "description": "Garante sigilo, acolhimento sem julgamentos e esclarece que o atendimento em saúde independe de boletim de ocorrência ou perícia policial.",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "relacao_medico_paciente",
           "keywords": [
             "sigilo",
@@ -3695,7 +6225,7 @@
           "id": "item_2",
           "title": "Anticoncepção de Emergência Precoce",
           "description": "Prescreve Levonorgestrel 1,5 mg dose única por via oral para prevenção de gravidez (tempo decorrido < 72 horas).",
-          "weight": 1.5,
+          "weight": 1.1,
           "category": "conduta_tratamento",
           "keywords": [
             "levonorgestrel",
@@ -3708,7 +6238,7 @@
           "id": "item_3",
           "title": "Profilaxia Pós-Exposição para HIV (PEP)",
           "description": "Prescreve PEP com Tenofovir (TDF) + Lamivudina (3TC) + Dolutegravir (DTG) por 28 dias iniciado em até 72 horas.",
-          "weight": 2.0,
+          "weight": 1.4,
           "category": "conduta_tratamento",
           "keywords": [
             "tenofovir",
@@ -3722,7 +6252,7 @@
           "id": "item_4",
           "title": "Profilaxia de ISTs Não Virais (Incluindo Penicilina Benzatina)",
           "description": "Prescreve Ceftriaxona 500 mg IM (gonococo) + Azitromicina 1g VO (clamídia) + Metronidazol 2g VO (tricomoníase) + Penicilina G Benzatina 2,4 milhões UI IM (sífilis).",
-          "weight": 2.0,
+          "weight": 1.4,
           "category": "conduta_tratamento",
           "keywords": [
             "ceftriaxona",
@@ -3738,7 +6268,7 @@
           "id": "item_5",
           "title": "Profilaxia para Hepatite B e Suporte Multiprofissional",
           "description": "Indica vacina contra Hepatite B + Imunoglobulina Humana Anti-Hepatite B (IGHB) se não vacinada e encaminha para apoio psicológico.",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "conduta_tratamento",
           "keywords": [
             "hepatite b",
@@ -3751,7 +6281,7 @@
           "id": "item_6",
           "title": "Notificação Compulsória Imediata (SINAN)",
           "description": "Realiza a notificação compulsória imediata (ficha SINAN em até 24 horas) do agravo de violência sexual à vigilância epidemiológica, preservando o sigilo clínico.",
-          "weight": 1.5,
+          "weight": 1.0,
           "category": "conduta_tratamento",
           "keywords": [
             "notificação compulsória",
@@ -3759,6 +6289,90 @@
             "sinan",
             "notificar",
             "vigilância epidemiológica"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Escuta Ativa sem Julgamentos e Garantia de Privacidade",
+          "description": "Recebe Juliana em sala privativa, apresenta-se, evita perguntas culpabilizadoras e assegura autonomia durante todo o atendimento.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "juliana",
+            "privacidade",
+            "sem julgamentos",
+            "ambiente reservado",
+            "à vontade"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Anamnese Dirigida (Tempo da Agressão, Uso de Preservativo e DUM)",
+          "description": "Investiga horas decorridas desde a agressão (< 72h), ausência de preservativo, data da última menstruação e alergias.",
+          "weight": 0.5,
+          "category": "anamnese",
+          "keywords": [
+            "72 horas",
+            "preservativo",
+            "menstruação",
+            "anticoncepcional",
+            "alergias"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Exame Físico Geral e Ginecológico Apenas com Consentimento Expresso",
+          "description": "Solicita consentimento explícito antes de examinar lesões e região genital, respeitando recusa caso a paciente prefira.",
+          "weight": 0.5,
+          "category": "exame_fisico",
+          "keywords": [
+            "consentimento",
+            "permissão",
+            "inspeção geral",
+            "exame ginecológico"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Solicitação de Sorologias Basais e Teste Rápido de Gravidez",
+          "description": "Solicita testes rápidos/sorologias basais (HIV, sífilis, hepatites B e C) e beta-hCG sem atrasar o início das profilaxias.",
+          "weight": 0.5,
+          "category": "exames_complementares",
+          "keywords": [
+            "sorologias",
+            "teste rápido",
+            "hiv",
+            "sífilis",
+            "beta-hcg",
+            "teste de gravidez"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Orientação Sobre Profilaxia Antitetânica e Cuidados com Ferimentos",
+          "description": "Avalia estado vacinal antitetânico diante de escoriações e orienta limpeza e cuidados locais.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "tétano",
+            "antitetânica",
+            "dt",
+            "escoriações",
+            "limpeza"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Informação Clara Sobre Direitos, Rede de Proteção e Retorno Programado",
+          "description": "Esclarece que a interrupção legal da gravidez decorrente de estupro não exige autorização judicial nem BO e agenda retorno sorológico.",
+          "weight": 0.5,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "direito",
+            "retorno",
+            "serviço social",
+            "rede de apoio",
+            "delegacia da mulher"
           ]
         }
       ],
@@ -3790,7 +6404,58 @@
         }
       ],
       "source": "PCDT Atenção Integral às Pessoas em Situação de Violência Sexual / Ministério da Saúde / Revalida INEP",
-      "clinical_review_date": "2026-11-23"
+      "clinical_review_date": "2026-11-23",
+      "actor_script": {
+        "opening_line": "Eu estava voltando da faculdade ontem à noite... um homem me arrastou pro terreno baldio... estou com medo de pegar doenças ou engravidar...",
+        "emotional_state": "Muito abalada emocionalmente, postura retraída, voz embargada, chora ao lembrar da violência e teme exposição.",
+        "only_reveal_if_asked": {
+          "tempo_decorrido": "A agressão sexual ocorreu há aproximadamente 14 horas (menos de 72 horas), sem uso de preservativo pelo agressor.",
+          "antecedentes_gineco": "Não usa anticoncepcional nem DIU; última menstruação foi há 12 dias.",
+          "vacinacao_previa": "Não sabe informar se completou esquema de vacinação contra hepatite B nem tétano.",
+          "duvida_boletim": "Pergunta com medo se precisa ir à delegacia registrar boletim de ocorrência antes de receber os remédios.",
+          "rede_apoio_alergias": "Ainda não contou para os pais; não tem alergias a penicilina ou outros medicamentos."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Cartão de Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "aferir pa",
+            "pressao arterial",
+            "hgt"
+          ],
+          "content": "PA: 120x80 mmHg, FC: 84 bpm, SATO2: 99%"
+        },
+        {
+          "id": "card_pe_inspecao_geral",
+          "kind": "physical_exam",
+          "title": "Inspeção Geral e Ectoscopia de Lesões",
+          "triggers": [
+            "inspecao geral",
+            "estado geral",
+            "ectoscopia",
+            "escoriacoes",
+            "lesoes"
+          ],
+          "content": "Muito abalada emocionalmente, chorosa, com escoriações leves em punhos e joelhos."
+        },
+        {
+          "id": "card_pe_exame_ginecologico_inspecao",
+          "kind": "physical_exam",
+          "title": "Exame Ginecológico (com Consentimento Prévio)",
+          "triggers": [
+            "exame ginecologico",
+            "inspecao genital",
+            "exame genital",
+            "exame especular"
+          ],
+          "content": "Hiperemia vulvar sem lacerações com sangramento ativo discreto (realizado apenas após consentimento prévio da paciente)."
+        }
+      ]
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [

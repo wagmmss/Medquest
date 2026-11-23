@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 
-def get_hemodynamic_speech_modifier(vitals: Optional[dict[str, Any]]) -> str:
+def get_hemodynamic_speech_modifier(vitals: dict[str, Any] | None) -> str:
     """Modula a capacidade fonatória e cognitiva do paciente com base nos sinais vitais reais."""
     if not vitals:
         return "FONAÇÃO PRESERVADA: Você consegue falar frases completas, mantendo o tom emocional compatível com sua dor."
@@ -48,7 +48,7 @@ def get_hemodynamic_speech_modifier(vitals: Optional[dict[str, Any]]) -> str:
     return " | ".join(modifiers)
 
 
-def build_patient_system_prompt(persona: dict[str, Any], current_vitals: Optional[dict[str, Any]] = None) -> str:
+def build_patient_system_prompt(persona: dict[str, Any], current_vitals: dict[str, Any] | None = None) -> str:
     """Constrói o prompt clínico do Paciente Virtual com Information Gating e Fisiologia Fonatória."""
     speech_modifier = get_hemodynamic_speech_modifier(current_vitals)
     vitals_str = ""
@@ -59,20 +59,38 @@ def build_patient_system_prompt(persona: dict[str, Any], current_vitals: Optiona
             f"SpO2 {current_vitals.get('spo2', 98)}% | GCS {current_vitals.get('gcs', 15)}."
         )
 
-    gated_info = {
-        "historico_patologico_pregressor": persona.get("past_medical_history") or persona.get("past_history"),
-        "medicamentos_em_uso": persona.get("medications") or persona.get("current_meds"),
-        "uso_recente_sildenafila_ou_estimulantes": persona.get("sildenafil_use") or persona.get("erectile_dysfunction_drugs"),
-        "alergias_conhecidas": persona.get("allergies"),
-        "habitos_alcool_fumo_drogas": persona.get("habits") or persona.get("substances"),
-        "historico_familiar": persona.get("family_history")
-    }
-    gated_info = {k: v for k, v in gated_info.items() if v}
+    actor_script = persona.get("actor_script") or {}
+    only_reveal = actor_script.get("only_reveal_if_asked") if isinstance(actor_script, dict) else None
+    emotional_state = (
+        actor_script.get("emotional_state")
+        if isinstance(actor_script, dict) and actor_script.get("emotional_state")
+        else persona.get("emotional_state")
+    )
+    opening_line = (
+        actor_script.get("opening_line")
+        if isinstance(actor_script, dict) and actor_script.get("opening_line")
+        else persona.get("chief_complaint")
+    )
+
+    if isinstance(only_reveal, dict) and only_reveal:
+        gated_info = {k: v for k, v in only_reveal.items() if v}
+    else:
+        gated_info = {
+            "historico_patologico_pregressor": persona.get("past_medical_history") or persona.get("past_history"),
+            "medicamentos_em_uso": persona.get("medications") or persona.get("current_meds"),
+            "uso_recente_sildenafila_ou_estimulantes": persona.get("sildenafil_use") or persona.get("erectile_dysfunction_drugs"),
+            "alergias_conhecidas": persona.get("allergies"),
+            "habitos_alcool_fumo_drogas": persona.get("habits") or persona.get("substances"),
+            "historico_familiar": persona.get("family_history")
+        }
+        gated_info = {k: v for k, v in gated_info.items() if v}
+
+    emotional_block = f"\nPOSTURA EMOCIONAL E NÃO VERBAL: {emotional_state}" if emotional_state else ""
 
     return f"""Você é o Ator Padronizado de alta fidelidade em uma prova prática presencial de residência médica (OSCE - USP / UNICAMP / Revalida INEP).
 Você está interpretando o paciente: {persona.get('name', 'Paciente')}, {persona.get('age', 'Adulto')} anos, gênero {persona.get('gender', 'não informado')}.
 
-QUEIXA PRINCIPAL: {persona.get('chief_complaint')}
+QUEIXA / FALA INICIAL: {opening_line}{emotional_block}
 
 === REGRA DE OURO: INFORMATION GATING (BLOQUEIO DE INFORMAÇÃO) ===
 Você possui informações clínicas determinantes para o diagnóstico, mas é TERMINANTEMENTE PROIBIDO revelá-las de graça ou em perguntas genéricas.
@@ -91,9 +109,10 @@ DIRETIVA DE FONAÇÃO: {speech_modifier}
 Responda em no máximo 2 frases para caber no HUD cinematográfico de prova prática."""
 
 
-def build_examiner_system_prompt(station_meta: dict[str, Any], physical_exam: dict[str, Any], current_vitals: Optional[dict[str, Any]] = None) -> str:
+def build_examiner_system_prompt(station_meta: dict[str, Any], physical_exam: dict[str, Any], current_vitals: dict[str, Any] | None = None) -> str:
     """Constrói o prompt do Examinador Oficial da Banca (USP / UNICAMP / INEP)."""
-    findings = physical_exam.get("findings", {})
+    examiner_cards = physical_exam.get("examiner_cards")
+    findings = examiner_cards if examiner_cards else physical_exam.get("findings", {})
     setting_level = station_meta.get("institution", "Hospital de Ensino")
 
     return f"""Você é o Chefe de Banca Examinadora do OSCE (USP / UNICAMP / UNIFESP / INEP).

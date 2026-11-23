@@ -56,8 +56,16 @@ def seed_osce_stations(db, force: bool = False) -> int:
         for st in CANONICAL_STATIONS:
             existing = db.execute("SELECT id FROM osce_stations WHERE code = ?", (st["code"],)).fetchone()
             door_md = st["scenario_door_markdown"]
-            persona_json = json.dumps(st["patient_persona"], ensure_ascii=False)
-            exam_json = json.dumps(st["physical_exam"], ensure_ascii=False)
+            persona_payload = {
+                **st["patient_persona"],
+                "actor_script": st.get("actor_script", {}),
+            }
+            exam_payload = {
+                **st["physical_exam"],
+                "examiner_cards": st.get("examiner_cards", []),
+            }
+            persona_json = json.dumps(persona_payload, ensure_ascii=False)
+            exam_json = json.dumps(exam_payload, ensure_ascii=False)
             lab_json = json.dumps(st.get("lab_imaging", {}), ensure_ascii=False)
             barema_json = json.dumps({
                 "items": st["checklist_barema"],
@@ -301,6 +309,8 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
         station["critical_errors"] = barema.get("critical_errors", [])
         station["source"] = barema.get("source", "")
         station["clinical_review_date"] = barema.get("clinical_review_date", "")
+        station["actor_script"] = patient_persona.get("actor_script", {})
+        station["examiner_cards"] = physical_exam.get("examiner_cards", [])
         station["patient_persona_full"] = patient_persona
         station["physical_exam_full"] = physical_exam
         station["lab_imaging_full"] = lab_imaging

@@ -82,7 +82,7 @@ def test_osce_session_lifecycle_and_barema(app):
         session = osce.start_osce_session(db, station_id, user_id)
         session_id = session["session_id"]
         assert session_id is not None
-        assert session["duration_seconds"] == 480
+        assert session["duration_seconds"] == 600
         assert len(session["transcript"]) == 1
 
         # 2. Interação com o Paciente (Anamnese)

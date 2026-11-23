@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "baseline_keyword_report": {
     "total_cases": 64,
-    "total_items": 432,
-    "items_within_tolerance": 360,
-    "overall_accuracy_pct": 83.3,
-    "negated_false_positives": 20,
+    "total_items": 772,
+    "items_within_tolerance": 677,
+    "overall_accuracy_pct": 87.7,
+    "negated_false_positives": 23,
     "accuracy_by_case_type": {
-      "correct_paraphrased": 56.5,
-      "partial": 95.4,
-      "negated": 81.5,
+      "correct_paraphrased": 62.7,
+      "partial": 100.0,
+      "negated": 88.1,
       "omitted": 100.0
     }
   },
@@ -21,19 +21,19 @@
         {
           "case_id": "USP-RP-2024-CM-CAD__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Paciente com rebaixamento leve do sensório, padrão respiratório profundo e acelerado e hálito frutado característico. Fecho hipótese de descompensação hiperglicêmica aguda com cetose e acidemia metabólica grave. Inicio hidratação venosa vigorosa com solução salina isotônica a 0,9% na dose de um litro na primeira hora. Checo a calemia sérica antes e associo suplementação venosa do eletrólito na solução hidratante para evitar hipocalemia grave. Prescrevo hormônio insulínico regular endovenoso em taxa contínua de 0,1 unidades por quilo por hora visando queda glicêmica gradual. Quando a glicemia capilar atingir valores próximos de duzentos a duzentos e cinquenta miligramas por decilitro, associo solução glicosada a 5% sem desligar a terapia hormonal até normalizar o bicarbonato. Solicito hemograma, urina tipo I e culturas para rastrear o fator desencadeante infeccioso além da suspensão da insulina.",
+          "conduct_notes": "Paciente com rebaixamento leve do sensório, padrão respiratório profundo e acelerado e hálito frutado característico. Fecho hipótese de descompensação hiperglicêmica aguda com cetose e acidemia metabólica grave. Inicio hidratação venosa vigorosa com solução salina isotônica a 0,9% na dose de um litro na primeira hora. Checo a calemia sérica antes e associo suplementação venosa do eletrólito na solução hidratante para evitar hipocalemia grave. Prescrevo hormônio insulínico regular endovenoso em taxa contínua de 0,1 unidades por quilo por hora visando queda glicêmica gradual. Quando a glicemia capilar atingir valores próximos de duzentos a duzentos e cinquenta miligramas por decilitro, associo solução glicosada a 5% sem desligar a terapia hormonal até normalizar o bicarbonato. Solicito hemograma, urina tipo I e culturas para rastrear o fator desencadeante infeccioso além da suspensão da insulina. Cumprimento o rapaz cordialmente e me chamo médico de plantão. Questiono há quanto tempo convive com a condição metabólica e confirmo interrupção das aplicações basais há dois dias. Instalo oxímetro com monitorização cardíaca, verifico parâmetros hemodinâmicos e providencio cateteres periféricos calibrosos. Peço hemogasometria arterial com ionograma completo, creatinina sérica e pesquisa cetônica. Realizo acompanhamento glicêmico a cada sessenta minutos e ionograma seriado evitando solução alcalina.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.9
+              "expected_score": 0.6,
+              "tolerance": 0.3
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.9
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_3",
@@ -51,19 +51,49 @@
               "id": "item_5",
               "expected_status": "FULL",
               "expected_score": 1.7,
-              "tolerance": 0.9
+              "tolerance": 0.85
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.2,
-              "tolerance": 0.9
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_7",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.9
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.3,
+              "tolerance": 0.15
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.3,
+              "tolerance": 0.15
             }
           ]
         },
@@ -75,14 +105,14 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.9
+              "expected_score": 0.6,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.9
+              "expected_score": 0.8,
+              "tolerance": 0.5
             },
             {
               "id": "item_3",
@@ -100,19 +130,49 @@
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.9
+              "tolerance": 0.85
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.9
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.9
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -159,6 +219,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -211,6 +301,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -223,43 +343,79 @@
         {
           "case_id": "UNIFESP-2023-PREV-SPIKES__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Convido o senhor a sentar em consultório reservado e pergunto se deseja chamar algum familiar para ficar ao lado. Antes de qualquer exame, quero ouvir o que o senhor já compreende sobre o motivo da investigação e o que tem passado pela sua cabeça. Gostaria de alinhar até que ponto prefere receber explicações minuciosas sobre o laudo da biópsia neste momento. Preciso prepará-lo para uma notícia difícil: infelizmente o resultado confirmou uma neoplasia maligna, explicando sem termos técnicos pesados e fazendo pausas. Sei o quanto esse diagnóstico assusta, fico em silêncio ao seu lado respeitando sua emoção e valido sua angústia. Já traço nossa estratégia de cuidado com programação de exames de estadiamento, referência para equipe especializada em câncer e garantia de acompanhamento contínuo na unidade.",
+          "conduct_notes": "Convido o senhor a sentar em consultório reservado e pergunto se deseja chamar algum familiar para ficar ao lado. Antes de qualquer exame, quero ouvir o que o senhor já compreende sobre o motivo da investigação e o que tem passado pela sua cabeça. Gostaria de alinhar até que ponto prefere receber explicações minuciosas sobre o laudo da biópsia neste momento. Preciso prepará-lo para uma notícia difícil: infelizmente o resultado confirmou uma neoplasia maligna, explicando sem termos técnicos pesados e fazendo pausas. Sei o quanto esse diagnóstico assusta, fico em silêncio ao seu lado respeitando sua emoção e valido sua angústia. Já traço nossa estratégia de cuidado com programação de exames de estadiamento, referência para equipe especializada em câncer e garantia de acompanhamento contínuo na unidade. Cumprimento cordialmente o paciente pelo nome acomodando-o na mesma altura sem barreiras. Escuto queixa de disfagia e emagrecimento utilizando linguagem acessível livre de jargão anatomopatológico. Respeito pausa silenciosa após o diagnóstico maligno validando sua emoção com empatia genuína. Pergunto o que o paciente entendeu e abro espaço para esclarecimentos necessários. Investigo apoio familiar doméstico convidando esposa e filha para os encontros seguintes. Asseguro vínculo contínuo na atenção básica além do seguimento especializado sem abandono.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.4,
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -271,38 +427,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.65
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -343,6 +535,42 @@
             },
             {
               "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -389,6 +617,42 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -401,49 +665,79 @@
         {
           "case_id": "USP-RP-2023-CG-FAST__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Realizo avaliação primária sistematizada do politraumatizado checando via aérea pérvia com proteção cervical, ventilação bilateral e controle circulatório. Identifico instabilidade hemodinâmica grave por sangramento agudo de grau avançado. Executo imediatamente o exame ultrassonográfico focado na sala de trauma para rastrear sangramento cavitário. Interpreto a janela esplenorrenal positiva com grande coleção líquida livre na cavidade peritoneal por provável ruptura do baço. Ativo o protocolo de hemotransfusão maciça em proporção equilibrada de hemácias, plasma fresco e plaquetas. Administro antifibrinolítico endovenoso em janela precoce de três horas do acidente. Proíbo o transporte do doente instável para exame tomográfico e aciono o centro operatório imediatamente para cirurgia abdominal exploradora.",
+          "conduct_notes": "Realizo avaliação primária sistematizada do politraumatizado checando via aérea pérvia com proteção cervical, ventilação bilateral e controle circulatório. Identifico instabilidade hemodinâmica grave por sangramento agudo de grau avançado. Executo imediatamente o exame ultrassonográfico focado na sala de trauma para rastrear sangramento cavitário. Interpreto a janela esplenorrenal positiva com grande coleção líquida livre na cavidade peritoneal por provável ruptura do baço. Ativo o protocolo de hemotransfusão maciça em proporção equilibrada de hemácias, plasma fresco e plaquetas. Administro antifibrinolítico endovenoso em janela precoce de três horas do acidente. Proíbo o transporte do doente instável para exame tomográfico e aciono o centro operatório imediatamente para cirurgia abdominal exploradora. Identifico-me ao acidentado avaliando fala espontânea e coordenando a equipe. Colho história do impacto automobilístico sem airbag, uso de contenção abdominal, fármacos habituais e alergias. Inspeciono equimose em flanco, palpo cavidade abdominal e avalio anel pélvico em manobra única. Solicito tipagem sanguínea ABO/Rh, prova cruzada e lactato arterial. Previno perda térmica com aquecimento ativo e reservo sala operatória com anestesiologia.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_7",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -455,44 +749,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -539,6 +863,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -591,6 +945,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -603,43 +987,79 @@
         {
           "case_id": "REVALIDA-2023-GO-PEP__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Recebo a paciente em ambiente reservado assegurando confidencialidade médica total e esclareço que o cuidado em saúde não exige registro policial prévio. Prescrevo pílula hormonal de emergência com progestágeno em tomada única oral para prevenir gestação indesejada dentro de 72 horas. Inicio esquema tríplice antirretroviral preventivo contra o vírus da imunodeficiência humana por quatro semanas consecutivas. Prescrevo esquema antibiótico combinado para cobertura de gonorreia, clamidiose, tricomoníase e sífilis incluindo penicilina G benzatina intramuscular. Indico imunização ativa e passiva com vacina e soro específico contra hepatite viral B além de acompanhamento com psicóloga e serviço social. Preencho imediatamente a ficha de notificação compulsória no SINAN para a vigilância epidemiológica em até 24 horas.",
+          "conduct_notes": "Recebo a paciente em ambiente reservado assegurando confidencialidade médica total e esclareço que o cuidado em saúde não exige registro policial prévio. Prescrevo pílula hormonal de emergência com progestágeno em tomada única oral para prevenir gestação indesejada dentro de 72 horas. Inicio esquema tríplice antirretroviral preventivo contra o vírus da imunodeficiência humana por quatro semanas consecutivas. Prescrevo esquema antibiótico combinado para cobertura de gonorreia, clamidiose, tricomoníase e sífilis incluindo penicilina G benzatina intramuscular. Indico imunização ativa e passiva com vacina e soro específico contra hepatite viral B além de acompanhamento com psicóloga e serviço social. Preencho imediatamente a ficha de notificação compulsória no SINAN para a vigilância epidemiológica em até 24 horas. Atendo a jovem em consultório reservado apresentando-me com escuta acolhedora livre de juízos. Confirmo janela temporal inferior a setenta e duas horas, ausência de preservativo, menstruação e alergias. Peço autorização explícita antes de qualquer inspeção corporal ou genital respeitando seu limite. Solicito sorologias rápidas para HIV, sífilis, hepatites e teste gestacional sem atrasar medicações. Verifico imunização contra tétano e oriento limpeza local das lesões cutâneas. Esclareço garantias legais sem exigência judicial e combino acompanhamento multiprofissional e retorno sorológico.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.4,
+              "tolerance": 0.7
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.4,
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 1.0,
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
             }
           ]
         },
@@ -651,38 +1071,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.7
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -723,6 +1179,42 @@
             },
             {
               "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -769,6 +1261,42 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -781,31 +1309,31 @@
         {
           "case_id": "USP-RP-2024-CM-SCA__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Reconheço dor precordial opressiva prolongada em repouso compatível com síndrome coronariana aguda sem elevação do segmento ST. Analiso o traçado eletrocardiográfico notando depressão do segmento ST lateral e inversão de ondas T sugestivas de sofrimento miocárdico. Calculo o escore prognóstico de alto risco isquêmico diante das alterações dinâmicas e elevação de biomarcador cardíaco. Prescrevo terapia antiplaquetária dupla imediata com ácido acetilsalicílico mastigado associado a bloqueador do receptor P2Y12 em dose de ataque. Inicio anticoagulação terapêutica com heparina de baixo peso molecular por via subcutânea de doze em doze horas. Associo terapia antianginosa e estatina de alta potência na dose máxima. Indico coronariografia precoce em menos de vinte e quatro horas da admissão.",
+          "conduct_notes": "Reconheço dor precordial opressiva prolongada em repouso compatível com síndrome coronariana aguda sem elevação do segmento ST. Analiso o traçado eletrocardiográfico notando depressão do segmento ST lateral e inversão de ondas T sugestivas de sofrimento miocárdico. Calculo o escore prognóstico de alto risco isquêmico diante das alterações dinâmicas e elevação de biomarcador cardíaco. Prescrevo terapia antiplaquetária dupla imediata com ácido acetilsalicílico mastigado associado a bloqueador do receptor P2Y12 em dose de ataque. Inicio anticoagulação terapêutica com heparina de baixo peso molecular por via subcutânea de doze em doze horas. Associo terapia antianginosa e estatina de alta potência na dose máxima. Indico coronariografia precoce em menos de vinte e quatro horas da admissão. Cumprimento cordialmente e me apresento garantindo cuidado imediato à paciente. Investigo hábito tabágico, hipertensão, distúrbio glicêmico e intolerâncias medicamentosas. Verifico parâmetros circulatórios e realizo ausculta do aparelho cardiopulmonar afastando estertoração. Requisito traçado eletrocardiográfico imediato e dosagem seriada de biomarcador cardíaco. Comunico com clareza à paciente a hipótese coronariana e o encaminhamento para angiografia.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.0,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_4b",
@@ -816,20 +1344,50 @@
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.75
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_7",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -841,26 +1399,26 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.0,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.65
             },
             {
               "id": "item_4b",
@@ -872,19 +1430,49 @@
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.75
+              "tolerance": 0.65
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -937,6 +1525,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -995,6 +1613,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -1007,37 +1655,37 @@
         {
           "case_id": "USP-RP-2024-PED-BVA__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Acolho a mãe com calma, checo a idade de quatro meses, confirmo tratar-se do primeiro episódio de chiado no peito e investigo prematuridade e contatos domiciliares. Constato aumento do trabalho respiratório com retração subcostal, frequência respiratória elevada e dessaturação arterial em ar ambiente. Estabeleço o diagnóstico clínico de infecção viral aguda das pequenas vias aéreas pelo provável vírus respiratório sazonal. Instalo oxigênio suplementar umidificado por cateter nasal de baixo fluxo visando saturação acima de noventa por cento. Prescrevo higiene nasal frequente com solução salina isotônica antes das mamadas. Mantenho o aleitamento materno em pequenas porções mais frequentes para preservar hidratação sem risco aspirativo. Reforço que não há indicação de corticosteroide, broncodilatador inalatório rotineiro nem antimicrobiano.",
+          "conduct_notes": "Acolho a mãe com calma, checo a idade de quatro meses, confirmo tratar-se do primeiro episódio de chiado no peito e investigo prematuridade e contatos domiciliares. Constato aumento do trabalho respiratório com retração subcostal, frequência respiratória elevada e dessaturação arterial em ar ambiente. Estabeleço o diagnóstico clínico de infecção viral aguda das pequenas vias aéreas pelo provável vírus respiratório sazonal. Instalo oxigênio suplementar umidificado por cateter nasal de baixo fluxo visando saturação acima de noventa por cento. Prescrevo higiene nasal frequente com solução salina isotônica antes das mamadas. Mantenho o aleitamento materno em pequenas porções mais frequentes para preservar hidratação sem risco aspirativo. Reforço que não há indicação de corticosteroide, broncodilatador inalatório rotineiro nem antimicrobiano. Cumprimento a mãe com atenção acolhendo sua preocupação ao examinar o bebê. Pergunto idade gestacional, contatos domiciliares resfriados, amamentação exclusiva e imunizações. Instalo oxímetro de pulso, conto incursões respiratórias por minuto e examino ouvidos e faringe. Defino observação hospitalar para oferta hídrica venosa caso persista cansaço para mamar. Oriento sinais de alerta respiratório, limpeza nasal salina e quando retornar ao serviço.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_6",
@@ -1048,8 +1696,38 @@
             {
               "id": "item_7",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -1061,44 +1739,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -1145,6 +1853,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -1197,6 +1935,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -1209,49 +1977,79 @@
         {
           "case_id": "USP-RP-2023-GO-HPP__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Aciono imediatamente a equipe multidisciplinar de emergência obstétrica garantindo dois acessos venosos calibrosos e monitorização contínua. Reviso sistematicamente as quatro principais causas de sangramento pós-parto concluindo tratar-se de falha de contração uterina. Inicio de imediato compressão uterina bimanual com punho vaginal anterior e mão abdominal no fundo do órgão. Administro uterotônico de primeira escolha por via endovenosa em infusão controlada. Prescrevo antifibrinolítico endovenoso na dose de mil miligramas nos primeiros dez minutos do quadro hemorrágico. Associo prostaglandina retal de segunda linha e esvazio a bexiga urinária por cateterismo de alívio. Caso persista sangramento refratário, programo tamponamento intrauterino com balão e preparo sala cirúrgica para sutura hemostática.",
+          "conduct_notes": "Aciono imediatamente a equipe multidisciplinar de emergência obstétrica garantindo dois acessos venosos calibrosos e monitorização contínua. Reviso sistematicamente as quatro principais causas de sangramento pós-parto concluindo tratar-se de falha de contração uterina. Inicio de imediato compressão uterina bimanual com punho vaginal anterior e mão abdominal no fundo do órgão. Administro uterotônico de primeira escolha por via endovenosa em infusão controlada. Prescrevo antifibrinolítico endovenoso na dose de mil miligramas nos primeiros dez minutos do quadro hemorrágico. Associo prostaglandina retal de segunda linha e esvazio a bexiga urinária por cateterismo de alívio. Caso persista sangramento refratário, programo tamponamento intrauterino com balão e preparo sala cirúrgica para sutura hemostática. Identifico-me à paciente explicando rapidamente os cuidados enquanto chamo ajuda e ativo código vermelho. Reviso causas uterinas considerando trabalho de parto prolongado com ocitocina, peso fetal elevado e saída da placenta. Avalio parâmetros circulatórios calculando razão entre pulso e pressão sistólica sugestiva de hipovolemia. Instalo dois acessos periféricos calibrosos com coleta de tipagem, coagulograma, hemograma e reserva sanguínea. Indico cateterismo vesical para acompanhar débito urinário, combato resfriamento e vigio contração uterina.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
-            },
-            {
-              "id": "item_4",
-              "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
-            },
-            {
-              "id": "item_5",
-              "expected_status": "FULL",
               "expected_score": 1.5,
               "tolerance": 0.75
             },
             {
-              "id": "item_6",
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_5",
               "expected_status": "FULL",
               "expected_score": 1.0,
               "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_7",
               "expected_status": "FULL",
               "expected_score": 1.0,
               "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -1263,44 +2061,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_3",
               "expected_status": "FULL",
               "expected_score": 1.5,
               "tolerance": 0.75
             },
             {
-              "id": "item_3",
-              "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
-            },
-            {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -1347,6 +2175,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -1399,6 +2257,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -1411,43 +2299,79 @@
         {
           "case_id": "USP-RP-2024-PREV-MCCP__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Recebo a paciente com atenção plena e perguntas abertas permitindo que relate livremente suas preocupações sem julgamentos. Exploro sua experiência subjetiva de adoecimento investigando seus receios, hipóteses próprias, impacto nas atividades diárias e o que aguarda da consulta. Mapeio a rede familiar descobrindo que assume sozinha os cuidados do cônjuge acamado pós-derrame e convive com filho dependente químico. Asseguro que seu sofrimento físico é legítimo e explico de forma acolhedora como a exaustão emocional se manifesta em sintomas corporais. Aplico prevenção quaternária evitando solicitar novos exames de imagem ou endoscópicos desnecessários diante dos resultados normais recentes. Construo plano conjunto acionando atendimento domiciliar multiprofissional para o esposo, grupo de apoio e consulta de seguimento próxima.",
+          "conduct_notes": "Recebo a paciente com atenção plena e perguntas abertas permitindo que relate livremente suas preocupações sem julgamentos. Exploro sua experiência subjetiva de adoecimento investigando seus receios, hipóteses próprias, impacto nas atividades diárias e o que aguarda da consulta. Mapeio a rede familiar descobrindo que assume sozinha os cuidados do cônjuge acamado pós-derrame e convive com filho dependente químico. Asseguro que seu sofrimento físico é legítimo e explico de forma acolhedora como a exaustão emocional se manifesta em sintomas corporais. Aplico prevenção quaternária evitando solicitar novos exames de imagem ou endoscópicos desnecessários diante dos resultados normais recentes. Construo plano conjunto acionando atendimento domiciliar multiprofissional para o esposo, grupo de apoio e consulta de seguimento próxima. Convido a paciente para entrar, cumprimento cordialmente e inicio com questão ampla sem cortes. Investigo sinais neurológicos focais, emagrecimento ou sangramento digestivo para afastar urgência orgânica. Afero pressão e faço exame clínico breve para tranquilizá-la e validar sua queixa física. Exploro suas percepções, medos e expectativas reais quanto ao atendimento de hoje. Aciono equipe multiprofissional com assistente social, psicologia e apoio comunitário domiciliar. Checo compreensão conjunta do plano e agendo acompanhamento longitudinal contínuo.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
             }
           ]
         },
@@ -1459,38 +2383,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -1531,6 +2491,42 @@
             },
             {
               "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -1577,6 +2573,42 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -1589,64 +2621,76 @@
         {
           "case_id": "UNICAMP-2024-CM-SCA__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Cumprimento cordialmente o paciente, digo meu nome e manifesto prontidão para ajudá-lo neste momento difícil. Investigo minuciosamente o início, caráter, irradiação para membro superior e mandíbula e fenômenos autonômicos como suor frio e enjoo. Pesquiso comorbidades metabólicas, hábito tabágico, antecedente familiar e uso recente de vasodilatadores para disfunção erétil. Solicito monitorização cardíaca contínua, oxímetro de pulso e dois acessos periféricos calibrosos. Peço traçado eletrocardiográfico completo de doze derivações imediatamente na admissão. Identifico elevação do segmento ST na parede anterior fechando o quadro de infarto agudo anterior extenso. Administro dupla antiagregação com aspirina mastigável e ticagrelor em dose plena de ataque. Prescrevo anticoagulação plena com heparina fracionada e dispenso oxigenioterapia por saturação preservada. Aciono a equipe de cardiologia intervencionista para reperfusão mecânica primária dentro da meta de noventa minutos. Explico ao paciente de forma acessível que houve entupimento de uma artéria do coração e o plano de desobstrução.",
+          "conduct_notes": "Cumprimento cordialmente o paciente, digo meu nome e manifesto prontidão para ajudá-lo neste momento difícil. Investigo minuciosamente o início, caráter, irradiação para membro superior e mandíbula e fenômenos autonômicos como suor frio e enjoo. Pesquiso comorbidades metabólicas, hábito tabágico, antecedente familiar e uso recente de vasodilatadores para disfunção erétil. Solicito monitorização cardíaca contínua, oxímetro de pulso e dois acessos periféricos calibrosos. Peço traçado eletrocardiográfico completo de doze derivações imediatamente na admissão. Identifico elevação do segmento ST na parede anterior fechando o quadro de infarto agudo anterior extenso. Administro dupla antiagregação com aspirina mastigável e ticagrelor em dose plena de ataque. Prescrevo anticoagulação plena com heparina fracionada e dispenso oxigenioterapia por saturação preservada. Aciono a equipe de cardiologia intervencionista para reperfusão mecânica primária dentro da meta de noventa minutos. Explico ao paciente de forma acessível que houve entupimento de uma artéria do coração e o plano de desobstrução. Verifico intolerâncias medicamentosas, afiro parâmetros hemodinâmicos com oxímetro e evito oxigenioterapia sem hipoxemia. Associo estatina de alta potência na dose máxima e esclareço ao paciente o procedimento de reperfusão coronariana.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.7,
+              "tolerance": 0.35
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_11",
               "expected_status": "FULL",
               "expected_score": 0.5,
               "tolerance": 0.25
             },
             {
-              "id": "item_4",
-              "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
-            },
-            {
-              "id": "item_5",
-              "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
-            },
-            {
-              "id": "item_6",
-              "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
-            },
-            {
-              "id": "item_7",
-              "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
-            },
-            {
-              "id": "item_8",
-              "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
-            },
-            {
-              "id": "item_9",
-              "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
-            },
-            {
-              "id": "item_10",
+              "id": "item_12",
               "expected_status": "FULL",
               "expected_score": 0.5,
               "tolerance": 0.25
@@ -1661,62 +2705,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.7,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
+              "expected_score": 0.9,
               "tolerance": 0.5
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.9,
+              "tolerance": 0.5
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_8",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_9",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
             },
             {
               "id": "item_10",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -1781,6 +2837,18 @@
             },
             {
               "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -1851,6 +2919,18 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -1863,31 +2943,31 @@
         {
           "case_id": "UNICAMP-2023-CG-PERF__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Cumprimento a paciente com serenidade oferecendo conforto durante a dor abdominal súbita. Investigo o início em facada, uso prolongado de medicações anti-inflamatórias para dor articular e sintomas dispépticos prévios. Realizo exame abdominal detalhado identificando rigidez difusa involuntária, dor à descompressão súbita e perda da macicez sobre o fígado. Peço exame radiográfico de tórax com paciente ortostático visualizando as cúpulas diafragmáticas. Reconheço presença de gás livre subdiafragmático firmando o diagnóstico de perfuração de víscera oca péptica. Instituo jejum absoluto, passagem de sonda gástrica em drenagem e reposição volêmica endovenosa com solução balanceada. Inicio antibioticoterapia endovenosa para flora entérica e analgésico venoso. Indico abordagem operatória abdominal de emergência para rafia da lesão e limpeza cavitária. Explico a indicação cirúrgica imediata à paciente obtendo seu consentimento e reservando leito pós-operatório.",
+          "conduct_notes": "Cumprimento a paciente com serenidade oferecendo conforto durante a dor abdominal súbita. Investigo o início em facada, uso prolongado de medicações anti-inflamatórias para dor articular e sintomas dispépticos prévios. Realizo exame abdominal detalhado identificando rigidez difusa involuntária, dor à descompressão súbita e perda da macicez sobre o fígado. Peço exame radiográfico de tórax com paciente ortostático visualizando as cúpulas diafragmáticas. Reconheço presença de gás livre subdiafragmático firmando o diagnóstico de perfuração de víscera oca péptica. Instituo jejum absoluto, passagem de sonda gástrica em drenagem e reposição volêmica endovenosa com solução balanceada. Inicio antibioticoterapia endovenosa para flora entérica e analgésico venoso. Indico abordagem operatória abdominal de emergência para rafia da lesão e limpeza cavitária. Explico a indicação cirúrgica imediata à paciente obtendo seu consentimento e reservando leito pós-operatório. Monitorizo parâmetros circulatórios contínuos e estabeleço acessos periféricos calibrosos diante de abdome cirúrgico. Prescrevo analgésico venoso afastando anti-inflamatórios e associo inibidor de bomba protônica endovenoso. Comunico com empatia o quadro perfurativo colhendo concordância para intervenção cirúrgica imediata.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.7,
+              "tolerance": 0.35
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_5",
@@ -1898,26 +2978,44 @@
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
-            },
-            {
-              "id": "item_7",
-              "expected_status": "FULL",
               "expected_score": 1.0,
               "tolerance": 0.5
             },
             {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
               "id": "item_8",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_9",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
             }
           ]
         },
@@ -1929,56 +3027,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.7,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.0,
+              "expected_score": 0.9,
               "tolerance": 0.5
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.5
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.8,
+              "tolerance": 0.5
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_8",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_9",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2037,6 +3153,24 @@
             },
             {
               "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2101,6 +3235,24 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -2113,13 +3265,13 @@
         {
           "case_id": "UNICAMP-2024-PED-ANAF__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Tranquilizo a mãe imediatamente e conduzo avaliação pediátrica rápida seguindo o algoritmo primário de via aérea, ventilação e circulação. Reconheço reação alérgica sistêmica grave com comprometimento cutâneo, laríngeo e queda pressórica. Administro epinefrina pura na dose de 0,01 miligrama por quilo aplicada profundamente no músculo vasto lateral da coxa. Oferto oxigênio suplementar em máscara de alto fluxo com reservatório mantendo o lactente deitado com pernas elevadas. Garanto acesso vascular periférico ou tibial e infundo bólus rápido de solução salina a vinte mililitros por quilo. Associo corticosteroide sistêmico e bloqueador histamínico apenas como adjuvantes após a terapia de primeira linha. Oriento permanência em observação prolongada pelo risco de retorno tardio dos sintomas e prescrevo dispositivo autoinjetor na alta.",
+          "conduct_notes": "Tranquilizo a mãe imediatamente e conduzo avaliação pediátrica rápida seguindo o algoritmo primário de via aérea, ventilação e circulação. Reconheço reação alérgica sistêmica grave com comprometimento cutâneo, laríngeo e queda pressórica. Administro epinefrina pura na dose de 0,01 miligrama por quilo aplicada profundamente no músculo vasto lateral da coxa. Oferto oxigênio suplementar em máscara de alto fluxo com reservatório mantendo o lactente deitado com pernas elevadas. Garanto acesso vascular periférico ou tibial e infundo bólus rápido de solução salina a vinte mililitros por quilo. Associo corticosteroide sistêmico e bloqueador histamínico apenas como adjuvantes após a terapia de primeira linha. Oriento permanência em observação prolongada pelo risco de retorno tardio dos sintomas e prescrevo dispositivo autoinjetor na alta. Pergunto peso corporal aproximado da criança, ingrediente ingerido no biscoito, latência e reações prévias. Inspeciono perviedade laríngea, parâmetros circulatórios e perfusão periférica. Mantenho criança em posição segura com máscara de reservatório em fluxo elevado afastando o gatilho alimentar. Associo bloqueador histamínico e corticosteroide apenas em caráter adjuvante secundário. Oriento plano de crise contra reação tardia, caneta autoinjetável domiciliar e seguimento especializado.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_2",
@@ -2130,32 +3282,62 @@
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.9,
+              "tolerance": 0.95
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_7",
               "expected_status": "FULL",
               "expected_score": 1.0,
               "tolerance": 0.5
             },
             {
-              "id": "item_7",
+              "id": "item_8",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
             }
           ]
         },
@@ -2167,7 +3349,7 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.0,
+              "expected_score": 0.8,
               "tolerance": 0.5
             },
             {
@@ -2179,32 +3361,62 @@
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 0.9,
+              "tolerance": 0.5
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.95
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2251,6 +3463,36 @@
             },
             {
               "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2303,6 +3545,36 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -2315,55 +3587,79 @@
         {
           "case_id": "UNIFESP-2024-GO-PREECL__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Acolho a gestante em repouso lateral esquerdo e confirmo os níveis tensionais elevados com manguito apropriado. Identifico sintomas premonitórios graves como dor de cabeça intensa, alterações visuais, dor epigástrica e reflexos exaltados. Avalio os batimentos cardíacos fetais e palpo o útero verificando tônus e altura uterina. Prescrevo imediatamente sulfatação endovenosa com dose de ataque e manutenção em bomba para prevenção de convulsões. Administro anti-hipertensivo venoso ou oral de ação rápida buscando controle pressórico gradual sem queda brusca. Instituo vigilância contínua de diurese, reflexo patelar e frequência respiratória deixando o antídoto de cálcio pronto ao lado do leito. Prescrevo corticoterapia antenatal para amadurecimento pulmonar do feto e planejo interrupção oportuna. Comunico à gestante e familiares os riscos materno-fetais e a necessidade de internação em cuidados intensivos.",
+          "conduct_notes": "Acolho a gestante em repouso lateral esquerdo e confirmo os níveis tensionais elevados com manguito apropriado. Identifico sintomas premonitórios graves como dor de cabeça intensa, alterações visuais, dor epigástrica e reflexos exaltados. Avalio os batimentos cardíacos fetais e palpo o útero verificando tônus e altura uterina. Prescrevo imediatamente sulfatação endovenosa com dose de ataque e manutenção em bomba para prevenção de convulsões. Administro anti-hipertensivo venoso ou oral de ação rápida buscando controle pressórico gradual sem queda brusca. Instituo vigilância contínua de diurese, reflexo patelar e frequência respiratória deixando o antídoto de cálcio pronto ao lado do leito. Prescrevo corticoterapia antenatal para amadurecimento pulmonar do feto e planejo interrupção oportuna. Comunico à gestante e familiares os riscos materno-fetais e a necessidade de internação em cuidados intensivos. Afiro níveis tensionais com manguito adequado e pesquiso edema em face e extremidades inferiores. Avalio frequência cardíaca fetal ao sonar, altura uterina e tônus miometrial. Requisito painel bioquímico com contagem plaquetária, enzimas hepáticas, desidrogenase láctica e função renal com proteinúria. Comunico com acolhimento a gravidade obstétrica explicando internação e momento do parto.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_6",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_7",
               "expected_status": "FULL",
-              "expected_score": 1.0,
-              "tolerance": 0.5
+              "expected_score": 0.8,
+              "tolerance": 0.4
             },
             {
               "id": "item_8",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
             }
           ]
         },
@@ -2375,50 +3671,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 0.5,
-              "tolerance": 0.25
+              "expected_score": 0.8,
+              "tolerance": 0.5
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 0.9,
+              "tolerance": 0.5
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.0,
+              "expected_score": 0.9,
               "tolerance": 0.5
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.3,
+              "tolerance": 0.65
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
             },
             {
               "id": "item_6",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_7",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_8",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2471,6 +3791,30 @@
             },
             {
               "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2529,6 +3873,30 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -2541,37 +3909,79 @@
         {
           "case_id": "UNIFESP-2024-CM-TV__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Reconheço sinais clínicos evidentes de instabilidade hemodinâmica com queda pressórica grave, congestão pulmonar e alteração do sensório. Solicito imediatamente o carro de emergência com monitor desfibrilador e posiciono as pás no tórax da paciente. Aciono obrigatoriamente o modo de sincronização para disparo elétrico coincidente com o complexo QRS evitando arritmia ventricular maligna. Realizo sedação e analgesia rápidas por via endovenosa antes da terapia elétrica por tratar-se de paciente acordada. Afasto toda a equipe por segurança e disparo terapia elétrica sincronizada de cem joules.",
+          "conduct_notes": "Reconheço sinais clínicos evidentes de instabilidade hemodinâmica com queda pressórica grave, congestão pulmonar e alteração do sensório. Solicito imediatamente o carro de emergência com monitor desfibrilador e posiciono as pás no tórax da paciente. Aciono obrigatoriamente o modo de sincronização para disparo elétrico coincidente com o complexo QRS evitando arritmia ventricular maligna. Realizo sedação e analgesia rápidas por via endovenosa antes da terapia elétrica por tratar-se de paciente acordada. Afasto toda a equipe por segurança e disparo terapia elétrica sincronizada de cem joules. Cumprimento rapidamente a paciente coordenando o atendimento crítico da taquiarritmia. Pergunto sobre cardiopatia isquêmica prévia, medicações habituais e intolerâncias enquanto preparo o aparelho. Instalo monitorização elétrica contínua, acessos periféricos e suporte com oxigênio. Confirmo pulso central palpável porém com hipoperfusão periférica e estertoração pulmonar basal. Solicito afastamento completo da equipe e remoção da fonte gasosa antes de disparar o choque. Reconfirmo traçado cardíaco após reversão, verifico pressão e peço traçado de doze derivações. Solicito ionograma com magnésio e troponina programando internação em leito intensivo.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.8,
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
             }
           ]
         },
@@ -2583,32 +3993,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.6
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2643,6 +4095,48 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2683,6 +4177,48 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -2695,37 +4231,79 @@
         {
           "case_id": "EINSTEIN-2024-CM-SEPSE__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Identifico disfunção orgânica grave infecciosa com hipotensão arterial refratária e elevação do marcador de hipoperfusão tecidual. Solicito dosagem imediata do marcador metabólico de perfusão e coleta de dois pares de amostras microbiológicas do sangue antes do antimicrobiano. Administro antibioticoterapia endovenosa de amplo espectro dentro dos primeiros sessenta minutos da admissão. Prescrevo reposição volêmica inicial com solução cristaloide balanceada na proporção de trinta mililitros por quilo. Indico droga vasoativa de primeira escolha em bomba contínua para manter pressão arterial média acima de sessenta e cinco e leito intensivo.",
+          "conduct_notes": "Identifico disfunção orgânica grave infecciosa com hipotensão arterial refratária e elevação do marcador de hipoperfusão tecidual. Solicito dosagem imediata do marcador metabólico de perfusão e coleta de dois pares de amostras microbiológicas do sangue antes do antimicrobiano. Administro antibioticoterapia endovenosa de amplo espectro dentro dos primeiros sessenta minutos da admissão. Prescrevo reposição volêmica inicial com solução cristaloide balanceada na proporção de trinta mililitros por quilo. Indico droga vasoativa de primeira escolha em bomba contínua para manter pressão arterial média acima de sessenta e cinco e leito intensivo. Cumprimento o familiar explicando de forma objetiva a gravidade sistêmica da infecção. Investigo alergias a betalactâmicos, antimicrobianos recentes, aspecto da expectoração e volume urinário. Verifico parâmetros circulatórios, ausculto base pulmonar direita e checo nível de consciência e perfusão cutânea. Solicito estudo radiográfico torácico, lactato arterial e pares de hemoculturas prévias ao antibiótico. Programo reavaliação volêmica dinâmica e nova dosagem de lactato sérico para conferir resposta. Defino alvo de pressão média acima de sessenta e cinco e balanço hídrico por sonda vesical. Indico internação imediata em leito de terapia intensiva.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.6,
+              "tolerance": 0.8
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.5,
+              "tolerance": 0.75
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.3,
+              "tolerance": 0.65
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
             }
           ]
         },
@@ -2737,32 +4315,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.8
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.75
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.65
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2797,6 +4417,48 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2837,6 +4499,48 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -2849,37 +4553,79 @@
         {
           "case_id": "EINSTEIN-2023-CG-PNEUMO__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Executo o exame primário sistematizado do trauma avaliando perviedade aérea com proteção cervical e padrão respiratório. Reconheço quadro compressivo pleural com pressão intratorácica positiva levando a colapso circulatório, estase jugular e desvio traqueal. Enfatizo que a condição exige conduta imediata puramente clínica sendo proibida qualquer espera por imagem radiológica. Realizo descompressão imediata da cavidade pleural por punção agulhada calibrosa na parede torácica. Providencio em seguida inserção definitiva de tubo pleural conectado a sistema de drenagem subaquática.",
+          "conduct_notes": "Executo o exame primário sistematizado do trauma avaliando perviedade aérea com proteção cervical e padrão respiratório. Reconheço quadro compressivo pleural com pressão intratorácica positiva levando a colapso circulatório, estase jugular e desvio traqueal. Enfatizo que a condição exige conduta imediata puramente clínica sendo proibida qualquer espera por imagem radiológica. Realizo descompressão imediata da cavidade pleural por punção agulhada calibrosa na parede torácica. Providencio em seguida inserção definitiva de tubo pleural conectado a sistema de drenagem subaquática. Identifico-me checando permeabilidade das vias aéreas mantendo proteção cervical rígida. Instalo máscara com reservatório a cem por cento e monitorização multiparamétrica contínua. Confirmo cinemática da queda motociclística, alergias e ausência de uso de anticoagulantes. Avalio pressão arterial e pulsos providenciando acessos periféricos durante a punção. Sigo técnica asséptica rigorosa puncionando imediatamente acima da costela preservando vasos intercostais. Conecto o tubo em sistema submerso em frasco selado com fixação firme e curativo estéril. Peço radiografia torácica de controle somente depois da drenagem para conferir reexpansão do pulmão.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.8,
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.4,
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.4,
+              "tolerance": 0.2
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
             }
           ]
         },
@@ -2891,32 +4637,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 0.75
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.5,
-              "tolerance": 1.25
+              "expected_score": 1.2,
+              "tolerance": 0.6
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.9
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.7
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -2951,6 +4739,48 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
@@ -2991,6 +4821,48 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         }
@@ -3003,37 +4875,79 @@
         {
           "case_id": "REVALIDA-2024-PED-DESID__correct_paraphrased",
           "case_type": "correct_paraphrased",
-          "conduct_notes": "Examino a criança notando prostração acentuada, globos oculares encovados, ausência de choro lacrimal, mucosas ressecadas e prega cutânea lenta. Enquadro o quadro no estágio mais grave de perda hidroeletrolítica com comprometimento hemodinâmico inicial. Prescrevo reposição venosa pelo Plano C para menor de 1 ano com 30 ml/kg em 1 hora seguidos de 70 ml/kg em 5 horas com cristaloide isotônico. Suspendo ingestão oral somente durante o ataque venoso inicial retomando a amamentação materna logo após recuperação clínica. Prescrevo suplementação oral diária do micronutriente zinco por dez a quatorze dias para reduzir recorrência.",
+          "conduct_notes": "Examino a criança notando prostração acentuada, globos oculares encovados, ausência de choro lacrimal, mucosas ressecadas e prega cutânea lenta. Enquadro o quadro no estágio mais grave de perda hidroeletrolítica com comprometimento hemodinâmico inicial. Prescrevo reposição venosa pelo Plano C para menor de 1 ano com 30 ml/kg em 1 hora seguidos de 70 ml/kg em 5 horas com cristaloide isotônico. Suspendo ingestão oral somente durante o ataque venoso inicial retomando a amamentação materna logo após recuperação clínica. Prescrevo suplementação oral diária do micronutriente zinco por dez a quatorze dias para reduzir recorrência. Cumprimento a mãe com cordialidade explicando a urgência da reposição venosa. Confirmo peso de dez quilos, número de evacuações líquidas sem sangue, vômitos e horas sem diurese. Verifico parâmetros circulatórios, lentidão do enchimento capilar e elasticidade cutânea diminuída. Asseguro acesso periférico rápido com opção intraóssea imediata caso haja insucesso. Prescrevo trezentos mililitros intravenosos na primeira hora e setecentos mililitros nas cinco horas subsequentes. Programo reavaliações clínicas seriadas introduzindo hidratação oral assim que houver aceitação. Oriento higiene domiciliar, contraindicação de antimicrobianos sem disenteria e sinais para voltar.",
           "expected_items": [
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "FULL",
-              "expected_score": 3.0,
+              "expected_score": 2.0,
               "tolerance": 1.0
             },
             {
               "id": "item_4",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 0.9,
+              "tolerance": 0.45
             },
             {
               "id": "item_5",
               "expected_status": "FULL",
-              "expected_score": 1.5,
-              "tolerance": 1.0
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
             }
           ]
         },
@@ -3045,32 +4959,74 @@
             {
               "id": "item_1",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_2",
               "expected_status": "FULL",
-              "expected_score": 2.0,
-              "tolerance": 1.0
+              "expected_score": 1.1,
+              "tolerance": 0.55
             },
             {
               "id": "item_3",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 1.0
             },
             {
               "id": "item_4",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
             },
             {
               "id": "item_5",
               "expected_status": "NONE",
               "expected_score": 0.0,
-              "tolerance": 0.0
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
             }
           ]
         },
@@ -3108,6 +5064,48 @@
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
             }
           ]
         },
@@ -3142,6 +5140,48 @@
             },
             {
               "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
               "expected_status": "NONE",
               "expected_score": 0.0,
               "tolerance": 0.0
