@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "baseline_keyword_report": {
-    "total_cases": 88,
-    "total_items": 1060,
-    "items_within_tolerance": 913,
-    "overall_accuracy_pct": 86.1,
-    "negated_false_positives": 31,
+    "total_cases": 100,
+    "total_items": 1204,
+    "items_within_tolerance": 1036,
+    "overall_accuracy_pct": 86.0,
+    "negated_false_positives": 35,
     "accuracy_by_case_type": {
-      "correct_paraphrased": 59.2,
-      "partial": 97.0,
-      "negated": 88.3,
+      "correct_paraphrased": 60.8,
+      "partial": 95.0,
+      "negated": 88.4,
       "omitted": 100.0
     }
   },
@@ -7037,6 +7037,969 @@
         },
         {
           "case_id": "UNIFESP-2025-CM-PARA__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "USP-RP-2025-PED-PUER",
+      "cases": [
+        {
+          "case_id": "USP-RP-2025-PED-PUER__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Juliana acolhendo suas dúvidas e valorizando o vínculo afetivo com sua filha Helena. Reforço manutenção do aleitamento exclusivo materno até o sexto mês rejeitando oferta de água ou chás. Pergunto sobre troca de fraldas, padrão evacuatório e resultados completos das triagens neonatais. Verifico estatura de sessenta e dois centímetros, peso de seis mil e trezentos gramas e perímetro cefálico plotados na caderneta oficial. Interpreto desenvolvimento ponderal adequado com escore dentro da normalidade e quase o dobro do peso de nascimento. Avalio marcos motores e sociais esperados: sustento da cabeça firme, sorriso interativo e acompanhamento visual de cento e oitenta graus. Examino fontanela anterior normotensa, teste do olhinho, ausculta cardíaca/pulmonar e quadris pela manobra de Ortolani. Prescrevo imunizações de rotina do quarto mês: segunda dose de penta, poliomielite inativada, pneumocócica dez e rotavírus oral. Confirmo faixa etária máxima permitida para segunda dose contra rotavírus e oriento alerta para invaginação intestinal. Mantenho colecalciferol quatrocentas unidades ao dia programando ferro profilático conforme idade recomendada. Recomendo enfaticamente colocar a bebê para dormir de barriga para cima em superfície firme prevenindo morte súbita infantil sem travesseiros soltos. Tranquilizo quanto às golfadas fisiológicas mantendo retorno agendado para os cinco meses com vacinação meningocócica.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-PED-PUER__partial",
+          "case_type": "partial",
+          "conduct_notes": "Acolho a mãe e estimulo aleitamento materno exclusivo até 6 meses sem água ou chás. Confiro peso 6.300 g, comprimento e perímetro cefálico na Caderneta da Criança. Avalio sustento cefálico e sorriso social. Prescrevo vacinas dos 4 meses.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-PED-PUER__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não estimulo aleitamento exclusivo e indico introdução precoce de água, chás e alimentação complementar antes dos 6 meses. Não confiro antropometria, não avalio marcos do desenvolvimento nem faço exame físico com Ortolani ou reflexo vermelho. Não prescrevo vacinas dos 4 meses nem suplementação vitamínica. Oriento colocar o lactente em posição prona de bruços ou decúbito lateral para dormir no berço.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-PED-PUER__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-GO-PRENATAL",
+      "cases": [
+        {
+          "case_id": "UNIFESP-2025-GO-PRENATAL__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Recebo Mariana com acolhimento felicitando pela gestação planejada e preenchendo o cartão oficial de acompanhamento. Estimo nove semanas de gestação pela data da última menstruação e calculo data estimada para o parto pela regra de Naegele. Realizo anamnese clínica, hábitos e medicamentos enquadrando a paciente em pré-natal de baixo risco habitual. Afiro pressão arterial, estatura, índice de massa corporal e realizo exame clínico das mamas e abdome. Executo testes diagnósticos imediatos já nesta primeira consulta para sífilis e HIV além de hepatites virais. Requisito rotina sanguínea do primeiro trimestre com tipagem ABO e fator Rh, glicemia em jejum, hemograma, urocultura e pesquisa de toxoplasmose. Solicito ultrassonografia obstétrica precoce para datar a gestação e programar medida da translucência nucal. Prescrevo suplemento de folato na dose preventiva para tubo neural além de sulfato ferroso profilático. Oriento esquema vacinal materno incluindo reforço dTpa a partir da vigésima semana e gripe, contraindicando imunizantes vivos atenuados. Oriento lavagem cuidadosa de hortaliças, evitar carne malpassada e cuidados com dejetos felinos sem precisar doar o animal. Explico sintomas esperados como náuseas matinais versus sinais de alerta como perda sanguínea vaginal. Agendo consultas mensais regulares até vigésima oitava semana junto ao acompanhamento odontológico e convite ao parceiro.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-GO-PRENATAL__partial",
+          "case_type": "partial",
+          "conduct_notes": "Acolho Mariana e abro o Cartão da Gestante. Calculo idade gestacional de 9 semanas e DPP pela regra de Naegele. Realizo testes rápidos de Sífilis e HIV e prescrevo ácido fólico.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-GO-PRENATAL__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não calculo DPP nem preencho Cartão da Gestante. Não solicito sorologia nem teste rápido para Sífilis, HIV ou tipagem ABO/Rh nesta consulta. Não prescrevo ácido fólico nem sulfato ferroso. Indico vacina tríplice viral e vacina da dengue de vírus vivo durante a gestação.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-GO-PRENATAL__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "REVALIDA-2025-PREV-DO",
+      "cases": [
+        {
+          "case_id": "REVALIDA-2025-PREV-DO__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Eduardo em sala reservada prestando sinceras condolências pelo falecimento de seu pai. Executo verificação presencial dos critérios clínicos de morte incluindo ausência respiratória, ausência de pulso central, pupilas fixas e traçado isoelétrico. Peço e confiro documento de identidade oficial com foto do falecido antes de emitir qualquer papel. Afasto qualquer ligação causal entre o escorregão antigo sem lesão e a infecção atual definindo óbito natural assistido emitido pela equipe sem acionar instituto médico legal. Esclareço que o órgão médico-legal atende causas violentas ou externas enquanto o serviço de verificação atende mortes naturais sem acompanhamento médico. Registro na primeira linha da parte um choque séptico como evento terminal agudo. Indico na segunda linha da parte um pneumonia comunitária bacteriana iniciada há cinco dias. Aponto doença renal crônica terminal e na última linha preenchida diabetes e hipertensão como causa básica há vinte anos. Inscreve-se doença pulmonar obstrutiva crônica na parte dois como comorbidade contribuinte fora da cadeia direta. Enfatizo proibição formal de escrever expressões genéricas ou parada cardiorrespiratória isolada como causa originária do óbito. Explico o fluxo das três vias coloridas do documento oficial entre cartório civil, família e arquivo hospitalar. Reforço gratuidade integral da emissão médica encaminhando o filho ao acolhimento social.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            }
+          ]
+        },
+        {
+          "case_id": "REVALIDA-2025-PREV-DO__partial",
+          "case_type": "partial",
+          "conduct_notes": "Presto condolências ao Eduardo, realizo constatação clínica do óbito e confiro o RG com foto. Defino morte natural assistida sem IML e preencho choque séptico na linha A e pneumonia na linha B.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "REVALIDA-2025-PREV-DO__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não presto condolências, não realizo constatação clínica do óbito nem peço documento oficial de identificação. Vou encaminhar o corpo para o IML por causa da queda de 1 ano atrás. Registro parada cardiorrespiratória como causa básica na última linha da Parte I da Declaração de Óbito. Não preencho pneumonia, doença renal, diabetes ou DPOC na Parte II, não oriento as 3 vias e cobro taxa pela emissão.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "REVALIDA-2025-PREV-DO__omitted",
           "case_type": "omitted",
           "conduct_notes": "Aguardando orientações.",
           "expected_items": [

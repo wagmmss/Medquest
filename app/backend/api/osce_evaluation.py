@@ -629,6 +629,54 @@ def evaluate_critical_safety_violations(
             ):
                 flagged = True
 
+        elif "alimentacao complementar" in err_norm and "6 meses" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["introducao precoce de agua", "oferecer agua", "oferecer cha", "iniciar papinha", "suco antes dos 6 meses"],
+            ):
+                flagged = True
+
+        elif "morte subita" in err_norm and ("prona" in err_norm or "decubito lateral" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["posicao prona", "dormir de brucos", "decubito lateral para dormir", "dormir de lado"],
+            ):
+                flagged = True
+
+        elif "pre-natal" in err_norm and "sifilis" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["sifilis", "hiv", "tipagem", "abo/rh", "sorologia"]
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["nao solicito sorologias", "dispenso teste de sifilis"]
+            ):
+                flagged = True
+
+        elif "virus vivo" in err_norm and "gestacao" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["triplice viral", "vacina de varicela", "vacina da dengue", "vacina de virus vivo"],
+            ):
+                flagged = True
+
+        elif "parada cardiorrespiratoria" in err_norm and "declaracao de obito" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["parada cardiorrespiratoria como causa basica", "pcr como causa basica", "registro parada cardiorrespiratoria"],
+            ):
+                flagged = True
+
+        elif "iml" in err_norm and "causa" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["encaminhar o corpo para o iml", "encaminho ao iml", "mando para o iml", "encaminho o corpo ao iml"],
+            ):
+                flagged = True
+
         if flagged and err not in detected_violations:
             detected_violations.append(err)
 

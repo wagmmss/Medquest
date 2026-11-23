@@ -8278,6 +8278,894 @@
         "Drenar grande volume de líquido ascítico (> 5 litros) em paciente cirrótico sem prescrever reposição endovenosa de albumina humana (6 a 8 g por litro retirado)",
         "Realizar a punção de paracentese no trajeto dos vasos epigástricos inferiores (terço médio dos músculos retos abdominais) ou sobre circulação colateral visível"
       ]
+    },
+    {
+      "code": "USP-RP-2025-PED-PUER",
+      "title": "Puericultura de Rotina, Marcos do Desenvolvimento e Atualização Vacinal (PNI)",
+      "area": "Pediatria",
+      "subtema": "Puericultura, Crescimento, Desenvolvimento e Imunizações",
+      "institution": "USP-RP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 300,
+      "station_kind": "ambulatorio",
+      "source": "Caderneta da Criança / Programa Nacional de Imunizações (PNI) MS / Diretriz SBP / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: CONSULTÓRIO DE PUERICULTURA / UBS (FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico atendendo em consulta de puericultura no CSE Sumarezinho (FMRP-USP).\n\n**Cenário**:\n- Paciente: Lactente Helena Souza, 4 meses completos, nascida a termo (39 semanas, peso ao nascer 3.200 g, comprimento 49 cm), trazida pela mãe para acompanhamento de rotina.\n- Mãe relata dúvidas sobre alimentação, posição de dormir, 'golfadas' após mamar e vacinas do 4º mês.\n\n**Sua Tarefa**:\n1. Realize anamnese alimentar, de eliminações, sono e avaliação do vínculo mãe-bebê.\n2. Execute o exame físico pediátrico, avalie a antropometria na Caderneta e os marcos dos 4 meses.\n3. Prescreva as vacinas dos 4 meses pelo PNI e suplementações vitamínico-minerais vigentes.\n4. Oriente prevenção da síndrome da morte súbita, regurgitação fisiológica e retorno.\n\n*Tempo de prova: 5 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize anamnese alimentar, de eliminações, sono e avaliação do vínculo mãe-bebê."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Execute o exame físico pediátrico, avalie a antropometria na Caderneta e os marcos dos 4 meses."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva as vacinas dos 4 meses pelo PNI e suplementações vitamínico-minerais vigentes."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Oriente prevenção da síndrome da morte súbita, regurgitação fisiológica e retorno."
+        }
+      ],
+      "patient_persona": {
+        "name": "Mãe da Helena (Juliana Souza)",
+        "age": 27,
+        "gender": "feminino",
+        "chief_complaint": "Doutor, vim pra consulta de rotina dos 4 meses da Helena... quero saber se ela tá crescendo bem, se já dou água ou chá, e quais vacinas precisa tomar hoje.",
+        "past_medical_history": "Parto normal 39 semanas, Apgar 9/10, peso ao nascer 3.200 g. Teste do pezinho, orelhinha, coraçãozinho e olhinho normais.",
+        "allergies": "Sem alergias relatadas."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, vim pra consulta de rotina dos 4 meses da Helena... quero saber se ela tá crescendo bem, se já dou água ou chá, e quais vacinas precisa tomar hoje.",
+        "emotional_state": "Mãe carinhosa e atenta, porém pressionada pela sogra para dar chá/água e colocar o bebê para dormir de barriga para baixo.",
+        "only_reveal_if_asked": {
+          "alimentacao": "Está em aleitamento materno exclusivo em livre demanda; a sogra insistiu para começar chá e água pelo calor.",
+          "vacinas_caderneta": "Tomou BCG e Hepatite B ao nascer, e as vacinas de 2 meses (Pentavalente, VIP, Pneumo-10 e Rotavírus 1ª dose) no prazo; faltam as de 4 meses.",
+          "suplementacoes": "Recebe Vitamina D 400 UI por dia desde a primeira semana; ainda não iniciou sulfato ferroso.",
+          "sono_regurgitacao": "Golfa um pouquinho de leite depois de algumas mamadas, mas continua ganhando peso e sorrindo ('vomitador feliz'); às vezes dorme de lado no berço com travesseiro.",
+          "desenvolvimento_eliminacoes": "Firma bem a cabeça quando fica de bruços acordada, sorri para a mãe, pega o brinquedo no meio e molha 6 fraldas de xixi ao dia."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "86x54 mmHg",
+          "fc": "124 bpm",
+          "fr": "32 irpm",
+          "sato2": "99%",
+          "temp": "36.6 °C"
+        },
+        "findings": {
+          "antropometria": "Peso: 6.300 g (Escore-Z entre 0 e +1), Comprimento: 62 cm (Z 0), Perímetro Cefálico: 41 cm (Z 0).",
+          "pediatrico": "Fontanela anterior plana e normotensa, reflexo vermelho bilateral presente, ausculta cardiopulmonar normal, abdome flácido, manobra de Ortolani negativa bilateralmente. Sustento cefálico firme, sorriso social e alcance simétrico na linha média."
+        },
+        "maneuvers": {
+          "antropometria": {
+            "label": "Antropometria (Peso, Comprimento e Perímetro Cefálico)",
+            "triggers": [
+              "antropometria",
+              "peso",
+              "comprimento",
+              "perimetro cefalico",
+              "curvas da oms",
+              "caderneta"
+            ],
+            "finding": "Peso atual: 6.300 g (escore-Z 0 a +1, quase dobrou o peso de nascimento); Comprimento: 62 cm (Z 0); Perímetro Cefálico: 41 cm (Z 0)."
+          },
+          "exame_pediatrico_desenvolvimento": {
+            "label": "Exame Físico Segmentar, Reflexo Vermelho, Ortolani e Marcos",
+            "triggers": [
+              "exame fisico",
+              "fontanela",
+              "ortolani",
+              "reflexo vermelho",
+              "ausculta cardiaca",
+              "ausculta pulmonar",
+              "marcos"
+            ],
+            "finding": "Fontanela anterior normotensa; reflexo vermelho simétrico; ausculta cardiopulmonar limpa; Ortolani negativo. Marcos: sustento cefálico firme, sorriso social, acompanha objetos 180° e junta mãos na linha média."
+          }
+        }
+      },
+      "lab_imaging": {},
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais"
+          ],
+          "content": "FC 124 bpm, FR 32 irpm, SatO2 99%, Temp 36.6 °C"
+        },
+        {
+          "id": "card_pe_antropo",
+          "kind": "physical_exam",
+          "title": "Antropometria na Caderneta (4 meses)",
+          "triggers": [
+            "antropometria",
+            "peso",
+            "perimetro cefalico",
+            "curvas"
+          ],
+          "content": "Peso 6.300 g (Escore-Z 0 a +1), Comprimento 62 cm (Z 0), PC 41 cm (Z 0)."
+        },
+        {
+          "id": "card_pe_marcos",
+          "kind": "physical_exam",
+          "title": "Exame Pediátrico e Marcos do Desenvolvimento",
+          "triggers": [
+            "ortolani",
+            "reflexo vermelho",
+            "fontanela",
+            "marcos"
+          ],
+          "content": "Fontanela normotensa, Ortolani negativo, reflexo vermelho normal; sustento cefálico completo, sorriso social e pega objetos na linha média."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Acolhimento Empático e Observação do Vínculo Mãe-Bebê",
+          "description": "Apresenta-se à mãe, parabeniza pelos cuidados, observa o vínculo afetivo e escuta suas dúvidas sem julgamentos.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "juliana",
+            "helena",
+            "sou o médico",
+            "parabéns",
+            "vínculo"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Estímulo e Manutenção do Aleitamento Materno Exclusivo Até 6 Meses",
+          "description": "Confirma e reforça aleitamento materno exclusivo em livre demanda até o 6º mês, contraindicando água, chás ou sucos antes disso.",
+          "weight": 1.1,
+          "category": "anamnese",
+          "keywords": [
+            "aleitamento materno exclusivo",
+            "livre demanda",
+            "até 6 meses",
+            "sem água",
+            "sem chás"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Avaliação de Eliminações, Sono e Antecedentes Neonatais",
+          "description": "Investiga diurese (fraldas molhadas), evacuações, rotina de sono e resultados das triagens neonatais.",
+          "weight": 0.6,
+          "category": "anamnese",
+          "keywords": [
+            "eliminações",
+            "fraldas",
+            "triagens neonatais",
+            "teste do pezinho"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Aferição e Plotagem Antropométrica nas Curvas da OMS",
+          "description": "Avalia peso (6.300 g), comprimento (62 cm) e perímetro cefálico (41 cm) plotados nos gráficos da Caderneta da Criança.",
+          "weight": 0.9,
+          "category": "exame_fisico",
+          "keywords": [
+            "antropometria",
+            "perímetro cefálico",
+            "6.300",
+            "curvas da oms",
+            "caderneta da criança"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Interpretação Correta do Crescimento Adequado",
+          "description": "Interpreta ganho ponderal eutrófico (escore-Z 0 a +1, próximo de dobrar o peso de nascimento aos 4-5 meses) tranquilizando a mãe.",
+          "weight": 0.7,
+          "category": "diagnostico",
+          "keywords": [
+            "crescimento adequado",
+            "eutrófico",
+            "escore-z",
+            "dobrar o peso"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Avaliação dos Marcos do Desenvolvimento dos 4 Meses",
+          "description": "Checa marcos neuropsicomotores: sustento cefálico completo, sorriso social, acompanhamento visual a 180°, vocalização e junta mãos na linha média.",
+          "weight": 0.9,
+          "category": "exame_fisico",
+          "keywords": [
+            "sustento cefálico",
+            "sorriso social",
+            "180 graus",
+            "linha média",
+            "marcos do desenvolvimento"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Exame Físico Pediátrico Completo (Fontanela, Olho e Quadris)",
+          "description": "Avalia fontanela anterior, reflexo vermelho (Bruckner), ausculta cardiopulmonar, abdome e manobra de Ortolani/abdução de quadris.",
+          "weight": 0.8,
+          "category": "exame_fisico",
+          "keywords": [
+            "fontanela",
+            "reflexo vermelho",
+            "ortolani",
+            "ausculta cardiopulmonar"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Prescrição das Vacinas dos 4 Meses pelo PNI",
+          "description": "Prescreve a 2ª dose das 4 vacinas do 4º mês: Pentavalente (DTP+Hib+HB), VIP (Poliomielite inativada), Pneumocócica 10-valente e Rotavírus Humano.",
+          "weight": 1.2,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "pentavalente",
+            "vip",
+            "pneumocócica 10",
+            "rotavírus",
+            "2ª dose"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Verificação da Janela Etária da Rotavírus e Alertas",
+          "description": "Confere idade-limite da 2ª dose de Rotavírus (aplicável até 7m29d após 1ª dose até 3m15d) e orienta sinais raros de invaginação intestinal.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "7 meses e 29 dias",
+            "idade-limite",
+            "invaginação intestinal"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Suplementação Profilática de Vitamina D e Programação do Ferro",
+          "description": "Mantém Vitamina D 400 UI/dia até 12 meses e orienta programação de suplementação profilática de Ferro (1 mg/kg/dia) conforme diretriz SBP/MS.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "vitamina d",
+            "400 ui",
+            "sulfato ferroso",
+            "suplementação"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Prevenção da Síndrome da Morte Súbita (Posição Supina ao Dormir)",
+          "description": "Orienta enfaticamente colocar Helena para dormir sempre em decúbito dorsal (barriga para cima), em colchão firme sem travesseiros, cobertores soltos ou protetores de berço.",
+          "weight": 1.0,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "decúbito dorsal",
+            "barriga para cima",
+            "síndrome da morte súbita",
+            "berço sem travesseiros"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Esclarecimento Sobre Regurgitação Fisiológica e Retorno aos 5/6 Meses",
+          "description": "Tranquiliza sobre refluxo fisiológico ('golfador feliz' sem perda ponderal), orienta sinais de alarme e agenda retorno (vacina Meningo C aos 5 meses).",
+          "weight": 0.7,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "regurgitação fisiológica",
+            "vomitador feliz",
+            "meningocócica c",
+            "retorno aos 5"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Indicar introdução precoce de água, chás, sucos ou alimentação complementar antes dos 6 meses em lactente em aleitamento materno exclusivo com bom ganho ponderal",
+        "Orientar posição prona (bruços) ou decúbito lateral para o sono do lactente (fator de risco importante para síndrome da morte súbita do lactente)"
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-GO-PRENATAL",
+      "title": "Primeira Consulta de Pré-Natal de Risco Habitual na Atenção Primária",
+      "area": "Ginecologia e Obstetrícia",
+      "subtema": "Pré-Natal de Baixo Risco e Rastreios Gestacionais",
+      "institution": "UNIFESP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 480,
+      "station_kind": "ambulatorio",
+      "source": "Caderno de Atenção Básica nº 32 (Pré-Natal de Baixo Risco) MS / FEBRASGO / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: CONSULTÓRIO DE PRÉ-NATAL / UBS (UNIFESP)\n\n**Candidato(a)**:\nVocê é o médico de família atendendo na UBS da UNIFESP.\n\n**Cenário**:\n- Paciente: Mariana Costa, 25 anos, primigesta (G1P0), teste rápido de gravidez positivo hoje na unidade após atraso menstrual.\n- Data da Última Menstruação (DUM): há exatamente 9 semanas (ciclos regulares de 28 dias). Sem sangramento ou dor pélvica.\n\n**Sua Tarefa**:\n1. Acolha a gestante, calcule a Idade Gestacional e a Data Provável do Parto e estratifique o risco.\n2. Realize o exame físico pré-natal pertinente e os testes rápidos da primeira consulta.\n3. Solicite a rotina laboratorial e ultrassonográfica completa do 1º trimestre.\n4. Prescreva suplementos e vacinas indicadas/contraindicadas, oriente cuidados e agende retorno.\n\n*Tempo de prova: 8 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Acolha a gestante, calcule a Idade Gestacional e a Data Provável do Parto e estratifique o risco."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Realize o exame físico pré-natal pertinente e os testes rápidos da primeira consulta."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Solicite a rotina laboratorial e ultrassonográfica completa do 1º trimestre."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Prescreva suplementos e vacinas indicadas/contraindicadas, oriente cuidados e agende retorno."
+        }
+      ],
+      "patient_persona": {
+        "name": "Mariana Costa",
+        "age": 25,
+        "gender": "feminino",
+        "chief_complaint": "Doutor, meu teste de gravidez deu positivo agora pouco! Foi planejado, tô muito feliz, mas nunca fiz pré-natal e não sei o que preciso fazer agora.",
+        "past_medical_history": "Hígida, sem hipertensão, diabetes ou cirurgias prévias. Vacinação na infância completa; tomou 2 doses de Hepatite B há 3 anos.",
+        "allergies": "Sem alergias."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, meu teste de gravidez deu positivo agora pouco! Foi planejado, tô muito feliz, mas nunca fiz pré-natal e não sei o que preciso fazer agora.",
+        "emotional_state": "Feliz e receptiva, curiosa sobre exames, ácido fólico, alimentação e vacinas.",
+        "only_reveal_if_asked": {
+          "historia_menstrual_gestacao": "DUM há exatas 9 semanas (01/03/2026); ciclos regulares de 28 dias; primeira gestação (G1P0), sem sangramentos ou cólicas fortes, apenas náuseas leves pela manhã.",
+          "antecedentes_medicacoes": "Sem doenças crônicas, não toma medicações contínuas, ainda não iniciou ácido fólico.",
+          "habitos_trabalho": "Não fuma, parou bebida alcoólica ao tentar engravidar; trabalha em escritório; mora com companheiro em relação estável.",
+          "vacinacao_previa": "Falta 1 dose de Hepatite B e último reforço de dT foi há 6 anos; não tomou vacina de gripe neste ano.",
+          "animais_dieta": "Tem um gato em casa que fica no quintal; pergunta se precisa se desfazer do gato por causa da toxoplasmose."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "110x70 mmHg",
+          "fc": "78 bpm",
+          "fr": "16 irpm",
+          "sato2": "99%",
+          "temp": "36.5 °C"
+        },
+        "findings": {
+          "geral": "Corada, hidratada, peso 60 kg, estatura 1,64 m (IMC 22,3 kg/m² - eutrófica), sem edema.",
+          "obstetrico_mamas": "Mamas túrgidas sem nódulos; abdome plano, indolor (útero ainda intrapélvico nesta IG); sem queixas genitais."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral, Peso, Altura e IMC",
+            "triggers": [
+              "inspecao geral",
+              "estado geral",
+              "peso",
+              "imc"
+            ],
+            "finding": "Lúcida, corada, peso 60 kg, estatura 1,64 m (IMC 22,3 kg/m²), sem edema."
+          },
+          "exame_obstetrico_mamas": {
+            "label": "Exame das Mamas e Palpação Abdominal Obstétrica",
+            "triggers": [
+              "exame das mamas",
+              "palpacao abdominal",
+              "exame obstetrico",
+              "altura uterina"
+            ],
+            "finding": "Mamas normais com discreta mastalgia fisiológica; abdome plano e indolor; útero ainda intrapélvico (compatível com 9 semanas)."
+          }
+        }
+      },
+      "lab_imaging": {
+        "testes_rapidos_pn": {
+          "title": "Testes Rápidos de 1ª Consulta (HIV, Sífilis, HBV, HCV)",
+          "available": true,
+          "triggers": [
+            "teste rapido",
+            "testes rapidos",
+            "hiv",
+            "sifilis",
+            "hepatite"
+          ],
+          "result_text": "Teste rápido Sífilis: Não reagente; Teste rápido HIV: Não reagente; HBsAg: Não reagente; Anti-HCV: Não reagente."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais e Antropometria",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "peso",
+            "imc"
+          ],
+          "content": "PA 110x70 mmHg, FC 78 bpm, Peso 60 kg, Altura 1,64 m (IMC 22,3)."
+        },
+        {
+          "id": "card_pe_obs",
+          "kind": "physical_exam",
+          "title": "Exame Obstétrico Inicial e Mamas",
+          "triggers": [
+            "exame das mamas",
+            "palpacao abdominal",
+            "exame obstetrico"
+          ],
+          "content": "Mamas sem alterações; abdome indolor, útero ainda intrapélvico."
+        },
+        {
+          "id": "card_lab_tr_pn",
+          "kind": "lab_imaging",
+          "title": "Testes Rápidos de Pré-Natal",
+          "triggers": [
+            "teste rapido",
+            "sifilis",
+            "hiv"
+          ],
+          "content": "Testes rápidos para Sífilis, HIV, Hepatite B e Hepatite C negativos."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Acolhimento Humanizado e Abertura do Cartão da Gestante",
+          "description": "Acolhe Mariana, parabeniza pela gestação, explora sentimentos/apoio e preenche o Cartão da Gestante e SisPreNatal.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "mariana",
+            "cartão da gestante",
+            "parabéns",
+            "acolhimento",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Cálculo da Idade Gestacional (9s) e Data Provável do Parto (Naegele)",
+          "description": "Calcula IG pela DUM (9 semanas) e calcula a Data Provável do Parto (DPP) aplicando a Regra de Naegele (dia + 7, mês - 3 ou + 9).",
+          "weight": 0.9,
+          "category": "diagnostico",
+          "keywords": [
+            "data provável do parto",
+            "regra de naegele",
+            "idade gestacional",
+            "9 semanas"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Anamnese Obstétrica, Hábitos e Estratificação de Risco Habitual",
+          "description": "Investiga comorbidades, uso de medicações/teratógenos, álcool, tabaco, histórico vacinal e classifica como Pré-Natal de Risco Habitual.",
+          "weight": 0.7,
+          "category": "anamnese",
+          "keywords": [
+            "risco habitual",
+            "teratógenos",
+            "álcool",
+            "tabagismo",
+            "estratificação"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Exame Físico Geral, Antropometria (IMC) e Exame das Mamas/Abdome",
+          "description": "Solicita PA, peso, estatura, calcula IMC pré-gestacional (22,3) e avalia mamas/abdome (esclarecendo que útero é intrapélvico até 12s).",
+          "weight": 0.7,
+          "category": "exame_fisico",
+          "keywords": [
+            "sinais vitais",
+            "imc",
+            "mamas",
+            "palpação abdominal",
+            "pressão arterial"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Realização Imediata dos Testes Rápidos (Sífilis, HIV e Hepatites)",
+          "description": "Realiza testes rápidos para Sífilis e HIV (além de Hepatites B e C) já na primeira consulta com consentimento e aconselhamento.",
+          "weight": 1.1,
+          "category": "exames_complementares",
+          "keywords": [
+            "teste rápido para sífilis",
+            "testes rápidos",
+            "sífilis",
+            "hiv"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Solicitação Completa da Rotina Laboratorial de 1º Trimestre",
+          "description": "Solicita tipagem ABO/Rh (Coombs indireto se Rh-), hemograma, glicemia de jejum, urina I + urocultura, toxoplasmose IgG/IgM e eletroforese de Hb.",
+          "weight": 1.2,
+          "category": "exames_complementares",
+          "keywords": [
+            "tipagem sanguínea",
+            "abo/rh",
+            "urocultura",
+            "toxoplasmose",
+            "glicemia de jejum",
+            "hemograma"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Solicitação de Ultrassonografia Obstétrica de 1º Trimestre (Datação / TN)",
+          "description": "Solicita USG obstétrica para confirmar idade gestacional pelo CCN e programar translucência nucal entre 11 e 13 semanas e 6 dias.",
+          "weight": 0.8,
+          "category": "exames_complementares",
+          "keywords": [
+            "ultrassonografia",
+            "usg",
+            "translucência nucal",
+            "11 a 13 semanas"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Prescrição de Ácido Fólico (0,4 mg/dia) e Sulfato Ferroso",
+          "description": "Prescreve Ácido Fólico 0,4 mg/dia (ou 400 mcg/dia até fim do 1º trimestre) para prevenção de defeitos do tubo neural e orienta Sulfato Ferroso profilático.",
+          "weight": 1.0,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "ácido fólico",
+            "tubo neural",
+            "sulfato ferroso",
+            "0,4 mg"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Calendário Vacinal da Gestante e Contraindicação a Vírus Vivos",
+          "description": "Indica dTpa a partir da 20ª semana, completa Hepatite B, vacina Influenza/Covid e contraindica vacinas de vírus vivos (tríplice viral, varicela, dengue).",
+          "weight": 1.0,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "dtpa",
+            "20ª semana",
+            "influenza",
+            "hepatite b",
+            "não tomar tríplice viral",
+            "contraindicar vírus vivo"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Orientações de Prevenção de Toxoplasmose, Alimentação e Atividade Física",
+          "description": "Orienta não ingerir carnes cruas/malpassadas, lavar vegetais, evitar contato com fezes de gato (sem precisar abandonar o animal) e manter atividade física leve.",
+          "weight": 0.7,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "carnes cruas",
+            "fezes de gato",
+            "toxoplasmose",
+            "higienizar vegetais"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Orientação de Sintomas Fisiológicos vs Sinais de Alarme Obstétrico",
+          "description": "Explica sintomas normais (náuseas matinais, polaciúria) e orienta buscar urgência diante de sangramento vaginal, cólica intensa ou febre.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "sinais de alarme",
+            "sangramento vaginal",
+            "náuseas",
+            "emergência"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Agendamento Mensal, Pré-Natal Odontológico e Pré-Natal do Parceiro",
+          "description": "Agenda consultas mensais até 28 semanas (mínimo 6 no pré-natal), encaminha à odontologia e convida o parceiro para testes e vacinas.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "consultas mensais",
+            "odontológico",
+            "parceiro",
+            "retorno"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Deixar de solicitar sorologia/teste rápido para Sífilis e HIV ou tipagem sanguínea ABO/Rh na primeira consulta de pré-natal",
+        "Indicar vacina de vírus vivo atenuado (como Tríplice Viral, Varicela ou Dengue) durante a gestação"
+      ]
+    },
+    {
+      "code": "REVALIDA-2025-PREV-DO",
+      "title": "Declaração de Óbito: Constatação, Cadeia Causal e Competência Legal (Natural vs IML/SVO)",
+      "area": "Medicina Preventiva",
+      "subtema": "Ética Médica, Medicina Legal e Declaração de Óbito",
+      "institution": "Revalida INEP",
+      "year": 2025,
+      "difficulty": "hard",
+      "duration_seconds": 600,
+      "station_kind": "ambulatorio",
+      "source": "Manual de Instruções para Preenchimento da Declaração de Óbito (MS/CFM) / Medway",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: ENFERMARIA DE CLÍNICA MÉDICA / CONVERSA COM FAMILIAR (REVALIDA INEP)\n\n**Candidato(a)**:\nVocê é o médico assistente na enfermaria de Clínica Médica.\n\n**Cenário**:\n- Paciente: Sr. Joaquim Borges, 68 anos, com DM2 e HAS há 20 anos, doença renal crônica dialítica há 4 anos e DPOC moderada estável. Internado há 5 dias com pneumonia bacteriana lobar comunitária, evoluiu com choque séptico refratário e óbito agora na enfermaria.\n- O filho (Eduardo) pergunta se você pode emitir a Declaração de Óbito e comenta que o pai escorregou no quintal há 1 ano sem fraturas ou internação.\n\n**Sua Tarefa**:\n1. Acolha o familiar, comunique com empatia e constate formalmente o óbito com documento de identificação.\n2. Defina a competência legal (morte natural vs IML vs SVO) investigando se há nexo com a queda antiga.\n3. Preencha corretamente as Partes I (linhas a, b, c/d com causa básica) e II da Declaração de Óbito.\n4. Oriente sobre as 3 vias da DO, gratuidade absoluta e trâmites cartoriais/funerários.\n\n*Tempo de prova: 10 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Acolha o familiar, comunique com empatia e constate formalmente o óbito com documento de identificação."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Defina a competência legal (morte natural vs IML vs SVO) investigando se há nexo com a queda antiga."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Preencha corretamente as Partes I (linhas a, b, c/d com causa básica) e II da Declaração de Óbito."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Oriente sobre as 3 vias da DO, gratuidade absoluta e trâmites cartoriais/funerários."
+        }
+      ],
+      "patient_persona": {
+        "name": "Eduardo Borges (Filho do paciente)",
+        "age": 40,
+        "gender": "masculino",
+        "chief_complaint": "Doutor, o senhor vai poder dar o atestado de óbito do meu pai? Faz 1 ano ele escorregou em casa sem se machucar... precisa mandar pro IML? E quanto custa?",
+        "past_medical_history": "Pai (Sr. Joaquim, 68 anos): DM2 e HAS há 20 anos, DRC dialítica há 4 anos, DPOC moderada; pneumonia há 5 dias complicando com choque séptico.",
+        "allergies": "Documento RG oficial do falecido está nas mãos do filho."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, o senhor vai poder dar o atestado de óbito do meu pai? Faz 1 ano ele escorregou em casa sem se machucar... precisa mandar pro IML? E quanto custa?",
+        "emotional_state": "Triste e abalado pela perda, confuso com burocracia de cartório, IML e receoso de custos.",
+        "only_reveal_if_asked": {
+          "detalhes_queda_antiga": "Escorregou no quintal há exatamente 1 ano, levantou sozinho, nunca quebrou nenhum osso nem precisou de hospital por aquela queda.",
+          "documento_identificacao": "Trouxe o RG original com foto e CPF do Sr. Joaquim para conferência.",
+          "historico_internacao": "Ficou internado 5 dias nesta enfermaria sendo tratado pelos médicos da equipe para pneumonia, até evoluir com choque séptico hoje.",
+          "comorbidades_pai": "Tinha diabetes e pressão alta há 20 anos, fazia hemodiálise há 4 anos pelos rins e usava bombinha para enfisema/DPOC.",
+          "duvida_custo_vias": "Não sabe em qual órgão entregar o documento nem quanto custa a emissão médica."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "0x0 mmHg",
+          "fc": "0 bpm",
+          "fr": "0 irpm",
+          "sato2": "0%",
+          "temp": "35.1 °C"
+        },
+        "findings": {
+          "constatacao_obito": "Ausência total de incursões respiratórias, ausência de bulhas cardíacas e pulsos centrais (carotídeo e femoral), pupilas midriáticas paralíticas sem reflexo fotomotor, linha isoelétrica no ECG."
+        },
+        "maneuvers": {
+          "constatacao_obito": {
+            "label": "Constatação Clínica e Eletrocardiográfica do Óbito",
+            "triggers": [
+              "constatacao do obito",
+              "exame clinico do obito",
+              "bulhas",
+              "pulsos centrais",
+              "reflexo fotomotor",
+              "ecg"
+            ],
+            "finding": "Ausência de movimentos respiratórios, ausência de batimentos cardíacos/pulsos centrais, midríase fixa arreativa e linha isoelétrica ao traçado cardíaco."
+          }
+        }
+      },
+      "lab_imaging": {
+        "prontuario_clinico": {
+          "title": "Resumo do Prontuário de Internação (5 dias)",
+          "available": true,
+          "triggers": [
+            "prontuario",
+            "resumo clinico",
+            "identificacao",
+            "documento"
+          ],
+          "result_text": "Internado há 5 dias por pneumonia comunitária em base direita (hemocultura: S. pneumoniae), evoluiu com choque séptico nas últimas 24h. Antecedentes confirmados: DRC terminal (4 anos) secundária a HAS/DM2 (20 anos); DPOC moderada estável."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_pe_obito",
+          "kind": "physical_exam",
+          "title": "Constatação Formal do Óbito",
+          "triggers": [
+            "constatacao do obito",
+            "reflexo fotomotor",
+            "pulsos centrais"
+          ],
+          "content": "Ausência de respiração, batimentos cardíacos e pulsos centrais; pupilas midriáticas arreativas; ECG isoelétrico."
+        },
+        {
+          "id": "card_lab_prontuario",
+          "kind": "lab_imaging",
+          "title": "Resumo Clínico de Enfermaria",
+          "triggers": [
+            "prontuario",
+            "resumo clinico"
+          ],
+          "content": "Pneumonia lobar (5 dias) -> Choque séptico (1 dia); DRC dialítica (4 anos); HAS/DM2 (20 anos); DPOC estável."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Acolhimento Empático ao Luto e Comunicação Respeitosa do Óbito",
+          "description": "Apresenta-se, demonstra condolências sinceras ao filho em ambiente reservado e comunica o falecimento com sensibilidade.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "meus sentimentos",
+            "eduardo",
+            "condolências",
+            "lamento",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Constatação Clínica Formal do Óbito Pelo Próprio Médico",
+          "description": "Descreve a constatação presencial do óbito (ausência de respiração, bulhas cardíacas/pulsos centrais, arreflexia pupilar/fotomotor e traçado isoelétrico).",
+          "weight": 0.8,
+          "category": "exame_fisico",
+          "keywords": [
+            "constatar o óbito",
+            "ausência de pulso",
+            "reflexo fotomotor",
+            "midríase",
+            "linha isoelétrica"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Exigência e Conferência de Documento Oficial de Identificação",
+          "description": "Solicita e confere documento oficial com foto (RG/CNH) do falecido antes de preencher a Declaração de Óbito.",
+          "weight": 0.7,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "documento oficial",
+            "rg",
+            "identificação com foto",
+            "conferência"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Definição Correta: Morte Natural Assistida (Emissão Pela Equipe, Sem IML)",
+          "description": "Afasta nexo causal com a queda antiga sem fratura, caracteriza morte natural com assistência médica e assume emissão da DO sem encaminhar ao IML ou SVO.",
+          "weight": 1.2,
+          "category": "diagnostico",
+          "keywords": [
+            "morte natural",
+            "assistência médica",
+            "sem nexo causal",
+            "não vai para o iml",
+            "próprio médico emite"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Distinção Clara dos Critérios de Encaminhamento ao IML e ao SVO",
+          "description": "Explica corretamente que o IML recebe mortes por causas externas/suspeitas (mesmo tardias se com nexo) e o SVO recebe mortes naturais sem assistência médica ou mal definidas.",
+          "weight": 0.8,
+          "category": "diagnostico",
+          "keywords": [
+            "causa externa",
+            "sem assistência médica",
+            "svo",
+            "serviço de verificação de óbitos"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Preenchimento da Linha A da Parte I (Causa Imediata/Terminal)",
+          "description": "Preenche na Linha A da Parte I a causa terminal imediata: Choque séptico (tempo aproximado: horas / 1 dia).",
+          "weight": 0.9,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "linha a da parte i",
+            "choque séptico",
+            "causa imediata"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Preenchimento da Linha B da Parte I (Causa Intermediária: Pneumonia)",
+          "description": "Preenche na Linha B da Parte I: Pneumonia bacteriana comunitária/lobar (tempo aproximado: 5 dias).",
+          "weight": 0.9,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "linha b",
+            "pneumonia",
+            "5 dias"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Preenchimento das Linhas C/D e Causa Básica na Última Linha da Parte I",
+          "description": "Preenche DRC terminal (4 anos) na Linha C e Diabetes mellitus / Hipertensão arterial sistêmica (20 anos) como Causa Básica na última linha da Parte I.",
+          "weight": 1.2,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "doença renal crônica",
+            "diabetes",
+            "hipertensão",
+            "causa básica diabetes"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Preenchimento da Parte II Com Condição Contribuinte (DPOC)",
+          "description": "Registra Doença Pulmonar Obstrutiva Crônica (DPOC) na Parte II da DO como condição mórbida significativa contribuinte fora da cadeia direta.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "parte ii",
+            "parte 2",
+            "dpoc",
+            "condição contribuinte"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Proibição de Termos Vagos ou Modo de Morrer (Não Escrever PCR)",
+          "description": "Explicita que não se deve preencher parada cardiorrespiratória ou falência múltipla de órgãos como causa básica do óbito.",
+          "weight": 0.8,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "não registrar parada cardiorrespiratória",
+            "não colocar pcr",
+            "modo de morrer"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Orientação das 3 Vias da Declaração de Óbito (Branca, Amarela e Rosa)",
+          "description": "Explica o destino das 3 vias: branca para cartório/vigilância, amarela entregue à família para cartório de registro civil e certidão/sepultamento, rosa arquivada no prontuário.",
+          "weight": 0.7,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "3 vias",
+            "via branca",
+            "via amarela",
+            "via rosa",
+            "cartório de registro civil"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Esclarecimento Sobre Gratuidade Absoluta do Ato Médico e Acolhimento",
+          "description": "Garante expressamente que a emissão da Declaração de Óbito é totalmente gratuita (proibido cobrar honorários pela emissão no SUS ou privado) e encaminha ao serviço social.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "gratuita",
+            "gratuidade",
+            "não tem custo",
+            "proibido cobrar",
+            "serviço social"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Registrar Parada Cardiorrespiratória (PCR) como causa básica na última linha da Parte I da Declaração de Óbito",
+        "Encaminhar ao IML um óbito de causa comprovadamente natural com assistência médica completa ou emitir DO clínica comum quando houver nexo com causa externa/violenta"
+      ]
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [

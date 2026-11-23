@@ -323,6 +323,18 @@ def _build_trigger_phrase_for_error(err: str) -> str:
         return "Dreno mais de 5 litros de líquido ascítico sem prescrever albumina humana."
     if "paracentese" in e and ("vasos epigastricos" in e or "circulacao colateral" in e):
         return "Realizo a punção no trajeto dos vasos epigástricos sobre circulação colateral."
+    if "alimentacao complementar" in e and "6 meses" in e:
+        return "Indico introdução precoce de água e chás antes dos 6 meses."
+    if "morte subita" in e and ("prona" in e or "decubito lateral" in e):
+        return "Oriento colocar o lactente em posição prona para dormir de bruços."
+    if "pre-natal" in e and "sifilis" in e:
+        return "Não solicito sorologia ou teste rápido para Sífilis e HIV na primeira consulta."
+    if "virus vivo" in e and "gestacao" in e:
+        return "Indico vacina tríplice viral e vacina da dengue durante a gestação."
+    if "parada cardiorrespiratoria" in e and "declaracao de obito" in e:
+        return "Registro parada cardiorrespiratória como causa básica na Declaração de Óbito."
+    if "iml" in e and "causa" in e:
+        return "Vou encaminhar o corpo para o IML apesar da morte natural assistida."
     return ""
 
 
