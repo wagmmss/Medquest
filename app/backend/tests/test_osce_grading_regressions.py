@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from api import osce
 from api.db import get_db
+from api.osce_data import CANONICAL_STATIONS
+from api.osce_evaluation import _normalize_text, evaluate_critical_safety_violations
 
 
 def _start_station_by_code(db, code: str, user_id: str = "test_reg_user", mode: str = "blind") -> str:
@@ -187,3 +189,96 @@ def test_empty_session_honest_radar_and_review(app):
         assert res["competency_radar_5d"]["sus_time_efficiency"] == 0.0
         assert all(d["percentage"] in (None, 0.0) for d in res["competency_radar"]["dimensions"])
         assert res["chief_preceptor_review"]["what_went_well"] == []
+
+
+def _build_trigger_phrase_for_error(err: str) -> str:
+    """Constrói frase representativa de violação para testar cobertura determinística de cada erro crítico."""
+    e = _normalize_text(err)
+    if "bicarbonato" in e:
+        return "Prescrevo bicarbonato de sódio venoso para corrigir o pH."
+    if "potassio" in e and "insulina" in e:
+        return "Inicio insulina regular em bomba imediatamente."
+    if "suspender" in e and "insulina" in e:
+        return "Vou suspender insulina assim que a glicemia baixar."
+    if "trombolitico" in e or "fibrinolitico" in e:
+        return "Prescrevo alteplase para trombólise química."
+    if "estrategia invasiva" in e:
+        return "Não indico cateterismo nem estratégia invasiva, sigo tratamento conservador exclusivo."
+    if "tomografia" in e and ("instavel" in e or "fast" in e):
+        return "Encaminho paciente para tomografia computadorizada agora."
+    if "2 litros" in e or "coagulopatia dilucional" in e:
+        return "Realizo ressuscitação agressiva com 3 litros de soro fisiológico."
+    if ("corticosteroide" in e or "cortico" in e) and "bronquiolite" in e:
+        return "Prescrevo prednisolona oral para esta bronquiolite."
+    if ("antibiotico" in e or "antimicrobiano" in e) and ("bronquiolite" in e or "quadro viral" in e or "diarreia aquosa" in e):
+        return "Prescrevo amoxicilina de rotina."
+    if "alta" in e and ("hipoxemia" in e or "observacao" in e):
+        return "Vou dar alta hospitalar para casa agora."
+    if "hamilton" in e or "massagem bimanual" in e:
+        return "Não realizo massagem bimanual nem manobra de Hamilton."
+    if "atrasar" in e and "uterotonico" in e:
+        return "Vou aguardar exames antes da ocitocina e não administro uterotônico agora."
+    if "tudo psicologico" in e or "desmerecer" in e:
+        return "Isso é tudo psicológico, a senhora não tem nada."
+    if "bateria excessiva" in e or "prevencao quaternaria" in e:
+        return "Solicito bateria de exames e tomografia de corpo inteiro."
+    if "benzodiazepinico" in e or "polifarmacia" in e:
+        return "Prescrevo clonazepam de uso contínuo."
+    if "aguardar" in e and "troponina" in e:
+        return "Vou aguardar troponina antes de definir reperfusão."
+    if "nitrato" in e:
+        return "Prescrevo isordil sublingual imediatamente."
+    if "oxigenioterapia" in e:
+        return "Prescrevo cateter de O2 de rotina para a paciente."
+    if "nao indicar cirurgia" in e:
+        return "Não indico cirurgia, vou manter tratamento conservador."
+    if "endoscopia" in e or "eda" in e:
+        return "Solicito endoscopia digestiva alta imediata."
+    if ("corticoide" in e or "anti-histaminico" in e) and "adrenalina" in e:
+        return "Prescrevo hidrocortisona e prometazina apenas."
+    if "adrenalina" in e and ("subcutanea" in e or "intravenosa pura" in e):
+        return "Administro adrenalina subcutânea agora."
+    if "nao prescrever sulfato" in e:
+        return "Não vou prescrever sulfato de magnésio neste caso."
+    if "diazepam" in e or "fenitoina" in e:
+        return "Prescrevo diazepam e fenitoína para profilaxia de convulsão."
+    if "reduzir abruptamente" in e or "120 mmhg" in e:
+        return "Vou reduzir abruptamente a PA para valores menores que 120 mmHg."
+    if "abrupta" in e or "em pe" in e:
+        return "Comunico em pé no corredor de forma abrupta sem aviso prévio."
+    if "jargoes" in e or "adenocarcinoma" in e:
+        return "Você tem adenocarcinoma invasivo moderadamente diferenciado."
+    if "nao ha nada a fazer" in e:
+        return "Infelizmente não há nada a fazer neste caso."
+    if "amiodarona" in e:
+        return "Administro amiodarona 300 mg venosa antes do choque."
+    if "sincronizacao" in e:
+        return "Vou chocar sem sincronizar com desfibrilação imediata."
+    if "atrasar o antibiotico" in e:
+        return "Vou esperar hemocultura sair antes de iniciar antibiótico."
+    if "dopamina" in e:
+        return "Inicio dopamina em bomba como vasopressor inicial."
+    if ("radiografia" in e or "tomografia" in e) and "pneumotorax" in e:
+        return "Solicito radiografia de tórax antes de descomprimir."
+    if "intubacao" in e and "descomprimir" in e:
+        return "Vou intubar antes de descomprimir o tórax."
+    if "plano a ou b" in e or "reidratacao oral" in e:
+        return "Vou manter apenas terapia de reidratação oral pelo Plano B."
+    if "boletim de ocorrencia" in e:
+        return "Exijo o boletim de ocorrência para atender a paciente."
+    if "nao prescrever a profilaxia de hiv" in e:
+        return "Não vou prescrever PEP nem profilaxia de HIV."
+    return ""
+
+
+def test_all_canonical_critical_errors_have_working_detection_rule():
+    """Todo erro crítico cadastrado em CANONICAL_STATIONS deve possuir uma regra capaz de detectá-lo."""
+    assert len(CANONICAL_STATIONS) >= 16
+    for station in CANONICAL_STATIONS:
+        for err in station.get("critical_errors", []):
+            phrase = _build_trigger_phrase_for_error(err)
+            assert phrase, f"Sem frase de disparo definida para [{station['code']}] {err}"
+            detected = evaluate_critical_safety_violations([err], phrase, [], station)
+            assert detected == [err], (
+                f"Erro crítico sem regra funcional em {station['code']}: '{err}' (frase='{phrase}')"
+            )

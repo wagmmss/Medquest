@@ -1135,7 +1135,7 @@ def finish_osce_session(
         SELECT s.id, s.station_id, s.user_id, s.status, s.start_time, s.elapsed_seconds,
                s.final_score, s.transcript_json, s.actions_taken_json,
                s.checklist_evaluation_json, s.preceptor_feedback_json,
-               st.title, st.area, st.subtema, st.institution, st.year,
+               st.code, st.title, st.area, st.subtema, st.institution, st.year,
                st.checklist_barema_json
         FROM osce_sessions s
         JOIN osce_stations st ON s.station_id = st.id
@@ -1217,31 +1217,32 @@ def finish_osce_session(
 
     raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
-    # 1. Auditoria Avançada de Red Flags (Etapa 4)
+    # 1. Auditoria Unificada de Red Flags & Segurança Clínica (lista única sem duplicidade)
     red_flags = evaluate_osce_red_flags(
         actions=actions,
         transcript=transcript,
         station_meta=dict(sess),
-        checklist_items=checklist_items
-    )
-
-    # Auditoria Legada de Segurança Clínica
-    critical_warnings = evaluate_critical_safety_violations(
+        checklist_items=checklist_items,
         critical_errors=critical_errors,
         evidence_text=all_evidence_corpus,
-        actions=actions,
-        station_meta=dict(sess)
     )
-    for warn in critical_warnings:
-        if not any(rf["title"] == warn for rf in red_flags):
-            red_flags.append({
-                "code": "RF_CLINICAL_SAFETY",
-                "title": "Violação de Segurança Clínica",
-                "description": warn,
-                "timestamp_sec": 0,
-                "score_deduction": 1.5,
-                "clinical_consequence": "Quebra de diretriz de segurança estabelecida no barema."
-            })
+
+    # Se exigir BO em violência sexual, anula pontuação do acolhimento (item_1)
+    station_code = str(dict(sess).get("code", "")).upper()
+    if station_code == "REVALIDA-2023-GO-PEP" and any(
+        "boletim de ocorrencia" in _normalize_text(rf.get("description", ""))
+        for rf in red_flags
+    ):
+        for it in evaluated_items:
+            if it.get("id") == "item_1":
+                it["score_earned"] = 0.0
+                it["awarded_score"] = 0.0
+                it["status"] = "NONE"
+                it["timestamp_achieved_sec"] = None
+                it["evidence"] = "Critério zerado por exigência indevida de Boletim de Ocorrência."
+                it["evidence_citation"] = it["evidence"]
+        total_score = sum(float(it["score_earned"]) for it in evaluated_items)
+        raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
     # 2. Cálculo da Nota Final com Dedução e Travas de Teto (Caps)
     total_penalty = round(sum(rf.get("score_deduction", 0.0) for rf in red_flags), 1)

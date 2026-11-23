@@ -94,18 +94,28 @@ def evaluate_critical_safety_violations(
     """
     norm_evidence = _normalize_text(evidence_text)
     prescriptions: list[dict[str, Any]] = []
+    action_tokens: list[str] = []
 
     for a in actions:
-        if a.get("action_type") == "prescription":
+        act_type = str(a.get("action_type") or "").lower()
+        if act_type == "prescription":
             prescriptions.extend(a.get("prescription_items", []))
+        elif act_type in ("lab_imaging", "exam", "imaging", "procedure", "cardioversion"):
+            action_tokens.append(
+                _normalize_text(
+                    f"{act_type} {a.get('action_target', '')} "
+                    f"{a.get('procedure_type', '')} {a.get('anatomical_site', '')}"
+                )
+            )
 
     all_prescribed_drugs = " ".join([
-        _normalize_text(f"{p.get('drug_name', '')} {p.get('dose', '')} {p.get('route', '')} {p.get('notes', '')}")
+        _normalize_text(
+            f"{p.get('drug_name', '')} {p.get('dose', '')} {p.get('unit', '')} {p.get('route', '')} {p.get('notes', '')}"
+        )
         for p in prescriptions
     ])
-    full_corpus = f"{norm_evidence} {all_prescribed_drugs}"
+    prescribed_and_actions = " ".join(part for part in (all_prescribed_drugs, " ".join(action_tokens)) if part).strip()
 
-    station_subtema = _normalize_text(station_meta.get("subtema", ""))
     detected_violations: list[str] = []
 
     for err in critical_errors:
@@ -113,102 +123,409 @@ def evaluate_critical_safety_violations(
         flagged = False
 
         if "bicarbonato" in err_norm:
-            if _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["bicarbonato", "nahco3", "bicarb"]):
+            if _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["bicarbonato", "nahco3", "bicarb"]):
                 flagged = True
 
         elif "potassio" in err_norm and "insulina" in err_norm:
-            has_insulin = _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["insulina", "bic de insulina", "insulina regular"])
-            checked_k = any(term in full_corpus for term in ["potassio", "k+", "gasometria", "eletrolitos", "kcl"])
+            has_insulin = _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["insulina", "insulina regular"]
+            )
+            checked_k = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "potassio", "k+", "gasometria", "eletrolitos", "kcl",
+                    "cloreto de potassio", "ionograma", "calemia", "k serico",
+                ],
+            ) or any(
+                a.get("action_type") in ("lab_imaging", "exam")
+                and any(
+                    k in _normalize_text(str(a.get("action_target", "")))
+                    for k in ("gaso", "eletrolito", "potassio", "laboratorio", "ionograma")
+                )
+                for a in actions
+            )
             if has_insulin and not checked_k:
                 flagged = True
 
         elif "suspender" in err_norm and "insulina" in err_norm:
-            if _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["suspender insulina", "desligo a insulina", "parar a insulina"]):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "suspender insulina", "suspendo a insulina", "suspender a infusao de insulina",
+                    "desligar insulina", "desligo a insulina", "parar a insulina", "interromper insulina",
+                ],
+            ):
                 flagged = True
 
         elif "trombolitico" in err_norm or "fibrinolitico" in err_norm:
-            if _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["trombolise", "alteplase", "tenecteplase", "estreptoquinase", "metalyse", "actilyse"]):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "trombolise", "trombolitico", "fibrinolitico", "alteplase",
+                    "tenecteplase", "estreptoquinase", "metalyse", "actilyse",
+                ],
+            ):
+                flagged = True
+
+        elif "estrategia invasiva" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["cateterismo", "cate", "estrategia invasiva", "hemodinamica", "coronariografia"]
+            ) or _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["tratamento conservador exclusivo", "alta sem cateterismo", "nao indicar estrategia invasiva"],
+            ):
+                flagged = True
+
+        elif "tomografia" in err_norm and ("instavel" in err_norm or "fast" in err_norm):
+            has_tc_action = any(
+                a.get("action_type") in ("lab_imaging", "exam", "imaging")
+                and _normalize_text(str(a.get("action_target", ""))) in ("tc", "tomografia")
+                for a in actions
+            )
+            has_tc_speech = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["tomografia", "levar para tc", "encaminhar para tc", "solicito tc", "fazer tc"],
+            )
+            if has_tc_action or has_tc_speech:
+                flagged = True
+
+        elif "2 litros" in err_norm or "coagulopatia dilucional" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "3 litros", "3000 ml", "4 litros", "4000 ml",
+                    "ressuscitacao agressiva", "mais de 2 litros",
+                ],
+            ):
+                flagged = True
+
+        elif ("corticosteroide" in err_norm or "cortico" in err_norm) and "bronquiolite" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["prednisolona", "prednisona", "dexametasona", "hidrocortisona", "corticoide", "corticosteroide"],
+            ):
+                flagged = True
+
+        elif ("antibiotico" in err_norm or "antimicrobiano" in err_norm) and (
+            "bronquiolite" in err_norm or "quadro viral" in err_norm or "diarreia aquosa" in err_norm
+        ):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "amoxicilina", "azitromicina", "ceftriaxona", "claritromicina",
+                    "ampicilina", "ciprofloxacino", "metronidazol", "antibiotico", "antimicrobiano",
+                ],
+            ):
+                flagged = True
+
+        elif "alta" in err_norm and ("hipoxemia" in err_norm or "observacao" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["dar alta", "libero para casa", "alta hospitalar", "alta para casa", "liberar para casa"],
+            ):
+                flagged = True
+
+        elif "hamilton" in err_norm or "massagem bimanual" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["massagem", "hamilton", "compressao bimanual", "massagem bimanual"]
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["omitir massagem", "sem massagem bimanual"]
+            ):
+                flagged = True
+
+        elif "atrasar" in err_norm and "uterotonico" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["ocitocina", "uterotonico", "uterotonicos", "acido tranexamico"]
+            ) or _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["atrasar uterotonico", "aguardar exames antes da ocitocina", "esperar laboratorio para ocitocina"],
+            ):
+                flagged = True
+
+        elif "tudo psicologico" in err_norm or "desmerecer" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["tudo psicologico", "nao tem nada", "coisa da sua cabeca", "frescura"],
+            ):
+                flagged = True
+
+        elif "bateria excessiva" in err_norm or "prevencao quaternaria" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["bateria de exames", "tomografia de corpo inteiro", "endoscopia e colonoscopia", "exames invasivos"],
+            ):
+                flagged = True
+
+        elif "benzodiazepinico" in err_norm or "polifarmacia" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["benzodiazepinico", "benzodiazepinicos", "clonazepam", "rivotril", "diazepam", "alprazolam"],
+            ):
+                flagged = True
+
+        elif "aguardar" in err_norm and ("troponina" in err_norm or "marcador" in err_norm or "enzima" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "aguardar troponina", "aguardo troponina", "aguardo o resultado da troponina",
+                    "esperar troponina", "esperar a troponina", "esperar resultado da troponina",
+                    "aguardar resultado de troponina", "esperar enzimas",
+                ],
+            ):
                 flagged = True
 
         elif "nitrato" in err_norm:
-            has_nitrate = any(term in full_corpus for term in ["nitrato", "isordil", "mononitrato", "dinitrato", "tridil", "nitroglicerina"])
-            checked_contra = any(term in full_corpus for term in ["sildenafila", "viagra", "tadalafila", "erecao", "ventriculo direito", "vd"])
+            has_nitrate = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["nitrato", "isordil", "mononitrato", "dinitrato", "tridil", "nitroglicerina"],
+            )
+            checked_contra = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["sildenafila", "viagra", "tadalafila", "erecao", "ventriculo direito", "infarto de vd"],
+            )
             if has_nitrate and not checked_contra:
                 flagged = True
 
         elif "oxigenioterapia" in err_norm:
-            if any(term in full_corpus for term in ["cateter de o2", "oxigenio a", "o2 a", "mascara de o2", "o2 2l", "o2 3l"]):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "cateter de o2", "oxigenio de rotina", "oxigenioterapia de rotina",
+                    "oxigenio a", "o2 a", "mascara de o2", "o2 2l", "o2 3l", "o2 suplementar",
+                ],
+            ):
                 flagged = True
 
-        elif "aguardar" in err_norm and ("troponina" in err_norm or "marcador" in err_norm or "enzima" in err_norm):
-            if any(term in full_corpus for term in ["aguardar troponina", "esperar a troponina", "aguardo o resultado da troponina", "esperar enzimas"]):
-                flagged = True
-
-        elif "tomografia" in err_norm and ("instavel" in err_norm or "fast" in err_norm):
-            has_tc = any(a.get("action_target") == "tc" or "tomografia" in full_corpus for a in actions)
-            if has_tc:
+        elif "nao indicar cirurgia" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["cirurgia", "laparotomia", "operar", "tratamento cirurgico"]
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["tratamento conservador", "conduta expectante"]
+            ):
                 flagged = True
 
         elif "endoscopia" in err_norm or "eda" in err_norm:
-            if _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["eda", "endoscopia", "endoscopia digestiva"]):
+            if _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["eda", "endoscopia", "endoscopia digestiva"]
+            ):
                 flagged = True
 
-        elif ("radiografia" in err_norm or "tomografia" in err_norm) and "pneumotorax" in station_subtema:
-            rx_done = any(a.get("action_type") == "lab_imaging" and a.get("action_target") in ["rx", "raio_x", "tc"] for a in actions)
-            decompression_done = any(a.get("action_type") == "procedure" and "puncture" in str(a.get("procedure_type", "")) for a in actions)
-            if rx_done and not decompression_done:
+        elif ("corticoide" in err_norm or "anti-histaminico" in err_norm) and "adrenalina" in err_norm:
+            gave_adjunct = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["corticoide", "hidrocortisona", "prednisolona", "anti-histaminico", "prometazina", "difenidramina"],
+            )
+            gave_adrenaline = _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["adrenalina", "epinefrina"]
+            )
+            negated_adrenaline = _has_negated_mention(norm_evidence, ["adrenalina", "epinefrina"])
+            if gave_adjunct and (not gave_adrenaline or negated_adrenaline):
                 flagged = True
 
-        elif "cortico" in err_norm and "bronquiolite" in station_subtema:
-            if any(term in full_corpus for term in ["prednisolona", "prednisona", "dexametasona", "hidrocortisona", "corticoide"]):
-                flagged = True
-        elif "antibiotico" in err_norm and "bronquiolite" in station_subtema:
-            if any(term in full_corpus for term in ["amoxicilina", "azitromicina", "ceftriaxona", "claritromicina", "ampicilina"]):
-                flagged = True
-
-        elif "adrenalina" in err_norm and "anafilaxia" in station_subtema:
-            if any(term in full_corpus for term in ["adrenalina sc", "subcutanea", "adrenalina subcutanea"]):
-                flagged = True
-
-        elif ("anti-inflamatorio" in err_norm or "aas" in err_norm) and "dengue" in station_subtema:
-            if any(term in full_corpus for term in ["aas", "aspirina", "ibuprofeno", "cetoprofeno", "nimesulida", "diclofenaco"]):
+        elif "adrenalina" in err_norm and ("subcutanea" in err_norm or "intravenosa pura" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "adrenalina sc", "adrenalina subcutanea", "via subcutanea",
+                    "adrenalina iv pura", "adrenalina endovenosa pura", "infusao intravenosa pura",
+                ],
+            ):
                 flagged = True
 
-        elif ("diazepam" in err_norm or "fenitoina" in err_norm) and "preeclampsia" in station_subtema:
-            if any(term in full_corpus for term in ["diazepam", "fenitoina", "hidantal"]):
+        elif "nao prescrever sulfato" in err_norm:
+            if _has_negated_mention(
+                norm_evidence, ["sulfato de magnesio", "magnesio", "zuspan"]
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["sem sulfato de magnesio", "dispensar sulfato de magnesio"]
+            ):
                 flagged = True
 
-        elif "insulina" in err_norm and "glicose" in err_norm and "hipercalemia" in station_subtema:
-            has_insulin = _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["insulina"])
-            has_glucose = any(
-                term in full_corpus
-                for term in ["glicose", "glicosado", "glicoinsulina", "sg 50", "sg50", "sg 10", "sg10", "dextrose"]
+        elif "diazepam" in err_norm or "fenitoina" in err_norm:
+            if _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["diazepam", "fenitoina", "hidantal"]):
+                flagged = True
+
+        elif "reduzir abruptamente" in err_norm or "120 mmhg" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "reduzir abruptamente", "pa menor que 120", "pa < 120",
+                    "baixar pa para 100", "normalizar pa para 110",
+                ],
+            ):
+                flagged = True
+
+        elif "abrupta" in err_norm or "em pe" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["em pe", "no corredor", "de forma abrupta", "sem aviso previo", "voce tem cancer e pronto"],
+            ):
+                flagged = True
+
+        elif "jargoes" in err_norm or "adenocarcinoma" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["adenocarcinoma invasivo moderadamente diferenciado", "jargao tecnico sem traduzir"],
+            ):
+                flagged = True
+
+        elif "nao ha nada a fazer" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["nao ha nada a fazer", "nao tem mais o que fazer", "abandonar o vinculo"],
+            ):
+                flagged = True
+
+        elif "amiodarona" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["amiodarona", "amiodarona venosa", "amiodarona 300"]
+            ):
+                flagged = True
+
+        elif "sincronizacao" in err_norm:
+            unsync_action = any(
+                (a.get("action_type") == "cardioversion" or (a.get("action_type") == "procedure" and "cardioversion" in str(a.get("procedure_type", "")).lower()))
+                and (a.get("sync") is False or "desincronizado" in str(a.get("findings", "")).lower())
+                for a in actions
+            )
+            if unsync_action or _has_negated_mention(
+                norm_evidence, ["sincronizar", "sincronizado", "sincronizacao", "botao de sincronizacao"]
+            ) or _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["desfibrilar", "desfibrilacao", "choque nao sincronizado", "choque dessincronizado", "chocar sem sincronizar"],
+            ):
+                flagged = True
+
+        elif "atrasar o antibiotico" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "atrasar o antibiotico", "antibiotico apos 3 horas",
+                    "aguardar resultado da cultura para iniciar antibiotico", "esperar hemocultura sair",
+                ],
+            ) or _has_negated_mention(norm_evidence, ["antibiotico"]):
+                flagged = True
+
+        elif "dopamina" in err_norm:
+            if _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["dopamina"]):
+                flagged = True
+
+        elif ("radiografia" in err_norm or "tomografia" in err_norm) and "pneumotorax" in err_norm:
+            rx_done = any(
+                a.get("action_type") in ("lab_imaging", "exam", "imaging")
+                and _normalize_text(str(a.get("action_target", ""))) in ("rx", "raio_x", "rx_torax", "radiografia", "tc", "tomografia")
+                for a in actions
+            )
+            decompression_done = any(
+                a.get("action_type") == "procedure"
+                and any(k in str(a.get("procedure_type", "")).lower() for k in ("puncture", "thoracocentesis", "chest_tube", "drainage"))
+                for a in actions
+            )
+            if (rx_done and not decompression_done) or _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "solicito radiografia", "solicito rx", "pedir rx", "pedir raio x",
+                    "raio-x antes", "radiografia antes", "tomografia antes de descomprimir", "solicito tomografia",
+                ],
+            ):
+                flagged = True
+
+        elif "intubacao" in err_norm and "descomprimir" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["intubar antes de descomprimir", "aguardar intubacao", "intubacao orotraqueal antes", "primeiro intubar"],
+            ):
+                flagged = True
+
+        elif "plano a ou b" in err_norm or "reidratacao oral" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "plano a", "plano b", "apenas terapia de reidratacao oral",
+                    "tro exclusiva", "manter apenas tro", "soro oral exclusivo",
+                ],
+            ):
+                flagged = True
+
+        elif "boletim de ocorrencia" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                [
+                    "exigir boletim", "exijo boletim", "exijo o boletim", "exigir bo", "exijo bo",
+                    "condicao para realizar o atendimento", "so atendo com boletim", "obrigatorio boletim de ocorrencia",
+                ],
+            ):
+                flagged = True
+
+        elif "nao prescrever a profilaxia de hiv" in err_norm:
+            if _has_negated_mention(
+                norm_evidence,
+                ["pep", "profilaxia de hiv", "profilaxia hiv", "antirretroviral", "tenofovir", "dolutegravir"],
+            ) or _has_affirmative_mention(
+                norm_evidence, prescribed_and_actions, ["sem pep", "nao prescrever pep", "dispensar profilaxia hiv"]
+            ):
+                flagged = True
+
+        elif ("anti-inflamatorio" in err_norm or "aas" in err_norm) and "dengue" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["aas", "aspirina", "ibuprofeno", "cetoprofeno", "nimesulida", "diclofenaco"],
+            ):
+                flagged = True
+
+        elif "insulina" in err_norm and "glicose" in err_norm:
+            has_insulin = _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["insulina"])
+            has_glucose = _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["glicose", "glicosado", "glicoinsulina", "sg 50", "sg50", "sg 10", "sg10", "dextrose"],
             )
             if has_insulin and not has_glucose:
                 flagged = True
 
         elif "espironolactona" in err_norm or "poupador" in err_norm:
-            if "espironolactona" in full_corpus:
+            if _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["espironolactona"]):
                 flagged = True
 
         elif "succinilcolina" in err_norm:
-            if "succinilcolina" in full_corpus:
+            if _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["succinilcolina"]):
                 flagged = True
 
         elif "tocolitico" in err_norm:
-            if any(term in full_corpus for term in ["tocolise", "atosibana", "salbutamol", "terbutalina", "nifedipino para tocolise"]):
-                flagged = True
-
-        elif "amiodarona" in err_norm and "taquicardia" in station_subtema:
-            if any(term in full_corpus for term in ["amiodarona venosa", "amiodarona 300"]):
-                flagged = True
-
-        elif "dopamina" in err_norm and "sepse" in station_subtema:
-            if "dopamina" in full_corpus:
-                flagged = True
-
-        elif "alta" in err_norm and ("hipoxemia" in err_norm or "observacao" in err_norm):
-            if any(phrase in full_corpus for phrase in ["dar alta", "libero para casa", "alta hospitalar", "alta para casa"]):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["tocolise", "atosibana", "salbutamol", "terbutalina", "nifedipino para tocolise"],
+            ):
                 flagged = True
 
         if flagged and err not in detected_violations:
@@ -614,15 +931,17 @@ def evaluate_osce_red_flags(
     actions: list[dict[str, Any]],
     transcript: list[dict[str, Any]],
     station_meta: dict[str, Any],
-    checklist_items: list[dict[str, Any]]
+    checklist_items: list[dict[str, Any]],
+    critical_errors: Optional[list[str]] = None,
+    evidence_text: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """
-    Motor Determinístico de Detecção de Erros Críticos Eliminatórios (Red Flags Engine).
-    Identifica iatrogenias anatômicas, quebra de sequência do ATLS e prescrições de risco letal.
+    Motor Determinístico Unificado de Detecção de Erros Críticos (Red Flags + Segurança Clínica).
+    Identifica iatrogenias anatômicas, quebra de sequência do ATLS e violações do barema sem duplicidade.
     """
     red_flags: list[dict[str, Any]] = []
     proc_actions = [a for a in actions if a.get("action_type") == "procedure"]
-    exam_actions = [a for a in actions if a.get("action_type") in ("exam", "vitals", "labs", "imaging")]
+    exam_actions = [a for a in actions if a.get("action_type") in ("exam", "lab_imaging", "vitals", "labs", "imaging")]
 
     for p in proc_actions:
         site = str(p.get("anatomical_site", "")).lower()
@@ -667,8 +986,14 @@ def evaluate_osce_red_flags(
     station_code = str(station_meta.get("code", "")).upper()
     is_trauma = any(k in station_code for k in ("FAST", "TRAUMA", "PNEUMO")) or "trauma" in str(station_meta.get("title", "")).lower()
     if is_trauma:
-        imaging_requests = [a for a in exam_actions if any(term in str(a.get("action_target", "")).lower() for term in ("tc", "tomografia", "raio", "rx"))]
-        has_decompression = any("thoracocentesis" in str(p.get("procedure_type", "")).lower() or "chest_tube" in str(p.get("procedure_type", "")).lower() for p in proc_actions)
+        imaging_requests = [
+            a for a in exam_actions
+            if _normalize_text(str(a.get("action_target", ""))) in ("tc", "tomografia", "raio", "rx", "raio_x", "rx_torax")
+        ]
+        has_decompression = any(
+            any(k in str(p.get("procedure_type", "")).lower() for k in ("thoracocentesis", "chest_tube", "puncture", "drainage"))
+            for p in proc_actions
+        )
         if imaging_requests and not has_decompression and "PNEUMO" in station_code:
             first_img_time = imaging_requests[0].get("elapsed_seconds", 0)
             red_flags.append({
@@ -681,18 +1006,50 @@ def evaluate_osce_red_flags(
                 "clinical_consequence": "Atraso crítico na reversão de choque obstrutivo com evolução para PCR em AESP."
             })
 
-    candidate_all_text = " ".join([str(t.get("message", "")).lower() for t in transcript if t.get("sender") == "candidato"])
-    subtema_lower = str(station_meta.get("subtema", "")).lower()
-    if any(drug in candidate_all_text for drug in ("betabloqueador", "metoprolol", "propranolol", "atenolol")):
-        if any(term in subtema_lower for term in ("sca", "infarto", "choque", "cocaína")):
+    spoken_only = _normalize_text(" ".join([
+        str(t.get("message", "")) for t in transcript if t.get("sender") == "candidato"
+    ]))
+    title_norm = _normalize_text(station_meta.get("title", ""))
+    subtema_norm = _normalize_text(station_meta.get("subtema", ""))
+    if ("choque cardiogenico" in title_norm or "cocaina" in subtema_norm) and _has_affirmative_mention(
+        spoken_only, "", ["betabloqueador", "metoprolol", "propranolol", "atenolol"]
+    ):
+        red_flags.append({
+            "code": "RF_PHARM_CONTRA",
+            "title": "Prescrição Farmacológica de Alto Risco",
+            "description": "Prescrição de betabloqueador em vigência de choque cardiogênico ou intoxicação por cocaína.",
+            "timestamp_sec": 0,
+            "score_deduction": 2.0,
+            "caps_station_at": 4.5,
+            "clinical_consequence": "Depressão miocárdica aguda e agravamento de choque cardiogênico."
+        })
+
+    if critical_errors:
+        eval_text = evidence_text if evidence_text is not None else spoken_only
+        safety_violations = evaluate_critical_safety_violations(
+            critical_errors=critical_errors,
+            evidence_text=eval_text,
+            actions=actions,
+            station_meta=station_meta,
+        )
+        existing_codes = {rf.get("code") for rf in red_flags}
+        existing_descs = {_normalize_text(rf.get("description", "")) for rf in red_flags}
+        for warn in safety_violations:
+            warn_norm = _normalize_text(warn)
+            if "RF_ABCDE_VIOLATION" in existing_codes and "pneumotorax" in warn_norm and ("radiografia" in warn_norm or "tomografia" in warn_norm):
+                continue
+            if "RF_ELEC_UNSYNC_VT" in existing_codes and "sincronizacao" in warn_norm:
+                continue
+            if warn_norm in existing_descs:
+                continue
+            existing_descs.add(warn_norm)
             red_flags.append({
-                "code": "RF_PHARM_CONTRA",
-                "title": "Prescrição Farmacológica de Alto Risco",
-                "description": "Prescrição de betabloqueador em vigência de choque cardiogênico ou sinais de congestão pulmonar aguda.",
+                "code": "RF_CLINICAL_SAFETY",
+                "title": "Violação de Segurança Clínica",
+                "description": warn,
                 "timestamp_sec": 0,
-                "score_deduction": 2.0,
-                "caps_station_at": 4.5,
-                "clinical_consequence": "Depressão miocárdica aguda e agravamento de choque cardiogênico."
+                "score_deduction": 1.5,
+                "clinical_consequence": "Quebra de diretriz de segurança estabelecida no barema.",
             })
 
     return red_flags
