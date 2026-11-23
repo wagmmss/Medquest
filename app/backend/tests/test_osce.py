@@ -733,14 +733,18 @@ def test_osce_circuit_engine(app, client):
         assert start_res.status_code == 201
         sess1_id = start_res.get_json()["session_id"]
 
+        conduct_text = (
+            "Diagnóstico de Cetoacidose Diabética. Prescrevo expansão com Soro Fisiológico 1000 ml na primeira hora, "
+            "reposição de cloreto de potássio e infusão contínua de Insulina Regular em bomba."
+            if "CAD" in st1["code"]
+            else (
+                "Paciente com angina de repouso e infradesnivelamento de ST, alto risco pelo escore GRACE. "
+                "Prescrevo AAS 300mg mastigado, ticagrelor, enoxaparina 1 mg/kg e indico cateterismo em 24 horas."
+            )
+        )
         fin_res = client.post(
             f"/api/osce/sessions/{sess1_id}/finish",
-            json={
-                "conduct_notes": (
-                    "Diagnóstico de Cetoacidose Diabética (CAD). Prescrevo expansão com Soro Fisiológico 1000 ml na primeira hora, "
-                    "reposição de cloreto de potássio KCl e infusão contínua de Insulina Regular em bomba."
-                )
-            }
+            json={"conduct_notes": conduct_text}
         )
         assert fin_res.status_code == 200
 

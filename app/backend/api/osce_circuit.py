@@ -5,18 +5,19 @@ Extraído de `api/osce.py` para separar circuitos de sessão individual.
 from __future__ import annotations
 
 import json
+import random
 import uuid
 from typing import Any, Optional
 
 
-def get_circuit_plan(db, institution: Optional[str] = "USP-RP") -> dict[str, Any]:
+def get_circuit_plan(
+    db,
+    institution: Optional[str] = "USP-RP",
+    user_id: Optional[str] = None,
+) -> dict[str, Any]:
     """
-    Monta o Circuito Oficial de 2ª Fase com 5 estações cobrindo as 5 especialidades nucleares:
-    1. Clínica Médica
-    2. Cirurgia Geral
-    3. Pediatria
-    4. Ginecologia e Obstetrícia
-    5. Medicina Preventiva
+    Monta um Circuito Misto de Treino com 5 estações cobrindo as 5 especialidades nucleares,
+    sorteando estações com prioridade para aquelas ainda não concluídas pelo usuário.
     """
     areas_order = [
         "Clínica Médica",
@@ -27,43 +28,65 @@ def get_circuit_plan(db, institution: Optional[str] = "USP-RP") -> dict[str, Any
     ]
     circuit_id = f"circuit-{uuid.uuid4().hex[:10]}"
     stations_selected = []
+    warnings: list[str] = []
+    uid = user_id or ""
+    has_inst_filter = bool(institution and institution not in ("Todas as Bancas", "TODAS"))
 
     for step_idx, area in enumerate(areas_order, 1):
-        row = None
-        if institution and institution != "Todas as Bancas":
-            row = db.execute(
-                """
-                SELECT id, code, title, area, subtema, institution, duration_seconds
-                FROM osce_stations
-                WHERE area = ? AND institution = ?
-                ORDER BY year DESC, id ASC
-                LIMIT 1
-                """,
-                (area, institution),
-            ).fetchone()
+        rows = []
+        is_fallback = False
 
-        if not row:
-            row = db.execute(
+        if has_inst_filter:
+            rows = db.execute(
                 """
-                SELECT id, code, title, area, subtema, institution, duration_seconds
-                FROM osce_stations
-                WHERE area = ?
-                ORDER BY year DESC, id ASC
-                LIMIT 1
+                SELECT s.id, s.code, s.title, s.area, s.subtema, s.institution, s.duration_seconds,
+                       (
+                           SELECT COUNT(*)
+                           FROM osce_sessions sess
+                           WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
+                       ) AS completed_attempts
+                FROM osce_stations s
+                WHERE s.area = ? AND s.institution = ?
+                ORDER BY s.year DESC, s.id ASC
                 """,
-                (area,),
-            ).fetchone()
+                (uid, area, institution),
+            ).fetchall()
 
-        if row:
+        if not rows:
+            rows = db.execute(
+                """
+                SELECT s.id, s.code, s.title, s.area, s.subtema, s.institution, s.duration_seconds,
+                       (
+                           SELECT COUNT(*)
+                           FROM osce_sessions sess
+                           WHERE sess.station_id = s.id AND sess.user_id = ? AND sess.status = 'completed'
+                       ) AS completed_attempts
+                FROM osce_stations s
+                WHERE s.area = ?
+                ORDER BY s.year DESC, s.id ASC
+                """,
+                (uid, area),
+            ).fetchall()
+            if has_inst_filter and rows:
+                is_fallback = True
+
+        if rows:
+            unseen = [r for r in rows if int(r["completed_attempts"] or 0) == 0]
+            chosen = random.choice(unseen if unseen else rows)
+            if is_fallback:
+                warnings.append(
+                    f"Sem estação de {area} para {institution}; sorteada estação da banca {chosen['institution']}."
+                )
             stations_selected.append({
                 "step": step_idx,
-                "station_id": row["id"],
-                "code": row["code"],
-                "area": row["area"],
-                "subtema": row["subtema"],
-                "title": row["title"],
-                "institution": row["institution"],
-                "duration_seconds": row["duration_seconds"],
+                "station_id": chosen["id"],
+                "code": chosen["code"],
+                "area": chosen["area"],
+                "subtema": chosen["subtema"],
+                "title": chosen["title"],
+                "institution": chosen["institution"],
+                "duration_seconds": chosen["duration_seconds"],
+                "is_fallback_institution": is_fallback,
             })
 
     return {
@@ -71,6 +94,7 @@ def get_circuit_plan(db, institution: Optional[str] = "USP-RP") -> dict[str, Any
         "institution": institution or "USP-RP",
         "total_steps": len(stations_selected),
         "stations": stations_selected,
+        "warnings": warnings,
     }
 
 
@@ -128,15 +152,15 @@ def get_circuit_summary(db, circuit_id: str, user_id: str) -> dict[str, Any]:
 
     if approved:
         board_feedback = (
-            f"Parabéns! Desempenho aprovado no Circuito Oficial de 2ª Fase com {total_score:.1f}/50.0 pontos ({percentage}%). "
-            "Atendimento beira-leito seguro, comunicação empática consistente e raciocínio clínico maduro nas 5 grandes áreas da residência."
+            f"Desempenho acima da referência no Circuito misto de treino com {total_score:.1f}/50.0 pontos ({percentage}%). "
+            "Atendimento consistente nas 5 grandes áreas (referência interna de treino: 35.0/50.0)."
         )
     elif total_completed < 5:
-        board_feedback = f"Circuito em andamento: {total_completed} de 5 estações concluídas. Total acumulado: {total_score:.1f}/50.0 pontos."
+        board_feedback = f"Circuito misto de treino em andamento: {total_completed} de 5 estações concluídas. Total acumulado: {total_score:.1f}/50.0 pontos."
     else:
         board_feedback = (
-            f"Pontuação de {total_score:.1f}/50.0 pontos ({percentage}%) insuficiente para aprovação na 2ª Fase (nota de corte: 35.0/50.0). "
-            f"Identificamos {total_critical_errors} falta(s) crítica(s) de segurança clínica. Revise o espelho oficial e pratique novamente."
+            f"Pontuação de {total_score:.1f}/50.0 pontos ({percentage}%) abaixo da referência interna de treino (35.0/50.0). "
+            f"Identificamos {total_critical_errors} alerta(s) crítico(s) de segurança clínica. Revise o espelho e pratique novamente."
         )
 
     return {

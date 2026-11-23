@@ -305,3 +305,36 @@ def test_all_canonical_critical_errors_have_working_detection_rule():
             assert detected == [err], (
                 f"Erro crítico sem regra funcional em {station['code']}: '{err}' (frase='{phrase}')"
             )
+
+
+def test_circuit_plan_variety_unseen_priority_and_institution_fallback(app):
+    """Circuito deve sortear entre estações, priorizar não feitas e avisar quando usar outra banca."""
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        user_id = "reg_circuit_var"
+
+        # 1. Variedade: múltiplas chamadas sem filtro de banca produzem combinações diferentes
+        combos = set()
+        for _ in range(15):
+            plan = osce.get_circuit_plan(db, institution="Todas as Bancas", user_id=user_id)
+            assert plan["total_steps"] == 5
+            combos.add(tuple(s["station_id"] for s in plan["stations"]))
+        assert len(combos) > 1, "Circuito deve sortear combinações variadas de estações"
+
+        # 2. Prioridade para estações não feitas: conclui uma de CM da USP-RP (CAD) e verifica que escolhe a outra (SCA)
+        cad_row = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-CAD'").fetchone()
+        sess = osce.start_osce_session(db, cad_row["id"], user_id, mode="blind")
+        osce.finish_osce_session(db, sess["session_id"], user_id, conduct_notes="Teste")
+
+        for _ in range(5):
+            usprp_plan = osce.get_circuit_plan(db, institution="USP-RP", user_id=user_id)
+            cm_station = next(s for s in usprp_plan["stations"] if s["area"] == "Clínica Médica")
+            assert cm_station["code"] == "USP-RP-2024-CM-SCA"
+            assert usprp_plan["warnings"] == []
+
+        # 3. Fallback de banca: UNICAMP não tem GO nem Preventiva -> deve avisar e marcar is_fallback_institution
+        unicamp_plan = osce.get_circuit_plan(db, institution="UNICAMP", user_id=user_id)
+        assert unicamp_plan["total_steps"] == 5
+        assert len(unicamp_plan["warnings"]) >= 2
+        assert any(s.get("is_fallback_institution") for s in unicamp_plan["stations"])

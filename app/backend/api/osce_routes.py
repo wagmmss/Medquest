@@ -350,11 +350,12 @@ def get_session_live_feedback(session_id: str):
 
 @bp.route("/osce/circuits/plan", methods=["GET"])
 def get_circuit_plan():
-    """Retorna o plano ordenado de 5 estações do circuito oficial cobrindo as 5 especialidades."""
+    """Retorna o plano ordenado de 5 estações do circuito misto de treino cobrindo as 5 especialidades."""
     db = get_db()
     osce.seed_osce_stations(db)
     institution = request.args.get("institution", "USP-RP")
-    plan = osce.get_circuit_plan(db, institution=institution)
+    user_id = _resolve_user_id()
+    plan = osce.get_circuit_plan(db, institution=institution, user_id=user_id)
     return jsonify(plan)
 
 
