@@ -332,6 +332,7 @@ export interface PlannerTopic {
   priority_reasons?: string[];
   priority_tier?: string;
   priority_explanation?: string;
+  is_internato_essential?: boolean;
   completed?: boolean;
   target_questions_count?: number;
   incidence_source?: "target_banks" | "national_catalog";

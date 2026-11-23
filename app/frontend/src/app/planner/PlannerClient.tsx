@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 
-import { useState, useEffect, memo, useCallback } from "react";
+import { useState, useEffect, useMemo, memo, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import {
 } from "@/types/api";
 import { api, OfflineQueuedError } from "@/lib/api";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
-import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, PlayCircle, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { Check, CalendarDays, Clock, Activity, Loader2, RotateCcw, AlertTriangle, Zap, X, Play, PlayCircle, Settings2, Download, Gem, TrendingUp, AlertCircle, GripVertical, ArrowUpDown, ArrowRight, Copy, Lightbulb, Layers, CalendarRange, ChevronDown, ChevronUp, CheckCircle2, Stethoscope } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { InternatoBlocksModal } from "./InternatoBlocksModal";
@@ -154,6 +154,15 @@ const TopicRow = memo(function TopicRow({
                  t.priority_tier === "Alta" ? <TrendingUp size={12} /> : 
                  <AlertCircle size={12} />}
                 {t.priority_tier}
+              </span>
+            )}
+            {t.is_internato_essential && (
+              <span
+                title="Tema essencial do dia a dia do internato (PS, Enfermaria, UBS ou Sala de Parto)"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-accent/10 text-accent border-accent/25 cursor-help"
+              >
+                <Stethoscope size={11} />
+                Internato
               </span>
             )}
           </div>
@@ -673,6 +682,37 @@ export function PlannerClient({
   const completedTopics = completedInScheduleCount + visibleCompletedOutside.length;
   const defaultWeeklyHours = Math.min(168, (config?.days_per_week || 6) * (config?.hours_per_day || 2));
 
+  const areaDistribution = useMemo(() => {
+    const order = [
+      "Clínica Médica",
+      "Cirurgia",
+      "Ginecologia e Obstetrícia",
+      "Pediatria",
+      "Preventiva",
+    ];
+    const stats = new Map<string, { total: number; completed: number }>();
+    for (const area of order) stats.set(area, { total: 0, completed: 0 });
+    for (const week of currentPlan) {
+      for (const t of week.topics) {
+        const entry = stats.get(t.area) ?? { total: 0, completed: 0 };
+        entry.total += 1;
+        if (Boolean(topicProgress[`${week.week}:${t.subtema}`]) || Boolean(topicProgress[t.subtema])) {
+          entry.completed += 1;
+        }
+        stats.set(t.area, entry);
+      }
+    }
+    return Array.from(stats.entries())
+      .filter(([, v]) => v.total > 0)
+      .map(([area, v]) => ({
+        area,
+        shortLabel: area === "Ginecologia e Obstetrícia" ? "GO" : area,
+        total: v.total,
+        completed: v.completed,
+        pct: scheduledTopicsCount > 0 ? Math.round((v.total / scheduledTopicsCount) * 100) : 0,
+      }));
+  }, [currentPlan, topicProgress, scheduledTopicsCount]);
+
   return (
     <>
     <div className="flex flex-col gap-6 pb-12">
@@ -854,6 +894,28 @@ export function PlannerClient({
           </button>
         </div>
       </div>
+
+      {areaDistribution.length > 0 && (
+        <div className="bg-surface border border-line-subtle rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {areaDistribution.map((item) => (
+              <div key={item.area} className="inline-flex items-center gap-1.5">
+                <span className={clsx("w-2 h-2 rounded-full shrink-0", getAreaColorClass(item.area).split(" ")[0])} />
+                <span className="font-semibold text-ink-primary">{item.shortLabel}</span>
+                <span className="font-mono-lab text-ink-secondary tabular-nums">
+                  {item.completed}/{item.total}
+                </span>
+                <span className="text-[11px] text-ink-muted tabular-nums">({item.pct}%)</span>
+              </div>
+            ))}
+          </div>
+          {organizationMode === "geral" && (
+            <span className="text-[11px] text-ink-muted">
+              Rodízio ponderado das 5 áreas • High-Yield + Essenciais do Internato
+            </span>
+          )}
+        </div>
+      )}
 
       {visibleCompletedOutside.length > 0 && (
         <div className="bg-surface border border-line-subtle rounded-xl overflow-hidden shadow-1">

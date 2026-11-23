@@ -154,7 +154,8 @@ def test_planner_without_history_preserves_prior_behavior():
     for t in topics:
         assert t["priority_reasons"] == []
         if t["priority"] >= 100:
-            assert t["priority"] in (101.5, 102.0, 103.0)
+            expected = (136.5, 137.0, 138.0) if t.get("is_internato_essential") else (101.5, 102.0, 103.0)
+            assert t["priority"] in expected
 
 
 def test_planner_adaptive_priority_boosts_theme_with_difficulty():
@@ -213,7 +214,7 @@ def test_planner_user_isolation(client, app):
         db.commit()
 
     start = date.today()
-    exam = (start + timedelta(weeks=12)).isoformat()
+    exam = (start + timedelta(weeks=24)).isoformat()
     payload = {"start_date": start.isoformat(), "exam_date": exam, "hours_per_week": 20}
 
     resp_alpha = client.post("/api/generate_plan", json=payload, headers={"X-User-ID": "user_alpha"})
@@ -221,14 +222,14 @@ def test_planner_user_isolation(client, app):
     topics_alpha = [t for w in resp_alpha.get_json()["plan"] for t in w["topics"]]
     has_alpha = next(t for t in topics_alpha if t["subtema"] == "Hipertensão Arterial Sistêmica e Crises Hipertensivas")
     assert "low_accuracy" in has_alpha["priority_reasons"]
-    assert has_alpha["priority"] > 103.0
+    assert has_alpha["priority"] > 138.0
 
     resp_beta = client.post("/api/generate_plan", json=payload, headers={"X-User-ID": "user_beta"})
     assert resp_beta.status_code == 200
     topics_beta = [t for w in resp_beta.get_json()["plan"] for t in w["topics"]]
     has_beta = next(t for t in topics_beta if t["subtema"] == "Hipertensão Arterial Sistêmica e Crises Hipertensivas")
     assert has_beta["priority_reasons"] == []
-    assert has_beta["priority"] == 103.0
+    assert has_beta["priority"] == 138.0
 
 
 def test_planner_supports_topic_outside_top_15(client, app):
@@ -281,7 +282,7 @@ def test_planner_supports_topic_outside_top_15(client, app):
         assert outside_topic not in top15_topics
 
     start = date.today()
-    exam = (start + timedelta(weeks=12)).isoformat()
+    exam = (start + timedelta(weeks=24)).isoformat()
     payload = {"start_date": start.isoformat(), "exam_date": exam, "hours_per_week": 20}
 
     resp = client.post("/api/generate_plan", json=payload, headers={"X-User-ID": user_id})
@@ -1037,6 +1038,71 @@ def test_changing_target_institution_regenerates_schedule_and_uses_db_incidence(
     assert mama_after["target_questions_count"] == 15
     assert mama_after["priority"] >= 100
     assert any(t["subtema"] == done_topic for t in body2.get("completed_topics", []))
+
+
+def test_planner_geral_rotation_balances_all_five_areas_and_rotates_openers():
+    res = generate_annual_plan(
+        [],
+        "2026-11-30",
+        "2027-11-15",
+        hours_per_week=12,
+        organization="geral",
+    )
+    first_10 = res["plan"][:10]
+    areas_first_10 = [t["area"] for w in first_10 for t in w["topics"]]
+    assert set(areas_first_10) == {
+        "Clínica Médica",
+        "Cirurgia",
+        "Ginecologia e Obstetrícia",
+        "Pediatria",
+        "Preventiva",
+    }
+    # Preventiva deve aparecer de forma consistente (pelo menos 3x nas 10 primeiras semanas)
+    assert areas_first_10.count("Preventiva") >= 3
+    # Pediatria deve aparecer de forma consistente (pelo menos 5x nas 10 primeiras semanas)
+    assert areas_first_10.count("Pediatria") >= 5
+    # A área que abre cada semana deve variar (não ficar presa em Clínica/Cirurgia)
+    openers = {w["topics"][0]["area"] for w in first_10 if w["topics"]}
+    assert len(openers) >= 4
+    # Nenhuma das 10 primeiras semanas deve repetir área dentro da mesma semana
+    for w in first_10:
+        week_areas = [t["area"] for t in w["topics"]]
+        assert len(week_areas) == len(set(week_areas))
+
+
+def test_planner_internato_essentials_flagged_and_prioritized():
+    res = generate_annual_plan(
+        [],
+        "2026-11-30",
+        "2027-11-15",
+        hours_per_week=15,
+        organization="geral",
+    )
+    all_topics = [t for w in res["plan"] for t in w["topics"]]
+    avc = next(
+        t for t in all_topics
+        if t["subtema"] == "Acidente Vascular Cerebral Isquêmico e Hemorrágico (Janela de Trombólise)"
+    )
+    intersticial = next(
+        t for t in all_topics
+        if t["subtema"] == "Doenças Pulmonares Intersticiais e Fibrose Pulmonar"
+    )
+    assert avc["is_internato_essential"] is True
+    assert intersticial["is_internato_essential"] is False
+    assert avc["priority"] > intersticial["priority"]
+
+    # Em média, os temas Essenciais do Internato (mesmo não-HY) entram bem antes dos não-HY comuns
+    cm_non_hy_int = [
+        idx for idx, t in enumerate(all_topics)
+        if t["area"] == "Clínica Médica" and t["priority"] < 100 and t["is_internato_essential"]
+    ]
+    cm_non_hy_plain = [
+        idx for idx, t in enumerate(all_topics)
+        if t["area"] == "Clínica Médica" and t["priority"] < 100 and not t["is_internato_essential"]
+    ]
+    assert cm_non_hy_int and cm_non_hy_plain
+    assert (sum(cm_non_hy_int) / len(cm_non_hy_int)) < (sum(cm_non_hy_plain) / len(cm_non_hy_plain))
+
 
 
 

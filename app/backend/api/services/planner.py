@@ -14,6 +14,116 @@ USP_WEIGHTS = {
 }
 
 DEFAULT_PRACTICE_HOURS_PER_SUBTEMA = 2.0
+INTERNATO_ESSENTIAL_BONUS = 35.0
+
+# Ciclo contínuo ponderado de 9 posições para o modo Geral (Misturado):
+# 2x Clínica, 2x Cirurgia, 2x GO, 2x Pediatria, 1x Preventiva.
+# Mantém distância mínima de 4-5 slots entre repetições da mesma área,
+# evita Clínica/Cirurgia dominando o topo toda semana e espalha Preventiva
+# ao longo do ano em vez de concentrá-la ou sumir por 4+ semanas.
+BALANCED_ROTATION_CYCLE = (
+    "Clínica Médica",
+    "Pediatria",
+    "Cirurgia",
+    "Ginecologia e Obstetrícia",
+    "Preventiva",
+    "Clínica Médica",
+    "Cirurgia",
+    "Ginecologia e Obstetrícia",
+    "Pediatria",
+)
+
+# Curadoria de temas essenciais do dia a dia do internato (PS, Enfermaria, UBS,
+# Sala de Parto e Pediatria prática) usando exatamente os nomes canônicos do catálogo.
+INTERNATO_ESSENTIALS = frozenset({
+    # Clínica Médica (PS, Enfermaria e UBS)
+    "Acidente Vascular Cerebral Isquêmico e Hemorrágico (Janela de Trombólise)",
+    "Asma e Doença Pulmonar Obstrutiva Crônica (DPOC)",
+    "Cefaleias Primárias (Enxaqueca, Tensional) e Secundárias de Alarme",
+    "Celulite, Erisipela, Osteomielite e Infecções de Partes Moles",
+    "Cirrose Hepática, Hipertensão Portal e Insuficiência Hepática",
+    "Diabetes Mellitus: Metas Glicêmicas, Complicações e Tratamento",
+    "Diagnóstico Diferencial das Anemias e Hemoglobinopatias",
+    "Distúrbios Eletrolíticos (Sódio, Potássio) e Equilíbrio Ácido-Base",
+    "Hipertensão Arterial Sistêmica e Crises Hipertensivas",
+    "Hipotireoidismo, Hipertireoidismo e Nódulos Tireoidianos",
+    "Infecções Sexualmente Transmissíveis (ISTs) no Adulto",
+    "Injúria Renal Aguda (IRA) e Doença Renal Crônica (DRC)",
+    "Insuficiência Cardíaca: Diagnóstico, Estadiamento e Terapia Farmacológica",
+    "Meningites, Encefalites e Infecções do SNC",
+    "Pneumonia Adquirida na Comunidade (PAC) e Síndromes Respiratórias Agudas",
+    "Psiquiatria: Transtornos do Humor, Ansiedade e Psicoses",
+    "Sepse no Adulto, Choque Séptico e Ressuscitação Hemodinâmica",
+    "Síndromes Coronarianas Agudas (Com e Sem Supra de ST)",
+    "Síndromes Febris Agudas e Arboviroses (Dengue, Chikungunya, Febre Amarela)",
+    "Taquiarritmias, Bradiarritmias, Síncope e Suporte Avançado (ACLS)",
+    "Transtornos por Uso de Substâncias (Álcool, Tabaco e Drogas de Abuso)",
+    "Tromboembolismo Pulmonar (TEP) e Hipertensão Pulmonar",
+    "Tuberculose Pulmonar e Extrapulmonar: Diagnóstico e Manejo",
+    "Ventilação Mecânica, SARA e Insuficiência Respiratória Aguda",
+    # Cirurgia (PS Cirúrgico, Trauma e Enfermaria)
+    "Abdome Agudo Inflamatório (Apendicite e Diverticulite Aguda)",
+    "Abdome Agudo Obstrutivo (Bridas, Neoplasias e Volvo)",
+    "Abdome Agudo Perfurativo e Úlcera Péptica Perfurada",
+    "Atendimento Inicial ao Politraumatizado (Protocolo xABCDE)",
+    "Atendimento ao Paciente Queimado e Reposição Volêmica",
+    "Avaliação Pré-Operatória e Estratificação de Risco Cirúrgico",
+    "Doença do Refluxo Gastroesofágico (DRGE) e Úlcera Péptica",
+    "Hemorragia Digestiva Alta e Baixa na Emergência Cirúrgica",
+    "Hiperplasia Prostática Benigna (HPB) e Litíase Urinária",
+    "Hérnias da Parede Abdominal (Inguinais, Femorais e Incisionais)",
+    "Insuficiência Venosa Crônica e Trombose Venosa Profunda (TVP)",
+    "Litíase Biliar, Colecistite, Coledocolitíase e Colangite",
+    "Manejo Pós-Operatório e Tratamento de Complicações Cirúrgicas",
+    "Pancreatites Aguda e Crônica e Pseudocistos Pancreáticos",
+    "Trauma Abdominal Fechado e Penetrante (FAST e Laparotomia)",
+    "Trauma Cranioencefálico (TCE) e Hipertensão Intracraniana",
+    "Trauma Torácico: Pneumotórax, Hemotórax e Tamponamento Cardíaco",
+    # Ginecologia e Obstetrícia (Sala de Parto, PS GO e UBS)
+    "Amniorrexe Prematura (RPMO) e Corioamnionite",
+    "Assistência Clínica ao Trabalho de Parto, Partograma e Distocias",
+    "Assistência Pré-Natal de Baixo e Alto Risco",
+    "Avaliação da Vitalidade Fetal, Cardiotocografia e Sofrimento Fetal",
+    "Diabetes Gestacional e Pré-Gestacional",
+    "Doença Inflamatória Pélvica (DIP) e Atendimento à Violência Sexual",
+    "Hemorragias da Primeira Metade: Abortamento, Ectópica e Mola",
+    "Hemorragias da Segunda Metade: Placenta Prévia e DPP",
+    "Infecções Perinatais e Transmissão Vertical (HIV, Sífilis, Hepatites, EGB)",
+    "Métodos Contraceptivos: Hormonais, DIU e Cirúrgicos",
+    "Puerpério Fisiológico, Patológico e Hemorragia Pós-Parto",
+    "Rastreamento Citopatológico e Conduta em Lesões Cervicais (HPV)",
+    "Sangramento Uterino Anormal (SUA) e Classificação PALM-COEIN / Miomatose",
+    "Síndromes Hipertensivas na Gravidez (Pré-eclâmpsia e Eclâmpsia)",
+    "Trabalho de Parto Prematuro e Tocólise",
+    "Vulvovaginites e Diagnóstico Diferencial dos Corrimentos Vaginais",
+    "Úlceras Genitais e Infecções Sexualmente Transmissíveis na Mulher",
+    # Pediatria (PS Pediátrico, Alojamento Conjunto e Puericultura)
+    "Afecções de Vias Aéreas Superiores: OMA, Sinusite e Faringoamigdalite",
+    "Aleitamento Materno, Alimentação Complementar e Desnutrição Infantil",
+    "Alojamento Conjunto e Testes de Triagem Neonatal (Pezinho, Olhinho, Coraçãozinho)",
+    "Anemias Carenciais e Distúrbios de Micronutrientes (Ferro, Vitamina D)",
+    "Arritmias, Síncope e Parada Cardiorrespiratória Pediátrica (PALS)",
+    "Calendário Vacinal do PNI e Imunizações Especiais",
+    "Convulsão Febril, Epilepsias e Síndromes Convulsivas na Infância",
+    "Diarreia Aguda, Reidratação Oral e Doenças Disabsortivas",
+    "Distúrbios Obstrutivos, Asma e Bronquiolite na Infância",
+    "Doenças Exantemáticas e Diagnóstico Diferencial dos Exantemas",
+    "Infecção do Trato Urinário (ITU) e Refluxo Vesicoureteral na Infância",
+    "Neonatologia: Desconforto Respiratório e Doença da Membrana Hialina",
+    "Neonatologia: Distúrbios Metabólicos e Hipoglicemia no Recém-Nascido",
+    "Neonatologia: Icterícia Neonatal e Doenças Hematológicas",
+    "Puericultura: Marcos do Desenvolvimento (DNPM) e Curvas de Crescimento",
+    "Reanimação Neonatal e Assistência em Sala de Parto",
+    "Sepse Pediátrica, Choque e Ressuscitação Hemodinâmica",
+    # Preventiva / MFC (UBS, Vigilância e Ética)
+    "Atenção Primária à Saúde e Estratégia Saúde da Família (ESF)",
+    "História Natural da Doença e Níveis de Prevenção",
+    "Legislação, Diretrizes e Evolução do SUS",
+    "Saúde do Trabalhador e Doenças Ocupacionais",
+    "Vigilância Epidemiológica: Endemias, Epidemias e Surtos",
+    "Vigilância em Saúde e Notificação Compulsória (SINAN)",
+    "Ética Médica, Bioética e Prontuários / Documentos",
+})
 
 
 def _resolve_data_path(filename):
@@ -241,9 +351,13 @@ def _build_topic_item(
     incidence_bonus = float(incidence_info.get("incidence_bonus", 0.0)) if use_empirical else 0.0
     target_q_count = int(incidence_info.get("target_q_count", 0)) if use_empirical else None
 
-    # Priority score: High Yield = 100, plus empirical bank incidence (when active), plus area weight
+    is_internato_essential = subtema in INTERNATO_ESSENTIALS
+
+    # Priority score: High Yield = 100, plus Internato Essential = 55, plus empirical bank incidence, plus area weight
     weight = USP_WEIGHTS.get(norm_area, 0.1)
     priority = 100 if effective_high_yield else 0
+    if is_internato_essential:
+        priority += INTERNATO_ESSENTIAL_BONUS
     priority += incidence_bonus
     priority += weight * 10
 
@@ -280,6 +394,8 @@ def _build_topic_item(
             explanation_parts.append(f"tem alta incidência nas suas bancas ({q_label})")
         else:
             explanation_parts.append("é de alto rendimento nas provas")
+    if is_internato_essential:
+        explanation_parts.append("é tema essencial do dia a dia do internato")
     if "low_accuracy" in priority_reasons:
         explanation_parts.append("houve baixo desempenho recente")
     if "reviews_due" in priority_reasons:
@@ -312,6 +428,7 @@ def _build_topic_item(
         "priority_reasons": priority_reasons,
         "priority_tier": priority_tier,
         "priority_explanation": priority_explanation,
+        "is_internato_essential": is_internato_essential,
         "completed": bool(completed_subtemas and subtema in completed_subtemas),
         "incidence_source": "target_banks" if use_empirical else "national_catalog",
     }
@@ -444,19 +561,18 @@ def _pick_best_fitting_topic(area_topics, current_week_hours, target_hours, max_
         return first_idx
 
     # Perto de fechar a semana: faz best-fit para atingir [target_hours - 0.5, max_week_hours]
-    # evitando semanas curtas (8h-9h) enquanto respeita prioridade entre candidatos equivalentes.
+    # priorizando tópicos High-Yield / Essenciais do Internato dentro da faixa ideal.
     def _fit_score(item):
         idx, t = item
         new_total = current_week_hours + t["estimated_hours"]
         # Penaliza ficar muito abaixo da meta quando há alternativas que fecham melhor
         in_sweet_spot = 1 if (target_hours - 0.5) <= new_total <= (max_week_hours + 1e-6) else 0
-        # Dentro da faixa boa, prefere o mais próximo de target_hours..max_week_hours e maior prioridade
-        # Fora da faixa boa (ainda abaixo), prefere preencher mais horas
+        # Dentro da faixa boa, prefere High-Yield/Internato, depois o mais próximo da meta
         if in_sweet_spot:
-            # Preferência leve por ficar próximo da meta (ex.: 12.0h-12.8h)
+            priority_band = 2 if t["priority"] >= 100 else (1 if t["priority"] >= 30 else 0)
             distance_penalty = abs(new_total - (target_hours + 0.3))
             priority_bonus = t["priority"] / 500.0
-            return (2, -distance_penalty + priority_bonus, -idx)
+            return (2, priority_band, -distance_penalty + priority_bonus, -idx)
         # Se nenhum atinge a faixa ideal em um único passo, prefere o que melhor preenche ou permite próximo encaixe
         leaves_room_for_more = 1 if (max_week_hours - new_total) >= 2.25 else 0
         return (1 if leaves_room_for_more else 0, new_total, t["priority"], -idx)
@@ -465,31 +581,37 @@ def _pick_best_fitting_topic(area_topics, current_week_hours, target_hours, max_
     return best_idx
 
 
-def _rank_balanced_areas(active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=None):
-    """Ordena áreas de forma equilibrada proporcionalmente ao restante, evitando repetir área na semana."""
+def _rank_rotation_areas(active_areas, cycle_cursor, week_area_counts, exclude_area=None):
+    """Ordena áreas seguindo o ciclo ponderado contínuo a partir de cycle_cursor, evitando repetir área na semana."""
     pool = [a for a in active_areas if a != exclude_area]
     if not pool:
         pool = list(active_areas)
 
-    def _area_key(area):
-        remaining = len(topics_by_area[area])
-        initial = max(1, initial_counts.get(area, remaining))
-        ratio = remaining / initial
-        used_this_week = week_area_counts.get(area, 0)
-        top_priority = topics_by_area[area][0]["priority"] if topics_by_area[area] else 0.0
-        # 1) Áreas ainda não usadas nesta semana primeiro
-        # 2) Maior fração ainda pendente (mantém todas as 5 áreas evoluindo juntas do início ao fim)
-        # 3) Maior prioridade do próximo tópico
-        # 4) Peso da área
-        return (
-            -used_this_week,
-            round(ratio, 3),
-            1 if top_priority >= 100 else 0,
-            USP_WEIGHTS.get(area, 0.1),
-            remaining,
-        )
+    cycle_len = len(BALANCED_ROTATION_CYCLE)
+    distance_by_area = {}
+    for offset in range(cycle_len):
+        area_name = BALANCED_ROTATION_CYCLE[(cycle_cursor + offset) % cycle_len]
+        if area_name not in distance_by_area:
+            distance_by_area[area_name] = offset
 
-    return sorted(pool, key=_area_key, reverse=True)
+    return sorted(
+        pool,
+        key=lambda area: (
+            week_area_counts.get(area, 0),
+            distance_by_area.get(area, cycle_len),
+            area,
+        ),
+    )
+
+
+def _advance_rotation_cursor(cycle_cursor, picked_area):
+    """Avança o cursor do ciclo para a posição logo após a ocorrência usada de picked_area."""
+    cycle_len = len(BALANCED_ROTATION_CYCLE)
+    for offset in range(cycle_len):
+        idx = (cycle_cursor + offset) % cycle_len
+        if BALANCED_ROTATION_CYCLE[idx] == picked_area:
+            return (idx + 1) % cycle_len
+    return (cycle_cursor + 1) % cycle_len
 
 
 def _try_improve_underfilled_week(
@@ -550,7 +672,7 @@ def _build_weekly_plan(
     for t in pending_topics:
         topics_by_area.setdefault(t["area"], []).append(t)
 
-    initial_counts = {area: len(lst) for area, lst in topics_by_area.items()}
+    cycle_cursor = 0
     plan = []
 
     for week in range(1, total_weeks + 1):
@@ -605,16 +727,16 @@ def _build_weekly_plan(
                     or not other_areas
                 )
                 if need_anchor:
-                    ordered_areas = [area_foco] + _rank_balanced_areas(
-                        active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=area_foco
+                    ordered_areas = [area_foco] + _rank_rotation_areas(
+                        active_areas, cycle_cursor, week_area_counts, exclude_area=area_foco
                     )
                 else:
-                    ordered_areas = _rank_balanced_areas(
-                        active_areas, topics_by_area, initial_counts, week_area_counts, exclude_area=area_foco
+                    ordered_areas = _rank_rotation_areas(
+                        active_areas, cycle_cursor, week_area_counts, exclude_area=area_foco
                     ) + [area_foco]
             else:
-                ordered_areas = _rank_balanced_areas(
-                    active_areas, topics_by_area, initial_counts, week_area_counts
+                ordered_areas = _rank_rotation_areas(
+                    active_areas, cycle_cursor, week_area_counts
                 )
 
             candidate_area = None
@@ -638,6 +760,8 @@ def _build_weekly_plan(
                 week_area_counts[candidate_area] = week_area_counts.get(candidate_area, 0) + 1
                 if candidate_area == area_foco:
                     anchor_hours_allocated += topic["estimated_hours"]
+                else:
+                    cycle_cursor = _advance_rotation_cursor(cycle_cursor, candidate_area)
             else:
                 break
 
