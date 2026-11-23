@@ -376,3 +376,25 @@ def test_free_text_physical_exam_and_lab_orders_require_specificity_and_neutral_
         assert missing_lab["payload"]["available"] is False
         assert "normal / não disponível" in missing_lab["examiner_message"].lower()
         assert "fornecido pela banca" not in missing_lab["examiner_message"].lower()
+
+
+def test_station_kind_classification_and_payload(app):
+    """Todas as estações possuem station_kind válido e a API retorna o campo para adaptar a sala."""
+    valid_kinds = {"emergencia", "ambulatorio", "comunicacao", "procedimento"}
+    assert len(CANONICAL_STATIONS) == 16
+    for st in CANONICAL_STATIONS:
+        assert st.get("station_kind") in valid_kinds, f"{st['code']} sem station_kind válido"
+
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        listed = {s["code"]: s for s in osce.list_osce_stations(db, user_id="reg_kind_user")}
+        assert listed["UNIFESP-2023-PREV-SPIKES"]["station_kind"] == "comunicacao"
+        assert listed["USP-RP-2024-PREV-MCCP"]["station_kind"] == "comunicacao"
+        assert listed["REVALIDA-2023-GO-PEP"]["station_kind"] == "ambulatorio"
+        assert listed["USP-RP-2023-CG-FAST"]["station_kind"] == "procedimento"
+        assert listed["USP-RP-2024-CM-CAD"]["station_kind"] == "emergencia"
+
+        spikes_detail = osce.get_osce_station(db, listed["UNIFESP-2023-PREV-SPIKES"]["id"], include_barema=False)
+        assert spikes_detail is not None
+        assert spikes_detail["station_kind"] == "comunicacao"

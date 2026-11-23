@@ -61,7 +61,8 @@ def seed_osce_stations(db, force: bool = False) -> int:
             lab_json = json.dumps(st.get("lab_imaging", {}), ensure_ascii=False)
             barema_json = json.dumps({
                 "items": st["checklist_barema"],
-                "critical_errors": st.get("critical_errors", [])
+                "critical_errors": st.get("critical_errors", []),
+                "station_kind": st.get("station_kind", "emergencia"),
             }, ensure_ascii=False)
 
             if existing:
@@ -106,6 +107,7 @@ def list_osce_stations(
     query = """
         SELECT s.id, s.code, s.title, s.area, s.subtema, s.institution, s.year,
                s.difficulty, s.duration_seconds, s.scenario_door_markdown,
+               s.checklist_barema_json,
                (
                    SELECT MAX(sess.final_score)
                    FROM osce_sessions sess
@@ -152,6 +154,8 @@ def list_osce_stations(
 
     result = []
     for r in rows:
+        barema_meta = json.loads(r["checklist_barema_json"] or "{}")
+        station_kind = barema_meta.get("station_kind", "emergencia") if isinstance(barema_meta, dict) else "emergencia"
         result.append({
             "id": r["id"],
             "code": r["code"],
@@ -162,6 +166,7 @@ def list_osce_stations(
             "year": r["year"],
             "difficulty": r["difficulty"],
             "duration_seconds": r["duration_seconds"],
+            "station_kind": station_kind,
             "scenario_door_markdown": r["scenario_door_markdown"],
             "best_score": round(float(r["best_score"]), 1) if r["best_score"] is not None else None,
             "first_blind_score": round(float(r["first_blind_score"]), 1) if r["first_blind_score"] is not None else None,
@@ -187,6 +192,8 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
     physical_exam = json.loads(row["physical_exam_json"] or "{}")
     lab_imaging = json.loads(row["lab_imaging_json"] or "{}")
     patient_persona = json.loads(row["patient_persona_json"] or "{}")
+    barema = json.loads(row["checklist_barema_json"] or "{}")
+    station_kind = barema.get("station_kind", "emergencia") if isinstance(barema, dict) else "emergencia"
 
     station = {
         "id": row["id"],
@@ -198,6 +205,7 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
         "year": row["year"],
         "difficulty": row["difficulty"],
         "duration_seconds": row["duration_seconds"],
+        "station_kind": station_kind,
         "scenario_door_markdown": row["scenario_door_markdown"],
         "patient_persona": {
             "name": patient_persona.get("name"),

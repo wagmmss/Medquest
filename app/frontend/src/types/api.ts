@@ -875,6 +875,7 @@ export interface OsceStation {
   year: number;
   difficulty: string;
   duration_seconds: number;
+  station_kind?: "emergencia" | "ambulatorio" | "comunicacao" | "procedimento";
   scenario_door_markdown: string;
   best_score: number | null;
   first_blind_score?: number | null;
@@ -928,6 +929,7 @@ export interface OsceStationDetail {
   year: number;
   difficulty: string;
   duration_seconds: number;
+  station_kind?: "emergencia" | "ambulatorio" | "comunicacao" | "procedimento";
   scenario_door_markdown: string;
   patient_persona: {
     name?: string;

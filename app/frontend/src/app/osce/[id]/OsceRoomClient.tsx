@@ -87,6 +87,44 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   const [sessionMode, setSessionMode] = useState<"blind" | "guided">("blind");
   const [liveFeedback, setLiveFeedback] = useState<OsceLiveFeedback | null>(null);
   const neutralStationLabel = `${station.area} · ${station.institution} · Estação #${station.id}`;
+  const stationKind = station.station_kind || "emergencia";
+  const showMonitor = stationKind === "emergencia" || stationKind === "procedimento";
+  const showMannequin = stationKind === "emergencia" || stationKind === "procedimento";
+  const showPrescriptionPad = stationKind === "emergencia" || stationKind === "procedimento";
+
+  const quickVoiceSuggestions = useMemo(() => {
+    const patientFirstName = station.patient_persona.name?.split(" ")[0] || "senhor(a)";
+    if (stationKind === "comunicacao") {
+      return [
+        { label: "“Como você está hoje?”", message: `Olá ${patientFirstName}, como você está se sentindo hoje?` },
+        { label: "“O que já sabe?”", message: "O que você já sabe até agora sobre o motivo dos seus exames?" },
+        { label: "“Posso explicar com calma?”", message: "Você gostaria que eu explicasse o resultado com calma e detalhes agora?" },
+        { label: "“Estou aqui com você”", message: "Entendo o quanto isso é difícil. Estou aqui para responder tudo e planejar os próximos passos juntos." },
+      ];
+    }
+    if (stationKind === "ambulatorio") {
+      return [
+        { label: "“Como posso ajudar?”", message: `Olá ${patientFirstName}, acolho sua queixa. Me conte com calma o que aconteceu.` },
+        { label: "“Inspeção geral”", message: "Examinador, solicito inspeção geral e sinais vitais." },
+        { label: "“História prévia”", message: "Você usa algum medicamento contínuo ou tem alergias?" },
+        { label: "“Orientação e seguimento”", message: "Vou orientar os exames, medidas de proteção e o retorno ambulatorial." },
+      ];
+    }
+    if (stationKind === "procedimento") {
+      return [
+        { label: "“Examinador, sinais vitais”", message: "Examinador, solicito sinais vitais completos e monitorização." },
+        { label: "“Avaliação primária ABCDE”", message: "Realizo avaliação primária ABCDE e checo via aérea e ventilação." },
+        { label: "“Exame focado à beira do leito”", message: "Realizo janela de E-FAST / inspeção direcionada ao foco do quadro." },
+        { label: "“Gasometria e lactato”", message: "Examinador, solicito gasometria arterial e lactato sérico." },
+      ];
+    }
+    return [
+      { label: "“Examinador, sinais vitais”", message: "Examinador, solicito sinais vitais completos e PA" },
+      { label: "“Solicito ECG 12d”", message: "Examinador, solicito eletrocardiograma de 12 derivações" },
+      { label: "“Ausculta pulmonar”", message: "Gostaria de realizar ausculta cardíaca e pulmonar" },
+      { label: "“Onde começou a dor?”", message: `Olá ${patientFirstName}, onde começou essa dor e como ela é?` },
+    ];
+  }, [stationKind, station.patient_persona.name]);
 
   // Motor Fisiológico Dinâmico Beira-Leito (VitalStateEngine)
   const vitalEngine = useVitalStateEngine({
@@ -362,7 +400,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           setActiveTab("physical");
           return;
         }
-        if (e.key === "2") {
+        if (e.key === "2" && showMannequin) {
           e.preventDefault();
           setActiveTab("procedures");
           return;
@@ -929,48 +967,35 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             {/* Pílulas de Exemplos de Comandos Clínicos para Treinamento Verbal */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
               <span className="text-muted-foreground font-semibold">Comandos por voz:</span>
-              <button
-                onClick={() => handleSendMessage("Examinador, solicito sinais vitais completos e PA")}
-                className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground border border-border/60"
-              >
-                &ldquo;Examinador, sinais vitais&rdquo;
-              </button>
-              <button
-                onClick={() => handleSendMessage("Examinador, solicito eletrocardiograma de 12 derivações")}
-                className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground border border-border/60"
-              >
-                &ldquo;Solicito ECG 12d&rdquo;
-              </button>
-              <button
-                onClick={() => handleSendMessage("Gostaria de realizar ausculta cardíaca e pulmonar")}
-                className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground border border-border/60"
-              >
-                &ldquo;Ausculta cardiopulmonar&rdquo;
-              </button>
-              <button
-                onClick={() => handleSendMessage(`Olá ${station.patient_persona.name || "senhor"}, onde começou essa dor e como ela é?`)}
-                className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground border border-border/60"
-              >
-                &ldquo;Onde começou a dor?&rdquo;
-              </button>
+              {quickVoiceSuggestions.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => handleSendMessage(item.message)}
+                  className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground border border-border/60"
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* MONITOR MULTIPARAMÉTRICO VIRTUAL EM TEMPO REAL (SALA VERMELHA) */}
-          <MultiparameterMonitor
-            vitals={vitalEngine.vitals}
-            isMonitored={vitalEngine.isMonitored}
-            displayedNibp={vitalEngine.displayedNibp}
-            isMeasuringNibp={vitalEngine.isMeasuringNibp}
-            activeAlarms={vitalEngine.activeAlarms}
-            isAlarmSilenced={vitalEngine.isAlarmSilenced}
-            isAudioMuted={vitalEngine.isAudioMuted}
-            onMeasureNibp={vitalEngine.measureNibp}
-            onConnectSensors={vitalEngine.connectSensors}
-            onSilenceAlarms={vitalEngine.silenceAlarms}
-            onToggleAudio={vitalEngine.toggleAudio}
-            onExecuteCardioversion={vitalEngine.executeCardioversion}
-          />
+          {/* MONITOR MULTIPARAMÉTRICO VIRTUAL EM TEMPO REAL (APENAS EMERGÊNCIA E PROCEDIMENTO) */}
+          {showMonitor && (
+            <MultiparameterMonitor
+              vitals={vitalEngine.vitals}
+              isMonitored={vitalEngine.isMonitored}
+              displayedNibp={vitalEngine.displayedNibp}
+              isMeasuringNibp={vitalEngine.isMeasuringNibp}
+              activeAlarms={vitalEngine.activeAlarms}
+              isAlarmSilenced={vitalEngine.isAlarmSilenced}
+              isAudioMuted={vitalEngine.isAudioMuted}
+              onMeasureNibp={vitalEngine.measureNibp}
+              onConnectSensors={vitalEngine.connectSensors}
+              onSilenceAlarms={vitalEngine.silenceAlarms}
+              onToggleAudio={vitalEngine.toggleAudio}
+              onExecuteCardioversion={vitalEngine.executeCardioversion}
+            />
+          )}
 
           {/* Grid Principal: Chat com Paciente (Esq) + Painel de Ações Clínicas (Dir) */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
@@ -1006,18 +1031,20 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                   <span>Exame Físico</span>
                   <span className="hidden xl:inline text-[9px] opacity-60 font-mono font-normal bg-muted/60 px-1 rounded">1</span>
                 </button>
-                <button
-                  onClick={() => setActiveTab("procedures")}
-                  className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors flex items-center justify-center gap-1 ${
-                    activeTab === "procedures"
-                      ? "border-primary text-primary bg-background"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Atalho: Alt + 2"
-                >
-                  <span>Manequim</span>
-                  <span className="hidden xl:inline text-[9px] opacity-60 font-mono font-normal bg-muted/60 px-1 rounded">2</span>
-                </button>
+                {showMannequin && (
+                  <button
+                    onClick={() => setActiveTab("procedures")}
+                    className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors flex items-center justify-center gap-1 ${
+                      activeTab === "procedures"
+                        ? "border-primary text-primary bg-background"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="Atalho: Alt + 2"
+                  >
+                    <span>Manequim</span>
+                    <span className="hidden xl:inline text-[9px] opacity-60 font-mono font-normal bg-muted/60 px-1 rounded">2</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveTab("labs")}
                   className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors flex items-center justify-center gap-1 ${
@@ -1159,7 +1186,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                 )}
 
                 {/* ABA 2: MANEQUIM INTERATIVO & E-FAST */}
-                {activeTab === "procedures" && (
+                {showMannequin && activeTab === "procedures" && (
                   <div className="space-y-4">
                     {sessionId ? (
                       <ProcedureMannequin
@@ -1243,7 +1270,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                 {/* ABA 4: PRANCHETA DE PRESCRIÇÃO E CONDUTA VERBAL */}
                 {activeTab === "conduct" && (
                   <div className="space-y-4">
-                    {sessionId && (
+                    {sessionId && showPrescriptionPad && (
                       <PrescriptionPad
                         sessionId={sessionId}
                         getElapsedSeconds={getElapsedSeconds}

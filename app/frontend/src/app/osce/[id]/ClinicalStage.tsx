@@ -29,6 +29,7 @@ interface ClinicalStageProps {
   station: {
     title: string;
     institution: string;
+    station_kind?: "emergencia" | "ambulatorio" | "comunicacao" | "procedimento";
     patient_persona: {
       name?: string;
       age?: number | string;
@@ -146,8 +147,11 @@ export function ClinicalStage({
     await onSendMessage(cleanText, activeChannel);
   };
 
+  const isCommunicationStation = station.station_kind === "comunicacao";
+
   // HUD Cinematográfico: Extrai rigorosamente apenas os 2 últimos eventos de diálogo (sem rolagem passiva!)
   const recentUtterances = transcript.slice(-2);
+  const lastPatientMessage = [...transcript].reverse().find((t) => t.sender === "paciente");
 
   return (
     <div className="relative w-full h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-slate-950 text-slate-100 shadow-2xl select-none">
@@ -158,7 +162,7 @@ export function ClinicalStage({
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <div>
             <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 block font-semibold">
-              {station.institution} • Beira-Leito Real
+              {station.institution} • {isCommunicationStation ? "Consultório de Comunicação" : "Beira-Leito Real"}
             </span>
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5 line-clamp-1">
               {station.patient_persona.name || "Paciente Simulado"}, {station.patient_persona.age || "Adulto"} anos
@@ -166,46 +170,48 @@ export function ClinicalStage({
           </div>
         </div>
 
-        {/* Controles de Semiotécnica Bruta (Estetoscópio Virtual) */}
-        <div className="flex items-center gap-2">
-          {activeFocus && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-mono animate-pulse">
-              <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="truncate max-w-[170px]">{activeFocus.label}</span>
-              <button
-                type="button"
-                onClick={handleStopAuscultation}
-                className="ml-1 text-emerald-400 hover:text-white"
-                title="Pausar ausculta"
-              >
-                <VolumeX className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+        {/* Controles de Semiotécnica Bruta (Estetoscópio Virtual apenas fora de estações puras de comunicação) */}
+        {!isCommunicationStation && (
+          <div className="flex items-center gap-2">
+            {activeFocus && (
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-mono animate-pulse">
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="truncate max-w-[170px]">{activeFocus.label}</span>
+                <button
+                  type="button"
+                  onClick={handleStopAuscultation}
+                  className="ml-1 text-emerald-400 hover:text-white"
+                  title="Pausar ausculta"
+                >
+                  <VolumeX className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
-          <button
-            type="button"
-            onClick={() => {
-              if (stethoscopeActive) handleStopAuscultation();
-              setStethoscopeActive(!stethoscopeActive);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-              stethoscopeActive
-                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-400"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
-            }`}
-            title="Atalho: Esc para guardar"
-          >
-            <Stethoscope className="w-3.5 h-3.5" />
-            <span>{stethoscopeActive ? "Guardar Esteto (ESC)" : "Empunhar Estetoscópio"}</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (stethoscopeActive) handleStopAuscultation();
+                setStethoscopeActive(!stethoscopeActive);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                stethoscopeActive
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-400"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+              }`}
+              title="Atalho: Esc para guardar"
+            >
+              <Stethoscope className="w-3.5 h-3.5" />
+              <span>{stethoscopeActive ? "Guardar Esteto (ESC)" : "Empunhar Estetoscópio"}</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 2. ÁREA CENTRAL: SILHUETA ANATÔMICA VETORIAL & FOCOS DE AUSCULTA */}
+      {/* 2. ÁREA CENTRAL: CONSULTA COMUNICACIONAL OU SILHUETA ANATÔMICA */}
       <div
         className={`relative flex-1 flex items-center justify-center p-4 min-h-[260px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 ${
-          stethoscopeActive ? "cursor-crosshair" : "cursor-default"
+          !isCommunicationStation && stethoscopeActive ? "cursor-crosshair" : "cursor-default"
         }`}
       >
         {/* Prontuário de Bolso Flutuante Retrátil (Canto Superior Esquerdo) */}
@@ -229,48 +235,81 @@ export function ClinicalStage({
           </div>
         </details>
 
-        {/* Manequim Torácico Vetorial Estilizado */}
-        <div className="relative w-64 md:w-72 h-72 md:h-80 bg-slate-950/70 border border-slate-800/90 rounded-3xl flex flex-col items-center justify-center shadow-2xl p-4">
-          <svg viewBox="0 0 200 240" className="w-full h-full stroke-slate-700/80 fill-slate-900/40 stroke-2">
-            {/* Contorno Torácico + Clavículas + Esterno */}
-            <path d="M40,30 C70,15 130,15 160,30 L175,90 L160,210 L40,210 L25,90 Z" />
-            <line x1="100" y1="30" x2="100" y2="140" className="stroke-slate-800 stroke-[3]" />
-            <path d="M45,35 Q75,45 100,32 Q125,45 155,35" className="fill-none stroke-slate-600/70" />
-            {/* Arcos Costais Esboçados */}
-            <path d="M50,70 Q100,85 150,70" className="fill-none stroke-slate-800/60 stroke-1" />
-            <path d="M48,100 Q100,115 152,100" className="fill-none stroke-slate-800/60 stroke-1" />
-            <path d="M46,130 Q100,145 154,130" className="fill-none stroke-slate-800/60 stroke-1" />
-          </svg>
-
-          {/* Renderização Interativa dos Focos de Ausculta */}
-          {stethoscopeActive ? (
-            anatomicalFoci.map((focus) => {
-              const isListeningThis = activeFocus?.id === focus.id;
-              return (
-                <button
-                  key={focus.id}
-                  type="button"
-                  onClick={() => handleFocusClick(focus)}
-                  style={{ left: `${focus.x}%`, top: `${focus.y}%` }}
-                  title={`${focus.label} (Clique para auscultar)`}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                    isListeningThis
-                      ? "bg-emerald-500 text-slate-950 scale-125 ring-4 ring-emerald-400/60 animate-pulse shadow-lg"
-                      : "bg-slate-900/90 text-emerald-400 border border-emerald-500/70 hover:scale-115 hover:bg-slate-800"
-                  }`}
-                >
-                  <Stethoscope className="w-4 h-4" />
-                </button>
-              );
-            })
-          ) : (
-            <div className="absolute inset-x-4 bottom-3 text-center">
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-1 rounded-md border border-slate-800">
-                Empunhe o estetoscópio para habilitar a ausculta nos focos
+        {isCommunicationStation ? (
+          <div className="w-full max-w-xl mx-auto mt-6 rounded-2xl border border-slate-800 bg-slate-900/75 p-5 space-y-3.5 shadow-xl select-text">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-bold">
+                Fala e Reação do Paciente
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {station.patient_persona.name || "Paciente"}
               </span>
             </div>
-          )}
-        </div>
+            {station.patient_persona.chief_complaint && (
+              <div className="rounded-xl bg-slate-950/70 border border-slate-800/80 p-3 text-xs text-slate-300 leading-relaxed">
+                <span className="text-[10px] font-mono uppercase text-amber-400 block mb-1">
+                  Abertura / Estado Emocional Inicial
+                </span>
+                &ldquo;{station.patient_persona.chief_complaint}&rdquo;
+              </div>
+            )}
+            <div className="rounded-xl bg-sky-950/30 border border-sky-500/30 p-3.5 text-sm text-slate-100 leading-relaxed min-h-[88px] flex flex-col justify-center">
+              <span className="text-[10px] font-mono uppercase text-sky-300 block mb-1">
+                Última Reação Observada
+              </span>
+              {lastPatientMessage ? (
+                <p>&ldquo;{lastPatientMessage.message}&rdquo;</p>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  Inicie a escuta ativa, garanta privacidade e explore a percepção do paciente antes de conduzir o diálogo.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Manequim Torácico Vetorial Estilizado */
+          <div className="relative w-64 md:w-72 h-72 md:h-80 bg-slate-950/70 border border-slate-800/90 rounded-3xl flex flex-col items-center justify-center shadow-2xl p-4">
+            <svg viewBox="0 0 200 240" className="w-full h-full stroke-slate-700/80 fill-slate-900/40 stroke-2">
+              {/* Contorno Torácico + Clavículas + Esterno */}
+              <path d="M40,30 C70,15 130,15 160,30 L175,90 L160,210 L40,210 L25,90 Z" />
+              <line x1="100" y1="30" x2="100" y2="140" className="stroke-slate-800 stroke-[3]" />
+              <path d="M45,35 Q75,45 100,32 Q125,45 155,35" className="fill-none stroke-slate-600/70" />
+              {/* Arcos Costais Esboçados */}
+              <path d="M50,70 Q100,85 150,70" className="fill-none stroke-slate-800/60 stroke-1" />
+              <path d="M48,100 Q100,115 152,100" className="fill-none stroke-slate-800/60 stroke-1" />
+              <path d="M46,130 Q100,145 154,130" className="fill-none stroke-slate-800/60 stroke-1" />
+            </svg>
+
+            {/* Renderização Interativa dos Focos de Ausculta */}
+            {stethoscopeActive ? (
+              anatomicalFoci.map((focus) => {
+                const isListeningThis = activeFocus?.id === focus.id;
+                return (
+                  <button
+                    key={focus.id}
+                    type="button"
+                    onClick={() => handleFocusClick(focus)}
+                    style={{ left: `${focus.x}%`, top: `${focus.y}%` }}
+                    title={`${focus.label} (Clique para auscultar)`}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                      isListeningThis
+                        ? "bg-emerald-500 text-slate-950 scale-125 ring-4 ring-emerald-400/60 animate-pulse shadow-lg"
+                        : "bg-slate-900/90 text-emerald-400 border border-emerald-500/70 hover:scale-115 hover:bg-slate-800"
+                    }`}
+                  >
+                    <Stethoscope className="w-4 h-4" />
+                  </button>
+                );
+              })
+            ) : (
+              <div className="absolute inset-x-4 bottom-3 text-center">
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-1 rounded-md border border-slate-800">
+                  Empunhe o estetoscópio para habilitar a ausculta nos focos
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3. HUD DE LEGENDAS CINEMATOGRÁFICAS (Apenas as 2 últimas falas, Zero Scroll) */}
