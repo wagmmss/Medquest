@@ -483,7 +483,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [phase, isListening, startListening, stopRecognition, setActiveTab, toggleHandsFreeMode, cancelSpeechSynthesis]);
+  }, [phase, isListening, startListening, stopRecognition, setActiveTab, toggleHandsFreeMode, cancelSpeechSynthesis, showMannequin]);
 
   // Enviar mensagem manual por texto ou clique
   const handleSendMessage = async (msgToSend?: string, targetOverride?: "PATIENT" | "EXAMINER") => {
