@@ -30,6 +30,8 @@ export interface EvaluatedBaremaItem {
   status: FulfillmentStatus;
   timestamp_achieved_sec: number | null;
   evidence_citation: string;
+  evidence_quote?: string;
+  rationale?: string;
   examiner_note?: string;
 }
 
@@ -83,4 +85,7 @@ export interface PreceptorFeedback {
   critical_warnings: string[];
   chief_preceptor_review: ChiefPreceptorReview;
   medquest_remediation: MedQuestRemediation;
+  graded_with_ai?: boolean;
+  grading_mode?: string;
+  grading_notice?: string;
 }

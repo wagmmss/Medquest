@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from api import gemini_pool, osce, osce_judge
+from api.db import get_db
 from api.osce_data import CANONICAL_STATIONS
 
 GOLDEN_PATH = Path(__file__).resolve().parent.parent / "data" / "osce" / "grading_golden.json"
@@ -219,3 +220,76 @@ def test_judge_golden_set_accuracy_and_zero_negated_false_positives(monkeypatch)
     accuracy_pct = (within_tol / total_items) * 100.0
     assert accuracy_pct >= 90.0, f"Acurácia do juiz foi {accuracy_pct:.1f}% (< 90.0%)"
     assert negated_fps == 0, f"Detectados {negated_fps} falsos positivos em respostas negadas"
+
+
+def test_finish_osce_session_uses_judge_and_populates_evidence_quotes(app):
+    """finish_osce_session deve usar o juiz (simulado no conftest), gravar evidence_quote literal e propagar no report."""
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-CAD'").fetchone()
+        assert st is not None
+        user_id = "judge_integration_user"
+        sess = osce.start_osce_session(db, st["id"], user_id, mode="blind")
+        session_id = sess["session_id"]
+
+        conduct = (
+            "Expansão volêmica inicial com soro fisiológico 0,9% 1000 ml na primeira hora em acesso venoso calibroso. "
+            "Avalio o potássio sérico antes da insulina: como está em 3,1 mEq/L, abaixo de 3,3, seguro a insulinoterapia "
+            "e inicio reposição de KCl endovenoso antes de prescrever insulina regular em bomba de infusão."
+        )
+        res = osce.finish_osce_session(db, session_id, user_id, conduct_notes=conduct)
+
+        assert res["graded_with_ai"] is True
+        assert res["grading_mode"] == "ai_judge"
+        assert res["grading_notice"] == "Corrigido com IA"
+        assert res["preceptor_feedback"]["graded_with_ai"] is True
+
+        scored_with_quote = [
+            it for it in res["evaluated_items"]
+            if it["awarded_score"] > 0 and it.get("evidence_quote")
+        ]
+        assert len(scored_with_quote) >= 2
+        for it in scored_with_quote:
+            assert it["evidence_quote"].lower() in f"conduta e prescrição verbalizada: {conduct}".lower()
+
+        report = osce.get_osce_session_report(db, session_id, user_id)
+        assert report is not None
+        assert report["graded_with_ai"] is True
+        assert report["grading_notice"] == "Corrigido com IA"
+        assert any(it.get("evidence_quote") for it in report["evaluated_items"])
+
+
+def test_finish_osce_session_shows_corrigido_sem_ia_on_judge_failure(app, monkeypatch):
+    """Se o juiz falhar dentro de finish_osce_session, aplica fallback do Bloco 0 e sinaliza 'Corrigido sem IA'."""
+    def boom(*args, **kwargs):
+        raise RuntimeError("Falha simulada do Gemini no finish_osce_session")
+
+    monkeypatch.setattr(gemini_pool, "generate_content_with_fallback", boom)
+
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-CAD'").fetchone()
+        assert st is not None
+        user_id = "judge_fallback_user"
+        sess = osce.start_osce_session(db, st["id"], user_id, mode="blind")
+        session_id = sess["session_id"]
+
+        res = osce.finish_osce_session(
+            db,
+            session_id,
+            user_id,
+            conduct_notes="Inicio SF 0,9% 1000ml na 1a hora e reposição de potássio com KCl antes da insulina.",
+        )
+
+        assert res["graded_with_ai"] is False
+        assert res["grading_mode"] == "deterministic_fallback"
+        assert res["grading_notice"] == "Corrigido sem IA"
+        assert res["preceptor_feedback"]["grading_notice"] == "Corrigido sem IA"
+        assert res["raw_score"] > 0
+
+        report = osce.get_osce_session_report(db, session_id, user_id)
+        assert report is not None
+        assert report["graded_with_ai"] is False
+        assert report["grading_notice"] == "Corrigido sem IA"

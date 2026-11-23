@@ -39,6 +39,7 @@ from .osce_prompts import (
 )
 from .osce_physiology import _build_auscultation_foci, _build_physiology_engine
 from .osce_circuit import get_circuit_plan, get_circuit_summary
+from .osce_judge import evaluate_session_with_judge
 
 logger = logging.getLogger(__name__)
 
@@ -1213,6 +1214,9 @@ def finish_osce_session(
                 "elapsed_seconds": sess["elapsed_seconds"],
                 "timeline_post_mortem": existing_fb.get("timeline_post_mortem", {}),
                 "competency_radar": existing_fb.get("competency_radar", {}),
+                "graded_with_ai": bool(existing_fb.get("graded_with_ai", False)),
+                "grading_mode": existing_fb.get("grading_mode", "deterministic_fallback"),
+                "grading_notice": existing_fb.get("grading_notice", "Corrigido sem IA"),
             }
 
     if normalized_conduct and not already_has_conduct:
@@ -1223,44 +1227,23 @@ def finish_osce_session(
             "elapsed_seconds": int(sess["elapsed_seconds"] or 0)
         })
 
-    # Reúne todo o texto produzido pelo aluno, prescrições e ações executadas
-    evidence_data = collect_candidate_evidence(transcript, actions)
-    all_evidence_corpus = evidence_data["all_text"]
-
-    scored_items = score_checklist_items(checklist_items, evidence_data)
-    total_score = sum(float(it["score_earned"]) for it in scored_items)
-    max_score = sum(float(it["weight"]) for it in scored_items)
-    evaluated_items = [
-        {
-            "id": it["id"],
-            "criterion_id": it["criterion_id"],
-            "code": it["code"],
-            "title": it["title"],
-            "description": it["description"],
-            "category": it["category"],
-            "weight": it["weight"],
-            "max_score": it["max_score"],
-            "score_earned": it["score_earned"],
-            "awarded_score": it["awarded_score"],
-            "status": it["status"],
-            "timestamp_achieved_sec": it["timestamp_achieved_sec"],
-            "evidence": it["evidence"],
-            "evidence_citation": it["evidence_citation"],
-        }
-        for it in scored_items
-    ]
-
-    raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
-
-    # 1. Auditoria Unificada de Red Flags & Segurança Clínica (lista única sem duplicidade)
-    red_flags = evaluate_osce_red_flags(
-        actions=actions,
-        transcript=transcript,
+    # Avalia a sessão pelo juiz de IA com validação literal de citação e fallback determinístico
+    judge_res = evaluate_session_with_judge(
         station_meta=dict(sess),
+        transcript=transcript,
+        actions=actions,
         checklist_items=checklist_items,
         critical_errors=critical_errors,
-        evidence_text=all_evidence_corpus,
     )
+    evaluated_items = judge_res["evaluated_items"]
+    red_flags = judge_res["red_flags"]
+    graded_with_ai = bool(judge_res.get("graded_with_ai", False))
+    grading_mode = str(judge_res.get("grading_mode") or ("ai_judge" if graded_with_ai else "deterministic_fallback"))
+    grading_notice = str(judge_res.get("grading_notice") or ("Corrigido com IA" if graded_with_ai else "Corrigido sem IA"))
+
+    total_score = sum(float(it.get("score_earned", it.get("awarded_score", 0.0))) for it in evaluated_items)
+    max_score = sum(float(it.get("weight", it.get("max_score", 1.0))) for it in checklist_items)
+    raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
     # Se exigir BO em violência sexual, anula pontuação do acolhimento (item_1)
     station_code = str(dict(sess).get("code", "")).upper()
@@ -1276,7 +1259,9 @@ def finish_osce_session(
                 it["timestamp_achieved_sec"] = None
                 it["evidence"] = "Critério zerado por exigência indevida de Boletim de Ocorrência."
                 it["evidence_citation"] = it["evidence"]
-        total_score = sum(float(it["score_earned"]) for it in evaluated_items)
+                it["evidence_quote"] = ""
+                it["rationale"] = it["evidence"]
+        total_score = sum(float(it.get("score_earned", it.get("awarded_score", 0.0))) for it in evaluated_items)
         raw_score_normalized = round(min(10.0, (total_score / max(1.0, max_score)) * 10.0), 1)
 
     # 2. Cálculo da Nota Final com Dedução e Travas de Teto (Caps)
@@ -1356,7 +1341,10 @@ def finish_osce_session(
         "critical_warnings": [rf["description"] for rf in red_flags],
         "chief_preceptor_review": chief_review,
         "medquest_remediation": medquest_remediation,
-        "timeline_post_mortem": timeline_data
+        "timeline_post_mortem": timeline_data,
+        "graded_with_ai": graded_with_ai,
+        "grading_mode": grading_mode,
+        "grading_notice": grading_notice,
     }
 
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -1373,7 +1361,7 @@ def finish_osce_session(
         """, (
             now_iso,
             final_score_normalized,
-            json.dumps({"items": evaluated_items, "critical_warnings": [rf["description"] for rf in red_flags], "red_flags": red_flags}, ensure_ascii=False),
+            json.dumps({"items": evaluated_items, "critical_warnings": [rf["description"] for rf in red_flags], "red_flags": red_flags, "graded_with_ai": graded_with_ai, "grading_mode": grading_mode, "grading_notice": grading_notice}, ensure_ascii=False),
             json.dumps(preceptor_feedback, ensure_ascii=False),
             json.dumps(transcript, ensure_ascii=False),
             session_id,
@@ -1396,7 +1384,10 @@ def finish_osce_session(
         "medquest_remediation": medquest_remediation,
         "elapsed_seconds": sess["elapsed_seconds"],
         "timeline_post_mortem": timeline_data,
-        "competency_radar": radar_data
+        "competency_radar": radar_data,
+        "graded_with_ai": graded_with_ai,
+        "grading_mode": grading_mode,
+        "grading_notice": grading_notice,
     }
 
 
@@ -1485,6 +1476,9 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
     feedback.setdefault("chief_preceptor_review", chief_review)
     feedback.setdefault("medquest_remediation", medquest_remediation)
     feedback.setdefault("timeline_post_mortem", timeline_data)
+    feedback.setdefault("graded_with_ai", bool(evaluation.get("graded_with_ai", False)))
+    feedback.setdefault("grading_mode", evaluation.get("grading_mode") or ("ai_judge" if feedback["graded_with_ai"] else "deterministic_fallback"))
+    feedback.setdefault("grading_notice", evaluation.get("grading_notice") or ("Corrigido com IA" if feedback["graded_with_ai"] else "Corrigido sem IA"))
 
     return {
         "session_id": row["id"],
@@ -1516,7 +1510,10 @@ def get_osce_session_report(db, session_id: str, user_id: str) -> Optional[dict[
         "medquest_remediation": medquest_remediation,
         "transcript": transcript,
         "timeline_post_mortem": timeline_data,
-        "competency_radar": radar_data
+        "competency_radar": radar_data,
+        "graded_with_ai": feedback["graded_with_ai"],
+        "grading_mode": feedback["grading_mode"],
+        "grading_notice": feedback["grading_notice"],
     }
 
 

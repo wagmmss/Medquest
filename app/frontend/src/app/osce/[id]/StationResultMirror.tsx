@@ -279,6 +279,11 @@ export function StationResultMirror({
             <span className="text-xs font-mono text-ink-muted">
               • Tempo Decorrido: {formatTime(elapsedSeconds)}
             </span>
+            {(feedback?.graded_with_ai === false || feedback?.grading_notice === "Corrigido sem IA") && (
+              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-warning/15 text-warning border border-warning/30">
+                {feedback?.grading_notice || "Corrigido sem IA"}
+              </span>
+            )}
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-ink-primary tracking-tight">
             {stationTitle}
@@ -498,14 +503,25 @@ export function StationResultMirror({
                     <td className="py-3.5 px-4 text-ink-primary max-w-md font-medium">
                       {item.description || item.code}
                     </td>
-                    <td className="py-3.5 px-4 text-ink-secondary font-mono text-[11px] max-w-sm">
-                      {item.timestamp_achieved_sec !== null && item.timestamp_achieved_sec !== undefined && (
-                        <span className="inline-flex items-center gap-1 text-primary mr-1.5">
-                          <Clock className="w-3 h-3" />
-                          {formatTime(item.timestamp_achieved_sec)}
-                        </span>
+                    <td className="py-3.5 px-4 text-ink-secondary font-mono text-[11px] max-w-sm space-y-1">
+                      <div>
+                        {item.timestamp_achieved_sec !== null && item.timestamp_achieved_sec !== undefined && (
+                          <span className="inline-flex items-center gap-1 text-primary mr-1.5">
+                            <Clock className="w-3 h-3" />
+                            {formatTime(item.timestamp_achieved_sec)}
+                          </span>
+                        )}
+                        {item.evidence_quote ? (
+                          <span className="italic text-ink-primary">“{item.evidence_quote}”</span>
+                        ) : (
+                          item.evidence_citation || (item as unknown as { evidence?: string }).evidence || "Não identificado nas ações."
+                        )}
+                      </div>
+                      {item.evidence_quote && item.rationale && (
+                        <div className="text-[10px] font-sans text-ink-muted">
+                          {item.rationale}
+                        </div>
                       )}
-                      {item.evidence_citation || (item as unknown as { evidence?: string }).evidence || "Não identificado nas ações."}
                     </td>
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       {getStatusBadge(item.status)}

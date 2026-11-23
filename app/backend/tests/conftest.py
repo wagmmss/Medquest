@@ -1,4 +1,5 @@
 """Fixtures de teste: cada teste recebe um banco SQLite temporário próprio (isolado)."""
+import json
 import os
 import sqlite3
 
@@ -75,13 +76,29 @@ def mock_ai_providers_hermetic(monkeypatch):
     if os.environ.get("RUN_LIVE_AI") == "1":
         return
 
-    from api import ai, gemini_pool, osce
+    from api import ai, gemini_pool, osce, osce_judge
 
     def fake_generate_content_with_fallback(prompt, system_instruction=None, json_mode=False, **kwargs):
         if gemini_pool.gemini_pool.total_keys == 0:
             raise RuntimeError("Todos os provedores de IA falharam (simulando indisponibilidade).")
 
         if json_mode:
+            try:
+                payload = json.loads(prompt)
+            except (TypeError, json.JSONDecodeError):
+                payload = None
+            if isinstance(payload, dict) and "candidate_timeline" in payload and "checklist_items" in payload:
+                sim_text = osce_judge.simulate_llm_judge_json(
+                    station_meta=payload.get("station", {}),
+                    candidate_log=payload.get("candidate_timeline", []),
+                    checklist_items=payload.get("checklist_items", []),
+                    critical_errors=payload.get("critical_errors", []),
+                )
+                return {
+                    "text": sim_text,
+                    "source": "mock_osce_judge",
+                    "model": "mock-flash-judge",
+                }
             return {
                 "text": '{"terms": ["hipertensao", "has", "pressao alta"]}',
                 "source": "mock_ai",
