@@ -1,6 +1,7 @@
 """Motores determinísticos de auditoria clínica, red flags, cronologia e radar OSCE."""
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any, Optional
 
@@ -15,25 +16,69 @@ def _normalize_text(text: str) -> str:
 
 _NEGATION_PREFIXES = (
     "nao ", "nunca ", "jamais ", "sem ", "evitar ", "evito ",
-    "contraindicad", "proibid", "nao faco ", "nao prescrevo ", "nao administrar "
+    "contraindicad", "proibid", "nao faco ", "nao prescrevo ", "nao administrar ",
+    "nao vou ", "nao quero ", "nao solicito ", "nao peco ", "nao indico ",
+    "nao realizar ", "recuso ", "dispenso ", "deixo de ",
 )
+
+_CLAUSE_SEPARATORS = (".", ";", "!", "?", "\n", ",")
+
+
+def _find_term_matches(norm_text: str, norm_term: str) -> list[re.Match[str]]:
+    """Busca ocorrências de palavra/expressão inteira respeitando fronteiras alfanuméricas."""
+    if not norm_text or not norm_term:
+        return []
+    end_boundary = r"(?!\d)" if norm_term[-1].isdigit() else r"(?![a-z0-9])"
+    pattern = r"(?<![a-z0-9])" + re.escape(norm_term) + end_boundary
+    return list(re.finditer(pattern, norm_text))
+
+
+def _extract_clause_prefix(norm_text: str, match_start: int, window: int = 75) -> str:
+    """Retorna o trecho imediatamente anterior ao match dentro da mesma cláusula."""
+    window_start = max(0, match_start - window)
+    prefix = norm_text[window_start:match_start]
+    for sep in _CLAUSE_SEPARATORS:
+        if sep in prefix:
+            prefix = prefix.split(sep)[-1]
+    return prefix
+
+
+def _clause_has_negation(prefix: str) -> bool:
+    """Verifica se o prefixo da cláusula contém marcador explícito de negação."""
+    if any(neg in prefix for neg in _NEGATION_PREFIXES):
+        return True
+    if re.search(r"(?<![a-z0-9])nem(?![a-z0-9])", prefix):
+        return True
+    return False
 
 
 def _has_affirmative_mention(spoken_norm: str, prescribed_norm: str, terms: list[str]) -> bool:
-    """Retorna True se algum termo foi prescrito na prancheta ou mencionado sem negação explícita."""
-    if any(t in prescribed_norm for t in terms):
-        return True
-    for term in terms:
-        start = 0
-        while True:
-            idx = spoken_norm.find(term, start)
-            if idx == -1:
-                break
-            window_start = max(0, idx - 45)
-            prefix = spoken_norm[window_start:idx]
-            if not any(neg in prefix for neg in _NEGATION_PREFIXES):
+    """Retorna True se algum termo foi prescrito na prancheta ou mencionado sem negação na mesma cláusula."""
+    norm_terms = [_normalize_text(t) for t in terms if _normalize_text(t)]
+    if prescribed_norm:
+        for t in norm_terms:
+            if _find_term_matches(prescribed_norm, t):
                 return True
-            start = idx + len(term)
+    if not spoken_norm:
+        return False
+    for t in norm_terms:
+        for m in _find_term_matches(spoken_norm, t):
+            prefix = _extract_clause_prefix(spoken_norm, m.start())
+            if not _clause_has_negation(prefix):
+                return True
+    return False
+
+
+def _has_negated_mention(spoken_norm: str, terms: list[str]) -> bool:
+    """Retorna True se algum termo foi explicitamente negado na fala do candidato."""
+    if not spoken_norm:
+        return False
+    norm_terms = [_normalize_text(t) for t in terms if _normalize_text(t)]
+    for t in norm_terms:
+        for m in _find_term_matches(spoken_norm, t):
+            prefix = _extract_clause_prefix(spoken_norm, m.start())
+            if _clause_has_negation(prefix):
+                return True
     return False
 
 
@@ -105,7 +150,7 @@ def evaluate_critical_safety_violations(
                 flagged = True
 
         elif "endoscopia" in err_norm or "eda" in err_norm:
-            if any(term in full_corpus for term in ["eda", "endoscopia", "endoscopia digestiva"]):
+            if _has_affirmative_mention(norm_evidence, all_prescribed_drugs, ["eda", "endoscopia", "endoscopia digestiva"]):
                 flagged = True
 
         elif ("radiografia" in err_norm or "tomografia" in err_norm) and "pneumotorax" in station_subtema:

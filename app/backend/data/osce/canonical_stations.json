@@ -120,7 +120,7 @@
           "category": "diagnostico",
           "keywords": [
             "cetoacidose diabética",
-            "cad",
+            "cetoacidose",
             "ânion gap",
             "acidose metabólica"
           ]
@@ -148,7 +148,9 @@
           "category": "conduta_tratamento",
           "keywords": [
             "potássio",
-            "kcl",
+            "kcl 20",
+            "kcl 19,1%",
+            "reposição de potássio",
             "cloreto de potássio",
             "20 meq",
             "repor potássio"
@@ -163,7 +165,7 @@
           "keywords": [
             "insulina regular",
             "bomba de infusão",
-            "bic",
+            "infusão contínua",
             "0,1 u/kg",
             "queda glicêmica"
           ]
@@ -177,8 +179,10 @@
           "keywords": [
             "soro glicosado",
             "sg 5%",
-            "200",
-            "250",
+            "200 mg/dl",
+            "glicemia 200",
+            "250 mg/dl",
+            "glicemia de 250",
             "fechar ânion gap"
           ]
         }
@@ -282,7 +286,11 @@
           "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
-            "aas",
+            "ácido acetilsalicílico",
+            "aas 200",
+            "aas 300",
+            "aas mastigável",
+            "aspirina",
             "ticagrelor",
             "clopidogrel",
             "dupla antiagregação"
@@ -523,7 +531,10 @@
           "keywords": [
             "ácido tranexâmico",
             "transamin",
-            "1g",
+            "1 grama",
+            "1g iv",
+            "1g ev",
+            "dose de 1 g",
             "antifibrinolítico"
           ]
         },
@@ -539,6 +550,15 @@
             "laparotomia",
             "centro cirúrgico",
             "cirurgia imediata"
+          ],
+          "inverse": true,
+          "forbidden_terms": [
+            "tomografia",
+            "levar para tc",
+            "fazer tc",
+            "solicito tc",
+            "tc de abdome",
+            "tc"
           ]
         }
       ],
@@ -618,8 +638,8 @@
           "category": "diagnostico",
           "keywords": [
             "bronquiolite viral aguda",
-            "bva",
-            "vsr",
+            "bronquiolite",
+            "vírus sincicial",
             "diagnóstico clínico"
           ]
         },
@@ -674,6 +694,20 @@
             "não usar salbutamol",
             "sem antibiótico",
             "evidência"
+          ],
+          "inverse": true,
+          "forbidden_terms": [
+            "prednisolona",
+            "prednisona",
+            "dexametasona",
+            "hidrocortisona",
+            "corticoide",
+            "corticosteroide",
+            "amoxicilina",
+            "azitromicina",
+            "ceftriaxona",
+            "antibiotico",
+            "salbutamol"
           ]
         }
       ],
@@ -778,7 +812,10 @@
           "keywords": [
             "ácido tranexâmico",
             "transamin",
-            "1g",
+            "1 grama",
+            "1g iv",
+            "1g ev",
+            "dose de 1 g",
             "antifibrinolítico"
           ]
         },
@@ -886,7 +923,8 @@
             "genograma",
             "família",
             "marido",
-            "avc",
+            "acidente vascular",
+            "sequela de avc",
             "cuidadora",
             "filho",
             "sobrecarga"
@@ -917,6 +955,14 @@
             "evitar exames",
             "não precisa de tomografia",
             "não precisa de endoscopia"
+          ],
+          "inverse": true,
+          "forbidden_terms": [
+            "solicito tomografia",
+            "solicito endoscopia",
+            "solicito colonoscopia",
+            "solicito ressonancia",
+            "bateria de exames"
           ]
         },
         {
@@ -926,7 +972,7 @@
           "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
-            "pad",
+            "programa de atenção domiciliar",
             "melhor em casa",
             "atenção domiciliar",
             "retorno",
@@ -1009,7 +1055,6 @@
           "weight": 0.5,
           "category": "relacao_medico_paciente",
           "keywords": [
-            "olá",
             "bom dia",
             "boa tarde",
             "me chamo",
@@ -1071,7 +1116,8 @@
           "weight": 1.5,
           "category": "exames_complementares",
           "keywords": [
-            "ecg",
+            "ecg 12",
+            "ecg de 12",
             "eletrocardiograma",
             "12 derivações",
             "porta-eletro"
@@ -1086,9 +1132,10 @@
           "keywords": [
             "supra",
             "supradesnivelamento",
-            "st",
+            "supra de st",
             "anterior",
-            "iam",
+            "infarto agudo",
+            "iam com supra",
             "infarto"
           ]
         },
@@ -1099,7 +1146,10 @@
           "weight": 1.5,
           "category": "conduta_tratamento",
           "keywords": [
-            "aas",
+            "ácido acetilsalicílico",
+            "aas 200",
+            "aas 300",
+            "aas mastigável",
             "aspirina",
             "ticagrelor",
             "clopidogrel",
@@ -1218,7 +1268,8 @@
           "weight": 0.5,
           "category": "relacao_medico_paciente",
           "keywords": [
-            "olá",
+            "bom dia",
+            "boa tarde",
             "me chamo",
             "sou médico",
             "estamos cuidando"
@@ -1261,7 +1312,9 @@
           "weight": 1.5,
           "category": "exames_complementares",
           "keywords": [
-            "rx",
+            "raio-x",
+            "rx de tórax",
+            "rx de abdome",
             "radiografia",
             "cúpulas",
             "tórax em pé",
@@ -1290,7 +1343,6 @@
           "keywords": [
             "jejum",
             "sonda nasogástrica",
-            "sng",
             "hidratação",
             "soro",
             "cristaloide",
@@ -1424,7 +1476,8 @@
             "adrenalina",
             "epinefrina",
             "intramuscular",
-            "im",
+            "adrenalina im",
+            "via intramuscular",
             "coxa",
             "0,15",
             "vasto lateral"
@@ -1548,7 +1601,7 @@
           "keywords": [
             "acolhimento",
             "pressão arterial",
-            "pa",
+            "aferir pressão",
             "decúbito lateral"
           ]
         },
@@ -1573,7 +1626,7 @@
           "weight": 1.0,
           "category": "exame_fisico",
           "keywords": [
-            "bcf",
+            "batimentos cardiofetais",
             "batimentos fetais",
             "altura uterina",
             "tônus"
@@ -1641,7 +1694,8 @@
           "category": "relacao_medico_paciente",
           "keywords": [
             "internação",
-            "uti",
+            "terapia intensiva",
+            "leito de uti",
             "segurança",
             "bebê",
             "explicar"
@@ -1945,7 +1999,8 @@
             "desfibrilador",
             "cardioversor",
             "carrinho de parada",
-            "pás"
+            "pás do desfibrilador",
+            "posicionar pás"
           ]
         },
         {
@@ -2098,7 +2153,8 @@
             "noradrenalina",
             "vasopressor",
             "pam 65",
-            "uti"
+            "terapia intensiva",
+            "leito de uti"
           ]
         }
       ],
@@ -2175,6 +2231,16 @@
             "não pedir rx",
             "diagnóstico clínico",
             "sem atraso"
+          ],
+          "inverse": true,
+          "forbidden_terms": [
+            "solicito rx",
+            "solicito radiografia",
+            "pedir raio x",
+            "pedir rx",
+            "solicito tomografia",
+            "rx_torax",
+            "radiografia"
           ]
         },
         {
@@ -2354,9 +2420,14 @@
           "keywords": [
             "sigilo",
             "acolhimento",
-            "não precisa de bo",
+            "consentimento",
+            "atendimento sem boletim",
+            "dispensa boletim"
+          ],
+          "negated_keywords": [
             "boletim de ocorrência",
-            "consentimento"
+            "exigir boletim",
+            "exigir bo"
           ]
         },
         {
@@ -2379,8 +2450,10 @@
           "weight": 2.5,
           "category": "conduta_tratamento",
           "keywords": [
-            "pep",
-            "hiv",
+            "profilaxia pós-exposição",
+            "profilaxia hiv",
+            "antirretroviral",
+            "vírus hiv",
             "tenofovir",
             "lamivudina",
             "dolutegravir",
@@ -2399,7 +2472,8 @@
             "metronidazol",
             "gonococo",
             "clamídia",
-            "ist"
+            "infecções sexualmente transmissíveis",
+            "profilaxia de ist"
           ]
         },
         {

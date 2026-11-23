@@ -1195,7 +1195,7 @@ class TestOsceStage4EvaluationAndMirror:
                 db=db,
                 session_id=session_id,
                 user_id="user_stage4_gold",
-                conduct_notes="Solicito ECG de 12 derivações em < 10 min, monitorização, oxigênio, AAS 300mg mastigado, Ticagrelor 180mg, analgesia e encaminho para cateterismo de urgência / hemodinâmica para angioplastia primária."
+                conduct_notes="Diagnóstico de IAM com supra de ST anterior. Solicito ECG de 12 derivações em < 10 min, monitorização, acesso venoso, AAS 300mg mastigado, Ticagrelor 180mg, enoxaparina e encaminho para cateterismo de urgência / hemodinâmica para angioplastia primária."
             )
 
             assert res["status"] == "completed"

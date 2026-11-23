@@ -18,7 +18,11 @@ from .db import db_transaction, get_db
 from .gemini_pool import generate_content_with_fallback
 from .osce_evaluation import (
     _NEGATION_PREFIXES,
+    _clause_has_negation,
+    _extract_clause_prefix,
+    _find_term_matches,
     _has_affirmative_mention,
+    _has_negated_mention,
     _normalize_text,
     build_chief_preceptor_review,
     build_medquest_remediation,
@@ -257,9 +261,19 @@ def collect_candidate_evidence(
                         "source": "prescription",
                     })
         elif act_type in allowed_action_types:
+            target_raw = str(act.get("action_target", "") or "").strip()
+            target_norm = _normalize_text(target_raw)
+            alias_suffix = ""
+            if act_type in ("lab_imaging", "exam"):
+                if "ecg" in target_norm or "eletro" in target_norm:
+                    alias_suffix = "eletrocardiograma ecg 12 derivacoes"
+                elif target_norm in ("rx", "raio_x", "rx_torax", "radiografia"):
+                    alias_suffix = "radiografia raio-x rx de torax"
+                elif "gaso" in target_norm or "eletrolito" in target_norm:
+                    alias_suffix = "gasometria eletrolitos potassio"
             a_text = (
-                f"{act_type} {act.get('action_target', '')} "
-                f"{act.get('procedure_type', '')} {act.get('anatomical_site', '')}"
+                f"{act_type} {target_raw} "
+                f"{act.get('procedure_type', '')} {act.get('anatomical_site', '')} {alias_suffix}"
             ).strip()
             if a_text:
                 action_texts.append(a_text)
@@ -282,25 +296,82 @@ def collect_candidate_evidence(
         "norm_all_text": _normalize_text(all_text),
         "norm_spoken": _normalize_text(" ".join(spoken_texts)),
         "norm_prescribed": _normalize_text(" ".join(prescribed_texts)),
+        "norm_actions": _normalize_text(" ".join(action_texts)),
     }
+
+
+def _segment_matches_term(seg: dict[str, Any], norm_term: str, expect_negated: bool = False) -> bool:
+    """Verifica se um segmento individual de evidência contém o termo com polaridade compatível."""
+    seg_norm = seg.get("norm_text", "")
+    matches = _find_term_matches(seg_norm, norm_term)
+    if not matches:
+        return False
+    if seg.get("source") != "speech":
+        return not expect_negated
+    for m in matches:
+        is_neg = _clause_has_negation(_extract_clause_prefix(seg_norm, m.start()))
+        if expect_negated and is_neg:
+            return True
+        if not expect_negated and not is_neg:
+            return True
+    return False
 
 
 def score_checklist_items(
     checklist_items: list[dict[str, Any]],
     evidence: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Calcula a pontuação item a item do barema a partir da evidência consolidada do candidato."""
-    norm_evidence = evidence.get("norm_all_text", "")
+    """Calcula a pontuação item a item do barema respeitando palavra inteira, negação e itens inversos."""
+    norm_spoken = evidence.get("norm_spoken", "")
+    norm_prescribed_and_actions = " ".join(
+        part for part in (evidence.get("norm_prescribed", ""), evidence.get("norm_actions", "")) if part
+    ).strip()
     segments = evidence.get("segments", [])
     scored_items: list[dict[str, Any]] = []
 
     for item in checklist_items:
         weight = float(item.get("weight", 1.0))
         keywords = item.get("keywords", [])
-        matches = [kw for kw in keywords if _normalize_text(kw) in norm_evidence]
-        match_ratio = len(matches) / max(1, len(keywords))
+        negated_keywords = item.get("negated_keywords", [])
+        is_inverse = bool(item.get("inverse", False))
+        forbidden_terms = item.get("forbidden_terms", [])
 
-        if match_ratio >= 0.4 or len(matches) >= 2:
+        violated_inverse = False
+        if is_inverse and forbidden_terms:
+            for ft in forbidden_terms:
+                if _has_affirmative_mention(norm_spoken, norm_prescribed_and_actions, [ft]):
+                    violated_inverse = True
+                    break
+
+        matches: list[str] = []
+        matched_polarity: list[tuple[str, bool]] = []
+
+        if not violated_inverse:
+            for kw in keywords:
+                if _has_affirmative_mention(norm_spoken, norm_prescribed_and_actions, [kw]):
+                    matches.append(kw)
+                    matched_polarity.append((_normalize_text(kw), False))
+            for nkw in negated_keywords:
+                if _has_negated_mention(norm_spoken, [nkw]):
+                    matches.append(f"não {nkw}")
+                    matched_polarity.append((_normalize_text(nkw), True))
+            if is_inverse and forbidden_terms:
+                for ft in forbidden_terms:
+                    if _has_negated_mention(norm_spoken, [ft]):
+                        label = f"não {ft}"
+                        if label not in matches:
+                            matches.append(label)
+                            matched_polarity.append((_normalize_text(ft), True))
+
+        denominator = max(1, len(keywords))
+        match_ratio = len(matches) / denominator
+
+        if violated_inverse:
+            earned = 0.0
+            status_internal = "nao_cumprido"
+            status_code = "NONE"
+            evidence_desc = "Critério violado: conduta contraindicada mencionada ou executada pelo candidato."
+        elif match_ratio >= 0.4 or len(matches) >= 2:
             earned = weight
             status_internal = "cumprido_total"
             status_code = "FULL"
@@ -317,11 +388,9 @@ def score_checklist_items(
             evidence_desc = "Critério não contemplado nas falas ou ações do candidato durante o tempo de prova."
 
         timestamp_achieved_sec: Optional[int] = None
-        if status_code != "NONE" and matches:
-            norm_matches = [_normalize_text(m) for m in matches]
+        if status_code != "NONE" and matched_polarity:
             for seg in segments:
-                seg_norm = seg.get("norm_text", "")
-                if any(nm in seg_norm for nm in norm_matches):
+                if any(_segment_matches_term(seg, nm, expect_neg) for nm, expect_neg in matched_polarity):
                     if seg.get("elapsed_seconds") is not None:
                         timestamp_achieved_sec = int(seg["elapsed_seconds"])
                     break
