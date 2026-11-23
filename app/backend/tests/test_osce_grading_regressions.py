@@ -189,6 +189,29 @@ def test_empty_session_honest_radar_and_review(app):
         assert res["competency_radar_5d"]["sus_time_efficiency"] == 0.0
         assert all(d["percentage"] in (None, 0.0) for d in res["competency_radar"]["dimensions"])
         assert res["chief_preceptor_review"]["what_went_well"] == []
+        assert all(it["timestamp_achieved_sec"] is None for it in res["evaluated_items"])
+        assert "Kussmaul" in res["chief_preceptor_review"]["gold_standard_canonical_conduct"]
+
+        # Sessão exemplar 10/10 na mesma estação deve gerar parecer e forças distintos
+        sess_gold = _start_station_by_code(db, "USP-RP-2024-CM-CAD", user_id="reg_gold_sess")
+        osce.execute_osce_action(db, sess_gold, "reg_gold_sess", "lab_imaging", "gasometria_eletrólitos", 30)
+        res_gold = osce.finish_osce_session(
+            db,
+            sess_gold,
+            "reg_gold_sess",
+            conduct_notes=(
+                "Paciente com respiração de Kussmaul, hálito cetônico e torpor. "
+                "Diagnóstico de cetoacidose diabética grave com acidose metabólica e ânion gap elevado. "
+                "Prescrevo soro fisiológico 0,9% 1000 ml na primeira hora para expansão. "
+                "Avaliei potássio e prescrevo repor potássio com cloreto de potássio 20 mEq por litro. "
+                "Inicio insulina regular em bomba de infusão contínua 0,1 U/kg/h. "
+                "Quando atingir glicemia de 250 mg/dL, associar soro glicosado SG 5% para fechar ânion gap."
+            ),
+        )
+        assert res_gold["final_score"] == 10.0
+        assert len(res_gold["chief_preceptor_review"]["what_went_well"]) == 3
+        assert res_gold["chief_preceptor_review"]["executive_summary"] != res["chief_preceptor_review"]["executive_summary"]
+        assert res_gold["chief_preceptor_review"]["critical_corrections"] == []
 
 
 def _build_trigger_phrase_for_error(err: str) -> str:

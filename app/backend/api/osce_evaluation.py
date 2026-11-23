@@ -852,16 +852,23 @@ def generate_competency_radar(
         category_scores[key]["max"] += weight
         category_scores[key]["items"].append(it)
 
+    real_actions = [a for a in actions if a.get("action_type") != "session_init"]
+    cand_transcripts = [t for t in transcript if t.get("sender") == "candidato"]
+    total_items_earned = sum(float(it.get("score_earned", 0.0)) for it in evaluated_items)
+
     time_score_max = 2.0
-    time_score_earned = 2.0
-    if elapsed_seconds > 450:
-        time_score_earned -= 0.5
-    action_times = sorted([int(a.get("elapsed_seconds", 0)) for a in actions if a.get("elapsed_seconds")])
-    for i in range(len(action_times) - 1):
-        if action_times[i+1] - action_times[i] >= 75:
+    if (not real_actions and not cand_transcripts) or total_items_earned == 0:
+        time_score_earned = 0.0
+    else:
+        time_score_earned = 2.0
+        if elapsed_seconds > 450:
             time_score_earned -= 0.5
-            break
-    time_score_earned = max(0.5, time_score_earned)
+        action_times = sorted([int(a.get("elapsed_seconds", 0)) for a in real_actions if a.get("elapsed_seconds")])
+        for i in range(len(action_times) - 1):
+            if action_times[i + 1] - action_times[i] >= 75:
+                time_score_earned -= 0.5
+                break
+        time_score_earned = max(0.5, time_score_earned)
     category_scores["gestao_tempo"]["earned"] = time_score_earned
     category_scores["gestao_tempo"]["max"] = time_score_max
 
@@ -876,23 +883,35 @@ def generate_competency_radar(
 
     dimensions = []
     total_pct = 0.0
+    evaluated_dims_count = 0
 
     for key, name, desc in dim_configs:
         earned = category_scores[key]["earned"]
         c_max = category_scores[key]["max"]
         if c_max == 0:
-            c_max = 1.0
-            earned = 0.8
+            dimensions.append({
+                "key": key,
+                "name": name,
+                "score_earned": 0.0,
+                "score_max": 0.0,
+                "percentage": None,
+                "level": "Sem evidência",
+                "description": desc,
+                "feedback": "Dimensão sem critérios avaliados no barema desta estação."
+            })
+            continue
 
         pct = round(min(100.0, max(0.0, (earned / c_max) * 100)), 1)
         if key == "seguranca_farmacologica" and critical_warnings:
-            penal_pct = max(15.0, pct - (len(critical_warnings) * 35.0))
+            floor_pct = 0.0 if earned == 0 else 15.0
+            penal_pct = max(floor_pct, pct - (len(critical_warnings) * 35.0))
             pct = round(penal_pct, 1)
         total_pct += pct
+        evaluated_dims_count += 1
 
         if pct >= 80.0:
             level = "Excelente"
-            feedback = "Domínio seguro nesta competência. Execução precisa segundo o gabarito oficial."
+            feedback = "Domínio seguro nesta competência. Execução precisa segundo o gabarito."
         elif pct >= 60.0:
             level = "Satisfatório"
             feedback = "Bom desempenho, com oportunidades de refinamento e maior agilidade."
@@ -911,12 +930,11 @@ def generate_competency_radar(
             "feedback": feedback
         })
 
-    overall_avg = round(total_pct / len(dimensions), 1)
+    overall_avg = round(total_pct / evaluated_dims_count, 1) if evaluated_dims_count > 0 else 0.0
 
-    sorted_dims = sorted(dimensions, key=lambda d: d["percentage"], reverse=True)
+    evaluated_dims = [d for d in dimensions if d["percentage"] is not None]
+    sorted_dims = sorted(evaluated_dims, key=lambda d: d["percentage"], reverse=True)
     strengths = [d["name"] for d in sorted_dims[:2] if d["percentage"] >= 65]
-    if not strengths:
-        strengths = [sorted_dims[0]["name"]]
     weaknesses = [d["name"] for d in sorted_dims[-2:] if d["percentage"] < 75]
 
     return {
@@ -1063,30 +1081,62 @@ def compute_competency_radar_5d(
     elapsed_seconds: int,
     red_flags: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Computa o Radar Psicométrico em 5 Dimensões Médicas Fundamentais (0 a 100)."""
-    diag_items = [it for it in evaluated_items if any(k in str(it.get("category", "")).lower() for k in ("anamnese", "diagnostico", "raciocinio"))]
-    diag_pct = (sum(it.get("score_earned", 0.0) for it in diag_items) / max(1.0, sum(it.get("weight", 1.0) for it in diag_items))) * 100 if diag_items else 75.0
+    """Computa o Radar Psicométrico em 5 Dimensões Médicas Fundamentais (0 a 100 ou None sem evidência)."""
+    diag_items = [
+        it for it in evaluated_items
+        if any(k in str(it.get("category", "")).lower() for k in ("anamnese", "diagnostico", "raciocinio"))
+    ]
+    diag_pct: Optional[float] = (
+        round((sum(float(it.get("score_earned", 0.0)) for it in diag_items) / max(1.0, sum(float(it.get("weight", 1.0)) for it in diag_items))) * 100, 1)
+        if diag_items else None
+    )
 
-    cand_dialogue_count = len([t for t in transcript if t.get("sender") == "candidato" and t.get("target") != "EXAMINER"])
-    comm_pct = min(100.0, max(40.0, cand_dialogue_count * 14.0 + 30.0))
+    comm_items = [
+        it for it in evaluated_items
+        if any(k in str(it.get("category", "")).lower() for k in ("relacao", "comunicacao", "empatia"))
+    ]
+    comm_pct: Optional[float] = (
+        round((sum(float(it.get("score_earned", 0.0)) for it in comm_items) / max(1.0, sum(float(it.get("weight", 1.0)) for it in comm_items))) * 100, 1)
+        if comm_items else None
+    )
 
-    proc_items = [it for it in evaluated_items if any(k in str(it.get("category", "")).lower() for k in ("fisico", "procedimento", "manobra", "ausculta"))]
-    proc_pct = (sum(it.get("score_earned", 0.0) for it in proc_items) / max(1.0, sum(it.get("weight", 1.0) for it in proc_items))) * 100 if proc_items else 70.0
+    proc_items = [
+        it for it in evaluated_items
+        if any(k in str(it.get("category", "")).lower() for k in ("fisico", "procedimento", "manobra", "ausculta"))
+    ]
+    proc_pct: Optional[float] = (
+        round((sum(float(it.get("score_earned", 0.0)) for it in proc_items) / max(1.0, sum(float(it.get("weight", 1.0)) for it in proc_items))) * 100, 1)
+        if proc_items else None
+    )
 
-    safety_pct = 100.0
-    for _ in red_flags:
-        safety_pct -= 25.0
-    safety_pct = max(10.0, min(100.0, safety_pct))
+    real_actions = [a for a in actions if a.get("action_type") != "session_init"]
+    cand_transcripts = [t for t in transcript if t.get("sender") == "candidato"]
+    total_items_earned = sum(float(it.get("score_earned", 0.0)) for it in evaluated_items)
+    has_activity = bool(real_actions or cand_transcripts)
 
-    first_action_time = min([int(a.get("elapsed_seconds", 0)) for a in actions if a.get("elapsed_seconds")], default=150)
-    time_pct = 95.0 if first_action_time <= 90 else (75.0 if first_action_time <= 150 else 50.0)
+    if not has_activity and total_items_earned == 0:
+        safety_pct: Optional[float] = None
+    else:
+        raw_safety = 100.0 - (len(red_flags) * 25.0)
+        safety_pct = round(max(10.0, min(100.0, raw_safety)), 1)
+
+    if not has_activity or total_items_earned == 0:
+        time_pct = 0.0
+    else:
+        action_secs = [
+            int(a.get("elapsed_seconds", 0)) for a in real_actions if a.get("elapsed_seconds") is not None
+        ] + [
+            int(t.get("elapsed_seconds", 0)) for t in cand_transcripts if t.get("elapsed_seconds") is not None
+        ]
+        first_action_time = min(action_secs, default=150)
+        time_pct = 95.0 if first_action_time <= 90 else (75.0 if first_action_time <= 150 else 50.0)
 
     return {
-        "clinical_reasoning": round(diag_pct, 1),
-        "communication_empathy": round(comm_pct, 1),
-        "surgical_semiotics": round(proc_pct, 1),
-        "patient_safety": round(safety_pct, 1),
-        "sus_time_efficiency": round(time_pct, 1)
+        "clinical_reasoning": diag_pct,
+        "communication_empathy": comm_pct,
+        "surgical_semiotics": proc_pct,
+        "patient_safety": safety_pct,
+        "sus_time_efficiency": round(time_pct, 1),
     }
 
 
@@ -1096,69 +1146,61 @@ def build_chief_preceptor_review(
     red_flags: list[dict[str, Any]],
     final_score: float
 ) -> dict[str, Any]:
-    """Sintetiza parecer executivo de alto rendimento no padrão de preceptor de residência médica."""
-    subtema = str(station_meta.get("subtema", "")).upper()
+    """Sintetiza parecer executivo honesto baseado nos itens reais do checklist e erros críticos."""
     title = str(station_meta.get("title", ""))
     inst = str(station_meta.get("institution", "USP-RP"))
 
-    full_items = [it.get("title") for it in evaluated_items if it.get("status") == "cumprido_total"]
-    what_went_well = full_items[:3] if full_items else ["Atendimento iniciado dentro do tempo limite oficial."]
+    full_items = [
+        str(it.get("title"))
+        for it in evaluated_items
+        if it.get("status") in ("FULL", "cumprido_total") and it.get("title")
+    ]
+    what_went_well = full_items[:3]
 
-    critical_corrections = [rf.get("description") for rf in red_flags]
-    if not critical_corrections:
-        unfulfilled = [it.get("title") for it in evaluated_items if it.get("status") == "nao_cumprido"]
-        critical_corrections = unfulfilled[:3] if unfulfilled else ["Manter ritmo de prova e verbalização clara das condutas."]
+    unfulfilled = [
+        str(it.get("title"))
+        for it in evaluated_items
+        if it.get("status") in ("NONE", "nao_cumprido") and it.get("title")
+    ]
+    rf_descriptions = [str(rf.get("description")) for rf in red_flags if rf.get("description")]
+    critical_corrections: list[str] = []
+    for entry in rf_descriptions + unfulfilled[:3]:
+        if entry not in critical_corrections:
+            critical_corrections.append(entry)
 
-    if "PNEUMO" in subtema or "PNEUMOTÓRAX" in title.upper():
-        canonical = (
-            "1. Reconhecimento clínico imediato de Pneumotórax Hipertensivo (hipotensão, turgência jugular, MV abolido e timpanismo unilateral).\n"
-            "2. Proibido solicitar Raio-X ou TC de tórax: o diagnóstico é puramente clínico!\n"
-            "3. Descompressão imediata por toracocentese de alívio com Jelco 14G na borda superior da costela no 2º EIC LHC ou 5º EIC LAA.\n"
-            "4. Monitorização contínua com oxigênio suplementar em máscara não-reinalante.\n"
-            "5. Solicitação imediata à enfermagem da bandeja de toracostomia tubular com dreno 28-32 Fr em selo d'água."
+    canonical_lines = [
+        f"{idx}. {it.get('title')}: {it.get('description')}"
+        for idx, it in enumerate(evaluated_items, 1)
+        if it.get("title") or it.get("description")
+    ]
+    canonical = "\n".join(canonical_lines) if canonical_lines else f"Revisar checklist da estação {title}."
+
+    if final_score <= 0.0 and not full_items:
+        summary = (
+            f"Desempenho de {final_score:.1f}/10.0 na estação de {title} ({inst}). "
+            "Nenhum critério do checklist foi cumprido nesta tentativa."
         )
-    elif "SCA" in subtema or "CORONARIANA" in title.upper():
-        canonical = (
-            "1. ECG de 12 derivações realizado e laudado em menos de 10 minutos (meta ATLS/AHA).\n"
-            "2. Monitorização multiparamétrica, acesso venoso calibroso e oxigênio se SpO2 < 90%.\n"
-            "3. Terapia anti-isquêmica e antiplaquetária dupla imediata: AAS 200-300 mg mastigado + Ticagrelor 180 mg ou Clopidogrel 300-600 mg.\n"
-            "4. Nitrato sublingual se dor refratária (contraindicado em infarto de VD ou uso de sildenafila nas últimas 24h).\n"
-            "5. Acionamento do laboratório de hemodinâmica para angioplastia primária com tempo porta-balão < 90 minutos."
+    elif final_score >= 8.5:
+        summary = (
+            f"Desempenho de {final_score:.1f}/10.0 na estação de {title} ({inst}). "
+            "Execução consistente dos passos essenciais do barema e manejo seguro."
         )
-    elif "TV" in subtema or "TAQUICARDIA" in title.upper():
-        canonical = (
-            "1. Avaliação rápida de estabilidade hemodinâmica (Dor torácica anginosa, Dispneia/congestão, Hipotensão, Rebaixamento do sensório).\n"
-            "2. Em paciente instável: Cardioversão Elétrica SINCRONIZADA imediata (100 J bifásico) com sedação rápida (Fentanil + Midazolam ou Etomidato).\n"
-            "3. Garantir confirmação da marcação das ondas R (SYNC ativo) antes do disparo elétrico.\n"
-            "4. Reavaliação imediata de ritmo e pulso pós-choque."
-        )
-    elif "HPP" in subtema or "HEMORRAGIA" in title.upper():
-        canonical = (
-            "1. Mapeamento da etiologia pelos 4 T's (Tônus 70%, Trauma, Tecido, Trombina).\n"
-            "2. Massagem uterina bimanual imediata (Manobra de Hamilton) associada a ocitocina IV em infusão contínua.\n"
-            "3. Acessos calibrosos 14-16G, coleta de tipagem sanguínea com prova cruzada e prova do coágulo beira-leito.\n"
-            "4. Ácido tranexâmico 1g IV infundido nos primeiros 10 minutos de sangramento ativo."
+    elif final_score >= 7.0:
+        summary = (
+            f"Desempenho de {final_score:.1f}/10.0 na estação de {title} ({inst}). "
+            "Atendimento satisfatório, com lacunas pontuais que limitaram a pontuação final."
         )
     else:
-        canonical = (
-            f"Atendimento padrão {inst}: Abordagem sistemática, anamnese direcionada, exame físico segmentar, "
-            f"solicitação criteriosa de exames laboratoriais/imagem e prescrição de conduta padrão com doses e vias explícitas."
+        summary = (
+            f"Desempenho de {final_score:.1f}/10.0 na estação de {title} ({inst}). "
+            "Pontuação abaixo da referência de treino (7,0); revise os itens não cumpridos e eventuais violações de segurança."
         )
-
-    summary = (
-        f"Desempenho oficial de {final_score:.1f}/10.0 na estação de {title} ({inst}). "
-        + ("Excelente maturidade clínica, execução ágil dos passos capitais e segurança no manejo de emergência."
-           if final_score >= 8.5 else
-           "Atendimento consistente, mas com lacunas técnicas ou hesitações de conduta que limitaram a pontuação final."
-           if final_score >= 7.0 else
-           "Pontuação abaixo da nota de corte da banca examinadora. Identificadas falhas metodológicas ou violações de segurança que exigem remediação.")
-    )
 
     return {
         "executive_summary": summary,
         "what_went_well": what_went_well,
         "critical_corrections": critical_corrections,
-        "gold_standard_canonical_conduct": canonical
+        "gold_standard_canonical_conduct": canonical,
     }
 
 
