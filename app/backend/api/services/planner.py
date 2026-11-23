@@ -37,7 +37,6 @@ BALANCED_ROTATION_CYCLE = (
 # Sala de Parto e Pediatria prática) usando exatamente os nomes canônicos do catálogo.
 INTERNATO_ESSENTIALS = frozenset({
     # Clínica Médica (PS, Enfermaria e UBS)
-    "Acidente Vascular Cerebral Isquêmico e Hemorrágico (Janela de Trombólise)",
     "Asma e Doença Pulmonar Obstrutiva Crônica (DPOC)",
     "Cefaleias Primárias (Enxaqueca, Tensional) e Secundárias de Alarme",
     "Celulite, Erisipela, Osteomielite e Infecções de Partes Moles",
@@ -59,12 +58,10 @@ INTERNATO_ESSENTIALS = frozenset({
     "Taquiarritmias, Bradiarritmias, Síncope e Suporte Avançado (ACLS)",
     "Transtornos por Uso de Substâncias (Álcool, Tabaco e Drogas de Abuso)",
     "Tromboembolismo Pulmonar (TEP) e Hipertensão Pulmonar",
-    "Tuberculose Pulmonar e Extrapulmonar: Diagnóstico e Manejo",
     "Ventilação Mecânica, SARA e Insuficiência Respiratória Aguda",
     # Cirurgia (PS Cirúrgico, Trauma e Enfermaria)
     "Abdome Agudo Inflamatório (Apendicite e Diverticulite Aguda)",
     "Abdome Agudo Obstrutivo (Bridas, Neoplasias e Volvo)",
-    "Abdome Agudo Perfurativo e Úlcera Péptica Perfurada",
     "Atendimento Inicial ao Politraumatizado (Protocolo xABCDE)",
     "Atendimento ao Paciente Queimado e Reposição Volêmica",
     "Avaliação Pré-Operatória e Estratificação de Risco Cirúrgico",
@@ -77,7 +74,6 @@ INTERNATO_ESSENTIALS = frozenset({
     "Manejo Pós-Operatório e Tratamento de Complicações Cirúrgicas",
     "Pancreatites Aguda e Crônica e Pseudocistos Pancreáticos",
     "Trauma Abdominal Fechado e Penetrante (FAST e Laparotomia)",
-    "Trauma Cranioencefálico (TCE) e Hipertensão Intracraniana",
     "Trauma Torácico: Pneumotórax, Hemotórax e Tamponamento Cardíaco",
     # Ginecologia e Obstetrícia (Sala de Parto, PS GO e UBS)
     "Amniorrexe Prematura (RPMO) e Corioamnionite",

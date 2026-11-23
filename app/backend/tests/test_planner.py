@@ -1079,17 +1079,17 @@ def test_planner_internato_essentials_flagged_and_prioritized():
         organization="geral",
     )
     all_topics = [t for w in res["plan"] for t in w["topics"]]
-    avc = next(
+    ira = next(
         t for t in all_topics
-        if t["subtema"] == "Acidente Vascular Cerebral Isquêmico e Hemorrágico (Janela de Trombólise)"
+        if t["subtema"] == "Injúria Renal Aguda (IRA) e Doença Renal Crônica (DRC)"
     )
     intersticial = next(
         t for t in all_topics
         if t["subtema"] == "Doenças Pulmonares Intersticiais e Fibrose Pulmonar"
     )
-    assert avc["is_internato_essential"] is True
+    assert ira["is_internato_essential"] is True
     assert intersticial["is_internato_essential"] is False
-    assert avc["priority"] > intersticial["priority"]
+    assert ira["priority"] > intersticial["priority"]
 
     # Em média, os temas Essenciais do Internato (mesmo não-HY) entram bem antes dos não-HY comuns
     cm_non_hy_int = [
