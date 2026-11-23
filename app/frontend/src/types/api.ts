@@ -919,6 +919,22 @@ export interface OscePhysiologyEngineConfig {
   intervention_modifiers?: Record<string, OsceInterventionModifier>;
 }
 
+export interface OsceStationTask {
+  id: string;
+  step: number;
+  description: string;
+  completed?: boolean;
+  locked?: boolean;
+}
+
+export interface OsceTaskProgress {
+  total_steps: number;
+  completed_steps: number[];
+  current_step: number;
+  all_completed: boolean;
+  visible_tasks: OsceStationTask[];
+}
+
 export interface OsceStationDetail {
   id: number;
   code: string;
@@ -931,6 +947,7 @@ export interface OsceStationDetail {
   duration_seconds: number;
   station_kind?: "emergencia" | "ambulatorio" | "comunicacao" | "procedimento";
   scenario_door_markdown: string;
+  tasks?: OsceStationTask[];
   patient_persona: {
     name?: string;
     age?: number;

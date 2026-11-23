@@ -398,3 +398,42 @@ def test_station_kind_classification_and_payload(app):
         spikes_detail = osce.get_osce_station(db, listed["UNIFESP-2023-PREV-SPIKES"]["id"], include_barema=False)
         assert spikes_detail is not None
         assert spikes_detail["station_kind"] == "comunicacao"
+
+
+def test_sequential_tasks_unlock_only_after_previous_completed(app):
+    """Tarefa 2 só pode ser liberada depois que o candidato declara a Tarefa 1 concluída."""
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+        st = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2024-CM-CAD'").fetchone()
+        assert st is not None
+
+        student_view = osce.get_osce_station(db, st["id"], include_barema=False)
+        tasks_door = student_view["tasks"]
+        assert len(tasks_door) >= 3
+        assert tasks_door[0]["locked"] is False
+        assert tasks_door[1]["locked"] is True
+        assert "gasometria" not in tasks_door[1]["description"].lower()
+        assert "gasometria" not in student_view["scenario_door_markdown"].lower()
+
+        user_id = "reg_seq_tasks_user"
+        start_res = osce.start_osce_session(db, st["id"], user_id, mode="blind")
+        session_id = start_res["session_id"]
+        assert start_res["task_progress"]["current_step"] == 1
+        assert start_res["task_progress"]["visible_tasks"][1]["locked"] is True
+
+        # Tentar concluir tarefa 2 pulando a 1 não deve liberar a tarefa 2/3
+        skip_res = osce.execute_osce_action(db, session_id, user_id, "complete_task", "2", 30)
+        assert skip_res["payload"]["accepted"] is False
+        assert skip_res["payload"]["task_progress"]["current_step"] == 1
+        assert skip_res["payload"]["task_progress"]["visible_tasks"][1]["locked"] is True
+
+        # Concluir a tarefa 1 libera o enunciado real da tarefa 2 e mantém a 3 bloqueada
+        step1_res = osce.execute_osce_action(db, session_id, user_id, "complete_task", "1", 60)
+        assert step1_res["payload"]["accepted"] is True
+        prog_after = step1_res["payload"]["task_progress"]
+        assert prog_after["current_step"] == 2
+        assert prog_after["completed_steps"] == [1]
+        assert prog_after["visible_tasks"][1]["locked"] is False
+        assert "exames laboratoriais" in prog_after["visible_tasks"][1]["description"].lower()
+        assert prog_after["visible_tasks"][2]["locked"] is True

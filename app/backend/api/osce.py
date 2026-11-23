@@ -63,6 +63,7 @@ def seed_osce_stations(db, force: bool = False) -> int:
                 "items": st["checklist_barema"],
                 "critical_errors": st.get("critical_errors", []),
                 "station_kind": st.get("station_kind", "emergencia"),
+                "tasks": st.get("tasks", []),
             }, ensure_ascii=False)
 
             if existing:
@@ -176,6 +177,63 @@ def list_osce_stations(
     return result
 
 
+def _get_task_progress(tasks: list[dict[str, Any]], actions: list[dict[str, Any]]) -> dict[str, Any]:
+    """Calcula a liberação sequencial das tarefas (tarefa N+1 só abre após declarar N concluída)."""
+    ordered = sorted(tasks or [], key=lambda t: int(t.get("step", 0)))
+    completed_steps: list[int] = []
+    expected_next = 1
+
+    for act in actions:
+        if act.get("action_type") != "complete_task":
+            continue
+        if act.get("accepted", True) is False:
+            continue
+        raw_step = act.get("step")
+        if raw_step is None:
+            m = re.search(r"(\d+)", str(act.get("action_target", "")))
+            raw_step = int(m.group(1)) if m else None
+        if raw_step == expected_next and expected_next <= len(ordered):
+            completed_steps.append(expected_next)
+            expected_next += 1
+
+    current_step = expected_next if expected_next <= len(ordered) else len(ordered) + 1
+    visible_tasks: list[dict[str, Any]] = []
+    for t in ordered:
+        step_num = int(t.get("step", 0))
+        is_completed = step_num in completed_steps
+        is_locked = step_num > current_step
+        visible_tasks.append({
+            "id": str(t.get("id", f"task_{step_num}")),
+            "step": step_num,
+            "completed": is_completed,
+            "locked": is_locked,
+            "description": (
+                "Bloqueada — conclua a tarefa anterior para liberar."
+                if is_locked
+                else str(t.get("description", ""))
+            ),
+        })
+
+    return {
+        "total_steps": len(ordered),
+        "completed_steps": completed_steps,
+        "current_step": min(current_step, len(ordered)) if ordered else 1,
+        "all_completed": bool(ordered) and len(completed_steps) >= len(ordered),
+        "visible_tasks": visible_tasks,
+    }
+
+
+def _sanitize_door_markdown_for_sequential_tasks(door_md: str, tasks: list[dict[str, Any]]) -> str:
+    """Oculta os enunciados das tarefas 2..N na porta inicial até liberação progressiva."""
+    if not door_md or len(tasks) <= 1:
+        return door_md
+    return re.sub(
+        r"(?m)^(\s*)([2-9]|\d{2,})\.\s+.+$",
+        lambda m: f"{m.group(1)}{m.group(2)}. [Bloqueada — declare a tarefa anterior concluída para liberar]",
+        door_md,
+    )
+
+
 def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optional[dict[str, Any]]:
     """Carrega detalhes de uma estação, mantendo o barema oculto durante a prova."""
     row = db.execute("""
@@ -194,6 +252,8 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
     patient_persona = json.loads(row["patient_persona_json"] or "{}")
     barema = json.loads(row["checklist_barema_json"] or "{}")
     station_kind = barema.get("station_kind", "emergencia") if isinstance(barema, dict) else "emergencia"
+    raw_tasks = barema.get("tasks", []) if isinstance(barema, dict) else []
+    initial_task_progress = _get_task_progress(raw_tasks, [])
 
     station = {
         "id": row["id"],
@@ -206,7 +266,12 @@ def get_osce_station(db, station_id: int, include_barema: bool = False) -> Optio
         "difficulty": row["difficulty"],
         "duration_seconds": row["duration_seconds"],
         "station_kind": station_kind,
-        "scenario_door_markdown": row["scenario_door_markdown"],
+        "scenario_door_markdown": (
+            row["scenario_door_markdown"]
+            if include_barema
+            else _sanitize_door_markdown_for_sequential_tasks(row["scenario_door_markdown"], raw_tasks)
+        ),
+        "tasks": raw_tasks if include_barema else initial_task_progress["visible_tasks"],
         "patient_persona": {
             "name": patient_persona.get("name"),
             "age": patient_persona.get("age"),
@@ -565,6 +630,8 @@ def start_osce_session(
 
     barema_raw = json.loads(station["checklist_barema_json"] or "{}")
     checklist_items = barema_raw.get("items", []) if isinstance(barema_raw, dict) else (barema_raw if isinstance(barema_raw, list) else [])
+    raw_tasks = barema_raw.get("tasks", []) if isinstance(barema_raw, dict) else []
+    task_progress = _get_task_progress(raw_tasks, initial_actions)
 
     guided_feedback = None
     if session_mode == "guided":
@@ -582,7 +649,8 @@ def start_osce_session(
         "start_time": now_iso,
         "transcript": initial_transcript,
         "mode": session_mode,
-        "guided_feedback": guided_feedback
+        "guided_feedback": guided_feedback,
+        "task_progress": task_progress,
     }
 
 
@@ -1000,6 +1068,45 @@ def execute_osce_action(
                 "title": lab_res["title"],
                 "result_text": lab_res["result_text"],
                 "requires_specificity": lab_res["requires_specificity"],
+            }
+
+    elif action_type == "complete_task":
+        barema_raw = json.loads(sess["checklist_barema_json"] or "{}")
+        raw_tasks = barema_raw.get("tasks", []) if isinstance(barema_raw, dict) else []
+        progress_before = _get_task_progress(raw_tasks, actions)
+        m_step = re.search(r"(\d+)", str(action_target or ""))
+        requested_step = int(m_step.group(1)) if m_step else progress_before["current_step"]
+
+        if not raw_tasks or progress_before["all_completed"]:
+            examiner_message = "Examinador registra: Todas as tarefas da estação já foram declaradas concluídas."
+            action_record["accepted"] = False
+            result_payload = {"task_progress": progress_before, "accepted": False}
+        elif requested_step != progress_before["current_step"]:
+            examiner_message = (
+                f"Examinador: Conclua a Tarefa {progress_before['current_step']} antes de avançar."
+            )
+            action_record["accepted"] = False
+            action_record["step"] = requested_step
+            result_payload = {"task_progress": progress_before, "accepted": False}
+        else:
+            action_record["accepted"] = True
+            action_record["step"] = requested_step
+            progress_after = _get_task_progress(raw_tasks, [*actions, action_record])
+            if progress_after["all_completed"]:
+                examiner_message = (
+                    f"Examinador registra: Tarefa {requested_step} declarada concluída. "
+                    "Todas as tarefas da estação foram liberadas."
+                )
+            else:
+                next_step = progress_after["current_step"]
+                examiner_message = (
+                    f"Examinador registra: Tarefa {requested_step} declarada concluída. "
+                    f"Tarefa {next_step} liberada."
+                )
+            result_payload = {
+                "task_progress": progress_after,
+                "accepted": True,
+                "completed_step": requested_step,
             }
 
     # Registra ação e intervenção do examinador

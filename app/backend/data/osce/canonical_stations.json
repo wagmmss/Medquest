@@ -282,7 +282,29 @@
         "Prescrever Bicarbonato de Sódio de rotina para pH de 7.12 (contraindicado na CAD para pH > 6.9 pela ADA e protocolo FMRP-USP)",
         "Suspender a infusão de insulina assim que a glicemia baixar de 250 mg/dL (o critério de resolução é o fechamento do ânion gap e HCO3 > 18)"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize a avaliação clínica inicial e identifique a complicação aguda do diabetes."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete os exames laboratoriais e a gasometria arterial."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva o plano de hidratação venosa e o manejo hidroeletrolítico (Potássio)."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Prescreva a insulinoterapia em bomba e estabeleça os critérios de vigilância."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-CM-SCA",
@@ -484,7 +506,29 @@
         "Indicar trombolítico (fibrinolítico) em Síndrome Coronariana Aguda SEM supradesnivelamento de ST (contraindicação formal absoluta)",
         "Não indicar estratégia invasiva precoce em paciente classificado como alto risco pelo escore GRACE"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize a anamnese e exame cardiovascular direcionados."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete o ECG de 12 derivações e biomarcadores."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Estratifique o risco isquêmico através de escore validado (GRACE / TIMI)."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Estabeleça a conduta antitrombótica, anti-isquêmica e o momento da estratificação invasiva."
+        }
+      ]
     },
     {
       "code": "USP-RP-2023-CG-FAST",
@@ -796,7 +840,29 @@
         "Encaminhar paciente politraumatizado instável hemodinamicamente (PA 80x50) com FAST positivo para Tomografia Computadorizada (erro gravíssimo com óbito na sala de exame)",
         "Realizar ressuscitação agressiva com mais de 2 litros de cristaloide levando a coagulopatia dilucional e hipotermia grave"
       ],
-      "station_kind": "procedimento"
+      "station_kind": "procedimento",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Conduza a avaliação primária do ATLS na ordem estrita ABCDE."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete o E-FAST beira-leito imediato na sala vermelha."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva as medidas de ressuscitação hemostática e protocolo de transfusão maciça."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Defina a conduta cirúrgica imediata e o destino seguro do paciente."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-PED-BVA",
@@ -1002,7 +1068,29 @@
         "Prescrever Antibióticos para lactente com quadro viral típico e sem foco bacteriano",
         "Dar alta para lactente de 4 meses com hipoxemia (SatO2 88%) e tiragem moderada"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize a anamnese e exame físico respiratório pediátrico."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Estabeleça o diagnóstico com base na melhor evidência clínica."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva o manejo terapêutico de suporte indicado pela Sociedade Brasileira de Pediatria e FMRP-USP."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Decida a necessidade de exames complementares e local de internação/observação."
+        }
+      ]
     },
     {
       "code": "USP-RP-2023-GO-HPP",
@@ -1176,7 +1264,29 @@
         "Não realizar massagem bimanual (Hamilton) em vigência de atonia uterina com sangramento maciço",
         "Atrasar o início de uterotônicos venosos e ácido tranexâmico enquanto a paciente se mantém hipotensa"
       ],
-      "station_kind": "procedimento"
+      "station_kind": "procedimento",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Reconheça a Hemorragia Pós-Parto (HPP) e investigue a causa pelos '4 Ts'."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Execute a manobra física imediata de controle do sangramento."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva as medicações uterotônicas de 1ª e 2ª linhas com doses corretas."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique as medidas mecânicas e cirúrgicas caso ocorra refratariedade."
+        }
+      ]
     },
     {
       "code": "USP-RP-2024-PREV-MCCP",
@@ -1324,7 +1434,29 @@
         "Solicitar bateria excessiva de exames complementares invasivos reforçando a fixação somática (falha em prevenção quaternária)",
         "Prescrever polifarmácia sedativa (benzodiazepínicos) sem abordar a causa familiar da sobrecarga"
       ],
-      "station_kind": "comunicacao"
+      "station_kind": "comunicacao",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Conduza a consulta aplicando o Método Clínico Centrado na Pessoa (MCCP)."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Explore a experiência subjetiva da doença e os estressores psicossociais."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Desenhe e utilize a ferramenta de abordagem familiar adequada (Genograma)."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Estabeleça um plano de cuidados conjunto com foco em prevenção quaternária."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2024-CM-SCA",
@@ -1632,7 +1764,29 @@
         "Prescrever nitrato para paciente sem checar uso prévio de sildenafila ou na suspeita de infarto de ventrículo direito",
         "Prescrever oxigenioterapia de rotina para paciente com SatO2 de 96% em ar ambiente"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize a anamnese direcionada e exame físico pertinente."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete os exames complementares imediatos."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Defina o diagnóstico sindrômico e topográfico."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Estabeleça a conduta terapêutica imediata, prescrição de emergência e rota de reperfusão."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2023-CG-PERF",
@@ -1912,7 +2066,29 @@
         "Não indicar cirurgia imediata em presença de pneumoperitônio e peritonite difusa",
         "Solicitar endoscopia digestiva alta (EDA) na suspeita aguda de víscera oca perfurada (contraindicação formal absoluta)"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize anamnese direcionada e exame físico abdominal completo."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete os exames de imagem pertinentes."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Estabeleça o diagnóstico sindrômico e etiológico provável."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique as medidas de suporte imediato e a conduta cirúrgica definitiva."
+        }
+      ]
     },
     {
       "code": "UNICAMP-2024-PED-ANAF",
@@ -2116,7 +2292,29 @@
         "Prescrever corticoide ou anti-histamínico antes ou em substituição à adrenalina intramuscular",
         "Administrar adrenalina por via subcutânea (SC) ou tentar infusão intravenosa pura sem parada cardíaca"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Execute a avaliação rápida da criança pela abordagem ABCDE."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Reconheça a gravidade e estabeleça o diagnóstico sindrômico."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva a medicação de primeira linha salvadora de vida com dose e via corretas."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Estabeleça as condutas secundárias e orientação à mãe."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2024-GO-PREECL",
@@ -2346,7 +2544,29 @@
         "Prescrever Diazepam ou Fenitoína para profilaxia de convulsões em pré-eclâmpsia (sulfato de magnésio é a droga de escolha exclusiva)",
         "Reduzir abruptamente a PA sistólica para valores < 120 mmHg com risco de sofrimento fetal agudo"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize a anamnese e o exame clínico-obstétrico imediato."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Reconheça a síndrome hipertensiva e os sinais de gravidade / iminência."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva o esquema de profilaxia de convulsões (sulfatação de magnésio) com doses de ataque e manutenção."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique o manejo pressórico e os parâmetros de vigilância clínica."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2023-PREV-SPIKES",
@@ -2506,7 +2726,29 @@
         "Usar jargões incompreensíveis ('adenocarcinoma invasivo moderadamente diferenciado') sem traduzir ao paciente",
         "Dizer 'não há nada a fazer' ou transferir o paciente abandonando o vínculo da atenção primária"
       ],
-      "station_kind": "comunicacao"
+      "station_kind": "comunicacao",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Conduza a consulta utilizando as etapas do Protocolo SPIKES."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Transmita o resultado do laudo de forma ética, clara e sem jargões herméticos."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Acolha as manifestações emocionais do paciente."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Estabeleça os próximos passos da linha de cuidado oncológico compartilhado."
+        }
+      ]
     },
     {
       "code": "UNIFESP-2024-CM-TV",
@@ -2771,7 +3013,29 @@
         "Tentar administrar Amiodarona venosa em paciente com taquicardia ventricular instável em choque (conduta que atrasa a cardioversão salvadora)",
         "Chocar sem acionar o botão de SINCRONIZAÇÃO (risco de induzir Fibrilação Ventricular por R sobre T)"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Avalie rapidamente os sinais de estabilidade hemodinâmica."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Solicite e interprete o traçado eletrocardiográfico/monitorização."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Execute a conduta terapêutica de urgência padronizada pelo ACLS."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique as medidas de segurança e analgesia/sedação pré-procedimento."
+        }
+      ]
     },
     {
       "code": "EINSTEIN-2024-CM-SEPSE",
@@ -2935,7 +3199,24 @@
         "Atrasar o antibiótico por mais de 1 hora em paciente com choque séptico",
         "Prescrever dopamina como vasopressor de primeira linha (Noradrenalina é padrão-ouro absoluto)"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Reconheça a gravidade e o choque séptico."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Execute integralmente o Bundle de 1 Hora da Sepse."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Indique as metas hemodinâmicas e destino do paciente."
+        }
+      ]
     },
     {
       "code": "EINSTEIN-2023-CG-PNEUMO",
@@ -3105,7 +3386,24 @@
         "Solicitar radiografia de tórax ou tomografia antes de descomprimir o pneumotórax hipertensivo (falta gravíssima com óbito imediato)",
         "Aguardar intubação orotraqueal antes de descomprimir o tórax (a ventilação com pressão positiva piora o pneumotórax e acelera a PCR)"
       ],
-      "station_kind": "procedimento"
+      "station_kind": "procedimento",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Conduza a avaliação primária do ATLS."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Identifique a lesão com risco iminente de morte."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Execute o procedimento cirúrgico/descompressivo salvador de vida imediato."
+        }
+      ]
     },
     {
       "code": "REVALIDA-2024-PED-DESID",
@@ -3246,7 +3544,24 @@
         "Tentar manter apenas Terapia de Reidratação Oral (Plano A ou B) em lactente letárgico com choque hipovolêmico e desidratação grave",
         "Prescrever antimicrobianos de rotina para diarreia aquosa aguda sem sangue nas fezes"
       ],
-      "station_kind": "emergencia"
+      "station_kind": "emergencia",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Classifique o estado de hidratação segundo as normas do Ministério da Saúde."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Prescreva o plano de hidratação adequado com volumes, tempos e soluções."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Forneça as orientações complementares de alimentação e suplementação."
+        }
+      ]
     },
     {
       "code": "REVALIDA-2023-GO-PEP",
@@ -3386,7 +3701,29 @@
         "Exigir boletim de ocorrência policial como condição para realizar o atendimento médico de urgência",
         "Não prescrever a profilaxia de HIV (PEP) dentro da janela de 72 horas após estupro"
       ],
-      "station_kind": "ambulatorio"
+      "station_kind": "ambulatorio",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Realize o acolhimento humanizado, ético e empático em ambiente privativo."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Esclareça os direitos da paciente sem exigência de boletim de ocorrência."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Prescreva as profilaxias medicamentosas pós-exposição (viral, não-viral e gravidez)."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique o seguimento multiprofissional."
+        }
+      ]
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [

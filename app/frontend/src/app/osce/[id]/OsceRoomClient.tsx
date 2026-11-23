@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 import { 
   Stethoscope, Clock, FileText,
   Volume2, VolumeX,
-  ChevronLeft, Award, Sparkles, AlertTriangle, ShieldCheck,
+  ChevronLeft, ChevronRight, Lock, Award, Sparkles, AlertTriangle, ShieldCheck,
   Radio, Headphones, Zap, Eye, CheckCircle2, Printer, Lightbulb
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback } from "@/types/api";
+import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback, OsceTaskProgress } from "@/types/api";
 import { api } from "@/lib/api";
 import { PreceptorFeedback } from "@/types/osce-evaluation";
 import { useVitalStateEngine } from "./useVitalStateEngine";
@@ -72,6 +72,16 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   const [labInput, setLabInput] = useState("");
   const [requestedPhysicalExams, setRequestedPhysicalExams] = useState<Array<{ target: string; finding: string }>>([]);
   const [requestedLabs, setRequestedLabs] = useState<Array<{ title: string; result_text: string; image_url?: string }>>([]);
+  const [taskProgress, setTaskProgress] = useState<OsceTaskProgress>(() => {
+    const initialTasks = station.tasks || [];
+    return {
+      total_steps: initialTasks.length,
+      completed_steps: [],
+      current_step: 1,
+      all_completed: false,
+      visible_tasks: initialTasks,
+    };
+  });
   const [report, setReport] = useState<OsceFinishResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -309,6 +319,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       if (res.guided_feedback) {
         setLiveFeedback(res.guided_feedback);
       }
+      if (res.task_progress) {
+        setTaskProgress(res.task_progress);
+      }
       setTranscript(res.transcript || []);
       const duration = res.duration_seconds || 480;
       const nextTiming = { duration, deadlineAt: Date.now() + duration * 1000 };
@@ -340,6 +353,38 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   };
 
   // Finalizar sessão
+  const handleCompleteCurrentTask = async () => {
+    if (!sessionId || isLoading || taskProgress.all_completed || taskProgress.total_steps === 0) return;
+    const elapsed = getElapsedSeconds();
+    setIsLoading(true);
+    try {
+      const res = await api.osce.executeAction(
+        sessionId,
+        "complete_task",
+        String(taskProgress.current_step),
+        elapsed
+      );
+      const nextProg = res.payload?.task_progress as OsceTaskProgress | undefined;
+      if (nextProg) {
+        setTaskProgress(nextProg);
+      }
+      setTranscript((prev) => [
+        ...prev,
+        {
+          sender: "examinador",
+          message: res.examiner_message,
+          timestamp: new Date().toISOString(),
+          elapsed_seconds: elapsed,
+          action_payload: res.payload,
+        },
+      ]);
+    } catch {
+      toast.error("Não foi possível avançar para a próxima tarefa.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleFinishExam = useCallback(async () => {
     if (!sessionId || finishingRef.current) return;
     finishingRef.current = true;
@@ -705,6 +750,43 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             </div>
           </div>
 
+          {taskProgress.visible_tasks.length > 0 && (
+            <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-4 md:p-5 space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <span>Tarefas Sequenciais da Estação</span>
+                <span className="text-[11px] font-mono text-primary">
+                  Liberação progressiva na sala
+                </span>
+              </div>
+              <div className="space-y-2">
+                {taskProgress.visible_tasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs ${
+                      t.locked
+                        ? "border-border/60 bg-muted/40 text-muted-foreground"
+                        : "border-primary/30 bg-primary/5 text-foreground"
+                    }`}
+                  >
+                    {t.locked ? (
+                      <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+                    )}
+                    <div>
+                      <span className="font-mono font-bold mr-1.5">Tarefa {t.step}:</span>
+                      <span>
+                        {t.locked
+                          ? `Bloqueada — declare a Tarefa ${t.step - 1} concluída para liberar`
+                          : t.description}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Seletor de Modo de Avaliação: Treino Guiado vs Prova Cega */}
           <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-4 md:p-6 space-y-3">
             <div className="flex items-center justify-between">
@@ -863,6 +945,64 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
           {/* HUD do Preceptor Fantasma (Modo Guiado) ou Indicador de Prova Cega */}
           <GhostPreceptorHUD feedback={liveFeedback} mode={sessionMode} />
+
+          {/* Tarefas Sequenciais da Estação */}
+          {taskProgress.visible_tasks.length > 0 && (
+            <div className="rounded-lg border border-line-subtle bg-surface p-3.5 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tarefas Sequenciais ({taskProgress.completed_steps.length}/{taskProgress.total_steps} concluídas)
+                </div>
+                {!taskProgress.all_completed && (
+                  <button
+                    type="button"
+                    onClick={handleCompleteCurrentTask}
+                    disabled={isLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>
+                      {taskProgress.current_step < taskProgress.total_steps
+                        ? `Declarar Tarefa ${taskProgress.current_step} Concluída → Liberar Tarefa ${taskProgress.current_step + 1}`
+                        : `Declarar Última Tarefa Concluída`}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {taskProgress.visible_tasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
+                      t.completed
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-foreground"
+                        : t.locked
+                        ? "border-border/60 bg-muted/40 text-muted-foreground"
+                        : "border-primary/40 bg-primary/10 text-foreground"
+                    }`}
+                  >
+                    {t.locked ? (
+                      <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <CheckCircle2
+                        className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                          t.completed ? "text-emerald-500" : "text-primary"
+                        }`}
+                      />
+                    )}
+                    <div>
+                      <span className="font-mono font-bold mr-1">T{t.step}:</span>
+                      <span>
+                        {t.locked
+                          ? `Bloqueada — declare a Tarefa ${t.step - 1} concluída para liberar`
+                          : t.description}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Banner de Sala Real Hands-Free (Viva-Voz Beira-Leito) */}
           <div className="rounded-lg border border-line-subtle bg-surface p-3.5 md:p-4 space-y-2.5">

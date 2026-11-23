@@ -793,6 +793,7 @@ export const api = {
       transcript: import("@/types/api").OsceTranscriptItem[];
       mode?: "blind" | "guided";
       guided_feedback?: import("@/types/api").OsceLiveFeedback;
+      task_progress?: import("@/types/api").OsceTaskProgress;
     }>("/api/osce/sessions/start", {
       method: "POST",
       body: JSON.stringify({ station_id: stationId, circuit_session_id: circuitSessionId, mode: mode || "blind" }),
