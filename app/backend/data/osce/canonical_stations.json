@@ -380,7 +380,6 @@
           "title": "Eletrocardiograma de 12 Derivações",
           "available": true,
           "result_text": "Ritmo sinusal regular, FC 78 bpm. Presença de infradesnivelamento horizontal do segmento ST de 1,5 mm nas derivações V4, V5 e V6, associado a inversão de onda T assimétrica. Ausência de supradesnivelamento de ST.",
-          "image_url": "/images/osce/ecg_infra_st.png",
           "triggers": [
             "ecg",
             "eletrocardiograma",
@@ -1568,7 +1567,6 @@
           "title": "Eletrocardiograma de 12 derivações",
           "available": true,
           "result_text": "Ritmo sinusal regular, FC 92 bpm, eixo normal. Supradesnivelamento do segmento ST de 4 mm nas derivações V1 a V4 (parede anterior extensa), sem alterações em derivações direitas (V3R/V4R) ou posteriores.",
-          "image_url": "/images/osce/ecg_supra_anterior.png",
           "triggers": [
             "ecg",
             "eletrocardiograma",
@@ -1907,7 +1905,6 @@
           "title": "Radiografia de Tórax em PA (em cúpulas)",
           "available": true,
           "result_text": "Presença de ar livre subdiafragmático bilateral evidente sob as cúpulas (pneumoperitônio maciço), sem derrame pleural.",
-          "image_url": "/images/osce/rx_pneumoperitonio.png",
           "triggers": [
             "rx de torax",
             "rx torax",
@@ -2926,7 +2923,6 @@
           "title": "Monitor Cardíaco e ECG de Ritmo",
           "available": true,
           "result_text": "Taquicardia de QRS largo regular (> 120 ms) com frequência de 180 bpm, concordância positiva precordial e dissociação atrioventricular (Taquicardia Ventricular Monomórfica Sustentada).",
-          "image_url": "/images/osce/ecg_tv_monomorfica.png",
           "triggers": [
             "ecg",
             "eletrocardiograma",
@@ -4093,7 +4089,6 @@
           "title": "Eletrocardiograma de 12 Derivações de Emergência",
           "available": true,
           "result_text": "Bradicardia sinusal a 46 bpm. Ondas T apiculadas, simétricas e de base estreita ('em tenda') difusas, achatamento da onda P e alargamento de QRS (130 ms). Alto risco iminente de assistolia ou fibrilação ventricular.",
-          "image_url": "/images/osce/ecg_hipercalemia.png",
           "triggers": [
             "ecg",
             "eletrocardiograma",
@@ -4371,7 +4366,6 @@
           "title": "Radiografia Simples de Abdome (Rotina de Abdome Agudo)",
           "available": true,
           "result_text": "Alça colônica maciçamente dilatada em forma de 'U' invertido com as pontas voltadas para a pelve ('sinal do grão de café' ou 'sinal da câmara de ar dupla'). Ausência de pneumoperitônio.",
-          "image_url": "/images/osce/rx_volvo_sigmoide.png",
           "triggers": [
             "rx de abdome",
             "rx abdome",

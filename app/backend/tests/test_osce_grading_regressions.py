@@ -1,9 +1,11 @@
 """Testes de regressão para auditoria e correção do motor de avaliação do OSCE (Bloco 0)."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from api import osce
 from api.db import get_db
-from api.osce_data import CANONICAL_STATIONS
+from api.osce_data import CANONICAL_STATIONS, FMRP_USP_TEMPLATES
 from api.osce_evaluation import _normalize_text, evaluate_critical_safety_violations
 
 
@@ -437,3 +439,19 @@ def test_sequential_tasks_unlock_only_after_previous_completed(app):
         assert prog_after["visible_tasks"][1]["locked"] is False
         assert "exames laboratoriais" in prog_after["visible_tasks"][1]["description"].lower()
         assert prog_after["visible_tasks"][2]["locked"] is True
+
+
+def test_no_broken_image_urls_in_canonical_stations():
+    """Nenhuma referência de imagem no catálogo OSCE pode apontar para arquivo inexistente em public/."""
+    public_dir = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    for group in (CANONICAL_STATIONS, FMRP_USP_TEMPLATES):
+        for st in group:
+            labs = st.get("lab_imaging") or {}
+            if not isinstance(labs, dict):
+                continue
+            for lab_key, lab_meta in labs.items():
+                if isinstance(lab_meta, dict) and lab_meta.get("image_url"):
+                    rel_path = str(lab_meta["image_url"]).lstrip("/")
+                    assert (public_dir / rel_path).is_file(), (
+                        f"Imagem inexistente referenciada em {st.get('code') or st.get('title')} ({lab_key}): {rel_path}"
+                    )
