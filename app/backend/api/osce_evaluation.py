@@ -578,6 +578,57 @@ def evaluate_critical_safety_violations(
         ):
             flagged = True
 
+        elif "balonete" in err_norm and ("antes de observar" in err_norm or "sonda de foley" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["insuflar o balonete antes", "insuflo o balonete antes", "insuflar balonete sem saida de urina", "antes da saida de urina"],
+            ):
+                flagged = True
+
+        elif "sonda uretral" in err_norm and ("resistencia" in err_norm or "uretrorragia" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["forcar a passagem da sonda", "forco a passagem da sonda", "forcar contra resistencia", "passo a sonda com uretrorragia"],
+            ):
+                flagged = True
+
+        elif "puncao lombar" in err_norm and ("papiledema" in err_norm or "hipertensao intracraniana" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["puncao lombar imediata mesmo com sinais focais", "puncao lombar mesmo com papiledema", "puncionar com hipertensao intracraniana"],
+            ):
+                flagged = True
+
+        elif "liquor" in err_norm and ("seringa" in err_norm or "mandril" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["aspiro o liquor", "aspirar o liquor com seringa", "sem reintroduzir o mandril", "sem recolocar o mandril"],
+            ):
+                flagged = True
+
+        elif "liquido ascitico" in err_norm and "albumina" in err_norm:
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["dreno mais de 5 litros sem", "sem prescrever albumina", "drenar ascite sem albumina"],
+            ) or (
+                _has_affirmative_mention(norm_evidence, prescribed_and_actions, ["dreno mais de 5 litros", "dreno 6 litros"])
+                and _has_negated_mention(norm_evidence, ["albumina"])
+            ):
+                flagged = True
+
+        elif "paracentese" in err_norm and ("vasos epigastricos" in err_norm or "circulacao colateral" in err_norm):
+            if _has_affirmative_mention(
+                norm_evidence,
+                prescribed_and_actions,
+                ["trajeto dos vasos epigastricos", "sobre circulacao colateral", "reto abdominal medio"],
+            ):
+                flagged = True
+
         if flagged and err not in detected_violations:
             detected_violations.append(err)
 

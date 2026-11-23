@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "baseline_keyword_report": {
-    "total_cases": 76,
-    "total_items": 916,
-    "items_within_tolerance": 789,
+    "total_cases": 88,
+    "total_items": 1060,
+    "items_within_tolerance": 913,
     "overall_accuracy_pct": 86.1,
-    "negated_false_positives": 27,
+    "negated_false_positives": 31,
     "accuracy_by_case_type": {
-      "correct_paraphrased": 59.0,
-      "partial": 97.4,
-      "negated": 88.2,
+      "correct_paraphrased": 59.2,
+      "partial": 97.0,
+      "negated": 88.3,
       "omitted": 100.0
     }
   },
@@ -6150,6 +6150,969 @@
             }
           ],
           "case_id": "UNICAMP-2025-CM-TB__omitted"
+        }
+      ]
+    },
+    {
+      "code": "USP-RP-2025-CG-SVD",
+      "cases": [
+        {
+          "case_id": "USP-RP-2025-CG-SVD__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Osmar esclarecendo as etapas do cateterismo uretral e colho sua autorização antes de iniciar. Investigo trauma pélvico prévio e inspeciono períneo e óstio uretral afastando sangramento ou hematomas. Confiro bandeja com cateter foley calibroso de duas vias, bolsa fechada, seringa, fluido destilado, anestésico tópico em gel, antisséptico aquoso, compressas e luvas estéreis. Lavo as mãos cuidadosamente e acomodo o paciente em posição supina preservando sua intimidade. Abro material sem contaminação, visto luvas estéreis e acoplo o cateter ao coletor mantendo esterilidade. Retraio o prepúcio com a mão esquerda assumindo-a não estéril e executo limpeza centrífuga da glande e meato com solução aquosa. Coloco campo estéril fenestrado e aplico dez a vinte mililitros de gel anestésico dentro do canal uretral aguardando efeito analgésico. Elevo o pênis perpendicularmente ao abdome para retificar o trajeto bulbar introduzindo o tubo delicadamente até o Y distal sem resistência. Observo saída espontânea de urina no circuito coletor previamente à insuflação do balão. Insuflo o balão com dez mililitros de fluido destilado tracionando suavemente até ancorar no colo vesical. Reposiciono obrigatoriamente o prepúcio sobre a glande para prevenir parafimose. Fixo o cateter na coxa sem tração abaixo da altura da bexiga e monitoro débito inicial contra hematúria descompressiva.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-CG-SVD__partial",
+          "case_type": "partial",
+          "conduct_notes": "Explico o procedimento e obtenho consentimento do Osmar, checo ausência de sangue no meato ou trauma. Separo sonda Foley, sistema fechado, água destilada, lidocaína gel e clorexidina aquosa. Higienizo as mãos e posiciono em decúbito dorsal.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-CG-SVD__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não explico o procedimento nem peço consentimento, não avalio contraindicações nem uretrorragia. Vou forçar a passagem da sonda uretral contra resistência importante. Vou insuflar o balonete da sonda de Foley antes de observar saída de urina ou antes da bifurcação em Y. Não reduzo o prepúcio sobre a glande e não fixo a sonda nem vigio débito urinário.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "USP-RP-2025-CG-SVD__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "UNICAMP-2025-PED-PL",
+      "cases": [
+        {
+          "case_id": "UNICAMP-2025-PED-PL__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Tranquilizo dona Renata explicando que a medula espinhal encerra acima do local puncionado e peço autorização formal antes do exame. Avalio estado neurológico e fundoscopia descartando déficits focais, hipertensão intracraniana, plaquetopenia e infecção cutânea local. Reúno agulha espinhal com mandril, quatro tubos estéreis numerados, antisséptico alcoólico, anestésico sem vasoconstritor e paramentação estéril. Higienizo as mãos e visto máscara cirúrgica, gorro, avental e luvas estéreis com auxiliar posicionando a criança. Deito Gabriel em posição lateral fletindo a lombar sem dobrar o pescoço em excesso e instalo oxímetro contínuo. Identifico a linha intercristas ilíacas na altura da quarta vértebra escolhendo o espaço intervertebral inferior seguro. Executo antissepsia ampla centrífuga, aplico campo fenestrado e realizo botão anestésico subcutâneo e profundo. Avanço a agulha com mandril na linha mediana direcionada discretamente para a cicatriz umbilical com bisel paralelo às fibras. Ao perceber o ressalto dural removo o mandril confirmando gotejamento espontâneo sem jamais usar seringa aspiradora. Recolho amostras nos frascos para análise bioquímica, citológica, bacterioscopia e cultura com glicemia capilar colhida no mesmo momento. Reintroduzo o mandril integralmente antes de sacar a agulha raquidiana. Cubro o ponto de punção com curativo estéril mantendo vigilância clínica e antimicrobiano imediato se necessário.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.9,
+              "tolerance": 0.45
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            }
+          ]
+        },
+        {
+          "case_id": "UNICAMP-2025-PED-PL__partial",
+          "case_type": "partial",
+          "conduct_notes": "Explico para dona Renata e obtenho consentimento informado. Checo contraindicações afastando papiledema, sinais focais e coagulopatia. Separo agulha com mandril, 4 tubos estéreis, luvas estéreis e posiciono em decúbito lateral.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.54
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "UNICAMP-2025-PED-PL__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não peço consentimento à mãe. Realizo punção lombar imediata mesmo com sinais focais e papiledema sem tomografia prévia. Não confiro linha de Tuffier nem faço antissepsia ou anestesia local. Aspiro o líquor ativamente com seringa acoplada à agulha e retiro a agulha sem reintroduzir o mandril. Não coleto bioquímica, celularidade, cultura nem glicemia capilar.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "UNICAMP-2025-PED-PL__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-CM-PARA",
+      "cases": [
+        {
+          "case_id": "UNIFESP-2025-CM-PARA__correct_paraphrased",
+          "case_type": "correct_paraphrased",
+          "conduct_notes": "Cumprimento Cláudio esclarecendo benefícios e riscos da drenagem ascítica e obtenho concordância verbal. Confirmo bexiga esvaziada previamente e afasto fibrinólise clínica ou infecção parietal sabendo que coagulopatia isolada do cirrótico não impede o exame. Separo cateter calibroso, anestésico, antisséptico, frascos bioquímicos, frascos de hemocultura, sistema coletor e solução proteica a vinte por cento. Mantenho paciente semissentado a trinta graus inclinado à esquerda confirmando macicez por percussão abdominal. Marco o sítio seguro no quadrante abdominal inferior esquerdo na transição lateral da linha entre espinha ilíaca anterossuperior e cicatriz umbilical longe dos vasos epigástricos. Lavo mãos, visto equipamentos estéreis, executo antissepsia ampla e aplico campo fenestrado. Anestesio pele e parede até o peritônio sempre aspirando antes de injetar o fármaco. Traciono a pele dois centímetros para baixo durante a penetração perpendicular aplicando trajeto em zigue-zague protetor contra fístulas. Envio líquido para gradiente soro-ascite de albumina, contagem celular com polimorfonucleares e semeio em frascos de hemocultura à beira do leito. Acoplo o equipo coletor permitindo esvaziamento gravitacional controlado da ascite tensa. Prescrevo reposição venosa de seis a oito gramas de proteína humana por litro escoado caso supere cinco litros drenados. Saco o cateter soltando a pele tracionada, aplico curativo estéril e reavalio parâmetros circulatórios pós-drenagem.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.3
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_5",
+              "expected_status": "FULL",
+              "expected_score": 1.2,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_6",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.4
+            },
+            {
+              "id": "item_7",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_8",
+              "expected_status": "FULL",
+              "expected_score": 1.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_9",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_10",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.35
+            },
+            {
+              "id": "item_11",
+              "expected_status": "FULL",
+              "expected_score": 1.1,
+              "tolerance": 0.55
+            },
+            {
+              "id": "item_12",
+              "expected_status": "FULL",
+              "expected_score": 0.5,
+              "tolerance": 0.25
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-CM-PARA__partial",
+          "case_type": "partial",
+          "conduct_notes": "Explico o procedimento ao Cláudio, confirmo bexiga vazia e afasto CIVD. Separo jelco, lidocaína, frascos de hemocultura e escolho o quadrante inferior esquerdo (EIAS-umbigo).",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "FULL",
+              "expected_score": 0.6,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_2",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_3",
+              "expected_status": "FULL",
+              "expected_score": 0.8,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_4",
+              "expected_status": "FULL",
+              "expected_score": 0.7,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.72
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.6
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.66
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.5
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-CM-PARA__negated",
+          "case_type": "negated",
+          "conduct_notes": "Não peço consentimento nem confirmo esvaziamento vesical. Realizo a punção no trajeto dos vasos epigástricos inferiores sobre circulação colateral sem técnica em Z. Dreno mais de 5 litros de líquido ascítico sem prescrever albumina humana. Não solicito GASA, polimorfonucleares nem frascos de hemocultura e não monitorizo sinais vitais após.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
+        },
+        {
+          "case_id": "UNIFESP-2025-CM-PARA__omitted",
+          "case_type": "omitted",
+          "conduct_notes": "Aguardando orientações.",
+          "expected_items": [
+            {
+              "id": "item_1",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_2",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_3",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_4",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_5",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_6",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_7",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_8",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_9",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_10",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_11",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            },
+            {
+              "id": "item_12",
+              "expected_status": "NONE",
+              "expected_score": 0.0,
+              "tolerance": 0.0
+            }
+          ]
         }
       ]
     }

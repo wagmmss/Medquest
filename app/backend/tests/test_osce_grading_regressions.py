@@ -311,6 +311,18 @@ def _build_trigger_phrase_for_error(err: str) -> str:
         return "Não vou solicitar sorologia nem teste rápido de HIV neste caso."
     if "contatos intradomiciliares" in e:
         return "Ignoro a investigação de contatos intradomiciliares e da criança."
+    if "balonete" in e and ("antes de observar" in e or "sonda de foley" in e):
+        return "Insuflo o balonete antes de observar saída de urina."
+    if "sonda uretral" in e and ("resistencia" in e or "uretrorragia" in e):
+        return "Vou forçar a passagem da sonda uretral mesmo com resistência e uretrorragia."
+    if "puncao lombar" in e and ("papiledema" in e or "hipertensao intracraniana" in e):
+        return "Realizo punção lombar imediata mesmo com sinais focais e papiledema sem tomografia."
+    if "liquor" in e and ("seringa" in e or "mandril" in e):
+        return "Aspiro o líquor com seringa acoplada e retiro sem reintroduzir o mandril."
+    if "liquido ascitico" in e and "albumina" in e:
+        return "Dreno mais de 5 litros de líquido ascítico sem prescrever albumina humana."
+    if "paracentese" in e and ("vasos epigastricos" in e or "circulacao colateral" in e):
+        return "Realizo a punção no trajeto dos vasos epigástricos sobre circulação colateral."
     return ""
 
 

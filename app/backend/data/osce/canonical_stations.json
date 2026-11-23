@@ -7374,6 +7374,910 @@
         "Não solicitar sorologia ou teste rápido de HIV em paciente com diagnóstico novo de tuberculose pulmonar",
         "Ignorar a convocação e investigação de contatos intradomiciliares (incluindo criança menor de 5 anos exposta)"
       ]
+    },
+    {
+      "code": "USP-RP-2025-CG-SVD",
+      "title": "Procedimento: Sondagem Vesical de Demora Masculina (Retenção Urinária Aguda)",
+      "area": "Cirurgia Geral",
+      "subtema": "Procedimentos Urológicos e Antissepsia",
+      "institution": "USP-RP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 300,
+      "station_kind": "procedimento",
+      "source": "Protocolo de Habilidades Clínicas HC-FMRP-USP / AUA / Medway Procedimentos",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: SALA DE PROCEDIMENTOS / PRONTO-SOCORRO CIRÚRGICO (HC-UE FMRP-USP)\n\n**Candidato(a)**:\nVocê é o médico de plantão na sala de procedimentos do HC-UE FMRP-USP.\n\n**Cenário**:\n- Paciente: Sr. Osmar Andrade, 68 anos, com história de jato urinário fraco progressivo, evoluindo há 14 horas com incapacidade total de urinar e dor intensa em hipogástrio.\n- Ao exame rápido inicial há bexigoma palpável doloroso até próximo à cicatriz umbilical.\n\n**Sua Tarefa**:\n1. Explique o procedimento ao paciente, obtenha consentimento e afaste contraindicações uretrais.\n2. Liste e confira todos os materiais estéreis necessários para o cateterismo vesical masculino.\n3. Descreva e execute passo a passo a técnica asséptica (antissepsia, anestesia uretral e passagem).\n4. Realize a confirmação, insuflação segura, redução do prepúcio, fixação e cuidados pós-sondagem.\n\n*Tempo de prova: 5 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Explique o procedimento ao paciente, obtenha consentimento e afaste contraindicações uretrais."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Liste e confira todos os materiais estéreis necessários para o cateterismo vesical masculino."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Descreva e execute passo a passo a técnica asséptica (antissepsia, anestesia uretral e passagem)."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Realize a confirmação, insuflação segura, redução do prepúcio, fixação e cuidados pós-sondagem."
+        }
+      ],
+      "patient_persona": {
+        "name": "Osmar Andrade",
+        "age": 68,
+        "gender": "masculino",
+        "chief_complaint": "Doutor, tô desesperado de dor no pé da barriga... faz 14 horas que não sai uma gota de xixi!",
+        "past_medical_history": "Hiperplasia prostática benigna em uso irregular de doxazosina. Sem traumas recentes.",
+        "allergies": "Sem alergia a lidocaína ou látex."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, tô desesperado de dor no pé da barriga... faz 14 horas que não sai uma gota de xixi!",
+        "emotional_state": "Agitado pela dor suprapúbica intensa, colaborativo se o médico explicar com respeito e calma.",
+        "only_reveal_if_asked": {
+          "contraindicacoes_trauma": "Não sofreu queda a cavaleiro, trauma pélvico nem notou sangue saindo pela uretra.",
+          "antecedentes_urologicos": "Já tinha jato fraco e acordava 4 vezes à noite para urinar há 2 anos; toma doxazosina às vezes.",
+          "alergias": "Não tem alergia a lidocaína, iodo, clorexidina ou látex.",
+          "consentimento": "Concorda com a sondagem depois que o médico explica que vai aliviar a dor.",
+          "medicacoes_uso": "Usa apenas losartana e sinvastatina, sem anticoagulantes."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "156x92 mmHg",
+          "fc": "104 bpm",
+          "fr": "18 irpm",
+          "sato2": "98%",
+          "temp": "36.5 °C"
+        },
+        "findings": {
+          "abdome": "Abaulamento suprapúbico doloroso e maciço à percussão até 2 cm abaixo da cicatriz umbilical (bexigoma).",
+          "perineo_meato": "Ausência de hematoma perineal/escrotal (sinal da borboleta ausente) e ausência de sangue no meato uretral."
+        },
+        "maneuvers": {
+          "palpacao_abdominal": {
+            "label": "Palpação e Percussão Hipogástrica",
+            "triggers": [
+              "palpacao abdominal",
+              "percussao abdominal",
+              "bexigoma",
+              "hipogastrio"
+            ],
+            "finding": "Massa suprapúbica tensa, dolorosa e maciça à percussão compatível com retenção urinária aguda (bexigoma)."
+          },
+          "inspecao_perineal": {
+            "label": "Inspeção Perineal e do Meato Uretral",
+            "triggers": [
+              "inspecao perineal",
+              "exame do meato",
+              "uretrorragia",
+              "hematoma perineal",
+              "toque retal"
+            ],
+            "finding": "Meato uretral tópico sem sangue ou secreção; períneo íntegro sem hematomas; próstata aumentada fibroelástica."
+          }
+        }
+      },
+      "lab_imaging": {},
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "pressao arterial"
+          ],
+          "content": "PA 156x92 mmHg, FC 104 bpm, FR 18 irpm, SatO2 98%, Temp 36.5 °C"
+        },
+        {
+          "id": "card_pe_bexigoma",
+          "kind": "physical_exam",
+          "title": "Palpação Hipogástrica e Inspeção Meatal/Perineal",
+          "triggers": [
+            "bexigoma",
+            "inspecao perineal",
+            "meato uretral",
+            "uretrorragia"
+          ],
+          "content": "Bexigoma tenso suprapúbico; meato sem sangue (ausência de uretrorragia) e períneo sem hematomas."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Apresentação, Explicação e Consentimento Verbal",
+          "description": "Apresenta-se pelo nome ao paciente, explica o motivo/etapas da sondagem vesical e obtém consentimento antes de iniciar.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "consentimento",
+            "explico o procedimento",
+            "osmar",
+            "autoriza",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Exclusão de Contraindicações Uretrais (Trauma / Uretrorragia)",
+          "description": "Investiga história de trauma pélvico e inspeciona meato uretral/períneo descartando uretrorragia e hematoma perineal antes de sondar.",
+          "weight": 0.9,
+          "category": "anamnese",
+          "keywords": [
+            "uretrorragia",
+            "sangue no meato",
+            "hematoma perineal",
+            "contraindicações",
+            "trauma pélvico"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Conferência Completa da Bandeja e Materiais Estéreis",
+          "description": "Separa sonda Foley 16-18 Fr duas vias, sistema coletor fechado, seringa 20 mL, água destilada, lidocaína gel estéril, clorexidina aquosa, gaze, campo fenestrado e luvas estéreis.",
+          "weight": 0.9,
+          "category": "procedimentos",
+          "keywords": [
+            "sonda foley",
+            "sistema fechado",
+            "água destilada",
+            "lidocaína gel",
+            "clorexidina aquosa",
+            "campo fenestrado"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Higienização das Mãos e Posicionamento em Decúbito Dorsal",
+          "description": "Realiza higienização adequada das mãos e posiciona o paciente em decúbito dorsal confortável preservando privacidade.",
+          "weight": 0.6,
+          "category": "procedimentos",
+          "keywords": [
+            "higienização das mãos",
+            "lavo as mãos",
+            "decúbito dorsal",
+            "privacidade"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Paramentação Estéril e Conexão Prévia Asséptica ao Coletor",
+          "description": "Abre o campo estéril sem contaminar, calça luvas estéreis com técnica e acopla a sonda ao sistema coletor fechado mantendo esterilidade.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "luva estéril",
+            "luvas estéreis",
+            "técnica asséptica",
+            "conecto ao coletor"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Antissepsia da Glande e Meato com Mão Não Dominante Definida",
+          "description": "Segura o pênis e retrai o prepúcio com a mão não dominante (contaminada) e faz antissepsia centrífuga do meato para a glande com clorexidina aquosa usando a mão dominante estéril.",
+          "weight": 0.9,
+          "category": "procedimentos",
+          "keywords": [
+            "antissepsia",
+            "glande",
+            "meato uretral",
+            "mão não dominante",
+            "retração do prepúcio"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Colocação do Campo Fenestrado e Lubrificação/Anestesia Intrauretral",
+          "description": "Posiciona o campo fenestrado estéril e instila 10-20 mL de lidocaína gel 2% estéril diretamente na uretra mantendo compressão meatal por 2-3 minutos.",
+          "weight": 1.0,
+          "category": "procedimentos",
+          "keywords": [
+            "instilo lidocaína",
+            "lidocaína intrauretral",
+            "10 a 20 ml",
+            "campo fenestrado",
+            "comprimo o meato"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Retificação da Uretra (90°) e Progressão Até a Bifurcação em Y",
+          "description": "Traciona o pênis perpendicularmente ao abdome (90°) para retificar a curvatura uretral e introduz a sonda suavemente até a bifurcação em Y sem forçar.",
+          "weight": 1.0,
+          "category": "procedimentos",
+          "keywords": [
+            "90 graus",
+            "perpendicular",
+            "bifurcação em y",
+            "sem forçar",
+            "retificar a uretra"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Confirmação Obrigatória de Retorno de Urina Antes de Insuflar Balonete",
+          "description": "Aguarda e confirma visualmente a drenagem espontânea de urina pelo coletor ANTES de insuflar o balonete da sonda.",
+          "weight": 1.1,
+          "category": "procedimentos",
+          "keywords": [
+            "retorno de urina",
+            "saída de urina",
+            "drenagem urinária",
+            "antes de insuflar"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Insuflação do Balonete com Água Destilada (10-15 mL) e Tração Leve",
+          "description": "Insufla o balonete com 10-15 mL de água destilada (nunca soro fisiológico pelo risco de cristalização) e traciona suavemente até ancorar no colo vesical.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "água destilada",
+            "insuflar balonete",
+            "10 ml",
+            "colo vesical",
+            "traciono suavemente"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Redução Obrigatória do Prepúcio Para Prevenir Parafimose",
+          "description": "Reposiciona o prepúcio recobrindo a glande ao término do procedimento para evitar estrangulamento e parafimose.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "reduzir o prepúcio",
+            "reposicionar o prepúcio",
+            "parafimose",
+            "recobrir a glande"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Fixação Adequada, Bolsa Abaixo da Bexiga e Vigilância Pós-Sondagem",
+          "description": "Fixa a sonda em coxa anterossuperior/hipogástrio sem tração, posiciona bolsa coletora abaixo do nível vesical e vigia débito/hematúria ex-vacuo.",
+          "weight": 0.6,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "fixação na coxa",
+            "abaixo do nível",
+            "hematúria ex-vacuo",
+            "controle de débito"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Insuflar o balonete da sonda de Foley antes de observar saída de urina ou antes de introduzir até a bifurcação em Y (risco de laceração de uretra prostática/bulbar)",
+        "Forçar a passagem da sonda uretral contra resistência importante ou na presença de uretrorragia/suspeita de lesão uretral"
+      ]
+    },
+    {
+      "code": "UNICAMP-2025-PED-PL",
+      "title": "Procedimento: Punção Lombar Diagnóstica (Suspeita de Meningite Bacteriana)",
+      "area": "Pediatria",
+      "subtema": "Procedimentos em Pediatria e Neuroinfecção",
+      "institution": "UNICAMP",
+      "year": 2025,
+      "difficulty": "hard",
+      "duration_seconds": 600,
+      "station_kind": "procedimento",
+      "source": "Guia de Procedimentos Pediátricos SBP / HC-UNICAMP / Medway Procedimentos",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: SALA DE PROCEDIMENTOS PEDIÁTRICOS (HC-UNICAMP)\n\n**Candidato(a)**:\nVocê é o médico pediatra plantonista no Pronto-Socorro do HC-UNICAMP.\n\n**Cenário**:\n- Paciente: Gabriel, 6 anos (peso: 20 kg), com febre alta há 24 horas, cefaleia intensa, vômitos e rigidez de nuca. Foi estabilizado com acesso venoso e não apresenta déficits focais, crises convulsivas ou rebaixamento importante (Glasgow 15).\n\n**Sua Tarefa**:\n1. Esclareça o procedimento à mãe/criança obtendo consentimento e afaste formalmente contraindicações à punção.\n2. Liste os materiais necessários e execute a paramentação completa e posicionamento seguro do paciente.\n3. Identifique a anatomia (Linha de Tuffier), antissepsia, anestesia local e técnica correta de punção.\n4. Realize a coleta sequencial dos tubos de líquor, retirada segura com mandril e cuidados pós-punção.\n\n*Tempo de prova: 10 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Esclareça o procedimento à mãe/criança obtendo consentimento e afaste formalmente contraindicações à punção."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Liste os materiais necessários e execute a paramentação completa e posicionamento seguro do paciente."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Identifique a anatomia (Linha de Tuffier), antissepsia, anestesia local e técnica correta de punção."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Realize a coleta sequencial dos tubos de líquor, retirada segura com mandril e cuidados pós-punção."
+        }
+      ],
+      "patient_persona": {
+        "name": "Mãe do Gabriel (Dona Renata)",
+        "age": 32,
+        "gender": "feminino",
+        "chief_complaint": "Doutor, meu filho tá com muita dor de cabeça e febre... esse exame na coluna é perigoso? Pode deixar ele sem andar?",
+        "past_medical_history": "Gabriel previamente hígido, vacinação completa, sem distúrbios hemorrágicos ou imunodeficiência.",
+        "allergies": "Sem alergias."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, meu filho tá com muita dor de cabeça e febre... esse exame na coluna é perigoso? Pode deixar ele sem andar?",
+        "emotional_state": "Mãe muito apreensiva com medo de paralisia por punção na coluna; acalma-se quando o médico explica que a medula termina acima de L2.",
+        "only_reveal_if_asked": {
+          "sinais_alarme_neurologicos": "Está acordado (Glasgow 15), conversando apesar da dor de cabeça, sem fraqueza de um lado do corpo, sem estrabismo ou convulsões.",
+          "coagulacao_pele": "Nunca teve sangramentos fáceis nem manchas roxas; pele das costas íntegra sem feridas.",
+          "alergias": "Sem alergias a anestésicos locais ou clorexidina.",
+          "consentimento": "Assina e autoriza após entender que a agulha fica abaixo da medula e é essencial para tratar meningite.",
+          "glicemia_horarios": "Alimentou-se muito pouco desde ontem devido aos vômitos."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "104x66 mmHg",
+          "fc": "118 bpm",
+          "fr": "22 irpm",
+          "sato2": "98%",
+          "temp": "39.1 °C",
+          "hgt": "96 mg/dL"
+        },
+        "findings": {
+          "neurologico": "Glasgow 15, rigidez de nuca franca, sinais de Kernig e Brudzinski positivos. Sem déficits motores focais; fundoscopia sem papiledema.",
+          "pele_dorso": "Pele lombar íntegra sem lesões infecciosas ou petéquias locais."
+        },
+        "maneuvers": {
+          "exame_neurologico": {
+            "label": "Exame Neurológico Completo e Fundoscopia",
+            "triggers": [
+              "exame neurologico",
+              "glasgow",
+              "fundoscopia",
+              "papiledema",
+              "sinais focais",
+              "kernig",
+              "brudzinski",
+              "rigidez de nuca"
+            ],
+            "finding": "Glasgow 15, sem déficits focais, fundoscopia sem papiledema, rigidez de nuca e sinais de Kernig/Brudzinski positivos."
+          },
+          "inspecao_dorso": {
+            "label": "Inspeção da Pele em Região Lombar",
+            "triggers": [
+              "inspecao do dorso",
+              "regiao lombar",
+              "pele lombar",
+              "sitio de puncao"
+            ],
+            "finding": "Pele da região lombar íntegra, sem infecção cutânea local ou deformidade espinhal."
+          }
+        }
+      },
+      "lab_imaging": {
+        "coagulograma_hgt": {
+          "title": "Plaquetas, Coagulograma e Glicemia Capilar Simultânea",
+          "available": true,
+          "triggers": [
+            "plaquetas",
+            "coagulograma",
+            "tap",
+            "ttpa",
+            "glicemia capilar",
+            "hgt"
+          ],
+          "result_text": "Plaquetas: 245.000/mm³, INR 1,0, TTPA 29s. Glicemia capilar simultânea: 96 mg/dL."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais e HGT",
+          "triggers": [
+            "sinais vitais",
+            "vitais",
+            "hgt"
+          ],
+          "content": "PA 104x66 mmHg, FC 118 bpm, FR 22 irpm, SatO2 98%, Temp 39.1 °C, HGT 96 mg/dL."
+        },
+        {
+          "id": "card_pe_neuro",
+          "kind": "physical_exam",
+          "title": "Exame Neurológico, Fundoscopia e Dorso",
+          "triggers": [
+            "exame neurologico",
+            "papiledema",
+            "fundoscopia",
+            "dorso"
+          ],
+          "content": "Glasgow 15, sem sinais focais, fundoscopia sem papiledema, rigidez de nuca presente; pele lombar íntegra."
+        },
+        {
+          "id": "card_lab_coag",
+          "kind": "lab_imaging",
+          "title": "Plaquetas, Coagulograma e Glicemia Capilar",
+          "triggers": [
+            "plaquetas",
+            "coagulograma",
+            "glicemia capilar"
+          ],
+          "content": "Plaquetas 245.000/mm³, coagulograma normal; HGT simultâneo 96 mg/dL."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Explicação Clara, Acolhimento do Medo Materno e Consentimento",
+          "description": "Tranquiliza a mãe explicando que a medula termina acima do sítio lombar (L1-L2) e obtém consentimento informado antes do exame.",
+          "weight": 0.7,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "consentimento",
+            "tranquiliza",
+            "medula termina",
+            "renata",
+            "explico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Checagem Obrigatória de Contraindicações Antes da Punção",
+          "description": "Avalia e afasta sinais focais, papiledema/HIC, coma (GCS <= 8), instabilidade hemodinâmica, coagulopatia/plaquetopenia e infecção cutânea no local.",
+          "weight": 1.1,
+          "category": "diagnostico",
+          "keywords": [
+            "contraindicações",
+            "sem papiledema",
+            "afastar sinais focais",
+            "plaquetas",
+            "coagulograma"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Conferência de Materiais Estéreis e Tubos Numerados",
+          "description": "Separa agulha espinhal 22G com mandril, 4 tubos estéreis numerados, clorexidina alcoólica, lidocaína 1% sem vasoconstritor, campos, gazes e luvas estéreis.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "agulha com mandril",
+            "quincke",
+            "4 tubos estéreis",
+            "clorexidina",
+            "lidocaína sem vasoconstritor"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Higienização das Mãos e Paramentação Estéril Completa",
+          "description": "Executa higienização das mãos e paramentação completa (máscara, gorro, avental e luvas estéreis) com assistência para conter a criança.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "paramentação completa",
+            "máscara",
+            "gorro",
+            "avental",
+            "luvas estéreis"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Posicionamento Seguro em Decúbito Lateral e Monitorização",
+          "description": "Posiciona em decúbito lateral fetal (flexão lombar com coluna alinhada, SEM flexão cervical exagerada que comprometa via aérea) e monitoriza oximetria.",
+          "weight": 0.9,
+          "category": "procedimentos",
+          "keywords": [
+            "decúbito lateral",
+            "sem fletir o pescoço",
+            "flexão lombar",
+            "oxímetro"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Localização Anatômica Pela Linha de Tuffier (L3-L4 ou L4-L5)",
+          "description": "Traça a Linha de Tuffier unindo as cristas ilíacas posteriores (altura de L4) e seleciona o espaço interespinhoso L3-L4 ou L4-L5.",
+          "weight": 1.0,
+          "category": "procedimentos",
+          "keywords": [
+            "linha de tuffier",
+            "cristas ilíacas",
+            "l3-l4",
+            "l4-l5",
+            "espaço interespinhoso"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Antissepsia Ampla, Campo Fenestrado e Anestesia Local",
+          "description": "Realiza antissepsia centrífuga ampla com clorexidina, coloca campo fenestrado e faz botão anestésico subcutâneo + planos com lidocaína.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "antissepsia centrífuga",
+            "campo fenestrado",
+            "botão anestésico",
+            "anestesia local"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Introdução da Agulha com Mandril (Linha Média, ~15° Cranial)",
+          "description": "Insere a agulha na linha média, perpendicular à coluna no plano transverso e angulada cerca de 15° em direção à cicatriz umbilical, bisel lateralizado.",
+          "weight": 0.9,
+          "category": "procedimentos",
+          "keywords": [
+            "angulação cranial",
+            "cicatriz umbilical",
+            "bisel lateralizado",
+            "linha média",
+            "mandril"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Identificação do Ressalto e Retirada do Mandril Sem Aspirar",
+          "description": "Percebe o ressalto de passagem pelo ligamento amarelo/dura-máter, retira o mandril observando fluxo espontâneo gota a gota (proibido aspirar com seringa).",
+          "weight": 0.9,
+          "category": "procedimentos",
+          "keywords": [
+            "ligamento amarelo",
+            "dura-máter",
+            "gota a gota",
+            "não aspirar",
+            "sem seringa"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Coleta de Líquor Nos Tubos + Glicemia Capilar Simultânea",
+          "description": "Coleta 3 a 4 tubos para bioquímica (glicose/proteínas), celularidade/citometria, Gram e cultura, garantindo HGT simultâneo para razão glicorraquia/glicemia.",
+          "weight": 0.9,
+          "category": "exames_complementares",
+          "keywords": [
+            "bioquímica",
+            "celularidade",
+            "gram",
+            "cultura",
+            "glicemia capilar simultânea",
+            "glicorraquia"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Reintrodução Obrigatória do Mandril Antes de Retirar a Agulha",
+          "description": "Reintroduz completamente o mandril na agulha antes de removê-la do espaço subaracnóideo (reduz cefaleia pós-punção e herniação radicular).",
+          "weight": 0.7,
+          "category": "procedimentos",
+          "keywords": [
+            "reintroduzir o mandril",
+            "recolocar o mandril",
+            "antes de retirar a agulha"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Curativo Oclusivo, Cuidados Pós-Punção e Antibiótico Sem Atraso",
+          "description": "Aplica curativo estéril no sítio, orienta observação neurológica e garante antibioticoterapia empírica imediata sem atrasos caso haja contraindicação/demora.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "curativo",
+            "observação pós-punção",
+            "ceftriaxona",
+            "antibiótico empírico"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Realizar punção lombar imediata na vigência de sinais neurológicos focais, papiledema ou hipertensão intracraniana sem tomografia de crânio prévia (risco de herniação cerebral)",
+        "Aspirar o líquor ativamente com seringa acoplada à agulha raquidiana ou retirar a agulha sem reintroduzir o mandril"
+      ]
+    },
+    {
+      "code": "UNIFESP-2025-CM-PARA",
+      "title": "Procedimento: Paracentese Abdominal Diagnóstica e Terapêutica no Cirrótico",
+      "area": "Clínica Médica",
+      "subtema": "Hepatologia e Procedimentos em Clínica Médica",
+      "institution": "UNIFESP",
+      "year": 2025,
+      "difficulty": "medium",
+      "duration_seconds": 480,
+      "station_kind": "procedimento",
+      "source": "Diretriz AASLD / EASL / SBH de Ascite e PBE / UNIFESP / Medway Procedimentos",
+      "clinical_review_date": "2026-11-23",
+      "scenario_door_markdown": "### ESTAÇÃO: ENFERMARIA / SALA DE PROCEDIMENTOS CLÍNICOS (UNIFESP)\n\n**Candidato(a)**:\nVocê é o médico residente de Clínica Médica no Hospital São Paulo (UNIFESP).\n\n**Cenário**:\n- Paciente: Sr. Cláudio Ferreira, 57 anos, cirrótico etílico Child-Pugh B, internado com ascite volumosa e tensa causando desconforto respiratório e dor abdominal leve há 2 dias.\n\n**Sua Tarefa**:\n1. Explique o procedimento, obtenha consentimento, cheque contraindicações e esvaziamento vesical.\n2. Liste os materiais necessários e defina o sítio anatômico seguro de punção com justificativa.\n3. Descreva e execute a paramentação, antissepsia, anestesia por planos e punção com técnica em Z.\n4. Indique as amostras laboratoriais (GASA/PBE), volume máximo e reposição pós-paracentese.\n\n*Tempo de prova: 8 minutos.*",
+      "tasks": [
+        {
+          "id": "task_1",
+          "step": 1,
+          "description": "Explique o procedimento, obtenha consentimento, cheque contraindicações e esvaziamento vesical."
+        },
+        {
+          "id": "task_2",
+          "step": 2,
+          "description": "Liste os materiais necessários e defina o sítio anatômico seguro de punção com justificativa."
+        },
+        {
+          "id": "task_3",
+          "step": 3,
+          "description": "Descreva e execute a paramentação, antissepsia, anestesia por planos e punção com técnica em Z."
+        },
+        {
+          "id": "task_4",
+          "step": 4,
+          "description": "Indique as amostras laboratoriais (GASA/PBE), volume máximo e reposição pós-paracentese."
+        }
+      ],
+      "patient_persona": {
+        "name": "Cláudio Ferreira",
+        "age": 57,
+        "gender": "masculino",
+        "chief_complaint": "Doutor, minha barriga tá estourando de tão inchada... tô até cansado pra respirar direito quando deito.",
+        "past_medical_history": "Cirrose hepática por álcool há 4 anos, já esvaziou líquido da barriga uma vez há 6 meses. Esvaziou a bexiga há 10 minutos.",
+        "allergies": "Sem alergias a lidocaína ou outros medicamentos."
+      },
+      "actor_script": {
+        "opening_line": "Doutor, minha barriga tá estourando de tão inchada... tô até cansado pra respirar direito quando deito.",
+        "emotional_state": "Desconfortável e dispneico em decúbito horizontal; colaborativo e agradecido com o alívio esperado.",
+        "only_reveal_if_asked": {
+          "esvaziamento_vesical": "Acabou de ir ao banheiro e esvaziou bem a bexiga antes de deitar na maca.",
+          "sintomas_pbe": "Teve leve febrícula ontem à noite e dor difusa na barriga, sem vômitos ou sangue nas fezes.",
+          "coagulacao_cirurgias": "Nunca teve sangramento gengival espontâneo ou cirurgias abdominais prévias.",
+          "alergias": "Não tem alergia a anestésicos locais.",
+          "consentimento": "Concorda plenamente com a punção abdominal após a explicação."
+        }
+      },
+      "physical_exam": {
+        "vitals": {
+          "pa": "108x68 mmHg",
+          "fc": "92 bpm",
+          "fr": "22 irpm",
+          "sato2": "96%",
+          "temp": "37.5 °C"
+        },
+        "findings": {
+          "geral": "Ictérico 1+/4+, desconforto respiratório leve em decúbito plano.",
+          "abdome": "Abdome globoso e tenso por ascite volumosa, macicez móvel e sinal do piparote positivos, sem cicatrizes cirúrgicas no QIE ou circulação colateral sobre o sítio esquerdo."
+        },
+        "maneuvers": {
+          "inspecao_geral": {
+            "label": "Inspeção Geral",
+            "triggers": [
+              "inspecao geral",
+              "estado geral"
+            ],
+            "finding": "Ictérico 1+/4+, desconforto respiratório leve em decúbito dorsal."
+          },
+          "percussao_palpacao_abdominal": {
+            "label": "Inspeção, Palpação e Percussão Abdominal (Ascite)",
+            "triggers": [
+              "percussao abdominal",
+              "palpacao abdominal",
+              "inspecao abdominal",
+              "piparote",
+              "macicez",
+              "circulacao colateral"
+            ],
+            "finding": "Ascite volumosa tensa com macicez franca em flanco esquerdo, piparote positivo, sem cicatrizes cirúrgicas ou circulação colateral sobre o ponto de punção em QIE."
+          }
+        }
+      },
+      "lab_imaging": {
+        "exames_previos": {
+          "title": "Exames Séricos Basais (Albumina e Coagulação)",
+          "available": true,
+          "triggers": [
+            "albumina serica",
+            "coagulograma",
+            "plaquetas",
+            "inr",
+            "creatinina"
+          ],
+          "result_text": "Albumina sérica: 2,6 g/dL; Plaquetas: 72.000/mm³; INR: 1,6 (observação: INR elevado e plaquetopenia crônica do cirrótico NÃO contraindicam paracentese sem CIVD clínica); Creatinina: 1,1 mg/dL."
+        }
+      },
+      "examiner_cards": [
+        {
+          "id": "card_vitals",
+          "kind": "vitals",
+          "title": "Sinais Vitais",
+          "triggers": [
+            "sinais vitais",
+            "vitais"
+          ],
+          "content": "PA 108x68 mmHg, FC 92 bpm, FR 22 irpm, SatO2 96%, Temp 37.5 °C"
+        },
+        {
+          "id": "card_pe_abdome",
+          "kind": "physical_exam",
+          "title": "Exame Abdominal (Ascite e Sítio)",
+          "triggers": [
+            "percussao abdominal",
+            "palpacao abdominal",
+            "macicez"
+          ],
+          "content": "Ascite tensa com macicez em QIE, sem cicatrizes ou circulação colateral sobre o ponto esquerdo."
+        },
+        {
+          "id": "card_lab_serico",
+          "kind": "lab_imaging",
+          "title": "Exames Séricos Basais",
+          "triggers": [
+            "albumina serica",
+            "coagulograma",
+            "plaquetas"
+          ],
+          "content": "Albumina sérica 2,6 g/dL; Plaquetas 72.000/mm³; INR 1,6 (não contraindica paracentese)."
+        }
+      ],
+      "checklist_barema": [
+        {
+          "id": "item_1",
+          "title": "Apresentação, Explicação e Consentimento Informado",
+          "description": "Apresenta-se ao paciente, explica riscos/benefícios da paracentese e obtém consentimento expresso.",
+          "weight": 0.6,
+          "category": "relacao_medico_paciente",
+          "keywords": [
+            "cláudio",
+            "consentimento",
+            "explico o procedimento",
+            "sou o médico"
+          ]
+        },
+        {
+          "id": "item_2",
+          "title": "Esvaziamento Vesical Prévio e Checagem de Contraindicações",
+          "description": "Confirma que o paciente esvaziou a bexiga antes e verifica ausência de CIVD/fibrinólise ou infecção de parede (sabendo que INR/plaquetopenia isolada do cirrótico não contraindica).",
+          "weight": 0.8,
+          "category": "anamnese",
+          "keywords": [
+            "esvaziamento vesical",
+            "esvaziou a bexiga",
+            "civd",
+            "não contraindica"
+          ]
+        },
+        {
+          "id": "item_3",
+          "title": "Separação Completa dos Materiais Estéreis e Frascos de Coleta",
+          "description": "Separa jelco/cateter 14-16G, seringas, lidocaína 1-2%, clorexidina, luvas/campo estéreis, frascos para albumina/citometria, frascos de hemocultura, equipo coletor e albumina humana 20%.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "jelco",
+            "lidocaína",
+            "clorexidina",
+            "frascos de hemocultura",
+            "albumina humana",
+            "campo fenestrado"
+          ]
+        },
+        {
+          "id": "item_4",
+          "title": "Posicionamento Adequado e Percussão de Macicez",
+          "description": "Posiciona o paciente em decúbito dorsal com cabeceira a 30° levemente rodado para a esquerda e confirma macicez à percussão.",
+          "weight": 0.7,
+          "category": "exame_fisico",
+          "keywords": [
+            "cabeceira a 30",
+            "decúbito dorsal",
+            "macicez",
+            "percussão abdominal"
+          ]
+        },
+        {
+          "id": "item_5",
+          "title": "Escolha Anatômica Correta no QIE (Linha EIAS-Umbigo, 1/3 Lateral)",
+          "description": "Delimita corretamente o ponto no Quadrante Inferior Esquerdo (junção do terço lateral com os dois terços mediais da linha entre a EIAS esquerda e o umbigo), longe dos vasos epigástricos.",
+          "weight": 1.2,
+          "category": "procedimentos",
+          "keywords": [
+            "quadrante inferior esquerdo",
+            "qie",
+            "espinha ilíaca",
+            "eias",
+            "terço lateral",
+            "longe dos vasos epigástricos"
+          ]
+        },
+        {
+          "id": "item_6",
+          "title": "Higienização das Mãos, Paramentação Estéril e Antissepsia Ampla",
+          "description": "Higieniza as mãos, calça luvas estéreis com máscara/gorro, realiza antissepsia centrífuga ampla e coloca campo fenestrado.",
+          "weight": 0.8,
+          "category": "procedimentos",
+          "keywords": [
+            "luvas estéreis",
+            "antissepsia ampla",
+            "campo fenestrado",
+            "paramentação"
+          ]
+        },
+        {
+          "id": "item_7",
+          "title": "Infiltração Anestésica Por Planos Até Peritônio (Aspirando Antes)",
+          "description": "Faz botão anestésico intradérmico e avança infiltrando planos até confirmar retorno ascítico, aspirando antes de injetar lidocaína.",
+          "weight": 0.7,
+          "category": "procedimentos",
+          "keywords": [
+            "botão anestésico",
+            "infiltração por planos",
+            "aspirar antes"
+          ]
+        },
+        {
+          "id": "item_8",
+          "title": "Punção Pela Técnica em Z (Z-Track) Para Evitar Fístula Ascítica",
+          "description": "Traciona a pele cerca de 2 cm caudalmente com a mão não dominante enquanto introduz a agulha perpendicularmente (técnica em Z) para selar o trajeto após retirada.",
+          "weight": 1.0,
+          "category": "procedimentos",
+          "keywords": [
+            "técnica em z",
+            "z-track",
+            "traciono a pele",
+            "fístula ascítica"
+          ]
+        },
+        {
+          "id": "item_9",
+          "title": "Solicitação de GASA, Citometria (PMN >= 250) e Cultura em Hemocultura",
+          "description": "Coleta amostras para albumina do líquido ascítico e sérica (GASA >= 1,1 = hipertensão portal), contagem de PMN (>= 250/mm³ = PBE) e inocula líquido nos frascos de hemocultura à beira-leito.",
+          "weight": 1.1,
+          "category": "exames_complementares",
+          "keywords": [
+            "gasa",
+            "polimorfonucleares",
+            "250",
+            "pbe",
+            "frascos de hemocultura"
+          ]
+        },
+        {
+          "id": "item_10",
+          "title": "Drenagem Terapêutica Controlada em Sistema Fechado",
+          "description": "Conecta o cateter plástico ao equipo/frascos coletores mantendo drenagem gravitacional sem aspiração traumática e vigiando aspecto do líquido.",
+          "weight": 0.7,
+          "category": "procedimentos",
+          "keywords": [
+            "drenagem terapêutica",
+            "sistema coletor",
+            "equipo"
+          ]
+        },
+        {
+          "id": "item_11",
+          "title": "Reposição Obrigatória de Albumina Humana (6-8 g/L se > 5 Litros)",
+          "description": "Prescreve reposição endovenosa de Albumina Humana 20% na dose de 6 a 8 g por litro de ascite retirado quando a drenagem ultrapassar 5 litros (prevenção de disfunção circulatória).",
+          "weight": 1.1,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "reposição de albumina",
+            "6 a 8 g",
+            "disfunção circulatória"
+          ]
+        },
+        {
+          "id": "item_12",
+          "title": "Retirada Liberando Tração em Z, Curativo e Monitorização Pós-Punção",
+          "description": "Retira o cateter liberando a pele para fechar o trajeto em Z, aplica curativo compressivo estéril e monitoriza PA/FC após o procedimento.",
+          "weight": 0.5,
+          "category": "conduta_tratamento",
+          "keywords": [
+            "curativo compressivo",
+            "libero a tração",
+            "sinais vitais pós"
+          ]
+        }
+      ],
+      "critical_errors": [
+        "Drenar grande volume de líquido ascítico (> 5 litros) em paciente cirrótico sem prescrever reposição endovenosa de albumina humana (6 a 8 g por litro retirado)",
+        "Realizar a punção de paracentese no trajeto dos vasos epigástricos inferiores (terço médio dos músculos retos abdominais) ou sobre circulação colateral visível"
+      ]
     }
   ],
   "EMERGENCY_DRUGS_CATALOG": [
