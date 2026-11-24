@@ -624,12 +624,16 @@ def meta():
     clauses_no_subtema, params_no_subtema = question_filter_clauses(args_no_subtema)
     where_no_subtema = " AND ".join(clauses_no_subtema)
 
+    args_no_year = MultiDict((k, v) for k, v in request.args.items(multi=True) if k != 'year')
+    clauses_no_year, params_no_year = question_filter_clauses(args_no_year)
+    where_no_year = " AND ".join(clauses_no_year)
+
     answered_params = list(params)
     answered_params.append(g.user_id)
 
     queries = [
         (f"SELECT q.institution_code, q.institution_label, COUNT(*) n FROM questions q WHERE {where} GROUP BY q.institution_code ORDER BY n DESC", params),
-        (f"SELECT DISTINCT q.year FROM questions q WHERE q.year IS NOT NULL AND {where} ORDER BY q.year", params),
+        (f"SELECT DISTINCT q.year FROM questions q WHERE q.year IS NOT NULL AND {where_no_year} ORDER BY q.year DESC", params_no_year),
         (f"SELECT q.area, COUNT(*) n FROM questions q WHERE q.area IS NOT NULL AND q.area != '' AND {where} GROUP BY q.area ORDER BY n DESC", params),
         (f"SELECT q.subtema, COUNT(*) n FROM questions q WHERE q.subtema IS NOT NULL AND q.subtema != '' AND {where_no_subtema} GROUP BY q.subtema ORDER BY n DESC LIMIT 300", params_no_subtema),
         (f"SELECT q.topic, COUNT(*) n FROM questions q WHERE q.topic IS NOT NULL AND q.topic != '' AND {where_no_subtema} GROUP BY q.topic ORDER BY n DESC LIMIT 500", params_no_subtema),

@@ -251,6 +251,75 @@ export const QuizFilters = React.memo(function QuizFilters({
     return [];
   }, [filters.subtema]);
 
+  const selectedYears = useMemo(() => {
+    const raw = filters.year;
+    const parts = Array.isArray(raw)
+      ? raw.flatMap((v) => String(v).split(","))
+      : typeof raw === "string"
+      ? raw.split(",")
+      : [];
+    return Array.from(new Set(parts.map((y) => y.trim()).filter(Boolean)));
+  }, [filters.year]);
+
+  const selectedYearsSet = useMemo(() => new Set(selectedYears), [selectedYears]);
+
+  const availableYears = useMemo(() => {
+    const merged = new Set<string>();
+    for (const y of dynamicMeta?.years || []) {
+      const str = String(y).trim();
+      if (str) merged.add(str);
+    }
+    for (const y of selectedYears) {
+      merged.add(y);
+    }
+    return Array.from(merged).sort((a, b) => Number(b) - Number(a));
+  }, [dynamicMeta?.years, selectedYears]);
+
+  const handleToggleYear = useCallback(
+    (yearStr: string) => {
+      setFilters((prev) => {
+        const raw = prev.year;
+        const current = Array.from(
+          new Set(
+            (Array.isArray(raw)
+              ? raw.flatMap((v) => String(v).split(","))
+              : typeof raw === "string"
+              ? raw.split(",")
+              : []
+            )
+              .map((y) => y.trim())
+              .filter(Boolean)
+          )
+        );
+        const nextYears = current.includes(yearStr)
+          ? current.filter((y) => y !== yearStr)
+          : [...current, yearStr].sort((a, b) => Number(b) - Number(a));
+        const updated = { ...prev };
+        if (nextYears.length > 0) updated.year = nextYears;
+        else delete updated.year;
+        return updated;
+      });
+    },
+    [setFilters]
+  );
+
+  const handleClearYears = useCallback(() => {
+    setFilters((prev) => {
+      const updated = { ...prev };
+      delete updated.year;
+      return updated;
+    });
+  }, [setFilters]);
+
+  const handleSelectRecentYears = useCallback(
+    (count: number) => {
+      const recent = availableYears.slice(0, count);
+      if (recent.length === 0) return;
+      setFilters((prev) => ({ ...prev, year: recent }));
+    },
+    [availableYears, setFilters]
+  );
+
   const selectedSubtemasSet = useMemo(() => new Set(selectedSubtemas), [selectedSubtemas]);
 
   const filteredSearchSubtemas = useMemo(() => {
@@ -788,42 +857,87 @@ export const QuizFilters = React.memo(function QuizFilters({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-ink-primary">Ano</label>
-                  <select
-                    className="w-full bg-canvas border border-line-subtle rounded-xl py-2 px-2.5 text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                    value={filters.year || ""}
-                    onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-                  >
-                    <option value="">Todos</option>
-                    {(dynamicMeta.years || []).map((y) => (
-                      <option key={y} value={String(y)}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-ink-primary flex items-center gap-1.5">
+                    <span>Anos</span>
+                    <span className="text-[11px] font-normal text-ink-muted">
+                      (
+                      {selectedYears.length === 0
+                        ? "Todos"
+                        : selectedYears.length === 1
+                        ? "1 selecionado"
+                        : `${selectedYears.length} selecionados`}
+                      )
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    {availableYears.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectRecentYears(3)}
+                        className="font-semibold text-accent hover:underline cursor-pointer"
+                      >
+                        Últimos 3
+                      </button>
+                    )}
+                    {selectedYears.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearYears}
+                        className="font-medium text-ink-muted hover:text-ink-primary cursor-pointer"
+                      >
+                        Todos
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-ink-primary">Tipo</label>
-                  <select
-                    className="w-full bg-canvas border border-line-subtle rounded-xl py-2 px-2.5 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                    value={typeof filters.question_type === "string" ? filters.question_type : ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setFilters((prev) => {
-                        const next = { ...prev };
-                        if (val) next.question_type = val;
-                        else delete next.question_type;
-                        return next;
-                      });
-                    }}
-                  >
-                    <option value="">Todas</option>
-                    <option value="objetiva">Objetivas</option>
-                    <option value="discursiva">Discursivas</option>
-                  </select>
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por anos">
+                  {availableYears.length === 0 ? (
+                    <span className="text-[11px] text-ink-muted">Nenhum ano disponível para estes filtros.</span>
+                  ) : (
+                    availableYears.map((y) => {
+                      const active = selectedYearsSet.has(y);
+                      return (
+                        <button
+                          key={y}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => handleToggleYear(y)}
+                          className={clsx(
+                            "px-2.5 py-1 min-h-[30px] rounded-full border text-[11px] font-mono-lab tabular-nums transition-colors cursor-pointer",
+                            active
+                              ? "bg-accent/15 border-accent text-accent font-semibold"
+                              : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
+                          )}
+                        >
+                          {y}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-ink-primary">Tipo</label>
+                <select
+                  className="w-full bg-canvas border border-line-subtle rounded-xl py-2 px-2.5 text-xs text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  value={typeof filters.question_type === "string" ? filters.question_type : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFilters((prev) => {
+                      const next = { ...prev };
+                      if (val) next.question_type = val;
+                      else delete next.question_type;
+                      return next;
+                    });
+                  }}
+                >
+                  <option value="">Todas</option>
+                  <option value="objetiva">Objetivas</option>
+                  <option value="discursiva">Discursivas</option>
+                </select>
               </div>
 
               <div className="space-y-2">

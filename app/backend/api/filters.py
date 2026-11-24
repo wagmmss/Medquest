@@ -31,7 +31,14 @@ def question_filter_clauses(args):
         clauses.append(f"q.institution_code IN ({','.join('?' * len(institutions))})")
         params.extend(institutions)
 
-    years = args.getlist("year")
+    raw_years = args.getlist("year")
+    years = []
+    for item in raw_years:
+        for part in str(item).split(","):
+            part_clean = part.strip()
+            if part_clean:
+                years.append(part_clean)
+    years = list(dict.fromkeys(years))
     if years:
         clauses.append(f"q.year IN ({','.join('?' * len(years))})")
         params.extend(years)

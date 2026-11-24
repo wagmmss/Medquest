@@ -484,6 +484,15 @@ export const api = {
             const inst = Array.isArray(filters.institution) ? filters.institution[0] : filters.institution;
             cached = cached.filter(q => q.institution_code === inst);
           }
+          if (filters.year) {
+            const yearList = (Array.isArray(filters.year) ? filters.year : filters.year.split(","))
+              .map((y) => y.trim())
+              .filter(Boolean);
+            if (yearList.length > 0) {
+              const yearSet = new Set(yearList);
+              cached = cached.filter(q => q.year != null && yearSet.has(String(q.year)));
+            }
+          }
           if (cached.length > 0) {
             if (!filters.institution && cached.some(q => Boolean((q as unknown as { is_target_institution?: boolean }).is_target_institution))) {
               cached = [...cached].sort((a, b) => {
