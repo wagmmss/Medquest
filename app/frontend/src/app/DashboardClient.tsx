@@ -12,7 +12,7 @@ import {
   DashboardSummaryResponse
 } from "@/types/api";
 import { motion, Variants } from "framer-motion";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, useSyncExternalStore } from "react";
 import { readLearningSession, syncSessionFromCloud } from "@/lib/sessionState";
 import { triggerConfetti } from "@/lib/confetti";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,29 @@ import clsx from "clsx";
 
 const DASHBOARD_CACHE_KEY = "medquest_dashboard_cache_v1";
 const DISMISSED_DASHBOARD_LESSON_KEY = "medquest_dismissed_dashboard_lesson_v1";
+const DISMISSED_DASHBOARD_LESSON_EVENT = "medquest:dismissed-dashboard-lesson";
+
+function subscribeDismissedLesson(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", callback);
+  window.addEventListener(DISMISSED_DASHBOARD_LESSON_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(DISMISSED_DASHBOARD_LESSON_EVENT, callback);
+  };
+}
+
+function getDismissedLessonSnapshot(): string | null {
+  try {
+    return localStorage.getItem(DISMISSED_DASHBOARD_LESSON_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function getDismissedLessonServerSnapshot(): undefined {
+  return undefined;
+}
 
 interface DismissedDashboardLesson {
   lessonId: number;
@@ -130,28 +153,28 @@ export function DashboardClient({
   const hasAnimated = useRef(false);
   const [activeSession, setActiveSession] = useState<{ kind: "quiz" | "simulado"; url: string } | null>(null);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
-  const [dismissedLesson, setDismissedLesson] = useState<DismissedDashboardLesson | null>(null);
-  const [isDismissedLoaded, setIsDismissedLoaded] = useState(false);
-
-  useEffect(() => {
+  const rawDismissedLesson = useSyncExternalStore(
+    subscribeDismissedLesson,
+    getDismissedLessonSnapshot,
+    getDismissedLessonServerSnapshot
+  );
+  const isDismissedLoaded = rawDismissedLesson !== undefined;
+  const dismissedLesson = useMemo<DismissedDashboardLesson | null>(() => {
+    if (!rawDismissedLesson) return null;
     try {
-      const raw = localStorage.getItem(DISMISSED_DASHBOARD_LESSON_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<DismissedDashboardLesson>;
-        if (typeof parsed.lessonId === "number") {
-          setDismissedLesson({
-            lessonId: parsed.lessonId,
-            updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : null,
-            bookmarkSeconds: typeof parsed.bookmarkSeconds === "number" ? parsed.bookmarkSeconds : 0,
-          });
-        }
+      const parsed = JSON.parse(rawDismissedLesson) as Partial<DismissedDashboardLesson>;
+      if (typeof parsed.lessonId === "number") {
+        return {
+          lessonId: parsed.lessonId,
+          updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : null,
+          bookmarkSeconds: typeof parsed.bookmarkSeconds === "number" ? parsed.bookmarkSeconds : 0,
+        };
       }
     } catch {
       // ignore invalid storage
-    } finally {
-      setIsDismissedLoaded(true);
     }
-  }, []);
+    return null;
+  }, [rawDismissedLesson]);
 
   const isContinueLessonDismissed = Boolean(
     continueLessonData?.lesson &&
@@ -169,9 +192,9 @@ export function DashboardClient({
       updatedAt: lesson.progress.updated_at ?? null,
       bookmarkSeconds: lesson.progress.bookmark_seconds ?? 0,
     };
-    setDismissedLesson(payload);
     try {
       localStorage.setItem(DISMISSED_DASHBOARD_LESSON_KEY, JSON.stringify(payload));
+      window.dispatchEvent(new Event(DISMISSED_DASHBOARD_LESSON_EVENT));
     } catch {
       // ignore storage errors
     }
