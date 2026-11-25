@@ -35,6 +35,7 @@ import { WebVitals } from "@/components/WebVitals";
 import { AuthSync } from "@/components/AuthSync";
 import { QueryProvider } from "@/components/QueryProvider";
 import { CommandPalette } from "@/components/CommandPalette";
+import { GlobalModalHost } from "@/components/GlobalModalHost";
 
 export const viewport: Viewport = {
   themeColor: "#0ea5e9",
@@ -151,6 +152,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           )}
           <SyncProvider guestMode={!userId} />
+          <GlobalModalHost />
           <Toaster position="top-right" />
           </QueryProvider>
         </AppAuthProvider>

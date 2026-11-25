@@ -104,8 +104,8 @@ def sync_database(verbose: bool = True) -> bool:
     # 0. Assegurar índices críticos de alta performance no Turso Cloud
     try:
         execute_turso_pipeline(url, token, [
-            {"type": "execute", "stmt": {"sql": "CREATE INDEX IF NOT EXISTS idx_alternatives_question_id ON alternatives (question_id)"}},
-            {"type": "execute", "stmt": {"sql": "CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images (question_id)"}},
+            {"type": "execute", "stmt": {"sql": "CREATE INDEX IF NOT EXISTS idx_alternatives_qid_letter ON alternatives (question_id, letter)"}},
+            {"type": "execute", "stmt": {"sql": "CREATE INDEX IF NOT EXISTS idx_question_images_qid_order ON question_images (question_id, order_index)"}},
         ], timeout=30)
     except Exception:
         pass

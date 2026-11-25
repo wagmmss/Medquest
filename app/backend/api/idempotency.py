@@ -1,14 +1,15 @@
+import functools
 import hashlib
 import json
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from flask import Response, jsonify, request
+from flask import Response, g, jsonify, request
 
 from .auth import is_valid_uuid_v4
-from .db import db_transaction
+from .db import db_transaction, get_db
 
 LEASE_DURATION_SECONDS = 30.0
 logger = logging.getLogger(__name__)
@@ -181,15 +182,108 @@ def cleanup_idempotency_keys(db, max_age_days: int = 7):
     """
     Limpa chaves antigas concluídas ou falhas para liberar espaço.
     """
+    now = datetime.now(timezone.utc)
+    cutoff_completed = (now - timedelta(days=max_age_days)).isoformat()
+    cutoff_failed = (now - timedelta(days=1)).isoformat()
     try:
         with db_transaction(db, immediate=True):
             db.execute(
                 """DELETE FROM idempotency_keys
-                   WHERE (status = 'completed' AND created_at < datetime('now', ?))
-                      OR (status = 'failed' AND created_at < datetime('now', '-1 day'))""",
-                (f"-{max_age_days} days",)
+                   WHERE (status = 'completed' AND julianday(created_at) < julianday(?))
+                      OR (status = 'failed' AND julianday(created_at) < julianday(?))""",
+                (cutoff_completed, cutoff_failed),
             )
         return
     except Exception:
         logger.exception("Unable to clean old idempotency keys")
         raise
+
+
+class IdempotencyLease:
+    """Reserva ativa de idempotência vinculada à requisição HTTP atual."""
+
+    def __init__(self, db, user_id: str, token: str | None) -> None:
+        self.db = db
+        self.user_id = user_id
+        self.token = token
+        self.settled = False
+
+    def complete(self, status_code: int, response_data: dict | list) -> None:
+        """Persiste o resultado na mesma transação ativa quando há chave reservada."""
+        if not self.token or self.settled:
+            return
+        complete_idempotency(self.db, self.user_id, status_code, response_data, self.token)
+        self.settled = True
+
+    def fail(self) -> None:
+        """Marca a chave como falha em erros ou retornos não-2xx."""
+        if not self.token or self.settled:
+            return
+        self.settled = True
+        fail_idempotency(self.db, self.user_id, self.token)
+
+
+def complete_active_lease(status_code: int, response_data: dict | list) -> None:
+    """Conclui o lease ativo da requisição (`g.idempotency_lease`), se existir."""
+    lease = getattr(g, "idempotency_lease", None)
+    if lease is not None:
+        lease.complete(status_code, response_data)
+
+
+def idempotent(user_resolver=None):
+    """Decorator que garante reserva/reaproveitamento e limpeza de `X-Idempotency-Key`.
+
+    Rotas transacionais podem chamar `complete_active_lease(status, payload)` dentro de seu
+    próprio `db_transaction(...)` para manter atomicidade com a escrita de domínio. Caso a
+    rota retorne 2xx sem chamar explicitamente, o decorator conclui ao final; em retornos
+    >=400 ou exceções, marca o lease como `failed`.
+    """
+
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            db = get_db()
+            uid = user_resolver() if user_resolver else g.user_id
+            raw_payload = request.get_data()
+
+            cached_resp, err_resp, lease_token = reserve_idempotency(
+                db, uid, request.path, request.method, raw_payload
+            )
+            if cached_resp is not None:
+                return cached_resp
+            if err_resp is not None:
+                return err_resp
+
+            lease = IdempotencyLease(db=db, user_id=uid, token=lease_token)
+            prev_lease = getattr(g, "idempotency_lease", None)
+            g.idempotency_lease = lease
+            try:
+                res = fn(*args, **kwargs)
+            except Exception:
+                lease.fail()
+                raise
+            finally:
+                g.idempotency_lease = prev_lease
+
+            if lease.token and not lease.settled:
+                resp_obj = res[0] if isinstance(res, tuple) else res
+                status_code = (
+                    int(res[1])
+                    if isinstance(res, tuple) and len(res) >= 2
+                    else int(getattr(resp_obj, "status_code", 200))
+                )
+                if 200 <= status_code < 300:
+                    payload = resp_obj.get_json(silent=True) if hasattr(resp_obj, "get_json") else None
+                    if payload is not None:
+                        with db_transaction(db, immediate=True):
+                            lease.complete(status_code, payload)
+                    else:
+                        lease.fail()
+                else:
+                    lease.fail()
+
+            return res
+
+        return wrapper
+
+    return decorator

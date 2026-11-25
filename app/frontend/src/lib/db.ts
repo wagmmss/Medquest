@@ -12,15 +12,71 @@ declare global {
   }
 }
 
+let pushedAuthState: { known: boolean; isLoaded: boolean; userId: string | null } = {
+  known: false,
+  isLoaded: false,
+  userId: null,
+};
+
+/**
+ * Sincroniza a identidade ativa vinda do AppAuthProvider para evitar
+ * leituras ad-hoc do objeto global window.Clerk fora da árvore React.
+ */
+export function syncActiveAuthOwner(isLoaded: boolean, userId: string | null | undefined): void {
+  const normalized = userId && userId.trim() ? userId.trim() : null;
+  pushedAuthState = {
+    known: true,
+    isLoaded,
+    userId: normalized,
+  };
+  if (typeof window === "undefined") return;
+  try {
+    if (normalized) {
+      localStorage.setItem("medquest_last_user_id", normalized);
+    } else if (isLoaded) {
+      localStorage.removeItem("medquest_last_user_id");
+    }
+  } catch {
+    // Storage unavailable
+  }
+}
+
+/**
+ * Limpa caches locais efêmeros de sessão ao sair ou trocar de conta.
+ */
+export function clearClientSessionCaches(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("medquest_last_user_id");
+    localStorage.removeItem("medquest_dashboard_cache_v1");
+  } catch {
+    // Storage unavailable
+  }
+  if (typeof caches !== "undefined") {
+    void caches.delete("medquest-study-shell").catch(() => {});
+  }
+}
+
 /**
  * Retorna o identificador de proprietário dos dados locais (IndexedDB).
- * Se o usuário estiver autenticado no Clerk, retorna seu ID real.
- * Caso contrário, retorna o UUID persistente de visitante em localStorage.
+ * Prioriza o estado empurrado pelo AppAuthProvider, com fallback seguro para
+ * hidratação inicial (medquest_last_user_id) ou UUID persistente de visitante.
  */
 export function getLocalOwnerId(): string {
   if (typeof window === "undefined") {
     return "ssr_dummy_owner";
   }
+
+  if (pushedAuthState.known) {
+    if (pushedAuthState.userId) {
+      return pushedAuthState.userId;
+    }
+    if (pushedAuthState.isLoaded) {
+      // Usuário deslogado confirmado pelo provider React -> usa somente UUID local
+      return getOrCreateGuestLocalOwner();
+    }
+  }
+
   const clerkUser = window.Clerk?.user?.id;
   if (clerkUser) {
     try {
@@ -34,12 +90,16 @@ export function getLocalOwnerId(): string {
   // During early hydration before Clerk SDK loads, check if we have a known logged-in user
   try {
     const lastUser = localStorage.getItem("medquest_last_user_id");
-    if (lastUser && isDeviceOffline() && !window.Clerk?.loaded) return lastUser;
+    if (lastUser && !window.Clerk?.loaded) return lastUser;
     if (window.Clerk?.loaded) localStorage.removeItem("medquest_last_user_id");
   } catch {
     // Storage unavailable
   }
 
+  return getOrCreateGuestLocalOwner();
+}
+
+function getOrCreateGuestLocalOwner(): string {
   let ownerId: string | null = null;
   try {
     ownerId = localStorage.getItem("medquest_local_owner");
@@ -51,6 +111,34 @@ export function getLocalOwnerId(): string {
     ownerId = "fallback_local_owner";
   }
   return ownerId;
+}
+
+export const OFFLINE_IMAGE_CACHE = "medquest-image-cache";
+
+export function normalizeImageForOfflineCache(img: string): string {
+  const trimmed = (img || "")
+    .trim()
+    .replace(/^\/api\/images\/images\//, "/api/images/")
+    .replace(/MedQuest-assets\.s3\.sa-east-1\.amazonaws\.com/gi, "medcof-assets.s3.sa-east-1.amazonaws.com")
+    .replace(/MedQuest-assets\.s3\.amazonaws\.com/gi, "medcof-assets.s3.amazonaws.com")
+    .replace(/cdn\.MedQuest\.com\.br/gi, "cdn.medway.com.br")
+    .replace(/www\.MedQuest\.com\.br/gi, "www.medway.com.br");
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/api/")) {
+    return trimmed;
+  }
+  return `/api/images/${trimmed}`;
+}
+
+function collectQuestionImageUrls(q: QuestionDetail | null | undefined): string[] {
+  if (!q) return [];
+  const urls: string[] = [];
+  if (Array.isArray(q.images)) {
+    for (const img of q.images) urls.push(normalizeImageForOfflineCache(img));
+  }
+  if (q.clinical_case && Array.isArray(q.clinical_case.images)) {
+    for (const img of q.clinical_case.images) urls.push(normalizeImageForOfflineCache(img));
+  }
+  return urls.filter(Boolean);
 }
 
 /** Wait for Clerk before restoring signed-in data; demo and offline sessions work without it. */
@@ -331,8 +419,127 @@ export class MedQuestDB extends Dexie {
   }
 
   /**
+   * Remove pacotes de simulado por ID, limpando atomicamente questões órfãs
+   * da tabela local `questions` e imagens órfãs no Cache Storage.
+   */
+  async deleteSimuladoPackages(packageIds: string[], explicitOwnerId?: string): Promise<number> {
+    if (!this.simuladoPackages || packageIds.length === 0) {
+      return 0;
+    }
+
+    const targetIdSet = new Set(packageIds.filter(Boolean));
+    if (targetIdSet.size === 0) return 0;
+
+    let deletedIds: string[] = [];
+    const candidateImageUrls = new Set<string>();
+
+    const tables: Table[] = this.questions
+      ? [this.simuladoPackages, this.questions]
+      : [this.simuladoPackages];
+
+    await this.transaction("rw", tables, async () => {
+      let targetPkgs: SimuladoPackage[] = [];
+      const remainingPkgs: SimuladoPackage[] = [];
+
+      if (typeof this.simuladoPackages.toArray === "function") {
+        const allPkgs = await this.simuladoPackages.toArray();
+        for (const p of allPkgs) {
+          if (targetIdSet.has(p.id) && (!explicitOwnerId || p.owner_id === explicitOwnerId)) {
+            targetPkgs.push(p);
+          } else {
+            remainingPkgs.push(p);
+          }
+        }
+      } else if (typeof this.simuladoPackages.get === "function") {
+        const fetched = await Promise.all(Array.from(targetIdSet).map((id) => this.simuladoPackages.get(id)));
+        targetPkgs = fetched.filter((p): p is SimuladoPackage => Boolean(p && (!explicitOwnerId || p.owner_id === explicitOwnerId)));
+      }
+
+      if (targetPkgs.length === 0) return;
+
+      deletedIds = targetPkgs.map((p) => p.id);
+      const retainedByOwner = new Map<string, Set<number>>();
+      for (const pkg of remainingPkgs) {
+        if (!Array.isArray(pkg.question_ids)) continue;
+        let qSet = retainedByOwner.get(pkg.owner_id);
+        if (!qSet) {
+          qSet = new Set<number>();
+          retainedByOwner.set(pkg.owner_id, qSet);
+        }
+        for (const qid of pkg.question_ids) qSet.add(qid);
+      }
+
+      const orphanKeysMap = new Map<string, [number, string]>();
+      for (const pkg of targetPkgs) {
+        if (!Array.isArray(pkg.question_ids)) continue;
+        const retained = retainedByOwner.get(pkg.owner_id);
+        for (const qid of pkg.question_ids) {
+          if (!retained || !retained.has(qid)) {
+            orphanKeysMap.set(`${pkg.owner_id}:${qid}`, [qid, pkg.owner_id]);
+          }
+        }
+      }
+
+      const orphanKeys = Array.from(orphanKeysMap.values());
+      if (this.questions && orphanKeys.length > 0) {
+        let orphanRows: Array<(QuestionDetail & { _owner_id: string }) | undefined> = [];
+        if (typeof this.questions.bulkGet === "function") {
+          orphanRows = await this.questions.bulkGet(orphanKeys);
+        } else if (typeof this.questions.get === "function") {
+          orphanRows = await Promise.all(orphanKeys.map((k) => this.questions.get(k)));
+        }
+        for (const q of orphanRows) {
+          for (const url of collectQuestionImageUrls(q)) {
+            candidateImageUrls.add(url);
+          }
+        }
+        if (typeof this.questions.bulkDelete === "function") {
+          await this.questions.bulkDelete(orphanKeys);
+        } else if (typeof this.questions.delete === "function") {
+          await Promise.all(orphanKeys.map((k) => this.questions.delete(k)));
+        }
+      }
+
+      if (typeof this.simuladoPackages.bulkDelete === "function") {
+        await this.simuladoPackages.bulkDelete(deletedIds);
+      } else if (typeof this.simuladoPackages.delete === "function") {
+        await Promise.all(deletedIds.map((id) => this.simuladoPackages.delete(id)));
+      }
+    });
+
+    if (deletedIds.length > 0 && candidateImageUrls.size > 0 && typeof caches !== "undefined") {
+      try {
+        if (this.questions && typeof this.questions.toArray === "function") {
+          const remainingQuestions = await this.questions.toArray();
+          for (const q of remainingQuestions) {
+            for (const url of collectQuestionImageUrls(q)) {
+              candidateImageUrls.delete(url);
+            }
+          }
+        }
+        if (candidateImageUrls.size > 0) {
+          const imgCache = await caches.open(OFFLINE_IMAGE_CACHE);
+          const deletions: Promise<boolean>[] = [];
+          for (const rawUrl of candidateImageUrls) {
+            const fullUrl = rawUrl.startsWith("http")
+              ? rawUrl
+              : `${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+            deletions.push(imgCache.delete(fullUrl));
+            if (fullUrl !== rawUrl) deletions.push(imgCache.delete(rawUrl));
+          }
+          await Promise.allSettled(deletions);
+        }
+      } catch {
+        // Silencia falhas de limpeza de cache em ambientes sem Cache Storage
+      }
+    }
+
+    return deletedIds.length;
+  }
+
+  /**
    * Purga atomicamente pacotes de simulado expirados da tabela simuladoPackages,
-   * liberando espaço no IndexedDB em cenários de saturação ou QuotaExceededError.
+   * liberando espaço no IndexedDB (incluindo questões/imagens órfãs) em cenários de saturação ou QuotaExceededError.
    * Considera expirados registros com expires_at < now ou status === 'expired'.
    *
    * @param now Timestamp de referência opcional (padrão Date.now())
@@ -344,40 +551,40 @@ export class MedQuestDB extends Dexie {
     }
 
     try {
-      return await this.transaction("rw", this.simuladoPackages, async () => {
-        let expiredIds: string[] = [];
+      let expiredIds: string[] = [];
 
-        if (typeof this.simuladoPackages.where === "function") {
-          const [byTimeIds, byStatusIds] = await Promise.all([
-            this.simuladoPackages.where("expires_at").between(1, now, true, true).primaryKeys(),
-            this.simuladoPackages.where("status").equals("expired").primaryKeys(),
-          ]);
-          expiredIds = Array.from(new Set([...byTimeIds, ...byStatusIds])).filter(Boolean) as string[];
-        } else if (typeof this.simuladoPackages.toArray === "function") {
-          const allPkgs = (await this.simuladoPackages.toArray()) as Array<{ id: string; status?: string; expires_at?: number }>;
-          expiredIds = allPkgs
-            .filter((p) => p.status === "expired" || (typeof p.expires_at === "number" && p.expires_at > 0 && p.expires_at <= now))
-            .map((p) => p.id)
-            .filter(Boolean);
+      if (typeof this.simuladoPackages.where === "function") {
+        const [byTimeIds, byStatusIds] = await Promise.all([
+          this.simuladoPackages.where("expires_at").between(1, now, true, true).primaryKeys(),
+          this.simuladoPackages.where("status").equals("expired").primaryKeys(),
+        ]);
+        expiredIds = Array.from(new Set([...byTimeIds, ...byStatusIds])).filter(Boolean) as string[];
+      } else if (typeof this.simuladoPackages.toArray === "function") {
+        const allPkgs = (await this.simuladoPackages.toArray()) as Array<{ id: string; status?: string; expires_at?: number }>;
+        expiredIds = allPkgs
+          .filter((p) => p.status === "expired" || (typeof p.expires_at === "number" && p.expires_at > 0 && p.expires_at <= now))
+          .map((p) => p.id)
+          .filter(Boolean);
+      }
+
+      if (expiredIds.length === 0) {
+        return 0;
+      }
+
+      const purgedCount = await this.deleteSimuladoPackages(expiredIds);
+      if (purgedCount > 0 && typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("simulado-packages-purged", {
+              detail: { count: purgedCount, ids: expiredIds },
+            })
+          );
+        } catch {
+          // Silencia erros de dispatch em ambientes restritos/testes
         }
+      }
 
-        if (expiredIds.length > 0) {
-          await this.simuladoPackages.bulkDelete(expiredIds);
-          if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
-            try {
-              window.dispatchEvent(
-                new CustomEvent("simulado-packages-purged", {
-                  detail: { count: expiredIds.length, ids: expiredIds },
-                })
-              );
-            } catch {
-              // Silencia erros de dispatch em ambientes restritos/testes
-            }
-          }
-        }
-
-        return expiredIds.length;
-      });
+      return purgedCount;
     } catch (err) {
       console.error("[MedQuestDB] Erro ao expurgar pacotes de simulado expirados:", err);
       throw err;

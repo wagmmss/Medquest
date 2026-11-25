@@ -3,7 +3,7 @@
  * Gerencia a fila de requisições falhas com Dexie, idempotência e backoff exponencial com jitter.
  */
 
-import { localDb, SyncItem, getLocalOwnerId } from "./db";
+import { localDb, SyncItem, getLocalOwnerId, isDeviceOffline } from "./db";
 import { broadcastCrossTab } from "./crossTab";
 
 let isInitialized = false;
@@ -11,6 +11,7 @@ let onlineHandler: (() => void) | null = null;
 let visibilityHandler: (() => void) | null = null;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncPromise: Promise<void> | null = null;
+let pendingForcedSync = false;
 let scheduleVersion = 0;
 
 function serializeBody(body: unknown): string | null {
@@ -178,14 +179,35 @@ export const syncManager = {
   },
 
   async sync(force = false): Promise<void> {
-    if (typeof window === "undefined" || !navigator.onLine || !localDb) return;
+    if (typeof window === "undefined" || isDeviceOffline() || !localDb) return;
 
     if (syncPromise) {
+      if (force) pendingForcedSync = true;
       return syncPromise;
     }
 
-    syncPromise = this._doSync(force).finally(() => {
+    const run = async () => {
+      let runForced = force;
+      do {
+        pendingForcedSync = false;
+        const execute = () => this._doSync(runForced);
+        if (typeof navigator !== "undefined" && typeof navigator.locks?.request === "function") {
+          try {
+            await navigator.locks.request("medquest-sync-queue", execute);
+          } catch {
+            // Fallback em ambientes que restringem Web Locks (origens opacas/iframes)
+            await execute();
+          }
+        } else {
+          await execute();
+        }
+        runForced = pendingForcedSync;
+      } while (runForced && !isDeviceOffline());
+    };
+
+    syncPromise = run().finally(() => {
       syncPromise = null;
+      pendingForcedSync = false;
       if (isInitialized) void this.scheduleNextSync();
     });
 
@@ -193,6 +215,7 @@ export const syncManager = {
   },
 
   async _doSync(force = false): Promise<void> {
+    if (isDeviceOffline()) return;
     const uid = getLocalOwnerId();
     const now = Date.now();
 
@@ -215,8 +238,8 @@ export const syncManager = {
     console.log(`[Sync] Sincronizando ${items.length} requisições pendentes...`);
 
     for (const item of items) {
-      // A user may switch accounts while an earlier request is in flight.
-      if (getLocalOwnerId() !== uid) break;
+      // A user may switch accounts or force offline mode while an earlier request is in flight.
+      if (getLocalOwnerId() !== uid || isDeviceOffline()) break;
       try {
         const fetchHeaders: HeadersInit = {
           "Content-Type": item.content_type,
@@ -275,14 +298,21 @@ export const syncManager = {
           }
         }
 
-        // Erros retentáveis: 408 (Request Timeout), 429 (Too Many Requests), >= 500 (Server Error)
+        // Erros retentáveis: 401/403 (sessão expirada durante reconexão aguardando refresh do Clerk),
+        // 408 (Request Timeout), 409 lock em andamento, 429 (Too Many Requests), >= 500 (Server Error)
         let processingConflict = false;
         if (response.status === 409) {
           try {
             processingConflict = (await response.json()).code === "idempotency_processing";
           } catch { /* An unknown conflict remains terminal. */ }
         }
-        const isRetriable = processingConflict || response.status === 408 || response.status === 429 || response.status >= 500;
+        const isRetriable =
+          processingConflict ||
+          response.status === 401 ||
+          response.status === 403 ||
+          response.status === 408 ||
+          response.status === 429 ||
+          response.status >= 500;
 
         if (isRetriable) {
           const newRetryCount = item.retry_count + 1;
@@ -407,6 +437,16 @@ export const syncManager = {
   },
 };
 
-if (typeof window !== "undefined") {
+export function shouldExposeDebugGlobals(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_E2E_EXPOSE_DEBUG === "1" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  );
+}
+
+if (shouldExposeDebugGlobals()) {
   (window as unknown as { syncManager?: typeof syncManager }).syncManager = syncManager;
 }

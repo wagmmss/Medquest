@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Maximize } from "lucide-react";
 import { HIGHLIGHT_MARK_CLASSES, type TextHighlight } from "@/lib/textHighlights";
 
@@ -12,11 +12,33 @@ interface FormattedContentProps {
   onRemoveHighlight?: (id: string) => void;
 }
 
+const SAFE_DATA_IMAGE_RE = /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,/i;
+
+export function sanitizeLinkHref(url: string | null | undefined): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  if (!trimmed) return "#";
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
+  if (trimmed.startsWith("#")) return trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "mailto:") {
+      return parsed.href;
+    }
+  } catch {
+    return "#";
+  }
+  return "#";
+}
+
 export function normalizeImageSrc(url: string | null | undefined): string {
   if (!url) return "";
   let src = url.trim();
-  if (src.startsWith("data:") || src.startsWith("blob:")) {
+  if (src.startsWith("blob:") || SAFE_DATA_IMAGE_RE.test(src)) {
     return src;
+  }
+  if (/^data:/i.test(src)) {
+    return "";
   }
   src = src.replace(/^\/api\/images\/images\//, "/api/images/");
   // The database has both `images/file.png` and `/images/file.png` records.
@@ -225,10 +247,15 @@ function renderInline(
     // 3. Link: [text](url)
     const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
     if (linkMatch) {
+      const safeHref = sanitizeLinkHref(linkMatch[2]);
+      const safeIsUntrusted = safeHref === "#" && linkMatch[2].trim() !== "#";
+      if (safeIsUntrusted) {
+        return <span key={idx}>{renderInline(linkMatch[1], onImageClick, depth + 1)}</span>;
+      }
       return (
         <a 
           key={idx} 
-          href={linkMatch[2]} 
+          href={safeHref} 
           target="_blank" 
           rel="noopener noreferrer" 
           className="text-primary underline hover:text-primary/80 transition-colors"
@@ -418,7 +445,7 @@ export function preprocessMarkdown(content: string): string {
 
   // Rehydrate locked tokens
   for (let i = 0; i < lockedTokens.length; i++) {
-    raw = raw.replace(`__MQ_LOCK_${i}__`, lockedTokens[i]);
+    raw = raw.replace(`__MQ_LOCK_${i}__`, () => lockedTokens[i]);
   }
 
   // 9. Normalize distractor letter header spacing if preceding content was stripped
@@ -541,14 +568,15 @@ function applyHighlightsToNode(
 /**
  * Robust markdown block parser supporting tables (Katomart-style), headings, lists, quotes, and paragraphs.
  */
-export function FormattedContent({
+export const FormattedContent = React.memo(function FormattedContent({
   content,
   className = "",
   onImageClick,
   highlights,
   onRemoveHighlight,
 }: FormattedContentProps) {
-  if (!content) return null;
+  const renderedBlocks = useMemo(() => {
+    if (!content) return null;
 
   const raw = preprocessMarkdown(content);
   const lines = raw.split("\n");
@@ -821,10 +849,12 @@ export function FormattedContent({
   flushList();
   flushTable();
 
-  const renderedBlocks =
-    highlights && highlights.length > 0
+    return highlights && highlights.length > 0
       ? applyHighlightsToNode(blocks, highlights, { offset: 0 }, onRemoveHighlight)
       : blocks;
+  }, [content, onImageClick, highlights, onRemoveHighlight]);
+
+  if (!renderedBlocks) return null;
 
   return <div className={`space-y-3 text-justify ${className}`}>{renderedBlocks}</div>;
-}
+});

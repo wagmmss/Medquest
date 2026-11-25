@@ -191,7 +191,7 @@ test.describe('Radar Comparativo de Bancas no Dashboard Analítico (/analise)', 
     const table = page.locator('table[role="table"]');
     await expect(table).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Grande Área' })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Intervalo de Incerteza (95% CI)' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Incerteza (95% CI)' })).toBeVisible();
     await expect(table.getByRole('rowheader', { name: 'Clínica Médica' })).toBeVisible();
     await expect(table.locator('text=[39% – 86%]')).toBeVisible();
     await expect(table.locator('text=Amostra Insuficiente (12 tent.)')).toBeVisible();

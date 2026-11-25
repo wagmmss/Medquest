@@ -23,3 +23,9 @@ htmlcov/
 tests/
 test_*.py
 test_*.json
+data/medway_extracted/
+data/audit_checkpoints/
+data/*.pid
+data/*_status.json
+data/*.log
+data/all_medway_exams_raw.json

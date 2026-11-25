@@ -6,7 +6,41 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
+from ..cache import SimpleTTLCache, catalog_cache_enabled, db_cache_scope
 from ..edital_profiles import resolve_institution_codes
+
+_focus_radar_catalog_cache = SimpleTTLCache(21600)
+
+
+def _get_cached_focus_subtemas(db, institution: str, inst_codes: list[str]) -> list[tuple[str, str, int]]:
+    use_cache = catalog_cache_enabled()
+    cache_key = (institution or "__all__", db_cache_scope())
+    if use_cache:
+        cached = _focus_radar_catalog_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+    where_q = "q.missing_alts = 0 AND q.area IS NOT NULL AND q.area != '' AND q.subtema IS NOT NULL AND q.subtema != ''"
+    params_q: list[object] = []
+    if inst_codes:
+        placeholders = ",".join("?" * len(inst_codes))
+        where_q += f" AND q.institution_code IN ({placeholders})"
+        params_q.extend(inst_codes)
+
+    rows = db.execute(
+        f"""
+        SELECT q.area, q.subtema, COUNT(*) AS available
+        FROM questions q
+        WHERE {where_q}
+        GROUP BY q.area, q.subtema
+        ORDER BY available DESC, q.area ASC, q.subtema ASC
+        """,
+        params_q,
+    ).fetchall()
+    result = [(r["area"], r["subtema"], int(r["available"] or 0)) for r in rows]
+    if use_cache:
+        _focus_radar_catalog_cache.set(cache_key, result)
+    return result
 
 
 def build_focus_radar(
@@ -17,23 +51,7 @@ def build_focus_radar(
 ) -> dict:
     """Calcula domínio de focos por prevalência (prioritario, alta, media) para uma banca."""
     inst_codes = resolve_institution_codes(institution) if institution else []
-    where_q = "q.missing_alts = 0 AND q.area IS NOT NULL AND q.area != '' AND q.subtema IS NOT NULL AND q.subtema != ''"
-    params_q: list[object] = []
-    if inst_codes:
-        placeholders = ",".join("?" * len(inst_codes))
-        where_q += f" AND q.institution_code IN ({placeholders})"
-        params_q.extend(inst_codes)
-
-    q_rows = db.execute(
-        f"""
-        SELECT q.area, q.subtema, COUNT(*) AS available
-        FROM questions q
-        WHERE {where_q}
-        GROUP BY q.area, q.subtema
-        ORDER BY available DESC, q.area ASC, q.subtema ASC
-        """,
-        params_q,
-    ).fetchall()
+    q_rows = _get_cached_focus_subtemas(db, institution, inst_codes)
 
     if not q_rows:
         return {
@@ -91,10 +109,7 @@ def build_focus_radar(
     priority_mastered = 0
     total_mastered = 0
 
-    for idx, row in enumerate(q_rows):
-        area = row["area"]
-        subtema = row["subtema"]
-        available = int(row["available"] or 0)
+    for idx, (area, subtema, available) in enumerate(q_rows):
         if idx < priority_cutoff:
             tier = "prioritario"
         elif idx < high_cutoff:

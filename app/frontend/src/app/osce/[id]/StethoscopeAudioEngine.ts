@@ -19,6 +19,8 @@ export class StethoscopeAudioEngine {
   private isPlaying: boolean = false;
   private loopTimer: number | null = null;
   private masterGain: GainNode | null = null;
+  private activeNodes: Set<AudioScheduledSourceNode> = new Set();
+  private noiseBuffers: Map<string, AudioBuffer> = new Map();
 
   private initContext() {
     if (!this.ctx) {
@@ -30,23 +32,41 @@ export class StethoscopeAudioEngine {
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 0.85;
       this.masterGain.connect(this.ctx.destination);
+      this.noiseBuffers.clear();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
   }
 
+  private trackSource(node: AudioScheduledSourceNode) {
+    this.activeNodes.add(node);
+    node.onended = () => {
+      this.activeNodes.delete(node);
+      try {
+        node.disconnect();
+      } catch {
+        // Nó já desconectado
+      }
+    };
+  }
+
   /**
-   * Gera um buffer de ruído branco para síntese subtrativa (sopros, murmúrio e crepitações)
+   * Gera ou reutiliza um buffer de ruído branco para síntese subtrativa (sopros, murmúrio e crepitações)
    */
   private createWhiteNoiseBuffer(durationSec: number): AudioBuffer | null {
     if (!this.ctx) return null;
+    const key = `${this.ctx.sampleRate}:${durationSec.toFixed(3)}`;
+    const cached = this.noiseBuffers.get(key);
+    if (cached) return cached;
+
     const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * durationSec));
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
       data[i] = Math.random() * 2 - 1;
     }
+    this.noiseBuffers.set(key, buffer);
     return buffer;
   }
 
@@ -70,6 +90,7 @@ export class StethoscopeAudioEngine {
       osc.connect(gain);
       gain.connect(this.masterGain);
 
+      this.trackSource(osc);
       osc.start(time);
       osc.stop(time + duration);
     } catch {
@@ -121,7 +142,9 @@ export class StethoscopeAudioEngine {
             noise.connect(filter);
             filter.connect(env);
             env.connect(this.masterGain);
+            this.trackSource(noise);
             noise.start(now + 0.04);
+            noise.stop(now + systoleDuration + 0.02);
           }
         }
 
@@ -142,7 +165,9 @@ export class StethoscopeAudioEngine {
               rubNoise.connect(bandpass);
               bandpass.connect(g);
               g.connect(this.masterGain);
+              this.trackSource(rubNoise);
               rubNoise.start(now + offset);
+              rubNoise.stop(now + offset + 0.08);
             }
           });
         }
@@ -179,16 +204,18 @@ export class StethoscopeAudioEngine {
           mvSource.connect(lowpass);
           lowpass.connect(mvGain);
           mvGain.connect(this.masterGain);
+          this.trackSource(mvSource);
           mvSource.start(now);
+          mvSource.stop(now + breathCycleSec);
         }
 
         if (soundType === 'COARSE_CRACKLES') {
           // Estertores Crepitantes Teleinspiratórios (micro-impulsos explosivos de 6ms no terço final da inspiração)
           const crackleStart = now + inspDuration * 0.55;
           const numCrackles = 14;
+          const popBuffer = this.createWhiteNoiseBuffer(0.006);
           for (let i = 0; i < numCrackles; i++) {
             const popTime = crackleStart + Math.random() * (inspDuration * 0.42);
-            const popBuffer = this.createWhiteNoiseBuffer(0.006);
             if (popBuffer && this.ctx && this.masterGain) {
               const pop = this.ctx.createBufferSource();
               pop.buffer = popBuffer;
@@ -202,7 +229,9 @@ export class StethoscopeAudioEngine {
               pop.connect(hp);
               hp.connect(popGain);
               popGain.connect(this.masterGain);
+              this.trackSource(pop);
               pop.start(popTime);
+              pop.stop(popTime + 0.008);
             }
           }
         }
@@ -230,6 +259,7 @@ export class StethoscopeAudioEngine {
             wheezeOsc.connect(wf);
             wf.connect(wg);
             wg.connect(this.masterGain);
+            this.trackSource(wheezeOsc);
             wheezeOsc.start(expStart);
             wheezeOsc.stop(expStart + expDuration * 0.88);
           });
@@ -247,10 +277,26 @@ export class StethoscopeAudioEngine {
       clearInterval(this.loopTimer);
       this.loopTimer = null;
     }
+    for (const node of this.activeNodes) {
+      try {
+        node.onended = null;
+        node.stop();
+      } catch {
+        // Nó já encerrado
+      }
+      try {
+        node.disconnect();
+      } catch {
+        // Ignora
+      }
+    }
+    this.activeNodes.clear();
   }
 
   public destroy() {
     this.stopAuscultation();
+    this.noiseBuffers.clear();
+    this.masterGain = null;
     if (this.ctx && this.ctx.state !== 'closed') {
       this.ctx.close().catch(() => {});
       this.ctx = null;

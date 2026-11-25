@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import logging
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, abort, g, jsonify, request
 
 from . import osce
 from .auth import require_auth
-from .db import get_db, db_transaction
-from .idempotency import complete_idempotency, fail_idempotency, reserve_idempotency
+from .db import get_db
+from .idempotency import idempotent
+from .rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,17 @@ bp = Blueprint("osce", __name__)
 
 
 def _resolve_user_id() -> str:
-    return getattr(g, "user_id", "1")
+    uid = str(getattr(g, "user_id", "") or "").strip()
+    if not uid:
+        abort(401)
+    return uid
+
+
+def _json_dict() -> dict | None:
+    raw = request.get_json(silent=True)
+    if raw is None:
+        return {}
+    return raw if isinstance(raw, dict) else None
 
 
 def _parse_elapsed_seconds(val: object) -> int:
@@ -34,8 +45,8 @@ def list_stations():
     db = get_db()
     user_id = _resolve_user_id()
 
-    # Garante que as estações canônicas estejam inicializadas
-    osce.seed_osce_stations(db)
+    # Garante estações canônicas sem disparar escrita em todo GET
+    osce.ensure_osce_stations_seeded(db)
 
     area = request.args.get("area")
     institution = request.args.get("institution")
@@ -65,72 +76,60 @@ def get_station_details(station_id: int):
 
 @bp.route("/osce/sessions/start", methods=["POST"])
 @require_auth
+@idempotent(user_resolver=_resolve_user_id)
 def start_session():
     db = get_db()
     user_id = _resolve_user_id()
-    raw_payload = request.get_data()
-    cached_resp, err_resp, lease_token = reserve_idempotency(
-        db, user_id, request.path, request.method, raw_payload
-    )
-    if cached_resp is not None:
-        return cached_resp
-    if err_resp is not None:
-        return err_resp
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
+    raw_station_id = body.get("station_id")
+    circuit_session_id = body.get("circuit_session_id")
+    mode = body.get("mode", "blind")
+
+    if raw_station_id is None:
+        return jsonify({"error": "station_id é obrigatório"}), 400
 
     try:
-        body = request.get_json(silent=True) or {}
-        raw_station_id = body.get("station_id")
-        circuit_session_id = body.get("circuit_session_id")
-        mode = body.get("mode", "blind")
+        station_id = int(raw_station_id)
+        if station_id <= 0:
+            return jsonify({"error": "station_id deve ser um número inteiro positivo"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "station_id deve ser um número inteiro válido"}), 400
 
-        if raw_station_id is None:
-            if lease_token:
-                fail_idempotency(db, user_id, lease_token)
-            return jsonify({"error": "station_id é obrigatório"}), 400
-
-        try:
-            station_id = int(raw_station_id)
-            if station_id <= 0:
-                if lease_token:
-                    fail_idempotency(db, user_id, lease_token)
-                return jsonify({"error": "station_id deve ser um número inteiro positivo"}), 400
-        except (ValueError, TypeError):
-            if lease_token:
-                fail_idempotency(db, user_id, lease_token)
-            return jsonify({"error": "station_id deve ser um número inteiro válido"}), 400
-
-        try:
-            session = osce.start_osce_session(
-                db=db,
-                station_id=station_id,
-                user_id=user_id,
-                circuit_session_id=circuit_session_id,
-                mode=mode
-            )
-            if lease_token:
-                with db_transaction(db, immediate=True):
-                    complete_idempotency(db, user_id, 201, session, lease_token)
-            return jsonify(session), 201
-        except ValueError as e:
-            if lease_token:
-                fail_idempotency(db, user_id, lease_token)
-            return jsonify({"error": str(e)}), 404
-    except Exception:
-        if lease_token:
-            fail_idempotency(db, user_id, lease_token)
-        raise
+    try:
+        session = osce.start_osce_session(
+            db=db,
+            station_id=station_id,
+            user_id=user_id,
+            circuit_session_id=circuit_session_id,
+            mode=mode,
+        )
+        return jsonify(session), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
 
 
 @bp.route("/osce/sessions/<session_id>/interact", methods=["POST"])
 @require_auth
 def interact_session(session_id: str):
-    db = get_db()
     user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
+    rl_resp = check_rate_limit("osce_interact", auth_limit=45, guest_limit=15, window_seconds=60)
+    if rl_resp is not None:
+        return rl_resp
 
-    message = (body.get("message") or body.get("utterance") or "").strip()
+    db = get_db()
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
+
+    raw_msg = body.get("message") or body.get("utterance") or ""
+    message = raw_msg.strip()[:1500] if isinstance(raw_msg, str) else ""
     target = body.get("target", "PATIENT")
-    current_vitals = body.get("current_vitals")
+    if not isinstance(target, str):
+        target = "PATIENT"
+    raw_vitals = body.get("current_vitals")
+    current_vitals = raw_vitals if isinstance(raw_vitals, dict) else None
     elapsed_seconds = _parse_elapsed_seconds(body.get("elapsed_seconds"))
 
     if not message:
@@ -155,11 +154,18 @@ def interact_session(session_id: str):
 @require_auth
 def dispatch_speech(session_id: str):
     """Dispatcher unificado de voz para modo Hands-Free de alta fidelidade."""
-    db = get_db()
     user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
+    rl_resp = check_rate_limit("osce_dispatch", auth_limit=45, guest_limit=15, window_seconds=60)
+    if rl_resp is not None:
+        return rl_resp
 
-    message = body.get("message", "").strip()
+    db = get_db()
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
+
+    raw_msg = body.get("message", "")
+    message = raw_msg.strip()[:1500] if isinstance(raw_msg, str) else ""
     elapsed_seconds = _parse_elapsed_seconds(body.get("elapsed_seconds"))
 
     if not message:
@@ -184,10 +190,14 @@ def dispatch_speech(session_id: str):
 def execute_action(session_id: str):
     db = get_db()
     user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
 
-    action_type = body.get("action_type", "").strip()
-    action_target = body.get("action_target", "").strip()
+    raw_type = body.get("action_type", "")
+    raw_target = body.get("action_target", "")
+    action_type = raw_type.strip()[:64] if isinstance(raw_type, str) else ""
+    action_target = raw_target.strip()[:120] if isinstance(raw_target, str) else ""
     elapsed_seconds = _parse_elapsed_seconds(body.get("elapsed_seconds"))
 
     if not action_type or not action_target:
@@ -209,41 +219,30 @@ def execute_action(session_id: str):
 
 @bp.route("/osce/sessions/<session_id>/finish", methods=["POST"])
 @require_auth
+@idempotent(user_resolver=_resolve_user_id)
 def finish_session(session_id: str):
-    db = get_db()
     user_id = _resolve_user_id()
-    raw_payload = request.get_data()
-    cached_resp, err_resp, lease_token = reserve_idempotency(
-        db, user_id, request.path, request.method, raw_payload
-    )
-    if cached_resp is not None:
-        return cached_resp
-    if err_resp is not None:
-        return err_resp
+    rl_resp = check_rate_limit("osce_finish", auth_limit=20, guest_limit=6, window_seconds=60)
+    if rl_resp is not None:
+        return rl_resp
+
+    db = get_db()
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
+    raw_notes = body.get("conduct_notes")
+    conduct_notes = raw_notes[:4000] if isinstance(raw_notes, str) else None
 
     try:
-        body = request.get_json(silent=True) or {}
-        conduct_notes = body.get("conduct_notes")
-
-        try:
-            result = osce.finish_osce_session(
-                db=db,
-                session_id=session_id,
-                user_id=user_id,
-                conduct_notes=conduct_notes
-            )
-            if lease_token:
-                with db_transaction(db, immediate=True):
-                    complete_idempotency(db, user_id, 200, result, lease_token)
-            return jsonify(result)
-        except ValueError as e:
-            if lease_token:
-                fail_idempotency(db, user_id, lease_token)
-            return jsonify({"error": str(e)}), 404
-    except Exception:
-        if lease_token:
-            fail_idempotency(db, user_id, lease_token)
-        raise
+        result = osce.finish_osce_session(
+            db=db,
+            session_id=session_id,
+            user_id=user_id,
+            conduct_notes=conduct_notes,
+        )
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
 
 
 @bp.route("/osce/sessions/<session_id>/report", methods=["GET"])
@@ -278,7 +277,9 @@ def prescribe_drugs(session_id: str):
     """Assina e processa uma prescrição médica estruturada na sala de emergência."""
     db = get_db()
     user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
 
     prescription_items = body.get("prescription", [])
     elapsed_seconds = _parse_elapsed_seconds(body.get("elapsed_seconds"))
@@ -305,10 +306,14 @@ def perform_procedure(session_id: str):
     """Executa um procedimento invasivo ou varredura ultrassonográfica E-FAST no manequim 2D."""
     db = get_db()
     user_id = _resolve_user_id()
-    body = request.get_json(silent=True) or {}
+    body = _json_dict()
+    if body is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
 
-    procedure_type = body.get("procedure_type", "").strip()
-    anatomical_site = body.get("anatomical_site", "").strip()
+    raw_proc = body.get("procedure_type", "")
+    raw_site = body.get("anatomical_site", "")
+    procedure_type = raw_proc.strip()[:64] if isinstance(raw_proc, str) else ""
+    anatomical_site = raw_site.strip()[:64] if isinstance(raw_site, str) else ""
     elapsed_seconds = _parse_elapsed_seconds(body.get("elapsed_seconds"))
 
     if not procedure_type or not anatomical_site:
@@ -343,6 +348,8 @@ def get_session_live_feedback(session_id: str):
             user_id=user_id,
             elapsed_seconds=elapsed_seconds
         )
+        if feedback.get("mode") != "guided":
+            return jsonify({"error": "Feedback ao vivo indisponível em modo prova cega."}), 403
         return jsonify(feedback)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
@@ -352,7 +359,7 @@ def get_session_live_feedback(session_id: str):
 def get_circuit_plan():
     """Retorna o plano ordenado de 5 estações do circuito misto de treino cobrindo as 5 especialidades."""
     db = get_db()
-    osce.seed_osce_stations(db)
+    osce.ensure_osce_stations_seeded(db)
     institution = request.args.get("institution", "USP-RP")
     user_id = _resolve_user_id()
     plan = osce.get_circuit_plan(db, institution=institution, user_id=user_id)

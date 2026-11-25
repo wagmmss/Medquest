@@ -65,11 +65,12 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
     await page.reload();
 
     // Tentar iniciar sem rede
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await expect(page.locator('button:has-text("Iniciar Simulado")')).toBeVisible({ timeout: 10000 });
     await page.click('button:has-text("Iniciar Simulado")');
 
     // Deve bloquear e permanecer na tela START
-    await expect(page.locator('h2:has-text("Novo Simulado"), h2:has-text("Simulado Personalizado")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h2:has-text("Monte seu Simulado Sob Medida")')).toBeVisible({ timeout: 5000 });
   });
 
   test('rejeita pacote expirado após validade de 30 dias', async ({ page }) => {
@@ -120,11 +121,12 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
     await page.reload();
 
     // Tentar iniciar offline
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await expect(page.locator('button:has-text("Iniciar Simulado")')).toBeVisible({ timeout: 10000 });
     await page.click('button:has-text("Iniciar Simulado")');
 
     // Deve bloquear início
-    await expect(page.locator('h2:has-text("Novo Simulado"), h2:has-text("Simulado Personalizado")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h2:has-text("Monte seu Simulado Sob Medida")')).toBeVisible({ timeout: 5000 });
   });
 
   test('garante isolamento multiusuário de pacotes offline', async ({ page }) => {
@@ -398,9 +400,9 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
 
     await page.reload();
 
-    // 2. Clica em Continuar Andamento e confirma exibição da tela de Simulado Salvo Offline
-    await expect(page.locator('button:has-text("Continuar Andamento")')).toBeVisible({ timeout: 10000 });
-    await page.click('button:has-text("Continuar Andamento")');
+    // 2. Clica em Retomar Simulado e confirma exibição da tela de Simulado Salvo Offline
+    await expect(page.locator('button:has-text("Retomar Simulado")')).toBeVisible({ timeout: 10000 });
+    await page.click('button:has-text("Retomar Simulado")');
     await expect(page.locator('text=Simulado Salvo Offline')).toBeVisible({ timeout: 10000 });
 
     // 3. Dispara evento sync-item-success com os resultados corrigidos
@@ -433,7 +435,7 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
     // 5. Aguarda 2 segundos para garantir que nenhum temporizador ou checkAndSync residual reverta para START
     await page.waitForTimeout(2000);
     await expect(page.locator('text=Nota Final')).toBeVisible();
-    await expect(page.locator('h2:has-text("Novo Simulado")')).not.toBeVisible();
+    await expect(page.locator('h1:has-text("Simulados Oficiais")')).not.toBeVisible();
   });
 
   test('P1-02: sync de tentativa avulsa não tira simulado de OFFLINE_SUBMITTED; apenas o lote do próprio queueId leva a RESULTS', async ({ page }) => {

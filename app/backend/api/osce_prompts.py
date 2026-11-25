@@ -5,17 +5,25 @@ import json
 from typing import Any
 
 
+def _safe_vital_int(vitals: dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
+    try:
+        val = int(float(vitals.get(key, default) if vitals.get(key) is not None else default))
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, val))
+
+
 def get_hemodynamic_speech_modifier(vitals: dict[str, Any] | None) -> str:
     """Modula a capacidade fonatória e cognitiva do paciente com base nos sinais vitais reais."""
-    if not vitals:
+    if not isinstance(vitals, dict) or not vitals:
         return "FONAÇÃO PRESERVADA: Você consegue falar frases completas, mantendo o tom emocional compatível com sua dor."
 
     modifiers = []
-    gcs = int(vitals.get("gcs", 15) or 15)
-    spo2 = int(vitals.get("spo2", 98) or 98)
-    rr = int(vitals.get("rr", 16) or 16)
-    hr = int(vitals.get("hr", 80) or 80)
-    sbp = int(vitals.get("sbp", 120) or 120)
+    gcs = _safe_vital_int(vitals, "gcs", 15, 3, 15)
+    spo2 = _safe_vital_int(vitals, "spo2", 98, 40, 100)
+    rr = _safe_vital_int(vitals, "rr", 16, 4, 60)
+    hr = _safe_vital_int(vitals, "hr", 80, 20, 250)
+    sbp = _safe_vital_int(vitals, "sbp", 120, 30, 300)
 
     if gcs <= 8:
         return (
@@ -52,11 +60,17 @@ def build_patient_system_prompt(persona: dict[str, Any], current_vitals: dict[st
     """Constrói o prompt clínico do Paciente Virtual com Information Gating e Fisiologia Fonatória."""
     speech_modifier = get_hemodynamic_speech_modifier(current_vitals)
     vitals_str = ""
-    if current_vitals:
+    if isinstance(current_vitals, dict) and current_vitals:
+        sbp = _safe_vital_int(current_vitals, "sbp", 120, 30, 300)
+        dbp = _safe_vital_int(current_vitals, "dbp", 80, 20, 200)
+        hr = _safe_vital_int(current_vitals, "hr", 80, 20, 250)
+        rr = _safe_vital_int(current_vitals, "rr", 16, 4, 60)
+        spo2 = _safe_vital_int(current_vitals, "spo2", 98, 40, 100)
+        gcs = _safe_vital_int(current_vitals, "gcs", 15, 3, 15)
         vitals_str = (
-            f"SINAIS VITAIS ATUAIS: PA {current_vitals.get('sbp', 120)}/{current_vitals.get('dbp', 80)} mmHg | "
-            f"FC {current_vitals.get('hr', 80)} bpm | FR {current_vitals.get('rr', 16)} irpm | "
-            f"SpO2 {current_vitals.get('spo2', 98)}% | GCS {current_vitals.get('gcs', 15)}."
+            f"SINAIS VITAIS ATUAIS: PA {sbp}/{dbp} mmHg | "
+            f"FC {hr} bpm | FR {rr} irpm | "
+            f"SpO2 {spo2}% | GCS {gcs}."
         )
 
     actor_script = persona.get("actor_script") or {}

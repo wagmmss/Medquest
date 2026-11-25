@@ -200,8 +200,8 @@ test.describe('Prontidão de Prova Bayesiana por Edital', () => {
     // 1. Confirma renderização do cabeçalho da seção
     await expect(page.locator('h2:has-text("Prontidão Estimada por Edital")')).toBeVisible({ timeout: 15000 });
 
-    // 2. Seleciona o edital USP-SP para disparar fetch com os dados mockados
-    const select = page.locator('select[aria-label="Selecionar edital da instituição"]');
+    // 2. Seleciona a banca-alvo USP-SP para disparar fetch com os dados mockados
+    const select = page.locator('select[aria-label="Selecionar banca-alvo da análise"]');
     await expect(select).toBeVisible();
     await select.selectOption('USP-SP');
 
@@ -232,7 +232,7 @@ test.describe('Prontidão de Prova Bayesiana por Edital', () => {
 
     // Com evidência em formação, pontuação e intervalo voltam a aparecer.
     evidenceStatus = 'forming';
-    await select.selectOption('');
+    await select.selectOption('UNICAMP');
     await expect(section.locator('text=68%')).toBeVisible();
     await expect(section.locator('text=[54% – 81%]')).toBeVisible();
 

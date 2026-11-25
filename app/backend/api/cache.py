@@ -1,6 +1,21 @@
 """Cache em memória com TTL e invalidação segura por usuário."""
+import os
 import time
 from threading import Lock
+
+
+def db_cache_scope() -> str:
+    """Identifica o escopo de banco ativo para evitar colisão de cache entre bancos."""
+    return os.environ.get("MEDQUEST_DB") or os.environ.get("TURSO_DATABASE_URL") or "default"
+
+
+def catalog_cache_enabled() -> bool:
+    """Desabilita cache longo do catálogo estático durante testes automatizados."""
+    try:
+        from flask import current_app, has_app_context
+        return not (has_app_context() and current_app.config.get("TESTING", False))
+    except ImportError:
+        return True
 
 
 class SimpleTTLCache:

@@ -6,40 +6,51 @@ from urllib.parse import quote
 
 from .adaptive import fsrs_metrics, _utc, _due
 from .filters import get_user_target_institutions
-from .services.planner import USP_WEIGHTS, get_normalized_area
+from .services.planner import USP_WEIGHTS
+from .services.taxonomy import expand_area_aliases as _expand_area_aliases, get_normalized_area
 
 
-def calculate_blindspots(db, user_id: str, limit: int = 6) -> Dict[str, Any]:
+def calculate_blindspots(
+    db,
+    user_id: str,
+    limit: int = 6,
+    area: Optional[str] = None,
+    preloaded_fsrs_rows: Optional[list] = None,
+) -> Dict[str, Any]:
     """Calcula os pontos cegos multidimensionais do aluno e métricas de cura."""
     limit = max(1, min(limit, 20))
     now = datetime.now(timezone.utc)
-    now_iso = now.isoformat()
+    area_aliases = _expand_area_aliases(area)
+    area_sql_filter = ""
+    area_params: list[str] = []
+    if area_aliases:
+        area_sql_filter = f" AND q.area IN ({','.join('?' * len(area_aliases))})"
+        area_params = area_aliases
 
     # 1. Obter histórico agrupado por questão para identificar resolvidas vs pendentes
     # Uma questão é considerada "curada" se tem pelo menos um erro no passado e o último é acerto.
     # Uma questão é considerada "não resolvida" se a última tentativa for erro.
+    curation_join = "JOIN questions q ON q.id = a.question_id" if area_sql_filter else ""
     curation_rows = db.execute(
-        """
+        f"""
         WITH ranked_attempts AS (
             SELECT
+                a.id,
                 a.question_id,
                 a.is_correct,
-                a.selected_letter,
-                a.answered_at,
                 ROW_NUMBER() OVER (PARTITION BY a.question_id ORDER BY a.id DESC) as rn
             FROM attempts a
-            WHERE a.user_id = ?
+            {curation_join}
+            WHERE a.user_id = ? {area_sql_filter}
         ),
         question_summary AS (
             SELECT
-                a.question_id,
-                MAX(CASE WHEN ra.rn = 1 THEN ra.is_correct END) AS latest_is_correct,
-                SUM(CASE WHEN a.is_correct = 0 THEN 1 ELSE 0 END) AS total_wrongs,
-                COUNT(a.id) AS total_attempts
-            FROM attempts a
-            JOIN ranked_attempts ra ON ra.question_id = a.question_id
-            WHERE a.user_id = ?
-            GROUP BY a.question_id
+                question_id,
+                MAX(CASE WHEN rn = 1 THEN is_correct END) AS latest_is_correct,
+                SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) AS total_wrongs,
+                COUNT(id) AS total_attempts
+            FROM ranked_attempts
+            GROUP BY question_id
         )
         SELECT
             COUNT(CASE WHEN latest_is_correct = 0 THEN 1 END) AS unresolved_count,
@@ -47,7 +58,7 @@ def calculate_blindspots(db, user_id: str, limit: int = 6) -> Dict[str, Any]:
             COUNT(*) AS total_unique_answered
         FROM question_summary
         """,
-        (user_id, user_id),
+        (user_id, *area_params),
     ).fetchone()
 
     unresolved_total = int(curation_rows["unresolved_count"] or 0) if curation_rows else 0
@@ -63,7 +74,7 @@ def calculate_blindspots(db, user_id: str, limit: int = 6) -> Dict[str, Any]:
 
     # 2. Dados por subtema: tentativas, acertos, erros não resolvidos
     subtema_rows = db.execute(
-        """
+        f"""
         WITH latest_attempts AS (
             SELECT
                 question_id,
@@ -83,11 +94,11 @@ def calculate_blindspots(db, user_id: str, limit: int = 6) -> Dict[str, Any]:
         FROM attempts a
         JOIN questions q ON q.id = a.question_id
         LEFT JOIN latest_attempts la ON la.question_id = q.id AND la.rn = 1
-        WHERE a.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+        WHERE a.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL {area_sql_filter}
         GROUP BY COALESCE(NULLIF(q.subtema, ''), q.topic)
         HAVING wrong_count > 0 OR unresolved_count > 0
         """,
-        (user_id, user_id),
+        (user_id, user_id, *area_params),
     ).fetchall()
 
     if not subtema_rows:
@@ -102,21 +113,28 @@ def calculate_blindspots(db, user_id: str, limit: int = 6) -> Dict[str, Any]:
             "blindspots": [],
         }
 
-    # 3. Mapear FSRS por subtema
-    fsrs_rows = db.execute(
-        """
-        SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS subtema,
-               sr.fsrs_card, sr.next_review_date
-        FROM spaced_repetition sr
-        JOIN questions q ON q.id = sr.question_id
-        WHERE sr.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-        """,
-        (user_id,),
-    ).fetchall()
+    # 3. Mapear FSRS por subtema (reaproveita rows pré-carregadas quando disponível)
+    if preloaded_fsrs_rows is not None:
+        fsrs_rows = preloaded_fsrs_rows
+    else:
+        fsrs_rows = db.execute(
+            """
+            SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS subtema,
+                   sr.fsrs_card, sr.next_review_date
+            FROM spaced_repetition sr
+            JOIN questions q ON q.id = sr.question_id
+            WHERE sr.user_id = ? AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+            """,
+            (user_id,),
+        ).fetchall()
 
     fsrs_by_subtema: Dict[str, Dict[str, Any]] = {}
     for r in fsrs_rows:
-        sub = r["subtema"]
+        sub = r.get("subtema") if isinstance(r, dict) else r["subtema"]
+        if not sub:
+            sub = r.get("topic") if isinstance(r, dict) else None
+        if not sub:
+            continue
         bucket = fsrs_by_subtema.setdefault(sub, {"retrievabilities": [], "cards_due": 0})
         metrics = fsrs_metrics(r["fsrs_card"], now)
         if metrics["retrievability"] is not None:
@@ -276,23 +294,24 @@ def generate_remediation_queue(
     if subtema:
         target_subtemas = [subtema]
     else:
-        # Se nenhum subtema específico for passado, extrair os top pontos cegos do usuário
-        bs_data = calculate_blindspots(db, user_id, limit=5)
+        # Se nenhum subtema específico for passado, extrair os top pontos cegos da área/usuário
+        bs_data = calculate_blindspots(db, user_id, limit=5, area=area)
         target_subtemas = [b["subtema"] for b in bs_data["blindspots"] if b.get("subtema")]
+
+    area_aliases = _expand_area_aliases(area) if area else []
+    area_filter_clause = f" AND q.area IN ({','.join('?' * len(area_aliases))})" if area_aliases else ""
 
     # Se ainda assim não houver subtemas (aluno sem erros), seleciona subtemas gerais de maior peso
     if not target_subtemas:
-        area_filter = f"AND q.area = ?" if area else ""
-        area_param = [area] if area else []
         fallback_rows = db.execute(
             f"""
             SELECT DISTINCT COALESCE(NULLIF(q.subtema, ''), q.topic) as subtema
             FROM questions q
             WHERE q.missing_alts = 0 AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-            {area_filter}
+            {area_filter_clause}
             LIMIT 5
             """,
-            area_param,
+            area_aliases,
         ).fetchall()
         target_subtemas = [r["subtema"] for r in fallback_rows if r["subtema"]]
 
@@ -335,10 +354,11 @@ def generate_remediation_queue(
         WHERE q.missing_alts = 0
           AND la.is_correct = 0
           AND COALESCE(NULLIF(q.subtema, ''), q.topic) IN ({subtemas_placeholders})
+          {area_filter_clause}
         ORDER BY {order_unresolved}
         LIMIT ?
         """,
-        [user_id, *target_subtemas, *inst_params, unresolved_quota],
+        [user_id, *target_subtemas, *area_aliases, *inst_params, unresolved_quota],
     ).fetchall()
 
     queue_items = [dict(r) for r in unresolved_rows]
@@ -359,12 +379,13 @@ def generate_remediation_queue(
             FROM questions q
             WHERE q.missing_alts = 0
               AND COALESCE(NULLIF(q.subtema, ''), q.topic) IN ({subtemas_placeholders})
+              {area_filter_clause}
               AND q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
               {exclude_selected_clause}
             ORDER BY {order_twin}
             LIMIT ?
             """,
-            [*target_subtemas, user_id, *selected_params, *inst_params, needed],
+            [*target_subtemas, *area_aliases, user_id, *selected_params, *inst_params, needed],
         ).fetchall()
 
         for r in twin_rows:

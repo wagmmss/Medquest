@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   OscePhysiologyVitals,
   OscePhysiologyEngineConfig,
@@ -87,16 +87,87 @@ function parseFallbackVitals(vitals?: Record<string, string> | null): OscePhysio
   };
 }
 
-export function useVitalStateEngine({
+export interface VitalMonitorState {
+  ecg: boolean;
+  spo2: boolean;
+  nibp: boolean;
+  capno: boolean;
+}
+
+export interface VitalHistoryPoint {
+  elapsed: number;
+  hr: number;
+  sbp: number;
+  dbp: number;
+  pam: number;
+  spo2: number;
+  rhythm: string;
+}
+
+export interface VitalStateSnapshot {
+  vitals: OscePhysiologyVitals;
+  isMonitored: VitalMonitorState;
+  displayedNibp: DisplayedNibp | null;
+  isMeasuringNibp: boolean;
+  interventions: ActiveInterventionItem[];
+  iatrogenicAlerts: string[];
+  activeAlarms: VitalAlarm[];
+  isAlarmSilenced: boolean;
+  isAudioMuted: boolean;
+  vitalsHistory: VitalHistoryPoint[];
+}
+
+export interface VitalStateStore {
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => VitalStateSnapshot;
+  measureNibp: () => void;
+  connectSensors: (sensors?: ("all" | "ecg" | "spo2" | "nibp" | "capno")[]) => void;
+  silenceAlarms: (seconds?: number) => void;
+  toggleAudio: () => void;
+  applyIntervention: (key: string, label: string) => void;
+  executeCardioversion: (synchronized: boolean, joules: number) => void;
+}
+
+function computeActiveAlarms(vitals: OscePhysiologyVitals, isMonitored: VitalMonitorState): VitalAlarm[] {
+  const list: VitalAlarm[] = [];
+
+  if (!isMonitored.ecg && !isMonitored.spo2) {
+    list.push({ id: "sensors_disconnected", level: "yellow", message: "CABOS DE MONITORIZAÇÃO DESCONECTADOS" });
+    return list;
+  }
+
+  if (vitals.rhythm === "VENTRICULAR_FIBRILLATION") {
+    list.push({ id: "vf", level: "red", message: "🚨 FIBRILAÇÃO VENTRICULAR / PCR" });
+  } else if (vitals.rhythm === "VENTRICULAR_TACHYCARDIA") {
+    list.push({ id: "tv", level: "red", message: "🚨 TAQUICARDIA VENTRICULAR MONOMÓRFICA" });
+  } else if (vitals.sbp <= 0 || vitals.hr <= 35) {
+    list.push({ id: "arrest", level: "red", message: "🚨 COLAPSO HEMODINÂMICO / AESP" });
+  } else if (vitals.sbp < 75) {
+    list.push({ id: "hypotension", level: "red", message: `🚨 HIPOTENSÃO CRÍTICA (PAS ${vitals.sbp} mmHg)` });
+  } else if (vitals.spo2 < 85) {
+    list.push({ id: "hypoxemia", level: "red", message: `🚨 HIPOXEMIA SEVERA (SpO2 ${vitals.spo2}%)` });
+  } else if (vitals.hr > 150) {
+    list.push({ id: "tachycardia", level: "yellow", message: `TAQUICARDIA SEVERA (${vitals.hr} bpm)` });
+  }
+
+  return list;
+}
+
+export function useVitalStateStore({
   initialConfig,
   fallbackVitals,
   getElapsedSeconds,
   isActive,
-}: UseVitalStateEngineProps) {
+}: UseVitalStateEngineProps): VitalStateStore {
   const getElapsedSecondsRef = useRef(getElapsedSeconds);
+  const initialConfigRef = useRef(initialConfig);
   useEffect(() => {
     getElapsedSecondsRef.current = getElapsedSeconds;
   }, [getElapsedSeconds]);
+  useEffect(() => {
+    initialConfigRef.current = initialConfig;
+  }, [initialConfig]);
+
   // Estado base inicial
   const baseVitals = useMemo<OscePhysiologyVitals>(() => {
     if (initialConfig?.initial_state) {
@@ -105,35 +176,45 @@ export function useVitalStateEngine({
     return parseFallbackVitals(fallbackVitals);
   }, [initialConfig, fallbackVitals]);
 
-  // Vitals dinâmicos reativos em tempo real
-  const [vitals, setVitals] = useState<OscePhysiologyVitals>(baseVitals);
-  
-  // Sensores monitorados
-  const [isMonitored, setIsMonitored] = useState<{
-    ecg: boolean;
-    spo2: boolean;
-    nibp: boolean;
-    capno: boolean;
-  }>({
+  const initialMonitorState: VitalMonitorState = {
     ecg: false,
     spo2: false,
     nibp: false,
     capno: false,
+  };
+
+  const snapshotRef = useRef<VitalStateSnapshot>({
+    vitals: baseVitals,
+    isMonitored: initialMonitorState,
+    displayedNibp: null,
+    isMeasuringNibp: false,
+    interventions: [],
+    iatrogenicAlerts: [],
+    activeAlarms: computeActiveAlarms(baseVitals, initialMonitorState),
+    isAlarmSilenced: false,
+    isAudioMuted: false,
+    vitalsHistory: [],
   });
-
-  // Aferição NIBP beira-leito
-  const [displayedNibp, setDisplayedNibp] = useState<DisplayedNibp | null>(null);
-  const [isMeasuringNibp, setIsMeasuringNibp] = useState(false);
-
-  // Lista de intervenções clínicas ativas
-  const [interventions, setInterventions] = useState<ActiveInterventionItem[]>([]);
-  const [iatrogenicAlerts, setIatrogenicAlerts] = useState<string[]>([]);
-
-  // Alarmes sonoros e silenciamento
-  const [isAlarmSilenced, setIsAlarmSilenced] = useState(false);
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const listenersRef = useRef<Set<() => void>>(new Set());
+  const prevBaseVitalsRef = useRef<OscePhysiologyVitals>(baseVitals);
+  const lastHistorySlotRef = useRef<number>(-1);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const nibpTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const notify = useCallback(() => {
+    listenersRef.current.forEach((listener) => listener());
+  }, []);
+
+  const commitSnapshot = useCallback((updater: (prev: VitalStateSnapshot) => VitalStateSnapshot) => {
+    const next = updater(snapshotRef.current);
+    if (next !== snapshotRef.current) {
+      if (next.vitals !== snapshotRef.current.vitals || next.isMonitored !== snapshotRef.current.isMonitored) {
+        next.activeAlarms = computeActiveAlarms(next.vitals, next.isMonitored);
+      }
+      snapshotRef.current = next;
+      notify();
+    }
+  }, [notify]);
 
   useEffect(() => {
     return () => {
@@ -148,88 +229,83 @@ export function useVitalStateEngine({
     };
   }, []);
 
-  // Histórico para pós-morte
-  const [vitalsHistory, setVitalsHistory] = useState<
-    Array<{ elapsed: number; hr: number; sbp: number; dbp: number; pam: number; spo2: number; rhythm: string }>
-  >([]);
-
-  // Sincroniza estado base caso baseVitals mude (padrão oficial React 19 para ajuste de estado baseado em prop)
-  const [prevBase, setPrevBase] = useState(baseVitals);
-  if (baseVitals !== prevBase) {
-    setPrevBase(baseVitals);
-    setVitals(baseVitals);
-  }
-
-  const interventionsRef = useRef(interventions);
+  // Sincroniza estado base caso baseVitals mude sem causar re-render do pai no tick de 1s
   useEffect(() => {
-    interventionsRef.current = interventions;
-  }, [interventions]);
+    if (baseVitals !== prevBaseVitalsRef.current) {
+      prevBaseVitalsRef.current = baseVitals;
+      lastHistorySlotRef.current = -1;
+      commitSnapshot((prev) => ({
+        ...prev,
+        vitals: baseVitals,
+      }));
+    }
+  }, [baseVitals, commitSnapshot]);
 
-  // Aferir PNI sob demanda
+  // Aferir PNI sob demanda (lê snapshotRef síncrono sem side-effect em updater React 19)
   const measureNibp = useCallback(() => {
-    if (isMeasuringNibp) return;
-    setIsMeasuringNibp(true);
+    if (snapshotRef.current.isMeasuringNibp) return;
+    commitSnapshot((prev) => ({ ...prev, isMeasuringNibp: true }));
 
     if (nibpTimerRef.current) {
       clearTimeout(nibpTimerRef.current);
     }
     nibpTimerRef.current = setTimeout(() => {
       const elapsedNow = getElapsedSecondsRef.current();
-      setVitals((curr) => {
-        const pam = Math.round((curr.sbp + 2 * curr.dbp) / 3);
-        setDisplayedNibp({
+      const curr = snapshotRef.current.vitals;
+      const pam = Math.round((curr.sbp + 2 * curr.dbp) / 3);
+      commitSnapshot((prev) => ({
+        ...prev,
+        isMeasuringNibp: false,
+        displayedNibp: {
           sbp: curr.sbp,
           dbp: curr.dbp,
           pam,
           measuredAtElapsed: elapsedNow,
-        });
-        return curr;
-      });
-      setIsMeasuringNibp(false);
+        },
+      }));
     }, 2800);
-  }, [isMeasuringNibp]);
+  }, [commitSnapshot]);
 
   // Conectar sensores beira-leito
   const connectSensors = useCallback(
     (sensors: ("all" | "ecg" | "spo2" | "nibp" | "capno")[] = ["all"]) => {
-      setIsMonitored((prev) => {
-        if (sensors.includes("all")) {
-          return { ecg: true, spo2: true, nibp: true, capno: true };
-        }
-        return {
-          ecg: sensors.includes("ecg") ? true : prev.ecg,
-          spo2: sensors.includes("spo2") ? true : prev.spo2,
-          nibp: sensors.includes("nibp") ? true : prev.nibp,
-          capno: sensors.includes("capno") ? true : prev.capno,
-        };
+      commitSnapshot((prev) => {
+        const nextMonitored = sensors.includes("all")
+          ? { ecg: true, spo2: true, nibp: true, capno: true }
+          : {
+              ecg: sensors.includes("ecg") ? true : prev.isMonitored.ecg,
+              spo2: sensors.includes("spo2") ? true : prev.isMonitored.spo2,
+              nibp: sensors.includes("nibp") ? true : prev.isMonitored.nibp,
+              capno: sensors.includes("capno") ? true : prev.isMonitored.capno,
+            };
+        return { ...prev, isMonitored: nextMonitored };
       });
 
-      // Auto-aferição inicial de PNI
-      if (!displayedNibp) {
+      if (!snapshotRef.current.displayedNibp) {
         measureNibp();
       }
     },
-    [displayedNibp, measureNibp]
+    [commitSnapshot, measureNibp]
   );
 
   // Silenciar alarmes por 120s
   const silenceAlarms = useCallback((seconds = 120) => {
-    setIsAlarmSilenced(true);
+    commitSnapshot((prev) => ({ ...prev, isAlarmSilenced: true }));
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     silenceTimerRef.current = setTimeout(() => {
-      setIsAlarmSilenced(false);
+      commitSnapshot((prev) => ({ ...prev, isAlarmSilenced: false }));
     }, seconds * 1000);
-  }, []);
+  }, [commitSnapshot]);
 
   // Alternar mudo geral de áudio
   const toggleAudio = useCallback(() => {
-    setIsAudioMuted((prev) => !prev);
-  }, []);
+    commitSnapshot((prev) => ({ ...prev, isAudioMuted: !prev.isAudioMuted }));
+  }, [commitSnapshot]);
 
   // Aplicar intervenção farmacológica ou clínica
   const applyIntervention = useCallback(
     (key: string, label: string) => {
-      const modifier = initialConfig?.intervention_modifiers?.[key] || {
+      const modifier = initialConfigRef.current?.intervention_modifiers?.[key] || {
         onset_seconds: 10,
         duration_seconds: 60,
       };
@@ -243,73 +319,76 @@ export function useVitalStateEngine({
         active: true,
       };
 
-      setInterventions((prev) => [...prev, newItem]);
-
-      // Aplicação instantânea se for procedimento ou choque
-      if (modifier.instant && modifier.target_vitals) {
-        setVitals((curr) => ({
-          ...curr,
-          ...modifier.target_vitals,
-        }));
-      }
-
-      // Alerta de Iatrogenia
-      if (modifier.iatrogenic_alert) {
-        setIatrogenicAlerts((prev) => [...prev, modifier.iatrogenic_alert!]);
-      }
+      commitSnapshot((prev) => ({
+        ...prev,
+        interventions: [...prev.interventions, newItem],
+        vitals: modifier.instant && modifier.target_vitals
+          ? { ...prev.vitals, ...modifier.target_vitals }
+          : prev.vitals,
+        iatrogenicAlerts: modifier.iatrogenic_alert
+          ? [...prev.iatrogenicAlerts, modifier.iatrogenic_alert]
+          : prev.iatrogenicAlerts,
+      }));
     },
-    [initialConfig]
+    [commitSnapshot]
   );
 
   // Executar cardioversão elétrica / desfibrilação
   const executeCardioversion = useCallback(
     (synchronized: boolean, joules: number) => {
-      const isTV = vitals.rhythm === "VENTRICULAR_TACHYCARDIA" || vitals.rhythm === "UNSTABLE_SVT";
+      const currentRhythm = snapshotRef.current.vitals.rhythm;
+      const isTV = currentRhythm === "VENTRICULAR_TACHYCARDIA" || currentRhythm === "UNSTABLE_SVT";
 
       if (isTV) {
         if (synchronized) {
-          // Reversão de sucesso para Ritmo Sinusal
           applyIntervention("cardioversion_sync", `Cardioversão Elétrica Sincronizada (${joules}J)`);
-          setVitals((curr) => ({
-            ...curr,
-            hr: 82,
-            sbp: 116,
-            dbp: 72,
-            spo2: 97,
-            rr: 18,
-            gcs: 15,
-            rhythm: "NORMAL_SINUS",
+          commitSnapshot((prev) => ({
+            ...prev,
+            vitals: {
+              ...prev.vitals,
+              hr: 82,
+              sbp: 116,
+              dbp: 72,
+              spo2: 97,
+              rr: 18,
+              gcs: 15,
+              rhythm: "NORMAL_SINUS",
+            },
           }));
         } else {
-          // Iatrogenia R sobre T: induz Fibrilação Ventricular
           applyIntervention("cardioversion_unsync", `Choque Desincronizado ${joules}J (R sobre T)`);
-          setVitals((curr) => ({
-            ...curr,
-            hr: 250,
-            sbp: 0,
-            dbp: 0,
-            spo2: 0,
-            rr: 0,
-            gcs: 3,
-            rhythm: "VENTRICULAR_FIBRILLATION",
+          commitSnapshot((prev) => ({
+            ...prev,
+            vitals: {
+              ...prev.vitals,
+              hr: 250,
+              sbp: 0,
+              dbp: 0,
+              spo2: 0,
+              rr: 0,
+              gcs: 3,
+              rhythm: "VENTRICULAR_FIBRILLATION",
+            },
           }));
         }
-      } else if (vitals.rhythm === "VENTRICULAR_FIBRILLATION") {
-        // Desfibrilação da FV
+      } else if (currentRhythm === "VENTRICULAR_FIBRILLATION") {
         applyIntervention("defibrillation", `Desfibrilação Bifásica ${joules}J`);
-        setVitals((curr) => ({
-          ...curr,
-          hr: 92,
-          sbp: 104,
-          dbp: 68,
-          spo2: 95,
-          rr: 16,
-          gcs: 14,
-          rhythm: "NORMAL_SINUS",
+        commitSnapshot((prev) => ({
+          ...prev,
+          vitals: {
+            ...prev.vitals,
+            hr: 92,
+            sbp: 104,
+            dbp: 68,
+            spo2: 95,
+            rr: 16,
+            gcs: 14,
+            rhythm: "NORMAL_SINUS",
+          },
         }));
       }
     },
-    [vitals.rhythm, applyIntervention]
+    [applyIntervention, commitSnapshot]
   );
 
   // Ciclo fisiológico dinâmico rodando a cada segundo
@@ -318,138 +397,145 @@ export function useVitalStateEngine({
 
     const interval = setInterval(() => {
       const elapsedSeconds = getElapsedSecondsRef.current();
-      const activeInterventions = interventionsRef.current;
-      let snapshotForHistory: OscePhysiologyVitals | null = null;
+      const activeInterventions = snapshotRef.current.interventions;
 
-      setVitals((curr) => {
-        let updated = { ...curr };
+      let updated = { ...snapshotRef.current.vitals };
 
-        // 1. Aplica modificadores de intervenções ativas (farmacocinética)
-        activeInterventions.forEach((item) => {
-          const deltaT = elapsedSeconds - item.appliedAtElapsed;
-          const onset = item.modifier.onset_seconds || 10;
-          const duration = item.modifier.duration_seconds || 60;
+      // 1. Aplica modificadores de intervenções ativas (farmacocinética)
+      activeInterventions.forEach((item) => {
+        const deltaT = elapsedSeconds - item.appliedAtElapsed;
+        const onset = item.modifier.onset_seconds || 10;
+        const duration = item.modifier.duration_seconds || 60;
 
-          if (deltaT >= onset && deltaT <= onset + duration) {
-            const dv = item.modifier.delta_vitals;
-            if (dv) {
-              if (dv.sbp) updated.sbp = Math.min(200, Math.max(0, updated.sbp + dv.sbp * 0.05));
-              if (dv.dbp) updated.dbp = Math.min(130, Math.max(0, updated.dbp + (dv.dbp || 0) * 0.05));
-              if (dv.hr) updated.hr = Math.min(220, Math.max(0, updated.hr + dv.hr * 0.05));
-              if (dv.spo2) updated.spo2 = Math.min(100, Math.max(0, updated.spo2 + (dv.spo2 || 0) * 0.05));
+        if (deltaT >= onset && deltaT <= onset + duration) {
+          const dv = item.modifier.delta_vitals;
+          if (dv) {
+            if (dv.sbp) updated.sbp = Math.min(200, Math.max(0, updated.sbp + dv.sbp * 0.05));
+            if (dv.dbp) updated.dbp = Math.min(130, Math.max(0, updated.dbp + (dv.dbp || 0) * 0.05));
+            if (dv.hr) updated.hr = Math.min(220, Math.max(0, updated.hr + dv.hr * 0.05));
+            if (dv.spo2) updated.spo2 = Math.min(100, Math.max(0, updated.spo2 + (dv.spo2 || 0) * 0.05));
+          }
+        }
+      });
+
+      // 2. Aplica progressão natural (deterioração se sem intervenção)
+      if (initialConfig?.natural_progression) {
+        const appliedKeys = activeInterventions.map((i) => i.key);
+        initialConfig.natural_progression.forEach((rule) => {
+          const conditionMet =
+            (rule.condition.includes("time_elapsed > 120") && elapsedSeconds > 120) ||
+            (rule.condition.includes("time_elapsed > 180") && elapsedSeconds > 180) ||
+            (rule.condition.includes("sbp < 55") && updated.sbp < 55);
+
+          const hasCounterIntervention = appliedKeys.some((k) => rule.condition.includes(k));
+
+          if (conditionMet && !hasCounterIntervention) {
+            if (rule.effects_per_minute) {
+              const em = rule.effects_per_minute;
+              if (em.sbp) updated.sbp = Math.max(0, updated.sbp + em.sbp / 60);
+              if (em.dbp) updated.dbp = Math.max(0, updated.dbp + em.dbp / 60);
+              if (em.hr) updated.hr = Math.min(240, updated.hr + (em.hr || 0) / 60);
+              if (em.spo2) updated.spo2 = Math.max(0, updated.spo2 + (em.spo2 || 0) / 60);
+              if (em.gcs && updated.gcs) updated.gcs = Math.max(3, updated.gcs + (em.gcs || 0) / 60);
+            }
+
+            if (rule.override_vitals && updated.sbp <= 50) {
+              updated = { ...updated, ...rule.override_vitals };
             }
           }
         });
-
-        // 2. Aplica progressão natural (deterioração se sem intervenção)
-        if (initialConfig?.natural_progression) {
-          const appliedKeys = activeInterventions.map((i) => i.key);
-          initialConfig.natural_progression.forEach((rule) => {
-            const conditionMet =
-              (rule.condition.includes("time_elapsed > 120") && elapsedSeconds > 120) ||
-              (rule.condition.includes("time_elapsed > 180") && elapsedSeconds > 180) ||
-              (rule.condition.includes("sbp < 55") && updated.sbp < 55);
-
-            const hasCounterIntervention = appliedKeys.some((k) => rule.condition.includes(k));
-
-            if (conditionMet && !hasCounterIntervention) {
-              if (rule.effects_per_minute) {
-                const em = rule.effects_per_minute;
-                if (em.sbp) updated.sbp = Math.max(0, updated.sbp + em.sbp / 60);
-                if (em.dbp) updated.dbp = Math.max(0, updated.dbp + em.dbp / 60);
-                if (em.hr) updated.hr = Math.min(240, updated.hr + (em.hr || 0) / 60);
-                if (em.spo2) updated.spo2 = Math.max(0, updated.spo2 + (em.spo2 || 0) / 60);
-                if (em.gcs && updated.gcs) updated.gcs = Math.max(3, updated.gcs + (em.gcs || 0) / 60);
-              }
-
-              if (rule.override_vitals && updated.sbp <= 50) {
-                updated = { ...updated, ...rule.override_vitals };
-              }
-            }
-          });
-        }
-
-        // 3. Jitter Fisiológico Estocástico (pequena flutuação realista ±1%)
-        const jitter = (Math.random() - 0.5) * 1.2;
-        if (updated.sbp > 30) {
-          updated.sbp = Math.round(updated.sbp + jitter);
-          updated.dbp = Math.round(updated.dbp + jitter * 0.5);
-          updated.hr = Math.round(updated.hr + jitter * 0.8);
-        }
-
-        // Arredondamentos e travas
-        updated.sbp = Math.max(0, Math.min(240, Math.round(updated.sbp)));
-        updated.dbp = Math.max(0, Math.min(140, Math.round(updated.dbp)));
-        updated.hr = Math.max(0, Math.min(260, Math.round(updated.hr)));
-        updated.spo2 = Math.max(0, Math.min(100, Math.round(updated.spo2)));
-
-        snapshotForHistory = updated;
-        return updated;
-      });
-
-      // Grava no histórico a cada 5 segundos
-      if (elapsedSeconds % 5 === 0 && snapshotForHistory) {
-        const snap: OscePhysiologyVitals = snapshotForHistory;
-        setVitalsHistory((prev) => [
-          ...prev,
-          {
-            elapsed: elapsedSeconds,
-            hr: snap.hr,
-            sbp: snap.sbp,
-            dbp: snap.dbp,
-            pam: Math.round((snap.sbp + 2 * snap.dbp) / 3),
-            spo2: snap.spo2,
-            rhythm: snap.rhythm,
-          },
-        ]);
       }
+
+      // 3. Jitter Fisiológico Estocástico (pequena flutuação realista ±1%)
+      const jitter = (Math.random() - 0.5) * 1.2;
+      if (updated.sbp > 30) {
+        updated.sbp = Math.round(updated.sbp + jitter);
+        updated.dbp = Math.round(updated.dbp + jitter * 0.5);
+        updated.hr = Math.round(updated.hr + jitter * 0.8);
+      }
+
+      // Arredondamentos e travas
+      updated.sbp = Math.max(0, Math.min(240, Math.round(updated.sbp)));
+      updated.dbp = Math.max(0, Math.min(140, Math.round(updated.dbp)));
+      updated.hr = Math.max(0, Math.min(260, Math.round(updated.hr)));
+      updated.spo2 = Math.max(0, Math.min(100, Math.round(updated.spo2)));
+
+      const historySlot = Math.floor(elapsedSeconds / 5);
+      commitSnapshot((prev) => {
+        let nextHistory = prev.vitalsHistory;
+        if (historySlot > lastHistorySlotRef.current) {
+          lastHistorySlotRef.current = historySlot;
+          nextHistory = [
+            ...prev.vitalsHistory,
+            {
+              elapsed: elapsedSeconds,
+              hr: updated.hr,
+              sbp: updated.sbp,
+              dbp: updated.dbp,
+              pam: Math.round((updated.sbp + 2 * updated.dbp) / 3),
+              spo2: updated.spo2,
+              rhythm: updated.rhythm,
+            },
+          ];
+        }
+        return {
+          ...prev,
+          vitals: updated,
+          vitalsHistory: nextHistory,
+        };
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, initialConfig]);
+  }, [isActive, initialConfig, commitSnapshot]);
 
-  // Lista de alarmes ativos
-  const activeAlarms = useMemo<VitalAlarm[]>(() => {
-    const list: VitalAlarm[] = [];
+  const subscribe = useCallback((listener: () => void) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
 
-    if (!isMonitored.ecg && !isMonitored.spo2) {
-      list.push({ id: "sensors_disconnected", level: "yellow", message: "CABOS DE MONITORIZAÇÃO DESCONECTADOS" });
-      return list;
-    }
+  const getSnapshot = useCallback(() => snapshotRef.current, []);
 
-    if (vitals.rhythm === "VENTRICULAR_FIBRILLATION") {
-      list.push({ id: "vf", level: "red", message: "🚨 FIBRILAÇÃO VENTRICULAR / PCR" });
-    } else if (vitals.rhythm === "VENTRICULAR_TACHYCARDIA") {
-      list.push({ id: "tv", level: "red", message: "🚨 TAQUICARDIA VENTRICULAR MONOMÓRFICA" });
-    } else if (vitals.sbp <= 0 || vitals.hr <= 35) {
-      list.push({ id: "arrest", level: "red", message: "🚨 COLAPSO HEMODINÂMICO / AESP" });
-    } else if (vitals.sbp < 75) {
-      list.push({ id: "hypotension", level: "red", message: `🚨 HIPOTENSÃO CRÍTICA (PAS ${vitals.sbp} mmHg)` });
-    } else if (vitals.spo2 < 85) {
-      list.push({ id: "hypoxemia", level: "red", message: `🚨 HIPOXEMIA SEVERA (SpO2 ${vitals.spo2}%)` });
-    } else if (vitals.hr > 150) {
-      list.push({ id: "tachycardia", level: "yellow", message: `TAQUICARDIA SEVERA (${vitals.hr} bpm)` });
-    }
+  return useMemo<VitalStateStore>(
+    () => ({
+      subscribe,
+      getSnapshot,
+      measureNibp,
+      connectSensors,
+      silenceAlarms,
+      toggleAudio,
+      applyIntervention,
+      executeCardioversion,
+    }),
+    [
+      subscribe,
+      getSnapshot,
+      measureNibp,
+      connectSensors,
+      silenceAlarms,
+      toggleAudio,
+      applyIntervention,
+      executeCardioversion,
+    ]
+  );
+}
 
-    return list;
-  }, [vitals, isMonitored]);
+export function useVitalSnapshot(store: VitalStateStore): VitalStateSnapshot {
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+}
 
+export function useVitalStateEngine(props: UseVitalStateEngineProps) {
+  const store = useVitalStateStore(props);
+  const snapshot = useVitalSnapshot(store);
   return {
-    vitals,
-    isMonitored,
-    displayedNibp,
-    isMeasuringNibp,
-    interventions,
-    iatrogenicAlerts,
-    activeAlarms,
-    isAlarmSilenced,
-    isAudioMuted,
-    vitalsHistory,
-    measureNibp,
-    connectSensors,
-    silenceAlarms,
-    toggleAudio,
-    applyIntervention,
-    executeCardioversion,
+    ...snapshot,
+    measureNibp: store.measureNibp,
+    connectSensors: store.connectSensors,
+    silenceAlarms: store.silenceAlarms,
+    toggleAudio: store.toggleAudio,
+    applyIntervention: store.applyIntervention,
+    executeCardioversion: store.executeCardioversion,
   };
 }

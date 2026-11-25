@@ -100,6 +100,10 @@ export function useOsceAudio({
   const permStatusRef = useRef<PermissionStatus | null>(null);
   const phaseRef = useRef(phase);
   const handsFreeModeRef = useRef(handsFreeMode);
+  const isMountedRef = useRef(true);
+  const isLoadingRef = useRef(isLoading);
+  const micPermissionRef = useRef(micPermission);
+  const consumedResultIdxRef = useRef(0);
   const isAudioSpeakingRef = useRef<boolean>(false);
   const startListeningRef = useRef<(userTriggered?: boolean) => Promise<void>>(async () => {});
   const onDispatchSpeechRef = useRef(onDispatchSpeech);
@@ -111,6 +115,14 @@ export function useOsceAudio({
   useEffect(() => {
     handsFreeModeRef.current = handsFreeMode;
   }, [handsFreeMode]);
+
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    micPermissionRef.current = micPermission;
+  }, [micPermission]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -141,12 +153,15 @@ export function useOsceAudio({
   }, [phase]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     if (typeof window === "undefined") return;
 
     if (!isOperaBrowser() && navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: "microphone" as PermissionName }).then((status) => {
+        if (!isMountedRef.current) return;
         permStatusRef.current = status;
         const applyState = (state: PermissionState) => {
+          if (!isMountedRef.current) return;
           if (state === "granted") {
             setMicPermission("granted");
             setMicErrorMsg(null);
@@ -163,6 +178,7 @@ export function useOsceAudio({
     }
 
     return () => {
+      isMountedRef.current = false;
       if (permStatusRef.current) {
         permStatusRef.current.onchange = null;
         permStatusRef.current = null;
@@ -255,16 +271,17 @@ export function useOsceAudio({
       } catch {}
       recognitionRef.current = null;
     }
+    consumedResultIdxRef.current = 0;
     setIsListening(false);
     setInterimSpeechText("");
   }, []);
 
   const speakSpokenQueue = useCallback((queue: OsceSpokenQueueItem[]) => {
     if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window) || queue.length === 0) {
-      if (handsFreeMode && phase === "exam") {
+      if (handsFreeModeRef.current && phaseRef.current === "exam" && !isAudioSpeakingRef.current) {
         if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
         restartTimeoutRef.current = setTimeout(() => {
-          if (phaseRef.current === "exam" && handsFreeModeRef.current) {
+          if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
             void startListeningRef.current(false);
           }
         }, 300);
@@ -282,30 +299,50 @@ export function useOsceAudio({
       setIsListening(false);
 
       if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
-      const safetyTimeout = setTimeout(() => {
-        if (isAudioSpeakingRef.current) {
-          isAudioSpeakingRef.current = false;
-          setActiveSpeaker(null);
-          if (handsFreeModeRef.current && phaseRef.current === "exam") {
-            void startListeningRef.current(false);
+      const totalChars = queue.reduce((sum, q) => sum + (q.text?.length || 0), 0);
+      const adaptiveTimeoutMs = Math.max(12000, Math.min(45000, totalChars * 95));
+      const scheduleSafetyCheck = (delayMs: number) => {
+        safetyTimeoutRef.current = setTimeout(() => {
+          if (!isMountedRef.current || phaseRef.current !== "exam") {
+            isAudioSpeakingRef.current = false;
+            return;
           }
-        }
-      }, 9000);
-      safetyTimeoutRef.current = safetyTimeout;
+          if (typeof window !== "undefined" && "speechSynthesis" in window && window.speechSynthesis.speaking) {
+            scheduleSafetyCheck(3000);
+            return;
+          }
+          if (isAudioSpeakingRef.current) {
+            isAudioSpeakingRef.current = false;
+            setActiveSpeaker(null);
+            if (handsFreeModeRef.current && phaseRef.current === "exam") {
+              if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+              restartTimeoutRef.current = setTimeout(() => {
+                if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
+                  void startListeningRef.current(false);
+                }
+              }, 350);
+            }
+          }
+        }, delayMs);
+      };
+      scheduleSafetyCheck(adaptiveTimeoutMs);
 
       const voices = window.speechSynthesis.getVoices();
       const ptVoices = voices.filter(v => v.lang.startsWith("pt"));
 
       let idx = 0;
       const playNext = () => {
-        if (idx >= queue.length || phaseRef.current !== "exam") {
-          clearTimeout(safetyTimeout);
+        if (idx >= queue.length || phaseRef.current !== "exam" || !isMountedRef.current) {
+          if (safetyTimeoutRef.current) {
+            clearTimeout(safetyTimeoutRef.current);
+            safetyTimeoutRef.current = null;
+          }
           setActiveSpeaker(null);
           isAudioSpeakingRef.current = false;
-          if (handsFreeModeRef.current && phaseRef.current === "exam") {
+          if (isMountedRef.current && handsFreeModeRef.current && phaseRef.current === "exam") {
             if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
             restartTimeoutRef.current = setTimeout(() => {
-              if (phaseRef.current === "exam" && handsFreeModeRef.current) {
+              if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
                 void startListeningRef.current(false);
               }
             }, 300);
@@ -349,13 +386,22 @@ export function useOsceAudio({
 
       playNext();
     } catch {
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
       setActiveSpeaker(null);
       isAudioSpeakingRef.current = false;
-      if (handsFreeModeRef.current && phaseRef.current === "exam") {
-        void startListeningRef.current(false);
+      if (isMountedRef.current && handsFreeModeRef.current && phaseRef.current === "exam") {
+        if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
+            void startListeningRef.current(false);
+          }
+        }, 300);
       }
     }
-  }, [voiceEnabled, handsFreeMode, phase, patientGender]);
+  }, [voiceEnabled, patientGender]);
 
   const requestMicrophonePermission = useCallback(async (): Promise<boolean> => {
     if (typeof window === "undefined") return false;
@@ -432,28 +478,45 @@ export function useOsceAudio({
         recognitionRef.current = null;
       }
 
+      consumedResultIdxRef.current = 0;
       const rec = new SpeechRecognition();
       rec.lang = "pt-BR";
       rec.continuous = true;
       rec.interimResults = true;
 
       rec.onstart = () => {
+        if (!isMountedRef.current) return;
         setIsListening(true);
         setMicErrorMsg(null);
       };
 
       rec.onend = () => {
+        if (!isMountedRef.current) return;
         setIsListening(false);
-        if (handsFreeMode && phase === "exam" && !isAudioSpeakingRef.current && !isLoading && micPermission === "granted") {
-          setTimeout(() => {
-            if (!isAudioSpeakingRef.current && !isLoading) {
-              startListeningRef.current(false);
+        if (
+          handsFreeModeRef.current &&
+          phaseRef.current === "exam" &&
+          !isAudioSpeakingRef.current &&
+          !isLoadingRef.current &&
+          micPermissionRef.current === "granted"
+        ) {
+          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = setTimeout(() => {
+            if (
+              isMountedRef.current &&
+              phaseRef.current === "exam" &&
+              handsFreeModeRef.current &&
+              !isAudioSpeakingRef.current &&
+              !isLoadingRef.current
+            ) {
+              void startListeningRef.current(false);
             }
           }, 350);
         }
       };
 
       rec.onerror = (event: { error?: string }) => {
+        if (!isMountedRef.current) return;
         setIsListening(false);
         const errType = event?.error;
         if (errType === "not-allowed" || errType === "service-not-allowed") {
@@ -468,22 +531,25 @@ export function useOsceAudio({
       };
 
       rec.onresult = (event: SpeechRecognitionEventLike) => {
+        if (!isMountedRef.current || phaseRef.current !== "exam") return;
         let interim = "";
         let final = "";
 
         const resultsObj = event.results;
-        for (let i = 0; i < resultsObj.length; ++i) {
+        const startIdx = Math.max(event.resultIndex ?? 0, consumedResultIdxRef.current);
+        for (let i = consumedResultIdxRef.current; i < resultsObj.length; ++i) {
           const item = resultsObj[i]?.[0];
           if (item) {
             if (resultsObj[i]?.isFinal) {
-              final += item.transcript;
-            } else {
-              interim += item.transcript;
+              final += item.transcript + " ";
+            } else if (i >= startIdx) {
+              interim += item.transcript + " ";
             }
           }
         }
 
-        const candidateText = (final || interim).trim();
+        const candidateText = [final.trim(), interim.trim()].filter(Boolean).join(" ").trim();
+        const endIdxAtSchedule = resultsObj.length;
         if (candidateText) {
           setInterimSpeechText(candidateText);
 
@@ -492,7 +558,14 @@ export function useOsceAudio({
           }
 
           silenceTimeoutRef.current = setTimeout(() => {
-            if (candidateText.length >= 2 && !isAudioSpeakingRef.current) {
+            silenceTimeoutRef.current = null;
+            if (
+              isMountedRef.current &&
+              phaseRef.current === "exam" &&
+              candidateText.length >= 2 &&
+              !isAudioSpeakingRef.current
+            ) {
+              consumedResultIdxRef.current = endIdxAtSchedule;
               onDispatchSpeechRef.current(candidateText);
               setInterimSpeechText("");
             }
@@ -505,7 +578,7 @@ export function useOsceAudio({
     } catch {
       setIsListening(false);
     }
-  }, [micPermission, requestMicrophonePermission, handsFreeMode, phase, isLoading]);
+  }, [micPermission, requestMicrophonePermission]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
@@ -523,9 +596,14 @@ export function useOsceAudio({
     } else {
       setHandsFreeMode(true);
       toast.success("Modo Viva-Voz contínuo ativado!");
-      setTimeout(() => startListening(true), 200);
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current && phaseRef.current === "exam" && !isAudioSpeakingRef.current) {
+          void startListeningRef.current(true);
+        }
+      }, 200);
     }
-  }, [handsFreeMode, stopRecognition, startListening]);
+  }, [handsFreeMode, stopRecognition]);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -536,20 +614,34 @@ export function useOsceAudio({
   }, [isListening, stopRecognition, startListening]);
 
   const resumeAfterSpeechFailure = useCallback(() => {
-    if (handsFreeMode) {
-      setTimeout(() => startListeningRef.current(false), 300);
+    if (handsFreeModeRef.current && phaseRef.current === "exam" && !isAudioSpeakingRef.current) {
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
+          void startListeningRef.current(false);
+        }
+      }, 300);
     }
-  }, [handsFreeMode]);
+  }, []);
 
   const cancelSpeechSynthesis = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (safetyTimeoutRef.current) {
+      clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = null;
+    }
     window.speechSynthesis.cancel();
     isAudioSpeakingRef.current = false;
     setActiveSpeaker(null);
-    if (handsFreeMode) {
-      setTimeout(() => startListeningRef.current(false), 200);
+    if (handsFreeModeRef.current && phaseRef.current === "exam") {
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current && phaseRef.current === "exam" && handsFreeModeRef.current && !isAudioSpeakingRef.current) {
+          void startListeningRef.current(false);
+        }
+      }, 200);
     }
-  }, [handsFreeMode]);
+  }, []);
 
   return {
     voiceEnabled,

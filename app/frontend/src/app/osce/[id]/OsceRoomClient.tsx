@@ -1,22 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { 
-  Stethoscope, Clock, FileText,
+import {
+  Stethoscope, FileText,
   Volume2, VolumeX,
-  ChevronLeft, ChevronRight, Lock, Award, Sparkles, AlertTriangle, ShieldCheck,
-  Radio, Headphones, Zap, Eye, CheckCircle2, Printer, Lightbulb
+  ChevronRight, Lock, AlertTriangle,
+  Radio, Headphones, Zap, CheckCircle2, Lightbulb
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { OsceStationDetail, OsceTranscriptItem, OsceFinishResponse, OsceSpokenQueueItem, OsceLiveFeedback, OsceTaskProgress } from "@/types/api";
 import { api } from "@/lib/api";
-import { PreceptorFeedback } from "@/types/osce-evaluation";
-import { useVitalStateEngine } from "./useVitalStateEngine";
+import { useVitalStateStore, useVitalSnapshot, VitalStateStore } from "./useVitalStateEngine";
 import { useOsceAudio } from "./useOsceAudio";
 import { SessionTimer } from "@/components/ui/SessionTimer";
+import { OsceDoorBriefing } from "./OsceDoorBriefing";
+import { OsceFinishView } from "./OsceFinishView";
 
 const GhostPreceptorHUD = dynamic(
   () => import("./GhostPreceptorHUD").then((m) => m.GhostPreceptorHUD),
@@ -34,10 +34,6 @@ const ProcedureMannequin = dynamic(
   () => import("./ProcedureMannequin").then((m) => m.ProcedureMannequin),
   { ssr: false }
 );
-const StationResultMirror = dynamic(
-  () => import("./StationResultMirror").then((m) => m.StationResultMirror),
-  { ssr: false }
-);
 const MultiparameterMonitor = dynamic(
   () => import("./MultiparameterMonitor").then((m) => m.MultiparameterMonitor),
   { ssr: false }
@@ -47,6 +43,83 @@ interface OsceRoomClientProps {
   station: OsceStationDetail;
   circuitId?: string;
   step?: number;
+}
+
+function LiveMultiparameterMonitor({ store }: { store: VitalStateStore }) {
+  const snap = useVitalSnapshot(store);
+  return (
+    <MultiparameterMonitor
+      vitals={snap.vitals}
+      isMonitored={snap.isMonitored}
+      displayedNibp={snap.displayedNibp}
+      isMeasuringNibp={snap.isMeasuringNibp}
+      activeAlarms={snap.activeAlarms}
+      isAlarmSilenced={snap.isAlarmSilenced}
+      isAudioMuted={snap.isAudioMuted}
+      onMeasureNibp={store.measureNibp}
+      onConnectSensors={store.connectSensors}
+      onSilenceAlarms={store.silenceAlarms}
+      onToggleAudio={store.toggleAudio}
+      onExecuteCardioversion={store.executeCardioversion}
+    />
+  );
+}
+
+function LivePhysicalVitalsCard({
+  store,
+  fallbackVitals,
+}: {
+  store: VitalStateStore;
+  fallbackVitals: Record<string, string> | null;
+}) {
+  const snap = useVitalSnapshot(store);
+  if (!fallbackVitals && !snap.isMonitored.ecg && !snap.displayedNibp) {
+    return null;
+  }
+  return (
+    <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-muted/20 border border-border font-mono text-[11px]">
+      <div>
+        PA:{" "}
+        <span className="font-bold text-foreground">
+          {snap.displayedNibp
+            ? `${snap.displayedNibp.sbp}x${snap.displayedNibp.dbp}`
+            : snap.isMeasuringNibp
+            ? "Aferindo..."
+            : fallbackVitals?.pa || "--/--"}
+        </span>
+      </div>
+      <div>
+        FC:{" "}
+        <span className="font-bold text-emerald-500">
+          {snap.isMonitored.ecg ? `${snap.vitals.hr} bpm` : fallbackVitals?.fc || "--"}
+        </span>
+      </div>
+      <div>
+        FR:{" "}
+        <span className="font-bold text-foreground">
+          {snap.vitals.rr} irpm
+        </span>
+      </div>
+      <div>
+        SatO2:{" "}
+        <span className="font-bold text-cyan-500">
+          {snap.isMonitored.spo2 ? `${snap.vitals.spo2}%` : fallbackVitals?.sato2 || "--"}
+        </span>
+      </div>
+      <div>
+        Temp:{" "}
+        <span className="font-bold text-foreground">
+          {snap.vitals.temp || 36.5} °C
+        </span>
+      </div>
+      <div>
+        Ritmo:{" "}
+        <span className="font-bold text-emerald-500 truncate block text-[10px]">
+          {snap.vitals.rhythm}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientProps) {
@@ -136,13 +209,18 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
     ];
   }, [stationKind, station.patient_persona.name]);
 
-  // Motor Fisiológico Dinâmico Beira-Leito (VitalStateEngine)
-  const vitalEngine = useVitalStateEngine({
+  // Motor Fisiológico Dinâmico Beira-Leito (isolado via external store para evitar re-render 1Hz da sala inteira)
+  const vitalStore = useVitalStateStore({
     initialConfig: station.physiology_engine,
     fallbackVitals: vitals,
     getElapsedSeconds,
     isActive: phase === "exam",
   });
+
+  const getAuscultationVitals = useCallback(
+    () => vitalStore.getSnapshot().vitals,
+    [vitalStore]
+  );
 
   // Estados do Circuito Oficial de 5 Estações
   const [circuitPlan, setCircuitPlan] = useState<import("@/types/api").OsceCircuitPlanResponse | null>(null);
@@ -506,7 +584,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       ]);
 
       try {
-        const res = await api.osce.interact(sessionId, text, elapsed, targetOverride, vitalEngine.vitals);
+        const res = await api.osce.interact(sessionId, text, elapsed, targetOverride, vitalStore.getSnapshot().vitals);
         if (res.guided_feedback) {
           setLiveFeedback(res.guided_feedback);
         }
@@ -562,8 +640,8 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       ]);
 
       if (actionType === "vitals") {
-        vitalEngine.connectSensors(["all"]);
-        vitalEngine.measureNibp();
+        vitalStore.connectSensors(["all"]);
+        vitalStore.measureNibp();
         if (res.payload.vitals) {
           setVitals(res.payload.vitals as Record<string, string>);
         }
@@ -605,34 +683,34 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
     if (prescriptionText) {
       const lower = prescriptionText.toLowerCase();
       if (lower.includes("adrenalina") || lower.includes("epinefrina")) {
-        vitalEngine.applyIntervention("adrenalina", "Adrenalina");
+        vitalStore.applyIntervention("adrenalina", "Adrenalina");
       }
       if (lower.includes("noradrenalina")) {
-        vitalEngine.applyIntervention("noradrenalina", "Noradrenalina");
+        vitalStore.applyIntervention("noradrenalina", "Noradrenalina");
       }
       if (lower.includes("amiodarona")) {
-        vitalEngine.applyIntervention("amiodarona", "Amiodarona");
+        vitalStore.applyIntervention("amiodarona", "Amiodarona");
       }
       if (lower.includes("adenosina")) {
-        vitalEngine.applyIntervention("adenosina", "Adenosina");
+        vitalStore.applyIntervention("adenosina", "Adenosina");
       }
       if (lower.includes("sf 0,9") || lower.includes("soro") || lower.includes("cristaloide")) {
-        vitalEngine.applyIntervention("sf09", "Soro Fisiológico 0,9%");
+        vitalStore.applyIntervention("sf09", "Soro Fisiológico 0,9%");
       }
       if (lower.includes("insulina")) {
-        vitalEngine.applyIntervention("insulina", "Insulina Regular");
+        vitalStore.applyIntervention("insulina", "Insulina Regular");
       }
       if (lower.includes("kcl") || lower.includes("potassio")) {
-        vitalEngine.applyIntervention("kcl", "Cloreto de Potássio");
+        vitalStore.applyIntervention("kcl", "Cloreto de Potássio");
       }
       if (lower.includes("sangue") || lower.includes("transfusao") || lower.includes("1:1:1")) {
-        vitalEngine.applyIntervention("sangue_111", "Transfusão Maciça 1:1:1");
+        vitalStore.applyIntervention("sangue_111", "Transfusão Maciça 1:1:1");
       }
       if (lower.includes("tranexamico") || lower.includes("transamin")) {
-        vitalEngine.applyIntervention("acido_tranexamico", "Ácido Tranexâmico");
+        vitalStore.applyIntervention("acido_tranexamico", "Ácido Tranexâmico");
       }
       if (lower.includes("midazolam") || lower.includes("etomidato") || lower.includes("fentanil")) {
-        vitalEngine.applyIntervention("sedacao", "Sedação / Analgesia");
+        vitalStore.applyIntervention("sedacao", "Sedação / Analgesia");
       }
     }
 
@@ -667,9 +745,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
     // Alimenta o motor fisiológico com o procedimento realizado
     if (title.toLowerCase().includes("cardiovers") || title.toLowerCase().includes("choque")) {
-      vitalEngine.executeCardioversion(true, 100);
+      vitalStore.executeCardioversion(true, 100);
     } else {
-      vitalEngine.applyIntervention("procedure", title);
+      vitalStore.applyIntervention("procedure", title);
     }
 
     const elapsed = getElapsedSeconds();
@@ -714,180 +792,17 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       {/* FASE 1: PORTA DA ESTAÇÃO */}
       {/* ========================================================================= */}
       {phase === "door" && (
-        <div className="flex-1 flex flex-col items-center p-2 sm:p-4 max-w-3xl mx-auto text-center space-y-6 w-full pb-32 animate-in fade-in zoom-in-95 duration-200">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-            <Stethoscope className="w-4 h-4" />
-            <span>Porta da Estação • {station.institution}</span>
-            {circuitId && <span className="ml-2 text-amber-500 font-extrabold">• Circuito: Estação {step} de 5</span>}
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-black text-foreground">
-            {selectedMode === "blind" ? neutralStationLabel : station.title}
-          </h1>
-
-          <div className="flex items-center justify-center gap-4 text-xs md:text-sm text-muted-foreground font-semibold">
-            <span>{station.area}</span>
-            {selectedMode !== "blind" && (
-              <>
-                <span>•</span>
-                <span>{station.subtema}</span>
-              </>
-            )}
-            <span>•</span>
-            <span className="flex items-center gap-1 text-primary">
-              <Clock className="w-4 h-4" />
-              {Math.round(station.duration_seconds / 60)} minutos
-            </span>
-          </div>
-
-          {/* Cartaz Colado na Porta */}
-          <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-6 md:p-8 space-y-4">
-            <div className="text-xs font-bold uppercase text-muted-foreground tracking-wider pb-2 border-b border-line-subtle">
-              Instruções Fixadas na Porta da Sala
-            </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line text-sm text-foreground/90">
-              {station.scenario_door_markdown}
-            </div>
-          </div>
-
-          {taskProgress.visible_tasks.length > 0 && (
-            <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-4 md:p-5 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <span>Tarefas Sequenciais da Estação</span>
-                <span className="text-[11px] font-mono text-primary">
-                  Liberação progressiva na sala
-                </span>
-              </div>
-              <div className="space-y-2">
-                {taskProgress.visible_tasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs ${
-                      t.locked
-                        ? "border-border/60 bg-muted/40 text-muted-foreground"
-                        : "border-primary/30 bg-primary/5 text-foreground"
-                    }`}
-                  >
-                    {t.locked ? (
-                      <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
-                    )}
-                    <div>
-                      <span className="font-mono font-bold mr-1.5">Tarefa {t.step}:</span>
-                      <span>
-                        {t.locked
-                          ? `Bloqueada — declare a Tarefa ${t.step - 1} concluída para liberar`
-                          : t.description}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Seletor de Modo de Avaliação: Treino Guiado vs Prova Cega */}
-          <div className="w-full text-left rounded-lg border border-line-subtle bg-surface p-4 md:p-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Escolha o Modo de Simulação
-              </span>
-              <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-                Pode alternar livremente a qualquer momento
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Opção 1: Treino Guiado (Preceptor Fantasma) */}
-              <button
-                type="button"
-                onClick={() => setSelectedMode("guided")}
-                className={`p-4 rounded-lg border text-left transition-colors relative flex flex-col justify-between ${
-                  selectedMode === "guided"
-                    ? "border-accent bg-accent/10"
-                    : "border-line-subtle bg-canvas hover:bg-muted/50"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-accent" />
-                    <div>
-                      <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                        Treinamento Guiado
-                      </div>
-                      <div className="text-[10px] font-bold text-accent uppercase">
-                        Preceptor Fantasma Ativo
-                      </div>
-                    </div>
-                  </div>
-                  {selectedMode === "guided" && (
-                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Barema dinâmico com pontuação ao vivo. O Preceptor alerta sobre tempos críticos, dosagem de eletrólitos e condutas essenciais antes do fim do tempo.
-                </p>
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-primary">
-                  <Sparkles className="w-3 h-3" />
-                  <span>Recomendado para aprendizado e fixação</span>
-                </div>
-              </button>
-
-              {/* Opção 2: Prova Cega (Banca Oficial) */}
-              <button
-                type="button"
-                onClick={() => setSelectedMode("blind")}
-                className={`p-4 rounded-xl border-2 text-left transition-all relative flex flex-col justify-between ${
-                  selectedMode === "blind"
-                    ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
-                    : "border-border bg-background hover:bg-muted/50"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                        Prova Cega (Padrão)
-                      </div>
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase">
-                        Sem spoilers de tema ou barema
-                      </div>
-                    </div>
-                  </div>
-                  {selectedMode === "blind" && (
-                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Experiência realística de 2ª fase sem nenhuma pista visual. Cronômetro puro e barema 100% oculto até a finalização da conduta.
-                </p>
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Simulação de alta pressão real</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="sticky bottom-4 z-20 flex items-center justify-center gap-4 pt-4 pb-2 w-full max-w-xl mx-auto bg-background/90 backdrop-blur-md p-3 rounded-2xl border border-border shadow-xl">
-            <Link
-              href="/osce"
-              className="px-5 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold transition-colors shrink-0"
-            >
-              Voltar ao Hub
-            </Link>
-            <button
-              onClick={handleStartExam}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md transition-transform active:scale-95 text-base cursor-pointer shrink-0"
-            >
-              <Stethoscope className="w-5 h-5" />
-              <span>Entrar na Sala de Exame</span>
-            </button>
-          </div>
-        </div>
+        <OsceDoorBriefing
+          station={station}
+          circuitId={circuitId}
+          step={step}
+          selectedMode={selectedMode}
+          neutralStationLabel={neutralStationLabel}
+          taskProgress={taskProgress}
+          isLoading={isLoading}
+          onSelectMode={setSelectedMode}
+          onStartExam={handleStartExam}
+        />
       )}
 
       {/* ========================================================================= */}
@@ -1120,22 +1035,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           </div>
 
           {/* MONITOR MULTIPARAMÉTRICO VIRTUAL EM TEMPO REAL (APENAS EMERGÊNCIA E PROCEDIMENTO) */}
-          {showMonitor && (
-            <MultiparameterMonitor
-              vitals={vitalEngine.vitals}
-              isMonitored={vitalEngine.isMonitored}
-              displayedNibp={vitalEngine.displayedNibp}
-              isMeasuringNibp={vitalEngine.isMeasuringNibp}
-              activeAlarms={vitalEngine.activeAlarms}
-              isAlarmSilenced={vitalEngine.isAlarmSilenced}
-              isAudioMuted={vitalEngine.isAudioMuted}
-              onMeasureNibp={vitalEngine.measureNibp}
-              onConnectSensors={vitalEngine.connectSensors}
-              onSilenceAlarms={vitalEngine.silenceAlarms}
-              onToggleAudio={vitalEngine.toggleAudio}
-              onExecuteCardioversion={vitalEngine.executeCardioversion}
-            />
-          )}
+          {showMonitor && <LiveMultiparameterMonitor store={vitalStore} />}
 
           {/* Grid Principal: Chat com Paciente (Esq) + Painel de Ações Clínicas (Dir) */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
@@ -1143,7 +1043,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             <div className="lg:col-span-7 flex flex-col min-h-[440px] lg:min-h-0">
               <ClinicalStage
                 station={station}
-                vitals={vitalEngine.vitals}
+                getAuscultationVitals={getAuscultationVitals}
                 transcript={transcript}
                 isLoading={isLoading}
                 onSendMessage={async (text, target) => {
@@ -1228,50 +1128,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
                     </div>
 
                     {/* Sinais Vitais Exibidos Dinâmicos */}
-                    {(vitals || vitalEngine.isMonitored.ecg || vitalEngine.displayedNibp) && (
-                      <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-muted/20 border border-border font-mono text-[11px]">
-                        <div>
-                          PA:{" "}
-                          <span className="font-bold text-foreground">
-                            {vitalEngine.displayedNibp
-                              ? `${vitalEngine.displayedNibp.sbp}x${vitalEngine.displayedNibp.dbp}`
-                              : vitalEngine.isMeasuringNibp
-                              ? "Aferindo..."
-                              : vitals?.pa || "--/--"}
-                          </span>
-                        </div>
-                        <div>
-                          FC:{" "}
-                          <span className="font-bold text-emerald-500">
-                            {vitalEngine.isMonitored.ecg ? `${vitalEngine.vitals.hr} bpm` : vitals?.fc || "--"}
-                          </span>
-                        </div>
-                        <div>
-                          FR:{" "}
-                          <span className="font-bold text-foreground">
-                            {vitalEngine.vitals.rr} irpm
-                          </span>
-                        </div>
-                        <div>
-                          SatO2:{" "}
-                          <span className="font-bold text-cyan-500">
-                            {vitalEngine.isMonitored.spo2 ? `${vitalEngine.vitals.spo2}%` : vitals?.sato2 || "--"}
-                          </span>
-                        </div>
-                        <div>
-                          Temp:{" "}
-                          <span className="font-bold text-foreground">
-                            {vitalEngine.vitals.temp || 36.5} °C
-                          </span>
-                        </div>
-                        <div>
-                          Ritmo:{" "}
-                          <span className="font-bold text-emerald-500 truncate block text-[10px]">
-                            {vitalEngine.vitals.rhythm}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <LivePhysicalVitalsCard store={vitalStore} fallbackVitals={vitals} />
 
                     {/* Pedido Livre de Manobra Semiológica (Sem menu de spoilers) */}
                     <div className="space-y-2.5">
@@ -1456,184 +1313,21 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       {/* FASE 3: ESPELHO OFICIAL DE CORREÇÃO (BAREMA) */}
       {/* ========================================================================= */}
       {phase === "finished" && report && (
-        <div className="flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full space-y-6 pb-32 animate-in fade-in duration-300 print:p-0 print:m-0 print:max-w-full print:pb-0 print:space-y-4">
-          {/* Cabeçalho Formal Exclusivo para Impressão / PDF */}
-          <div className="hidden print:block border-b-2 border-line-strong pb-4 text-ink-primary">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-wider">MedQuest • Prova Prática Beira-Leito (OSCE)</h1>
-                <p className="text-xs font-bold text-ink-secondary">Simulador de 2ª Fase • Parecer da Estação</p>
-              </div>
-              <div className="text-right text-xs text-ink-muted font-mono">
-                <div>Data: {new Date().toLocaleDateString("pt-BR")}</div>
-                <div>Banca: {station.institution || "USP-RP"}</div>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-line-subtle flex justify-between text-xs">
-              <span><strong>Estação:</strong> {station.title}</span>
-              <span><strong>Grande Área:</strong> {station.area}</span>
-              <span><strong>Subtema:</strong> {station.subtema}</span>
-            </div>
-          </div>
-
-          {/* Espelho Único de Correção (Barema + Radar + Timeline) */}
-          <StationResultMirror
-            feedback={report.preceptor_feedback as unknown as PreceptorFeedback}
-            timeline={report.timeline_post_mortem}
-            stationTitle={station.title}
-            institution={station.institution || "USP-RP"}
-            area={station.area}
-            subtema={station.subtema}
-            elapsedSeconds={finalElapsedSeconds}
-            onRetryStation={() => window.location.reload()}
-            onGoBack={() => router.push("/osce")}
-          />
-
-          {/* Navegação Final & Ações */}
-          <div className="flex items-center justify-between pt-4 border-t border-border print:hidden">
-            <div className="flex items-center gap-2">
-              <Link
-                href="/osce"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border hover:bg-muted text-xs font-semibold"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Voltar ao Catálogo</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground transition-all shadow-sm active:scale-95 cursor-pointer"
-                title="Imprimir ou salvar parecer oficial em PDF"
-              >
-                <Printer className="w-4 h-4 text-primary" />
-                <span>Imprimir Espelho (PDF)</span>
-              </button>
-            </div>
-
-            {circuitId && (
-              step < 5 ? (
-                <button
-                  onClick={handleAdvanceCircuit}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold shadow-md transition-transform active:scale-95 flex items-center gap-2 cursor-pointer"
-                >
-                  <Award className="w-4 h-4" />
-                  <span>
-                    Avançar para Estação {step + 1} de 5 {circuitPlan?.stations?.find(s => s.step === step + 1)?.area ? `(${circuitPlan.stations.find(s => s.step === step + 1)?.area})` : ""} →
-                  </span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleOpenCircuitSummary}
-                  disabled={isLoadingCircuit}
-                  className="px-5 py-2 rounded-md bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>{isLoadingCircuit ? "Calculando Parecer Global..." : "Parecer Final do Circuito (0 a 50 pts)"}</span>
-                </button>
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal / Espelho Consolidado de 2ª Fase (0 a 50 pontos) */}
-      {showCircuitModal && circuitSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-          <div className="bg-surface border border-line-subtle rounded-lg max-w-2xl w-full p-6 md:p-8 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="text-center space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-amber-500 text-xs font-bold uppercase tracking-wider">
-                <Award className="w-4 h-4" />
-                <span>Circuito Misto de Treino • 5 Estações</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black text-foreground">
-                Resultado do Circuito de Treino
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Filtro de referência: {circuitPlan?.institution || station.institution || "Misto"}
-              </p>
-            </div>
-
-            {/* Score Big Card */}
-            <div className={`p-6 rounded-2xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-              circuitSummary.approved ? "bg-emerald-500/10 border-emerald-500/30" : "bg-rose-500/10 border-rose-500/30"
-            }`}>
-              <div>
-                <div className="text-xs uppercase font-bold text-muted-foreground">Nota Consolidada (0 a 50)</div>
-                <div className={`text-4xl font-black ${circuitSummary.approved ? "text-emerald-500" : "text-rose-500"}`}>
-                  {circuitSummary.total_score.toFixed(1)} <span className="text-xl text-muted-foreground">/ 50.0</span>
-                </div>
-                <div className="text-xs font-semibold text-foreground/80 mt-1">
-                  Aproveitamento Global: {circuitSummary.percentage}% • Referência interna de treino: 35,0 / 50,0 pts
-                </div>
-              </div>
-
-              <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase text-center ${
-                circuitSummary.approved ? "bg-emerald-500 text-black" : "bg-rose-500 text-white"
-              }`}>
-                {circuitSummary.approved ? "Meta de Treino Atingida" : "Abaixo da Referência"}
-              </div>
-            </div>
-
-            {/* Parecer da Banca */}
-            <div className="p-4 rounded-xl bg-muted/40 border border-border text-xs leading-relaxed text-foreground/90 space-y-1">
-              <span className="font-bold text-foreground block">Parecer da Banca Examinadora:</span>
-              <p>{circuitSummary.board_feedback}</p>
-            </div>
-
-            {/* Rotação das 5 Estações */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Desempenho por Estação de Especialidade:
-              </div>
-              <div className="border border-border rounded-xl divide-y divide-border overflow-hidden bg-background">
-                {circuitSummary.stations.map((s) => (
-                  <div key={s.station_id} className="p-3 text-xs flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-foreground">{s.area}</div>
-                      <div className="text-[11px] text-muted-foreground line-clamp-1">{s.title}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] ${
-                        s.approved ? "bg-emerald-500/15 text-emerald-500" : "bg-rose-500/15 text-rose-500"
-                      }`}>
-                        {s.final_score.toFixed(1)} / 10.0
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-border">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCircuitModal(false)}
-                  className="px-4 py-2 rounded-xl border border-border hover:bg-muted text-xs font-semibold cursor-pointer"
-                >
-                  Fechar Espelho
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-                  title="Imprimir ou Salvar Parecer Consolidado do Circuito em PDF"
-                >
-                  <Printer className="w-3.5 h-3.5 text-primary" />
-                  <span>Imprimir Circuito</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push("/osce")}
-                className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 cursor-pointer"
-              >
-                Concluir e Voltar ao Hub
-              </button>
-            </div>
-          </div>
-        </div>
+        <OsceFinishView
+          station={station}
+          report={report}
+          finalElapsedSeconds={finalElapsedSeconds}
+          circuitId={circuitId}
+          step={step}
+          circuitPlan={circuitPlan}
+          circuitSummary={circuitSummary}
+          showCircuitModal={showCircuitModal}
+          isLoadingCircuit={isLoadingCircuit}
+          onAdvanceCircuit={handleAdvanceCircuit}
+          onOpenCircuitSummary={handleOpenCircuitSummary}
+          onCloseCircuitModal={() => setShowCircuitModal(false)}
+          onNavigateHub={() => router.push("/osce")}
+        />
       )}
     </div>
   );

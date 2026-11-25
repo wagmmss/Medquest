@@ -163,7 +163,7 @@ ALLOWED_ANALYSIS_INSTITUTIONS: list[str] = [
 
 # Mapeamento de códigos/aliases históricos no banco para as bancas alvo
 INSTITUTION_ALIASES: Dict[str, list[str]] = {
-    "USP-SP": ["USP-SP", "USP SP", "USP SP 2020", "USP SP 2021", "USP SP 2022", "USP SP 2023", "USP SP 2024"],
+    "USP-SP": ["USP-SP", "USP", "USP SP", "USP SP 2020", "USP SP 2021", "USP SP 2022", "USP SP 2023", "USP SP 2024"],
     "USP-RP": ["USP-RP", "USP RP", "USP RP 2020", "USP RP 2021", "USP RP 2022", "USP RP 2023", "USP RP 2024"],
     "UNICAMP": ["UNICAMP"],
     "UNIFESP": ["UNIFESP"],
@@ -174,6 +174,10 @@ INSTITUTION_ALIASES: Dict[str, list[str]] = {
     "IAMSPE": ["IAMSPE", "IAMSPE 2020", "IAMSPE 2021", "IAMSPE 2022", "IAMSPE 2023", "IAMSPE 2024"],
     "AMRIGS": ["AMRIGS"],
     "SCMRP": ["SCMRP", "SCM-RP", "SCMRP 2021", "SCMRP 2022", "SCMRP 2023"],
+    "FAMEMA": ["FAMEMA", "FAMEMA 2020", "FAMEMA 2021", "FAMEMA 2022", "FAMEMA 2023", "FAMEMA 2024", "FAMEMA SP 2022"],
+    "FAMERP": ["FAMERP"],
+    "HSL": ["HSL"],
+    "EINSTEIN": ["EINSTEIN"],
 }
 
 def resolve_institution_codes(code: Optional[str]) -> list[str]:
@@ -187,7 +191,7 @@ def resolve_institution_codes(code: Optional[str]) -> list[str]:
     return [code.strip()]
 
 def get_canonical_institution(code: Optional[str]) -> Optional[str]:
-    """Mapeia um código ou alias para a instituição canônica (se pertencer às 5 bancas alvo)."""
+    """Mapeia um código ou alias para a instituição canônica registrada em INSTITUTION_ALIASES."""
     if not code:
         return None
     cleaned = code.strip().upper()

@@ -68,8 +68,8 @@ def test_performance_indexes_cover_user_timeline_and_latest_attempt(client):
     with client.application.app_context():
         from api.db import get_db
         indexes = {row["name"] for row in get_db().execute("PRAGMA index_list(attempts)").fetchall()}
-    assert "idx_attempts_user_question_latest" in indexes
-    assert "idx_attempts_user_answered_at" in indexes
+    assert "idx_attempts_user_qid_latest_cov" in indexes
+    assert "idx_attempts_user_answered" in indexes
 
 
 def test_domain_event_emission_and_p99_metric(client, caplog):

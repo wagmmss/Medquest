@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.use({ serviceWorkers: 'block' });
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('medquest_onboarding_v1', 'done'));
 });
@@ -27,7 +29,7 @@ test('analysis: failed requests hide stale data and retry the unchanged filter',
 
   await page.goto('/analise?tab=prontidao');
   const readiness = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Prontidão Estimada por Edital' }) });
-  const select = page.getByLabel('Selecionar edital da instituição');
+  const select = page.getByLabel('Selecionar banca-alvo da análise');
   await select.selectOption('UNICAMP');
   await expect(readiness.getByText('68%', { exact: true })).toBeVisible();
   failReadiness = true;

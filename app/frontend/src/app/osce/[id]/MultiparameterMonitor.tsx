@@ -46,7 +46,8 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastBeepTimeRef = useRef<number>(0);
   const pulseGlowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [pulseGlow, setPulseGlow] = useState(false);
+  const fcTileRef = useRef<HTMLDivElement | null>(null);
+  const fcHeartRef = useRef<SVGSVGElement | null>(null);
   const [showDefibModal, setShowDefibModal] = useState(false);
   const [defibSync, setDefibSync] = useState(true);
   const [defibJoules, setDefibJoules] = useState(100);
@@ -156,9 +157,10 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
     }
   }, [isAudioMuted, isAlarmSilenced, getAudioContext]);
 
-  // Alarme sonoro periódico se houver alarme vermelho ativo
+  const hasRedAlarm = activeAlarms.some((a) => a.level === "red");
+
+  // Alarme sonoro periódico se houver alarme vermelho ativo (depende de booleano primitivo para não resetar no jitter 1Hz)
   useEffect(() => {
-    const hasRedAlarm = activeAlarms.some((a) => a.level === "red");
     if (!hasRedAlarm || isAlarmSilenced || isAudioMuted) return;
 
     const interval = setInterval(() => {
@@ -166,7 +168,7 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [activeAlarms, isAlarmSilenced, isAudioMuted, playAlarmTone]);
+  }, [hasRedAlarm, isAlarmSilenced, isAudioMuted, playAlarmTone]);
 
   // Loop de Renderização das Ondas no Canvas a 60 FPS (desacoplado de re-renders de 1Hz via refs)
   useEffect(() => {
@@ -177,13 +179,42 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
 
     let animId: number;
     let sweepX = 0;
-    const speed = 2.4; // velocidade do feixe
+    const baseSpeedPer60Hz = 2.4; // velocidade visual equivalente a 60 FPS
+    let lastFrameMs = performance.now();
 
-    // Estado interno da onda de ECG
+    // Fases normalizadas [0, 1) avançando em tempo real (dtSec * hr / 60) independente do refresh rate
     let ecgPhase = 0;
     let plethPhase = 0;
 
-    const render = () => {
+    const triggerPulseDomGlow = () => {
+      const tile = fcTileRef.current;
+      const heart = fcHeartRef.current;
+      if (tile) {
+        tile.classList.add("bg-emerald-950/60", "border-emerald-400", "shadow-sm", "ring-1", "ring-emerald-500/30");
+        tile.classList.remove("bg-[#0b1220]", "border-emerald-900/40");
+      }
+      if (heart) {
+        heart.classList.add("scale-110", "text-emerald-300", "fill-emerald-300");
+      }
+      if (pulseGlowTimeoutRef.current) {
+        clearTimeout(pulseGlowTimeoutRef.current);
+      }
+      pulseGlowTimeoutRef.current = setTimeout(() => {
+        if (fcTileRef.current) {
+          fcTileRef.current.classList.remove("bg-emerald-950/60", "border-emerald-400", "shadow-sm", "ring-1", "ring-emerald-500/30");
+          fcTileRef.current.classList.add("bg-[#0b1220]", "border-emerald-900/40");
+        }
+        if (fcHeartRef.current) {
+          fcHeartRef.current.classList.remove("scale-110", "text-emerald-300", "fill-emerald-300");
+        }
+      }, 90);
+    };
+
+    const render = (frameNow: number) => {
+      const dtSec = Math.min(0.1, Math.max(0.001, (frameNow - lastFrameMs) / 1000));
+      lastFrameMs = frameNow;
+      const speed = baseSpeedPer60Hz * (dtSec * 60);
+
       const width = canvas.width;
       const height = canvas.height;
       const currVitals = vitalsRef.current;
@@ -221,10 +252,8 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
 
         const hr = Math.max(20, Math.min(260, currVitals.hr));
         const beatsPerSec = hr / 60;
-        const cycleLength = (60 / beatsPerSec) * (60 / speed); // duração do ciclo em pixels
-
-        ecgPhase = (ecgPhase + speed) % cycleLength;
-        const normalizedCycle = ecgPhase / cycleLength; // 0.0 a 1.0
+        ecgPhase = (ecgPhase + dtSec * beatsPerSec) % 1.0;
+        const normalizedCycle = ecgPhase;
 
         let ecgOffset = 0;
         const rhythm = currVitals.rhythm;
@@ -258,11 +287,7 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
             if (now - lastBeepTimeRef.current > (50 / hr) * 1000) {
               lastBeepTimeRef.current = now;
               playQrsBeepRef.current(currVitals.spo2);
-              setPulseGlow(true);
-              if (pulseGlowTimeoutRef.current) {
-                clearTimeout(pulseGlowTimeoutRef.current);
-              }
-              pulseGlowTimeoutRef.current = setTimeout(() => setPulseGlow(false), 90);
+              triggerPulseDomGlow();
             }
           } else if (normalizedCycle >= 0.25 && normalizedCycle < 0.28) {
             // Onda S (descida)
@@ -303,10 +328,8 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
 
         const hr = Math.max(30, Math.min(220, currVitals.hr));
         const beatsPerSec = hr / 60;
-        const cycleLength = (60 / beatsPerSec) * (60 / speed);
-
-        plethPhase = (plethPhase + speed) % cycleLength;
-        const normPleth = plethPhase / cycleLength;
+        plethPhase = (plethPhase + dtSec * beatsPerSec) % 1.0;
+        const normPleth = plethPhase;
 
         let plethOffset = 0;
         if (normPleth < 0.28) {
@@ -340,7 +363,7 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
         ctx.stroke();
       }
 
-      // Avança a barra de varredura
+      // Avança a barra de varredura proporcionalmente ao dt real
       sweepX = (sweepX + speed) % width;
       animId = requestAnimationFrame(render);
     };
@@ -502,15 +525,12 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
         <div className="col-span-12 lg:col-span-5 grid grid-cols-2 gap-2 p-2.5 bg-[#090d18]">
           {/* Tile 1: Frequência Cardíaca (Verde) */}
           <div
-            className={`p-2.5 rounded-sm border transition-all flex flex-col justify-between ${
-              pulseGlow
-                ? "bg-emerald-950/60 border-emerald-400 shadow-sm ring-1 ring-emerald-500/30"
-                : "bg-[#0b1220] border-emerald-900/40"
-            }`}
+            ref={fcTileRef}
+            className="p-2.5 rounded-sm border transition-all flex flex-col justify-between bg-[#0b1220] border-emerald-900/40"
           >
             <div className="flex items-center justify-between text-xs text-emerald-400">
               <span className="font-bold font-mono-lab flex items-center gap-1 uppercase tracking-wider text-[11px]">
-                <Heart className={`w-3.5 h-3.5 ${pulseGlow ? "scale-110 text-emerald-300 fill-emerald-300" : ""}`} />
+                <Heart ref={fcHeartRef} className="w-3.5 h-3.5" />
                 FC
               </span>
               <span className="text-[10px] text-emerald-400/70 font-mono-lab tabular-nums">50 - 120</span>

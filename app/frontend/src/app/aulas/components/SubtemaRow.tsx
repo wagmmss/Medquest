@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import {
@@ -20,7 +21,7 @@ import {
 } from "../lessonHelpers";
 import { LessonRowCompact } from "./LessonRowCompact";
 
-export function SubtemaRow({
+export const SubtemaRow = React.memo(function SubtemaRow({
   subGroup,
   subCycle,
   isExpanded,
@@ -417,4 +418,4 @@ export function SubtemaRow({
       )}
     </article>
   );
-}
+});

@@ -21,6 +21,7 @@ const LEGACY_CACHES = [
 
 const OFFLINE_STUDY_SHELL_CACHE = "medquest-study-shell";
 const OFFLINE_STUDY_SHELL_PATH = "/estudar";
+const CACHEABLE_STUDY_SHELL_ROUTES = ["/estudar", "/simulado"];
 
 function getOfflineFallbackHtml(): Response {
   const html = `<!DOCTYPE html>
@@ -93,21 +94,17 @@ function isValidHtmlResponse(response: Response | undefined | null): response is
 }
 
 async function getOfflineStudyShell(pathname: string = OFFLINE_STUDY_SHELL_PATH): Promise<Response> {
+  if (!CACHEABLE_STUDY_SHELL_ROUTES.includes(pathname)) {
+    return getOfflineFallbackHtml();
+  }
   try {
     const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
-    // 1. Tenta recuperar a casca específica da rota solicitada (garantindo que seja HTML válido)
+    // Recupera estritamente a casca HTML correspondente à rota solicitada.
     const targetShell = await cache.match(pathname, {
       ignoreSearch: true,
       ignoreVary: true,
     });
     if (isValidHtmlResponse(targetShell)) return targetShell;
-
-    // 2. Fallback para a casca padrão /estudar
-    const defaultShell = await cache.match(OFFLINE_STUDY_SHELL_PATH, {
-      ignoreSearch: true,
-      ignoreVary: true,
-    });
-    if (isValidHtmlResponse(defaultShell)) return defaultShell;
   } catch {
     // Cache indisponível
   }
@@ -125,8 +122,8 @@ async function fetchNavigationWithTimeout(request: Request, timeoutMs: number = 
   }
 }
 
-// Intercepta navegações com timeout de 2.8s para impedir que o celular trave
-// quando a conexão cai ou oscila.
+// Intercepta navegações apenas para as rotas com suporte offline explícito (/estudar e /simulado)
+// evitando cachear HTML SSR autenticado de "/" e evitando servir casca errada para outras rotas.
 self.addEventListener("fetch", (rawEvent: Event) => {
   const event = rawEvent as FetchEvent;
   if (event.request.mode !== "navigate") return;
@@ -134,26 +131,31 @@ self.addEventListener("fetch", (rawEvent: Event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Rotas de estudo/simulado/revisão ou raiz
+  if (!CACHEABLE_STUDY_SHELL_ROUTES.includes(url.pathname)) {
+    event.respondWith((async () => {
+      try {
+        return await fetch(event.request);
+      } catch {
+        return getOfflineFallbackHtml();
+      }
+    })());
+    return;
+  }
+
   event.respondWith((async () => {
     try {
-      const response = await fetchNavigationWithTimeout(event.request, 2800);
+      const response = await fetchNavigationWithTimeout(event.request, 4000);
       if (isValidHtmlResponse(response)) {
-        const routesToCache = ["/estudar", "/simulado", "/"];
-        if (routesToCache.includes(url.pathname)) {
-          try {
-            const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
-            await cache.put(url.pathname, response.clone());
-          } catch (cacheErr) {
-            console.warn("[ServiceWorker] Ignorando falha de cota/cache ao salvar casca:", cacheErr);
-          }
+        try {
+          const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
+          await cache.put(url.pathname, response.clone());
+        } catch (cacheErr) {
+          console.warn("[ServiceWorker] Ignorando falha de cota/cache ao salvar casca:", cacheErr);
         }
       }
       return response;
     } catch {
-      // Se a conexão falhar ou expirar o tempo limite:
-      const targetPath = url.pathname === "/" ? "/estudar" : url.pathname;
-      return await getOfflineStudyShell(targetPath);
+      return await getOfflineStudyShell(url.pathname);
     }
   })());
 });
@@ -203,9 +205,10 @@ async function purgeCorruptedStudyShells(): Promise<void> {
     const cache = await caches.open(OFFLINE_STUDY_SHELL_CACHE);
     const keys = await cache.keys();
     for (const request of keys) {
+      const reqPath = new URL(request.url).pathname;
       const response = await cache.match(request);
-      if (response && !isValidHtmlResponse(response)) {
-        console.warn(`[ServiceWorker] Removendo casca não-HTML corrompida: ${request.url}`);
+      if (!CACHEABLE_STUDY_SHELL_ROUTES.includes(reqPath) || (response && !isValidHtmlResponse(response))) {
+        console.warn(`[ServiceWorker] Removendo casca obsoleta ou não-HTML: ${request.url}`);
         await cache.delete(request);
       }
     }

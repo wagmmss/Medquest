@@ -1,12 +1,14 @@
 """Rotas de IA: Preceptor IA e diagnósticos operacionais do provedor Gemini."""
+import re
 from urllib.parse import quote
 
 from flask import Blueprint, g, jsonify, request
 
 from . import ai
-from .auth import require_auth
+from .auth import require_auth, require_curator
 from .db import get_db
 from .gemini_pool import provider_status
+from .rate_limit import check_rate_limit
 
 bp = Blueprint("ai_routes", __name__)
 
@@ -14,6 +16,14 @@ bp = Blueprint("ai_routes", __name__)
 @bp.route("/questions/<int:question_id>/ask_ai", methods=["POST"])
 @require_auth
 def ask_question_ai(question_id):
+    user_id = str(getattr(g, "user_id", "") or "").strip()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    rl_resp = check_rate_limit("ask_ai", auth_limit=25, guest_limit=5, window_seconds=60)
+    if rl_resp is not None:
+        return rl_resp
+
     db = get_db()
     q_sql = """
         SELECT q.id, q.stem, q.area, q.subtema, q.topic,
@@ -51,12 +61,26 @@ def ask_question_ai(question_id):
     correct_letter = correct_alt["letter"] if correct_alt else ""
     correct_text = correct_alt["text"] if correct_alt else ""
 
-    body = request.get_json(silent=True) or {}
-    user_question = body.get("user_question", "")
-    user_letter = body.get("user_letter", "")
-    chat_history = body.get("chat_history", [])
+    raw_body = request.get_json(silent=True)
+    body = raw_body if isinstance(raw_body, dict) else {}
+    raw_question = body.get("user_question", "")
+    user_question = raw_question if isinstance(raw_question, str) else ""
+    raw_letter = str(body.get("user_letter") or "").strip().upper()
+    user_letter = raw_letter if re.fullmatch(r"[A-E]", raw_letter) else ""
+    raw_history = body.get("chat_history", [])
+    chat_history = (
+        [
+            {
+                "role": "user" if str(m.get("role")) == "user" else "assistant",
+                "content": m.get("content", ""),
+            }
+            for m in raw_history[:12]
+            if isinstance(m, dict) and isinstance(m.get("content"), str)
+        ]
+        if isinstance(raw_history, list)
+        else None
+    )
 
-    user_id = getattr(g, "user_id", "1")
     result = ai.ask_preceptor_ai(
         stem=q["stem"],
         alternatives=alts_list,
@@ -85,7 +109,7 @@ def ask_question_ai(question_id):
 
 
 @bp.route("/ai/health", methods=["GET"])
-@require_auth
+@require_curator
 def ai_health():
     status = provider_status()
     gemini = status["providers"]["gemini"]
@@ -100,15 +124,19 @@ def preceptor_dashboard_focus():
     """
     Retorna o diagnóstico adaptativo e o plano de ataque do Preceptor IA
     para o Dashboard do estudante. Suporta modo rápido (apenas métricas) e
-    modo com parecer clínico de IA.
+    modo com parecer clínico de IA (apenas via POST).
     """
-    user_id = getattr(g, "user_id", "1")
+    user_id = str(getattr(g, "user_id", "") or "").strip()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    body = request.get_json(silent=True) or {}
-    generate_ai = body.get("generate_ai", True)
     if request.method == "GET":
-        ai_arg = request.args.get("ai", "1")
-        generate_ai = ai_arg in ("1", "true", "True")
+        # Nunca aciona chamadas pagas de LLM em requisições GET (anti-CSRF/cache)
+        generate_ai = False
+    else:
+        raw_body = request.get_json(silent=True)
+        body = raw_body if isinstance(raw_body, dict) else {}
+        generate_ai = bool(body.get("generate_ai", True))
 
     if not generate_ai:
         from .stats import overview_cache
@@ -142,6 +170,10 @@ def preceptor_dashboard_focus():
         }
         overview_cache.set(cache_key, payload)
         return jsonify(payload)
+
+    rl_resp = check_rate_limit("preceptor_focus", auth_limit=15, guest_limit=3, window_seconds=60)
+    if rl_resp is not None:
+        return rl_resp
 
     db = get_db()
     result = ai.generate_preceptor_dashboard_focus(db, user_id)

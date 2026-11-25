@@ -2,17 +2,23 @@
 import json
 import logging
 import math
+import threading
+import time
 from datetime import datetime, timezone
 
 from fsrs import Card
 
-from .cache import SimpleTTLCache
+from .cache import SimpleTTLCache, catalog_cache_enabled, db_cache_scope
 from .filters import get_user_target_institutions
 from .srs import _question_scheduler as _scheduler, _safe_load_card
 
 logger = logging.getLogger(__name__)
 _profile_cache = SimpleTTLCache(60)
-_last_known_profile: dict[tuple, dict] = {}
+_question_topics_cache = SimpleTTLCache(21600)
+_last_known_profile: dict[tuple, tuple[float, dict]] = {}
+_last_known_lock = threading.Lock()
+_LAST_KNOWN_MAX_ENTRIES = 256
+_LAST_KNOWN_TTL_SECONDS = 86400.0
 
 
 def _utc(value=None):
@@ -96,12 +102,13 @@ def clear_user_last_known_profile(user_id):
     if user_id is None:
         return
     user_str = str(user_id)
-    keys = [
-        k for k in list(_last_known_profile.keys())
-        if isinstance(k, tuple) and len(k) > 0 and (k[0] == user_id or str(k[0]) == user_str)
-    ]
-    for k in keys:
-        _last_known_profile.pop(k, None)
+    with _last_known_lock:
+        keys = [
+            k for k in list(_last_known_profile.keys())
+            if isinstance(k, tuple) and len(k) > 0 and (k[0] == user_id or str(k[0]) == user_str)
+        ]
+        for k in keys:
+            _last_known_profile.pop(k, None)
 
 
 def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adaptive_focus="balanced", target_institutions=None):
@@ -155,16 +162,36 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
             stats[3] += 1
 
     # Pool of unattempted questions from current rows, grouped by topic
+    rows_by_id = {row["id"]: row for row in rows}
     unseen_by_topic = {}
     for row in rows:
         if row["attempts"] == 0:
             topic = row["subtema"] or row["topic"] or "Sem tema"
             unseen_by_topic.setdefault(topic, []).append(row)
 
+    def _pick_twin_candidate(candidates, orig_inst):
+        if target_institutions:
+            for c in candidates:
+                c_inst = c["institution_code"] or ""
+                if (
+                    c["id"] not in paired_twin_ids
+                    and c_inst != orig_inst
+                    and (c_inst in target_institutions or c_inst.upper() in target_institutions)
+                ):
+                    return c
+        for c in candidates:
+            if c["id"] not in paired_twin_ids and (c["institution_code"] or "") != orig_inst:
+                return c
+        for c in candidates:
+            if c["id"] not in paired_twin_ids:
+                return c
+        return None
+
     # Track paired twin questions: twin_id -> (orig_id, orig_inst, topic)
     paired_twin_ids = {}
     external_twin_rows = {}
     replaced_orig_ids = set()
+    pending_external_twins = []
 
     for row in rows:
         is_due = _due(row["next_review_date"], now)
@@ -173,70 +200,41 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
             orig_inst = row["institution_code"] or ""
             topic = row["subtema"] or row["topic"] or "Sem tema"
 
-            twin_candidate = None
-            candidates = unseen_by_topic.get(topic, [])
-            # Prioridade 1: Candidato de banca-alvo diferente da banca de origem
-            if target_institutions:
-                for c in candidates:
-                    c_inst = c["institution_code"] or ""
-                    if c["id"] not in paired_twin_ids and c_inst != orig_inst and (c_inst in target_institutions or c_inst.upper() in target_institutions):
-                        twin_candidate = c
-                        break
-            # Prioridade 2: Candidato de qualquer banca diferente da banca de origem
-            if twin_candidate is None:
-                for c in candidates:
-                    if c["id"] not in paired_twin_ids:
-                        if c["institution_code"] != orig_inst:
-                            twin_candidate = c
-                            break
-            # Prioridade 3: Qualquer candidato não visto do tópico
-            if twin_candidate is None:
-                for c in candidates:
-                    if c["id"] not in paired_twin_ids:
-                        twin_candidate = c
-                        break
-
-            if twin_candidate is None and topic != "Sem tema":
-                if target_institutions:
-                    target_placeholders = ",".join("?" * len(target_institutions))
-                    db_twin = db.execute(
-                        f"""
-                        SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
-                               q.institution_label, q.topic, q.area, q.subtema,
-                               0 AS attempts, 0 AS correct, NULL AS latest_correct,
-                               NULL AS next_review_date, NULL AS fsrs_card
-                        FROM questions q
-                        WHERE q.missing_alts = 0
-                          AND COALESCE(NULLIF(q.subtema, ''), q.topic) = ?
-                          AND q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
-                        ORDER BY (q.institution_code IN ({target_placeholders})) DESC,
-                                 (q.institution_code != ?) DESC, q.id ASC
-                        LIMIT 1
-                        """,
-                        (topic, user_id, *target_institutions, orig_inst),
-                    ).fetchone()
-                else:
-                    db_twin = db.execute(
-                        """
-                        SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
-                               q.institution_label, q.topic, q.area, q.subtema,
-                               0 AS attempts, 0 AS correct, NULL AS latest_correct,
-                               NULL AS next_review_date, NULL AS fsrs_card
-                        FROM questions q
-                        WHERE q.missing_alts = 0
-                          AND COALESCE(NULLIF(q.subtema, ''), q.topic) = ?
-                          AND q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
-                        ORDER BY (q.institution_code != ?) DESC, q.id ASC
-                        LIMIT 1
-                        """,
-                        (topic, user_id, orig_inst),
-                    ).fetchone()
-
-                if db_twin and db_twin["id"] not in paired_twin_ids:
-                    twin_candidate = db_twin
-                    external_twin_rows[db_twin["id"]] = dict(db_twin)
-
+            twin_candidate = _pick_twin_candidate(unseen_by_topic.get(topic, []), orig_inst)
             if twin_candidate is not None:
+                paired_twin_ids[twin_candidate["id"]] = (orig_id, orig_inst, topic)
+                replaced_orig_ids.add(orig_id)
+            elif topic != "Sem tema":
+                pending_external_twins.append((orig_id, orig_inst, topic))
+
+    # Busca em lote para todos os tópicos que precisaram de gêmea fora do filtro atual (elimina N+1)
+    if pending_external_twins:
+        missing_topics = list(dict.fromkeys(topic for _, _, topic in pending_external_twins))
+        external_by_topic: dict[str, list] = {}
+        chunk_size = 200
+        for i in range(0, len(missing_topics), chunk_size):
+            chunk = missing_topics[i : i + chunk_size]
+            topic_placeholders = ",".join("?" * len(chunk))
+            ext_rows = db.execute(
+                f"""
+                SELECT q.id, q.source_file, q.source_number, q.year, q.institution_code,
+                       q.institution_label, q.topic, q.area, q.subtema,
+                       COALESCE(NULLIF(q.subtema, ''), q.topic) AS _eff_topic
+                FROM questions q
+                WHERE q.missing_alts = 0
+                  AND COALESCE(NULLIF(q.subtema, ''), q.topic) IN ({topic_placeholders})
+                  AND q.id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
+                ORDER BY q.id ASC
+                """,
+                (*chunk, user_id),
+            ).fetchall()
+            for r in ext_rows:
+                external_by_topic.setdefault(r["_eff_topic"], []).append(r)
+
+        for orig_id, orig_inst, topic in pending_external_twins:
+            twin_candidate = _pick_twin_candidate(external_by_topic.get(topic, []), orig_inst)
+            if twin_candidate is not None:
+                external_twin_rows[twin_candidate["id"]] = dict(twin_candidate)
                 paired_twin_ids[twin_candidate["id"]] = (orig_id, orig_inst, topic)
                 replaced_orig_ids.add(orig_id)
 
@@ -306,7 +304,7 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
 
     for twin_id, (orig_id, orig_inst, orig_topic) in paired_twin_ids.items():
         if twin_id not in seen_ids:
-            twin_row = external_twin_rows.get(twin_id)
+            twin_row = external_twin_rows.get(twin_id) or rows_by_id.get(twin_id)
             if twin_row is None:
                 fetched = db.execute(
                     """
@@ -351,7 +349,32 @@ def rank_adaptive_candidates(db, user_id, where, params, limit, now=None, adapti
     return ranked[:limit]
 
 
-def get_adaptive_signals_by_topic(db, user_id, now=None):
+def _get_cached_question_topics(db) -> list[tuple[str, str | None, int]]:
+    """Retorna e cacheia o catálogo estático de tópicos/subtemas e suas contagens."""
+    use_cache = catalog_cache_enabled()
+    cache_key = ("question_topics", db_cache_scope())
+    if use_cache:
+        cached = _question_topics_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+    rows = db.execute("""
+        SELECT
+            COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
+            MIN(q.area) AS area,
+            COUNT(q.id) AS available
+        FROM questions q
+        WHERE q.missing_alts = 0
+              AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
+        GROUP BY COALESCE(NULLIF(q.subtema, ''), q.topic)
+    """).fetchall()
+    topics = [(r["topic"], r["area"], int(r["available"] or 0)) for r in rows]
+    if use_cache:
+        _question_topics_cache.set(cache_key, topics)
+    return topics
+
+
+def get_adaptive_signals_by_topic(db, user_id, now=None, preloaded_fsrs_rows=None):
     """Compute deterministic adaptive signals for ALL topics for the given user."""
     use_cache = now is None
     signals_cache_key = (user_id, "__signals__")
@@ -361,6 +384,7 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
             return cached_signals
 
     now = _utc(now)
+    question_topics = _get_cached_question_topics(db)
     topics_sql = """
         WITH AttemptRanks AS (
             SELECT
@@ -375,40 +399,18 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
             JOIN questions q ON q.id = a.question_id
             WHERE a.user_id = ? AND q.missing_alts = 0
                   AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-        ),
-        TopicStats AS (
-            SELECT
-                topic,
-                COUNT(DISTINCT question_id) AS answered,
-                SUM(CASE WHEN rn <= 5 THEN is_correct ELSE 0 END) AS diag_correct,
-                SUM(CASE WHEN rn <= 5 THEN 1 ELSE 0 END) AS diag_attempts,
-                SUM(CASE WHEN rn > 5 THEN is_correct ELSE 0 END) AS prac_correct,
-                SUM(CASE WHEN rn > 5 THEN 1 ELSE 0 END) AS prac_attempts,
-                SUM(is_correct) AS correct,
-                COUNT(is_correct) AS attempts
-            FROM AttemptRanks
-            GROUP BY topic
-        ),
-        QuestionTopics AS (
-            SELECT
-                COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
-                MIN(q.area) AS area,
-                COUNT(q.id) AS available
-            FROM questions q
-            WHERE q.missing_alts = 0
-                  AND COALESCE(NULLIF(q.subtema, ''), q.topic) IS NOT NULL
-            GROUP BY COALESCE(NULLIF(q.subtema, ''), q.topic)
         )
-        SELECT qt.topic, qt.area, qt.available,
-               COALESCE(ts.attempts, 0) AS attempts,
-               COALESCE(ts.answered, 0) AS answered,
-               COALESCE(ts.correct, 0) AS correct,
-               COALESCE(ts.diag_correct, 0) AS diag_correct,
-               COALESCE(ts.diag_attempts, 0) AS diag_attempts,
-               COALESCE(ts.prac_correct, 0) AS prac_correct,
-               COALESCE(ts.prac_attempts, 0) AS prac_attempts
-        FROM QuestionTopics qt
-        LEFT JOIN TopicStats ts ON ts.topic = qt.topic
+        SELECT
+            topic,
+            COUNT(DISTINCT question_id) AS answered,
+            SUM(CASE WHEN rn <= 5 THEN is_correct ELSE 0 END) AS diag_correct,
+            SUM(CASE WHEN rn <= 5 THEN 1 ELSE 0 END) AS diag_attempts,
+            SUM(CASE WHEN rn > 5 THEN is_correct ELSE 0 END) AS prac_correct,
+            SUM(CASE WHEN rn > 5 THEN 1 ELSE 0 END) AS prac_attempts,
+            SUM(is_correct) AS correct,
+            COUNT(is_correct) AS attempts
+        FROM AttemptRanks
+        GROUP BY topic
     """
     fsrs_sql = """
         SELECT COALESCE(NULLIF(q.subtema, ''), q.topic) AS topic,
@@ -418,27 +420,45 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
         WHERE sr.user_id = ?
     """
 
-    batch_res = None
-    if hasattr(db, "batch"):
-        try:
-            batch_res = db.batch([(topics_sql, (user_id,)), (fsrs_sql, (user_id,))])
-        except Exception:
-            batch_res = None
-
-    if batch_res is not None:
-        rows = batch_res[0].fetchall()
+    if preloaded_fsrs_rows is not None:
+        user_rows = db.execute(topics_sql, (user_id,)).fetchall()
+        fsrs_rows = preloaded_fsrs_rows
+    elif hasattr(db, "batch"):
+        batch_res = db.batch([(topics_sql, (user_id,)), (fsrs_sql, (user_id,))])
+        user_rows = batch_res[0].fetchall()
         fsrs_rows = batch_res[1].fetchall()
     else:
-        rows = db.execute(topics_sql, (user_id,)).fetchall()
+        user_rows = db.execute(topics_sql, (user_id,)).fetchall()
         fsrs_rows = db.execute(fsrs_sql, (user_id,)).fetchall()
+
+    user_stats = {r["topic"]: r for r in user_rows}
+    rows = []
+    for topic_name, area_name, available in question_topics:
+        u = user_stats.get(topic_name)
+        rows.append({
+            "topic": topic_name,
+            "area": area_name,
+            "available": available,
+            "attempts": int(u["attempts"] or 0) if u else 0,
+            "answered": int(u["answered"] or 0) if u else 0,
+            "correct": int(u["correct"] or 0) if u else 0,
+            "diag_correct": int(u["diag_correct"] or 0) if u else 0,
+            "diag_attempts": int(u["diag_attempts"] or 0) if u else 0,
+            "prac_correct": int(u["prac_correct"] or 0) if u else 0,
+            "prac_attempts": int(u["prac_attempts"] or 0) if u else 0,
+        })
 
     memory = {}
     for row in fsrs_rows:
-        metrics = fsrs_metrics(row["fsrs_card"], now)
-        bucket = memory.setdefault(row["topic"], {"values": [], "due": 0})
+        row_dict = row if isinstance(row, dict) else dict(row)
+        topic_val = row_dict.get("topic") or row_dict.get("subtema")
+        if not topic_val:
+            continue
+        metrics = fsrs_metrics(row_dict.get("fsrs_card"), now)
+        bucket = memory.setdefault(topic_val, {"values": [], "due": 0})
         if metrics["retrievability"] is not None:
             bucket["values"].append(metrics["retrievability"])
-        if _due(row["next_review_date"], now):
+        if _due(row_dict.get("next_review_date"), now):
             bucket["due"] += 1
 
     signals = {}
@@ -474,7 +494,19 @@ def get_adaptive_signals_by_topic(db, user_id, now=None):
 
 def _build_fallback_profile(now: datetime, cache_key: tuple) -> dict:
     """Retorna último perfil conhecido ou fallback determinístico seguro em falha de banco."""
-    stale = _last_known_profile.get(cache_key)
+    stale = None
+    now_ts = time.time()
+    with _last_known_lock:
+        entry = _last_known_profile.get(cache_key)
+        if entry is not None:
+            if isinstance(entry, tuple) and len(entry) == 2:
+                saved_ts, saved_profile = entry
+            else:
+                saved_ts, saved_profile = now_ts, entry
+            if now_ts - saved_ts <= _LAST_KNOWN_TTL_SECONDS:
+                stale = saved_profile
+            else:
+                _last_known_profile.pop(cache_key, None)
     if stale is not None:
         return {
             **stale,
@@ -505,7 +537,7 @@ def _build_fallback_profile(now: datetime, cache_key: tuple) -> dict:
     }
 
 
-def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config_row=None):
+def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config_row=None, preloaded_fsrs_rows=None):
     """Build a transparent personalized diagnosis and daily goal."""
     use_cache = now is None
     cache_key = (user_id, subtema, limit)
@@ -517,7 +549,7 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config
     raw_now = now
     now = _utc(now)
     try:
-        signals = get_adaptive_signals_by_topic(db, user_id, now=raw_now)
+        signals = get_adaptive_signals_by_topic(db, user_id, now=raw_now, preloaded_fsrs_rows=preloaded_fsrs_rows)
         due_total = sum(item["due_count"] for item in signals.values())
 
         topics = []
@@ -575,7 +607,19 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config
             "signals": ["FSRS retrievability", "accuracy with evidence confidence", "coverage", "due reviews"],
         },
     }
-    _last_known_profile[cache_key] = result
+    now_ts = time.time()
+    with _last_known_lock:
+        if len(_last_known_profile) >= _LAST_KNOWN_MAX_ENTRIES and cache_key not in _last_known_profile:
+            expired = [
+                k for k, entry in list(_last_known_profile.items())
+                if isinstance(entry, tuple) and len(entry) == 2 and (now_ts - entry[0] > _LAST_KNOWN_TTL_SECONDS)
+            ]
+            for k in expired:
+                _last_known_profile.pop(k, None)
+            if len(_last_known_profile) >= _LAST_KNOWN_MAX_ENTRIES:
+                oldest_k = next(iter(_last_known_profile))
+                _last_known_profile.pop(oldest_k, None)
+        _last_known_profile[cache_key] = (now_ts, result)
     if use_cache:
         _profile_cache.set(cache_key, result)
     return result

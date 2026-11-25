@@ -43,15 +43,17 @@ export function isClerkServerEnabled(): boolean {
  */
 export async function getServerAuthState(): Promise<{
   userId: string | null;
+  sessionClaims: Record<string, unknown> | null;
   getToken: () => Promise<string | null>;
 }> {
   if (!isClerkServerEnabled()) {
-    return { userId: null, getToken: async () => null };
+    return { userId: null, sessionClaims: null, getToken: async () => null };
   }
 
   const session = await auth();
   return {
     userId: session.userId ?? null,
+    sessionClaims: (session.sessionClaims as Record<string, unknown> | undefined) ?? null,
     getToken: () => session.getToken(),
   };
 }

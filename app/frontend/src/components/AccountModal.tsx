@@ -163,7 +163,6 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
                       {clerkEnabled && (
                         <button
                           onClick={() => {
-                            localStorage.removeItem("medquest_last_user_id");
                             void signOut({ redirectUrl: "/" });
                           }}
                           className="flex items-center gap-3 px-4 py-3 rounded-md bg-elevated/30 text-ink-primary hover:bg-elevated border border-line-subtle transition-colors text-left w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"

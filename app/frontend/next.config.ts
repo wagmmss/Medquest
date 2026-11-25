@@ -78,13 +78,33 @@ const nextConfig: NextConfig = {
   turbopack: {},
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
+    const prodCsp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://clerk.medquest.live https://*.clerk.com https://challenges.cloudflare.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "media-src 'self' blob: https:",
+      "connect-src 'self' https: wss:",
+      "worker-src 'self' blob:",
+      "frame-src 'self' https://drive.google.com https://*.clerk.accounts.dev https://clerk.medquest.live https://*.clerk.com https://challenges.cloudflare.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join("; ");
+
     return [
       {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           ...(isProd
-            ? [{ key: "X-Frame-Options", value: "DENY" }]
+            ? [
+                { key: "X-Frame-Options", value: "DENY" },
+                { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+                { key: "Content-Security-Policy", value: prodCsp },
+              ]
             : [
                 {
                   key: "Content-Security-Policy",

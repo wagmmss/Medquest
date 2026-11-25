@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import { QuestionMeta } from "@/types/api";
 import { api } from "@/lib/api";
+import { groupInstitutions } from "@/lib/institutions";
 import { parseNaturalSessionPrompt } from "@/lib/naturalSessionParser";
 import { SavedQuizState } from "../QuizClient";
 
@@ -206,26 +207,10 @@ export const QuizFilters = React.memo(function QuizFilters({
 
   const presets = presetsData?.presets ?? [];
 
-  const groupedInstitutions = useMemo(() => {
-    const map = new Map<string, { codes: string[]; n: number }>();
-    for (const i of dynamicMeta?.institutions || []) {
-      let base = i.institution_code.replace(/\s+\d{4}$/, "").replace(/\s+\d$/, "").trim();
-      if (base === "FAMEMA SP") base = "FAMEMA";
-      if (base === "SCMRP") base = "SCM-RP";
-      if (base === "SCM") base = "SCM-SP";
-
-      const existing = map.get(base);
-      if (existing) {
-        existing.codes.push(i.institution_code);
-        existing.n += i.n;
-      } else {
-        map.set(base, { codes: [i.institution_code], n: i.n });
-      }
-    }
-    return Array.from(map.entries())
-      .map(([base, data]) => ({ base, codes: data.codes, n: data.n }))
-      .sort((a, b) => b.n - a.n);
-  }, [dynamicMeta?.institutions]);
+  const groupedInstitutions = useMemo(
+    () => groupInstitutions(dynamicMeta?.institutions),
+    [dynamicMeta?.institutions]
+  );
 
   const targetInstSet = useMemo(() => {
     return new Set((dynamicMeta?.target_institutions || []).map((s) => s.toUpperCase()));
@@ -239,10 +224,14 @@ export const QuizFilters = React.memo(function QuizFilters({
     } else if (typeof filters.institution === "string") {
       currentArr = filters.institution.split(",").map((s) => s.trim()).filter(Boolean);
     }
-    const single = currentArr[0];
-    const group = groupedInstitutions.find((g) => g.codes.includes(single));
-    if (group && currentArr.length === 1) return group.base;
-    return "";
+    if (currentArr.length === 0) return "";
+    const matchingGroups = new Set<string>();
+    for (const code of currentArr) {
+      const grp = groupedInstitutions.find((g) => g.codes.includes(code));
+      if (!grp) return "";
+      matchingGroups.add(grp.base);
+    }
+    return matchingGroups.size === 1 ? Array.from(matchingGroups)[0] : "";
   }, [filters.institution, groupedInstitutions]);
 
   const selectedSubtemas = useMemo(() => {
@@ -999,18 +988,18 @@ export const QuizFilters = React.memo(function QuizFilters({
                       })}
                       <button
                         type="button"
-                        aria-pressed={filters.has_images === "1"}
+                        aria-pressed={filters.has_images === "1" || filters.has_images === "true"}
                         onClick={() =>
                           setFilters((prev) => {
                             const next = { ...prev };
-                            if (next.has_images === "1") delete next.has_images;
+                            if (next.has_images === "1" || next.has_images === "true") delete next.has_images;
                             else next.has_images = "1";
                             return next;
                           })
                         }
                         className={clsx(
                           "px-3 py-1.5 min-h-[32px] rounded-full border text-[11px] font-medium transition-colors cursor-pointer",
-                          filters.has_images === "1"
+                          filters.has_images === "1" || filters.has_images === "true"
                             ? "bg-accent/15 border-accent text-accent font-semibold"
                             : "bg-canvas border-line-subtle text-ink-secondary hover:text-ink-primary"
                         )}

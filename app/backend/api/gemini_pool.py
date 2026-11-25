@@ -42,6 +42,7 @@ DEFAULT_FALLBACK_MODELS = (
 
 class KeyState:
     def __init__(self, key: str, index: int):
+        self._lock = threading.RLock()
         self.key = key
         self.index = index
         self.consumer: str = ""
@@ -56,20 +57,24 @@ class KeyState:
 
     @property
     def is_available(self) -> bool:
-        return time.time() >= self.cooldown_until
+        with self._lock:
+            return time.time() >= self.cooldown_until
 
     def is_available_for(self, model: Optional[str] = None) -> bool:
-        if not self.is_available:
-            return False
-        return not model or time.time() >= self.model_cooldown_until.get(model, 0.0)
+        with self._lock:
+            now = time.time()
+            if now < self.cooldown_until:
+                return False
+            return not model or now >= self.model_cooldown_until.get(model, 0.0)
 
     def mark_success(self, model: Optional[str] = None):
-        self.total_calls += 1
-        self.success_calls += 1
-        if model:
-            self.model_consecutive_429[model] = 0
-        else:
-            self.consecutive_429 = 0
+        with self._lock:
+            self.total_calls += 1
+            self.success_calls += 1
+            if model:
+                self.model_consecutive_429[model] = 0
+            else:
+                self.consecutive_429 = 0
 
     def mark_rate_limit(
         self,
@@ -77,36 +82,41 @@ class KeyState:
         reason: str = "Rate Limit (429)",
         model: Optional[str] = None,
     ):
-        self.total_calls += 1
-        self.error_calls += 1
-        if model:
-            consecutive_429 = self.model_consecutive_429.get(model, 0) + 1
-            self.model_consecutive_429[model] = consecutive_429
-        else:
-            self.consecutive_429 += 1
-            consecutive_429 = self.consecutive_429
-        # Backoff progressivo, independente para cada modelo da mesma chave.
-        actual_cooldown = cooldown_seconds * max(1, min(consecutive_429, 3))
-        cooldown_until = time.time() + actual_cooldown
-        if model:
-            self.model_cooldown_until[model] = cooldown_until
-        else:
-            self.cooldown_until = cooldown_until
-        self.last_error = f"{reason} [Cooldown {actual_cooldown:.0f}s]"
-        scope = f" para o modelo {model}" if model else ""
-        logger.warning(f"[GeminiPool] Chave #{self.index} em cooldown{scope} por {actual_cooldown:.0f}s: {reason}")
-
-    def mark_error(self, err: str, cooldown_seconds: float = 60.0, model: Optional[str] = None):
-        self.total_calls += 1
-        self.error_calls += 1
-        self.last_error = err
-        err_lower = err.lower()
-        if any(keyword in err_lower for keyword in ["timed out", "timeout", "timedout", "connection", "unavailable", "503", "504", "reset"]):
-            cooldown_until = time.time() + cooldown_seconds
+        with self._lock:
+            self.total_calls += 1
+            self.error_calls += 1
+            if model:
+                consecutive_429 = self.model_consecutive_429.get(model, 0) + 1
+                self.model_consecutive_429[model] = consecutive_429
+            else:
+                self.consecutive_429 += 1
+                consecutive_429 = self.consecutive_429
+            # Backoff progressivo, independente para cada modelo da mesma chave.
+            actual_cooldown = cooldown_seconds * max(1, min(consecutive_429, 3))
+            cooldown_until = time.time() + actual_cooldown
             if model:
                 self.model_cooldown_until[model] = cooldown_until
             else:
                 self.cooldown_until = cooldown_until
+            self.last_error = f"{reason} [Cooldown {actual_cooldown:.0f}s]"
+        scope = f" para o modelo {model}" if model else ""
+        logger.warning(f"[GeminiPool] Chave #{self.index} em cooldown{scope} por {actual_cooldown:.0f}s: {reason}")
+
+    def mark_error(self, err: str, cooldown_seconds: float = 60.0, model: Optional[str] = None):
+        should_log = False
+        err_lower = err.lower()
+        with self._lock:
+            self.total_calls += 1
+            self.error_calls += 1
+            self.last_error = err
+            if any(keyword in err_lower for keyword in ["timed out", "timeout", "timedout", "connection", "unavailable", "503", "504", "reset"]):
+                cooldown_until = time.time() + cooldown_seconds
+                if model:
+                    self.model_cooldown_until[model] = cooldown_until
+                else:
+                    self.cooldown_until = cooldown_until
+                should_log = True
+        if should_log:
             scope = f" para o modelo {model}" if model else ""
             logger.warning(f"[GeminiPool] Chave #{self.index} em cooldown{scope} por {cooldown_seconds:.0f}s devido a erro: {err}")
 
@@ -412,8 +422,8 @@ class GeminiPool:
                         cooldown_seconds = float(os.environ.get("GEMINI_ACCOUNT_QUOTA_COOLDOWN", "86400"))
                         consumer = self._extract_consumer(err_body)
                         if consumer:
-                            key_state.consumer = consumer
                             with self.lock:
+                                key_state.consumer = consumer
                                 self._consumer_cooldown_until[(consumer, None)] = time.time() + cooldown_seconds
                                 for other_key in self._keys:
                                     if other_key.consumer == consumer:
@@ -448,8 +458,8 @@ class GeminiPool:
 
                         consumer = self._extract_consumer(err_body)
                         if consumer:
-                            key_state.consumer = consumer
                             with self.lock:
+                                key_state.consumer = consumer
                                 self._consumer_cooldown_until[(consumer, None if quota_is_global else target_model)] = (
                                     time.time() + cooldown_seconds
                                 )
@@ -611,6 +621,7 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = 0.0
         self.state = "CLOSED"
+        self._half_open_probe_in_flight = False
         self.lock = threading.Lock()
 
     def can_execute(self) -> bool:
@@ -619,22 +630,30 @@ class CircuitBreaker:
             if self.state == "OPEN":
                 if now - self.last_failure_time >= self.recovery_timeout:
                     self.state = "HALF_OPEN"
+                    self._half_open_probe_in_flight = True
                     return True
                 return False
+            if self.state == "HALF_OPEN":
+                if self._half_open_probe_in_flight:
+                    return False
+                self._half_open_probe_in_flight = True
+                return True
             return True
 
     def record_success(self):
         with self.lock:
             self.failure_count = 0
             self.state = "CLOSED"
+            self._half_open_probe_in_flight = False
 
     def record_failure(self):
         now = time.time()
         with self.lock:
             self.failure_count += 1
             self.last_failure_time = now
-            if self.failure_count >= self.failure_threshold:
+            if self.state == "HALF_OPEN" or self.failure_count >= self.failure_threshold:
                 self.state = "OPEN"
+                self._half_open_probe_in_flight = False
                 logger.warning(
                     "[CircuitBreaker] Circuito aberto por %.0fs após %d falhas consecutivas.",
                     self.recovery_timeout,
@@ -646,6 +665,7 @@ class CircuitBreaker:
             self.failure_count = 0
             self.last_failure_time = 0.0
             self.state = "CLOSED"
+            self._half_open_probe_in_flight = False
 
 
 circuit_breaker = CircuitBreaker()
@@ -721,6 +741,14 @@ def generate_content_with_fallback(
     raise RuntimeError("Todos os provedores de IA falharam (gemini).")
 
 
+def _sanitize_error_reason(raw_error: str | None) -> str:
+    if not raw_error:
+        return ""
+    cleaned = re.sub(r"projects/[0-9a-zA-Z_-]+", "projects/[redacted]", str(raw_error))
+    cleaned = re.sub(r"https?://\S+", "[url]", cleaned)
+    return cleaned[:120]
+
+
 def provider_status() -> Dict[str, Any]:
     """Retorna configuração operacional e cooldowns reais sem revelar chaves ou segredos."""
     now = time.time()
@@ -736,16 +764,16 @@ def provider_status() -> Dict[str, Any]:
                 "key_index": state.index,
                 "model": "all",
                 "remaining_seconds": round(state.cooldown_until - now),
-                "reason": state.last_error[:120] if state.last_error else "",
+                "reason": _sanitize_error_reason(state.last_error),
             })
-        for model_name, until in state.model_cooldown_until.items():
+        for model_name, until in list(state.model_cooldown_until.items()):
             if until > now:
                 cooldowns.append({
                     "provider": "gemini",
                     "key_index": state.index,
                     "model": model_name,
                     "remaining_seconds": round(until - now),
-                    "reason": state.last_error[:120] if state.last_error else "",
+                    "reason": _sanitize_error_reason(state.last_error),
                 })
 
     return {

@@ -345,10 +345,10 @@ def test_osce_prescription_and_procedure_engines(app, client):
         db = get_db()
         osce.seed_osce_stations(db)
 
-        # 1. Teste de Prescrição na Estação de Politrauma USP-RP
+        # 1. Teste de Prescrição guiada na Estação de Politrauma USP-RP
         st_fast = db.execute("SELECT id FROM osce_stations WHERE code = 'USP-RP-2023-CG-FAST'").fetchone()
         assert st_fast is not None
-        session = osce.start_osce_session(db, st_fast["id"], "test_medic_user")
+        session = osce.start_osce_session(db, st_fast["id"], "test_medic_user", mode="guided")
         session_id = session["session_id"]
 
         # Prescrição de Ácido Tranexâmico 1g IV e Ringer Lactato
@@ -1269,5 +1269,28 @@ class TestOsceStage4EvaluationAndMirror:
                 if m.get("sender") == "candidato" and str(m.get("message", "")).startswith("Conduta e Prescrição Verbalizada:")
             ]
             assert len(conduct_entries) == 1
+
+
+def test_osce_get_routes_do_not_reseed_when_already_populated(client, app, monkeypatch):
+    """GET /osce/stations e /osce/circuits/plan não devem rodar seed/write após já populado."""
+    with app.app_context():
+        db = get_db()
+        osce.seed_osce_stations(db)
+
+    called = {"n": 0}
+
+    def fail_if_reseeded(*args, **kwargs):
+        called["n"] += 1
+        raise AssertionError("seed_osce_stations não deve ser chamado em GET quando estações já existem")
+
+    monkeypatch.setattr(osce, "seed_osce_stations", fail_if_reseeded)
+
+    res1 = client.get("/api/osce/stations")
+    assert res1.status_code == 200
+    assert len(res1.get_json()["stations"]) >= 10
+
+    res2 = client.get("/api/osce/circuits/plan?institution=USP-RP")
+    assert res2.status_code == 200
+    assert called["n"] == 0
 
 

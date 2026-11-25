@@ -5,6 +5,7 @@ Este catálogo armazena ideias, melhorias arquiteturais e refinamentos mapeados 
 ---
 
 ### Backend & Banco de Dados
+- [Concluído] **Alinhamento de `snippet()` em `api/search.py` com schema FTS5 do Turso**: Ajustar os índices de colunas de `snippet(questions_fts, ...)` em `app/backend/api/search.py` para respeitar o schema *external-content* `(topic, stem, area, subtema)` usado no Turso versus `(stem, explanation)` do SQLite local.
 - **Telemetria de latência para LibSQL / Turso Cloud**: Medir e registrar métricas de roundtrip em conexões remotas via `TursoConnection` em `app/backend/api/db.py`.
 - **Padronização de respostas 404 e contrato JSON em api/questions.py**: Uniformizar endpoints `/attempt`, `/review` e `/favorite` com payloads estruturados e chaves semânticas consistentes (`error`, `message`, `question_id`).
 - **Benchmark automatizado de carga**: Criar rotina de carga para testar endpoints de fila adaptativa e remediação (`/api/adaptive/queue`, `/api/questions/remediation`) sob concorrência.

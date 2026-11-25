@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { syncManager } from "@/lib/sync";
+import { syncManager, shouldExposeDebugGlobals } from "@/lib/sync";
 import { localDb } from "@/lib/db";
 import { downloadSimuladoPackage, getReadySimuladoPackage, listSimuladoPackages, deleteSimuladoPackage } from "@/lib/simuladoPackage";
 import { useAppAuth } from "@/lib/auth-client";
@@ -18,14 +18,16 @@ export function SyncProvider({ guestMode = false }: { guestMode?: boolean }) {
     let isActive = true;
     const cleanupCrossTab = initCrossTabListener();
 
-    (window as unknown as { syncManager: typeof syncManager }).syncManager = syncManager;
-    (window as unknown as { localDb: typeof localDb }).localDb = localDb;
-    (window as unknown as { simuladoPackage: unknown }).simuladoPackage = {
-      downloadSimuladoPackage,
-      getReadySimuladoPackage,
-      listSimuladoPackages,
-      deleteSimuladoPackage,
-    };
+    if (shouldExposeDebugGlobals()) {
+      (window as unknown as { syncManager: typeof syncManager }).syncManager = syncManager;
+      (window as unknown as { localDb: typeof localDb }).localDb = localDb;
+      (window as unknown as { simuladoPackage: unknown }).simuladoPackage = {
+        downloadSimuladoPackage,
+        getReadySimuladoPackage,
+        listSimuladoPackages,
+        deleteSimuladoPackage,
+      };
+    }
     syncManager.init();
 
     

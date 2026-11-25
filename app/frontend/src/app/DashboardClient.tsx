@@ -18,6 +18,7 @@ import { triggerConfetti } from "@/lib/confetti";
 import { useQuery } from "@tanstack/react-query";
 import { useDashboardSummaryQuery } from "@/lib/queries/useStudyQueries";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
+import { openOfflineModal } from "@/lib/globalModals";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
 import clsx from "clsx";
 
@@ -66,10 +67,6 @@ interface DashboardCachedData {
   timestamp: number;
 }
 
-const OfflineModal = dynamic(
-  () => import("@/components/OfflineModal").then((m) => m.OfflineModal),
-  { ssr: false }
-);
 const PreceptorXrayButton = dynamic(
   () => import("@/components/PreceptorFocusCard").then((m) => m.PreceptorXrayButton),
   {
@@ -152,7 +149,6 @@ export function DashboardClient({
   });
   const hasAnimated = useRef(false);
   const [activeSession, setActiveSession] = useState<{ kind: "quiz" | "simulado"; url: string } | null>(null);
-  const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const rawDismissedLesson = useSyncExternalStore(
     subscribeDismissedLesson,
     getDismissedLessonSnapshot,
@@ -297,13 +293,6 @@ export function DashboardClient({
     };
   }, [authLoaded]);
 
-  // Listen to open-offline-modal custom event
-  useEffect(() => {
-    const handleOpenOffline = () => setIsOfflineModalOpen(true);
-    window.addEventListener("open-offline-modal", handleOpenOffline);
-    return () => window.removeEventListener("open-offline-modal", handleOpenOffline);
-  }, []);
-
   const { isAnyOffline: isOffline } = useOfflineStatus();
 
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -389,7 +378,7 @@ export function DashboardClient({
     } catch {}
   }, [initialStats]);
 
-  const { refetch: refetchDashboardSummary } = useDashboardSummaryQuery(false);
+  const { refetch: refetchDashboardSummary } = useDashboardSummaryQuery(false, undefined, false);
 
   const fetchDashboardDataRef = useRef<((retryCount?: number) => Promise<boolean>) | null>(null);
 
@@ -406,7 +395,10 @@ export function DashboardClient({
     setReconnectAttempt(retryCount + 1);
     try {
       const result = await refetchDashboardSummary();
-      const data = result.data ?? (await api.stats.getDashboardSummary());
+      if (result.error) {
+        throw result.error;
+      }
+      const data = result.data;
       if (data && data.stats) {
         await applySummaryData(data);
         setIsReconnecting(false);
@@ -603,10 +595,10 @@ export function DashboardClient({
   };
 
   return (
-    <motion.div 
-      variants={containerVariants} 
-      initial="hidden" 
-      animate="show" 
+    <motion.div
+      variants={containerVariants}
+      initial={false}
+      animate="show"
       className="shrink-0 flex flex-col gap-4 sm:gap-6 pt-1 sm:pt-2 pb-10 max-w-6xl mx-auto w-full min-w-0 overflow-x-hidden px-0.5 sm:px-0"
     >
       {/* Banner de Modo Plantão (Offline) */}
@@ -643,7 +635,7 @@ export function DashboardClient({
               Simulados Offline
             </Link>
             <button
-              onClick={() => setIsOfflineModalOpen(true)}
+              onClick={() => openOfflineModal()}
               className="p-1.5 text-xs text-ink-secondary hover:text-ink-primary font-semibold rounded-xs bg-elevated hover:bg-line-subtle border border-line-subtle transition-colors cursor-pointer flex items-center justify-center shrink-0"
               title="Gerenciar pacotes offline"
               aria-label="Gerenciar pacotes offline"
@@ -1201,7 +1193,7 @@ export function DashboardClient({
               </div>
 
               <button
-                onClick={() => setIsOfflineModalOpen(true)}
+                onClick={() => openOfflineModal()}
                 className="flex items-center justify-center gap-1.5 text-xs text-ink-secondary hover:text-ink-primary font-semibold px-2.5 py-1 rounded-xs bg-elevated hover:bg-line-subtle transition-colors cursor-pointer border border-line-subtle col-span-2 sm:col-span-1 shrink-0"
                 title="Abrir gerenciador do Modo Plantão (Offline)"
                 aria-label="Abrir gerenciador do Modo Plantão offline"
@@ -1214,12 +1206,6 @@ export function DashboardClient({
         </>
         );
       })()}
-
-      {/* Modal do Modo Plantão (Offline) */}
-      <OfflineModal 
-        isOpen={isOfflineModalOpen} 
-        onClose={() => setIsOfflineModalOpen(false)} 
-      />
     </motion.div>
   );
 }

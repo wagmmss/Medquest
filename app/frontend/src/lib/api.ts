@@ -54,9 +54,6 @@ interface ApiFetchOptions extends RequestInit {
   idempotencyKey?: string;
 }
 
-// Mapa em memória para deduplicar requisições GET idênticas em voo (evita tempestade de rede em trocas rápidas de rota/foco)
-const inFlightRequests: Record<string, Promise<unknown> | undefined> = {};
-
 /**
  * Base fetch function with default headers and resilient timeout
  */
@@ -179,20 +176,6 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
 }
 
 async function apiFetch<T>(endpoint: string, options?: ApiFetchOptions): Promise<T> {
-  const method = (options?.method || "GET").toUpperCase();
-  if (method === "GET" && !options?.signal) {
-    const ownerKey = typeof window !== "undefined" ? getLocalOwnerId() : "ssr";
-    const dedupeKey = `${ownerKey}:${endpoint}`;
-    const existing = inFlightRequests[dedupeKey] as Promise<T> | undefined;
-    if (existing) {
-      return existing;
-    }
-    const promise = executeApiFetch<T>(endpoint, options).finally(() => {
-      delete inFlightRequests[dedupeKey];
-    });
-    inFlightRequests[dedupeKey] = promise;
-    return promise;
-  }
   return executeApiFetch<T>(endpoint, options);
 }
 

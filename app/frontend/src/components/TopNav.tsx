@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppUser } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AccountModal } from "./AccountModal";
-import { OfflineModal } from "./OfflineModal";
+import { openAccountModal, openOfflineModal } from "@/lib/globalModals";
 import { ThemeToggle } from "./ThemeToggle";
 import { useZenMode } from "@/hooks/useZenMode";
 import Image from "next/image";
@@ -20,8 +19,6 @@ import { openCommandPalette } from "@/components/CommandPalette";
 
 export default function TopNav() {
   const { user, isLoaded } = useAppUser();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isOfflineOpen, setIsOfflineOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -137,7 +134,7 @@ export default function TopNav() {
           </Link>
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => openAccountModal()}
             className="relative w-8 h-8 rounded-full bg-elevated border border-line-subtle overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all"
             aria-label="Abrir minha conta"
           >
@@ -171,7 +168,7 @@ export default function TopNav() {
           )}
           <button
             type="button"
-            onClick={() => setIsOfflineOpen(true)}
+            onClick={() => openOfflineModal()}
             className={clsx(
               "flex items-center justify-center gap-1 min-h-[38px] px-2.5 py-1 rounded-xs text-xs font-mono-lab font-semibold transition-colors cursor-pointer shrink-0 border",
               isOffline || forcedOffline
@@ -197,7 +194,7 @@ export default function TopNav() {
           </button>
           <button 
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => openAccountModal()}
             className="relative min-w-[38px] min-h-[38px] rounded-full bg-elevated border border-line-subtle overflow-hidden shadow-2xs flex items-center justify-center cursor-pointer hover:opacity-85 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent shrink-0 ml-0.5"
             aria-label="Abrir minha conta"
           >
@@ -281,7 +278,7 @@ export default function TopNav() {
           <button
             onClick={() => {
               setIsMobileMenuOpen(false);
-              setIsOfflineOpen(true);
+              openOfflineModal();
             }}
             className="flex items-center gap-1 text-xs text-accent font-mono-lab font-bold px-2.5 py-1.5 rounded-xs border border-line-subtle hover:bg-elevated transition-colors cursor-pointer"
           >
@@ -290,9 +287,6 @@ export default function TopNav() {
           </button>
         </div>
       </div>}
-
-      <AccountModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <OfflineModal isOpen={isOfflineOpen} onClose={() => setIsOfflineOpen(false)} />
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/bounded-json";
 
 export const dynamic = "force-dynamic";
 
@@ -6,15 +7,11 @@ const MAX_BODY_BYTES = 8 * 1024;
 const WEB_VITAL_NAMES = new Set(["CLS", "FCP", "FID", "INP", "LCP", "TTFB"]);
 
 export async function POST(request: Request) {
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
-    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  const body = await readBoundedJson(request, MAX_BODY_BYTES);
+  if (!body.ok) {
+    return NextResponse.json({ error: body.error }, { status: body.status });
   }
-
-  const data: unknown = await request.json().catch(() => null);
-  if (!data || typeof data !== "object") {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const data = body.data;
 
   const { name, value, rating, path } = data as Record<string, unknown>;
   const numericValue = typeof value === "number" ? value : Number(value);

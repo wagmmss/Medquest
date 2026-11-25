@@ -33,6 +33,11 @@ JWKS_URL = os.getenv(
     f"{CLERK_ISSUER}/.well-known/jwks.json" if CLERK_ISSUER else "",
 ) or None
 CLERK_AUDIENCE = os.getenv("CLERK_JWT_AUDIENCE") or None
+CLERK_AUTHORIZED_PARTIES = frozenset(
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("CLERK_AUTHORIZED_PARTIES", "").split(",")
+    if origin.strip()
+)
 
 
 def is_valid_uuid_v4(val: str | None) -> bool:
@@ -118,8 +123,8 @@ _STREAM_PATH_RE = re.compile(r"^/api(?:/v1)?/lessons/(\d+)/stream$")
 
 def _get_stream_signing_secret() -> str | None:
     secret = (
-        os.environ.get("FLASK_API_PROXY_SECRET")
-        or os.environ.get("TURSO_AUTH_TOKEN")
+        os.environ.get("LESSON_STREAM_SIGNING_SECRET")
+        or os.environ.get("FLASK_API_PROXY_SECRET")
         or os.environ.get("SECRET_KEY")
         or ""
     ).strip()
@@ -137,7 +142,7 @@ def create_lesson_stream_token(
     lesson_id: int,
     user_id: str,
     user_email: str = "",
-    ttl_seconds: int = 21600,
+    ttl_seconds: int = 1800,
 ) -> str | None:
     """Gera token HMAC-SHA256 de curta duração vinculado a lesson_id e user_id para tag <video>."""
     secret = _get_stream_signing_secret()
@@ -146,7 +151,10 @@ def create_lesson_stream_token(
         return None
     exp = int(time.time()) + max(60, int(ttl_seconds))
     uid_b64 = base64.urlsafe_b64encode(uid.encode("utf-8")).decode("ascii").rstrip("=")
-    em_b64 = base64.urlsafe_b64encode((user_email or "").strip().lower().encode("utf-8")).decode("ascii").rstrip("=")
+    # Só inclui email no token quando o controle de acesso de aulas não puder ser resolvido por user_id
+    include_email = bool(user_email and not configured_lessons_allowed_user_ids())
+    safe_email = (user_email or "").strip().lower() if include_email else ""
+    em_b64 = base64.urlsafe_b64encode(safe_email.encode("utf-8")).decode("ascii").rstrip("=")
     payload = f"lesson-stream:{lesson_id}:{exp}:{uid_b64}:{em_b64}".encode("utf-8")
     sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
     return f"{lesson_id}.{exp}.{uid_b64}.{em_b64}.{sig}"
@@ -238,6 +246,7 @@ def require_auth(f):
                 return jsonify({"error": "Unauthorized"}), 401
 
             g.user_id = f"guest:{guest_id.lower()}"
+            g.user_email = ""
             return f(*args, **kwargs)
 
         token = auth_header.removeprefix("Bearer ").strip()
@@ -258,6 +267,10 @@ def require_auth(f):
             if CLERK_AUDIENCE:
                 decode_options["audience"] = CLERK_AUDIENCE
             data = jwt.decode(token, signing_key.key, **decode_options)
+            if CLERK_AUTHORIZED_PARTIES:
+                azp = str(data.get("azp") or "").strip().rstrip("/")
+                if azp not in CLERK_AUTHORIZED_PARTIES:
+                    return jsonify({"error": "Unauthorized"}), 401
             sub = data.get("sub")
             if not isinstance(sub, str) or not sub.strip():
                 return jsonify({"error": "Unauthorized"}), 401
@@ -285,10 +298,12 @@ bp = Blueprint("auth", __name__)
 @bp.route("/auth/me")
 @require_auth
 def auth_me():
-    user_email = (getattr(g, "user_email", None) or "").strip().lower()
+    user_id = str(getattr(g, "user_id", "") or "").strip()
+    is_guest = not user_id or user_id.startswith("guest:")
+    user_email = "" if is_guest else (getattr(g, "user_email", None) or "").strip().lower()
     curator_emails = configured_curator_emails()
-    is_curator = bool(user_email and user_email in curator_emails)
-    if _is_testing_env(current_app) and hasattr(g, "is_curator"):
+    is_curator = bool(not is_guest and user_email and user_email in curator_emails)
+    if _is_testing_env(current_app) and hasattr(g, "is_curator") and not is_guest:
         is_curator = bool(g.is_curator)
     resp = jsonify({
         "user_id": g.user_id,
@@ -314,6 +329,10 @@ def require_curator(f):
     @wraps(f)
     @require_auth
     def decorated(*args, **kwargs):
+        user_id = str(getattr(g, "user_id", "") or "").strip()
+        if not user_id or user_id.startswith("guest:"):
+            return jsonify({"error": "Forbidden: Acesso restrito para curadoria de conteúdo"}), 403
+
         user_email = (getattr(g, "user_email", None) or "").strip().lower()
         if _is_testing_env(current_app):
             if not getattr(g, "is_curator", True):

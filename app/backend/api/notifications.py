@@ -248,6 +248,10 @@ def subscribe():
     except ValidationError as e:
         return jsonify({"error": "invalid input", "details": validation_errors(e)}), 400
 
+    from .webpush import is_safe_push_endpoint
+    if not is_safe_push_endpoint(data.endpoint):
+        return jsonify({"error": "invalid endpoint", "message": "Endpoint Web Push não permitido."}), 400
+
     db = get_db()
     now_iso = datetime.now(timezone.utc).isoformat()
 

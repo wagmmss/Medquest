@@ -1,18 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { DashboardSummaryResponse, QuestionMeta } from "@/types/api";
-
-function useDebouncedValue<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-  return debounced;
-}
 
 export function useQuestionMetaQuery(
   filters: Record<string, string | string[]>,
@@ -38,7 +29,8 @@ export function useQuestionMetaQuery(
 
 export function useDashboardSummaryQuery(
   enabled = false,
-  initialData?: DashboardSummaryResponse | null
+  initialData?: DashboardSummaryResponse | null,
+  retry: boolean | number = 2
 ) {
   return useQuery<DashboardSummaryResponse>({
     queryKey: ["dashboard-summary"],
@@ -48,7 +40,7 @@ export function useDashboardSummaryQuery(
     staleTime: 45_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
-    retry: 2,
+    retry,
   });
 }
 

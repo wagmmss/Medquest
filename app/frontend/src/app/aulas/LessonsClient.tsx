@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Clock,
   ExternalLink,
   Film,
   Lock,
@@ -24,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { LessonNotesEditor } from "./components/LessonNotesEditor";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import {
   buildLessonCycleQuizUrl,
@@ -175,7 +175,7 @@ export default function LessonsClient() {
         course: apiCourseQuery,
         subtema: paramSubtema || undefined,
       }),
-    enabled: canAccessLessons,
+    enabled: canAccessLessons && !isClassroomMode,
     staleTime: 60_000,
   });
 
@@ -700,6 +700,8 @@ export default function LessonsClient() {
     try {
       const res = await api.lessons.saveProgress(targetLesson.id, overrides);
 
+      const statusChanged = targetLesson.progress.status !== res.status;
+
       queryClient.setQueriesData<LessonsListResponse>({ queryKey: ["lessons"] }, (old) => {
         if (!old) return old;
         let completedDelta = 0;
@@ -752,13 +754,37 @@ export default function LessonsClient() {
         };
       });
 
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["lessons-summary-by-subtema"] }),
-        queryClient.invalidateQueries({ queryKey: ["lessons-by-subtema"] }),
-        queryClient.invalidateQueries({ queryKey: ["lessons-continue"] }),
-        queryClient.invalidateQueries({ queryKey: ["theme-progress"] }),
-        queryClient.invalidateQueries({ queryKey: ["smart-notebook-lessons"] }),
-      ]);
+      queryClient.setQueryData<{ lesson?: LessonItem | null; stats?: unknown } | undefined>(
+        ["lessons-continue"],
+        (old) => {
+          if (!old || !old.lesson || old.lesson.id !== targetLesson.id) return old;
+          return {
+            ...old,
+            lesson: {
+              ...old.lesson,
+              progress: {
+                ...old.lesson.progress,
+                status: res.status,
+                bookmark_seconds: res.bookmark_seconds,
+                notes: res.notes,
+                has_notes: res.has_notes,
+                completed_at: res.completed_at,
+                updated_at: res.updated_at,
+              },
+            },
+          };
+        }
+      );
+
+      if (!silent || statusChanged) {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["lessons-summary-by-subtema"] }),
+          queryClient.invalidateQueries({ queryKey: ["lessons-by-subtema"] }),
+          queryClient.invalidateQueries({ queryKey: ["lessons-continue"] }),
+          queryClient.invalidateQueries({ queryKey: ["theme-progress"] }),
+          queryClient.invalidateQueries({ queryKey: ["smart-notebook-lessons"] }),
+        ]);
+      }
 
       if (!silent) {
         if (res.theme_theory_completed && targetLesson.subtema) {
@@ -1313,59 +1339,26 @@ export default function LessonsClient() {
                   </div>
 
                   {/* Bookmark + Anotações */}
-                  <div className="rounded-md border border-line-subtle bg-canvas p-4 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <label htmlFor="lesson-bookmark" className="text-xs font-semibold text-ink-primary">
-                          Parei em (mm:ss):
-                        </label>
-                        <input
-                          id="lesson-bookmark"
-                          type="text"
-                          value={bookmarkInput}
-                          onChange={(e) =>
-                            setDraftEdit({
-                              lessonId: activeLesson.id,
-                              bookmark: e.target.value,
-                              notes: notesInput,
-                            })
-                          }
-                          placeholder="ex: 24:15"
-                          className="w-24 px-2.5 py-1 rounded-xs border border-line-subtle bg-surface text-xs font-mono-lab text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <Link
-                          href="/caderno"
-                          className="px-2.5 py-1.5 rounded-md border border-line-subtle bg-surface hover:bg-elevated text-ink-secondary hover:text-ink-primary text-xs font-medium transition-colors"
-                        >
-                          Ver no Caderno
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={savingProgress}
-                          onClick={() => void handleSaveNotesAndBookmark()}
-                          className="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          Salvar ponto e anotações
-                        </button>
-                      </div>
-                    </div>
-                    <textarea
-                      value={notesInput}
-                      onChange={(e) =>
-                        setDraftEdit({
-                          lessonId: activeLesson.id,
-                          bookmark: bookmarkInput,
-                          notes: e.target.value,
-                        })
-                      }
-                      rows={3}
-                      placeholder="Anote pontos-chave da aula, pegadinhas de prova ou dúvidas para revisar..."
-                      className="w-full px-3 py-2 rounded-md border border-line-subtle bg-surface text-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent resize-y"
-                    />
-                  </div>
+                  <LessonNotesEditor
+                    bookmarkInput={bookmarkInput}
+                    notesInput={notesInput}
+                    savingProgress={savingProgress}
+                    onChangeBookmark={(nextBookmark) =>
+                      setDraftEdit({
+                        lessonId: activeLesson.id,
+                        bookmark: nextBookmark,
+                        notes: notesInput,
+                      })
+                    }
+                    onChangeNotes={(nextNotes) =>
+                      setDraftEdit({
+                        lessonId: activeLesson.id,
+                        bookmark: bookmarkInput,
+                        notes: nextNotes,
+                      })
+                    }
+                    onSave={() => void handleSaveNotesAndBookmark()}
+                  />
 
                   {/* Ciclo Medway: Pré-aula (5q) → Aula → Pós-aula (25q) */}
                   {activeLesson.subtema && (

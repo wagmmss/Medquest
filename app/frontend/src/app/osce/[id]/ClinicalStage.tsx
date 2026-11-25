@@ -38,7 +38,7 @@ interface ClinicalStageProps {
     };
     auscultation_foci?: AuscultationFocus[];
   };
-  vitals: {
+  vitals?: {
     hr: number;
     sbp: number;
     dbp: number;
@@ -47,6 +47,7 @@ interface ClinicalStageProps {
     temp?: number;
     gcs?: number;
   };
+  getAuscultationVitals?: () => { hr: number; rr: number };
   transcript: OsceTranscriptItem[];
   isLoading: boolean;
   onSendMessage: (text: string, target: "PATIENT" | "EXAMINER") => Promise<void>;
@@ -55,9 +56,10 @@ interface ClinicalStageProps {
   micPermission?: "granted" | "denied" | "prompt" | "unsupported";
 }
 
-export function ClinicalStage({
+export const ClinicalStage = React.memo(function ClinicalStage({
   station,
   vitals,
+  getAuscultationVitals,
   transcript,
   isLoading,
   onSendMessage,
@@ -89,8 +91,19 @@ export function ClinicalStage({
     { id: "APE", label: "Terço Médio Pulmonar Esquerdo", x: 66, y: 40, soundType: "NORMAL_VESICULAR" },
   ];
 
+  const lastAppliedAuscultationRef = useRef<{ focusId: string; hr: number; rr: number } | null>(null);
+
+  const readAuscultationRates = React.useCallback(() => {
+    const src = getAuscultationVitals ? getAuscultationVitals() : vitals;
+    return {
+      hr: src?.hr ?? 80,
+      rr: src?.rr ?? 16,
+    };
+  }, [getAuscultationVitals, vitals]);
+
   const handleStopAuscultation = React.useCallback(() => {
     stethoscopeEngine.stopAuscultation();
+    lastAppliedAuscultationRef.current = null;
     setActiveFocus(null);
   }, []);
 
@@ -101,7 +114,9 @@ export function ClinicalStage({
       return;
     }
     setActiveFocus(focus);
-    stethoscopeEngine.startAuscultation(focus.soundType, vitals.hr, vitals.rr);
+    const rates = readAuscultationRates();
+    lastAppliedAuscultationRef.current = { focusId: focus.id, hr: rates.hr, rr: rates.rr };
+    stethoscopeEngine.startAuscultation(focus.soundType, rates.hr, rates.rr);
   };
 
   // Atalhos Táticos de Teclado (Tab alterna canal | Esc guarda estetoscópio)
@@ -131,12 +146,21 @@ export function ClinicalStage({
     };
   }, []);
 
-  // Atualiza parâmetros de FC e FR se o foco estiver ativo
+  // Atualiza parâmetros de FC e FR apenas quando o estetoscópio está auscultando e há variação real
   useEffect(() => {
-    if (activeFocus && stethoscopeActive) {
-      stethoscopeEngine.startAuscultation(activeFocus.soundType, vitals.hr, vitals.rr);
-    }
-  }, [vitals.hr, vitals.rr, activeFocus, stethoscopeActive]);
+    if (!activeFocus || !stethoscopeActive) return;
+    const syncRates = () => {
+      const rates = readAuscultationRates();
+      const prev = lastAppliedAuscultationRef.current;
+      if (!prev || prev.focusId !== activeFocus.id || prev.hr !== rates.hr || prev.rr !== rates.rr) {
+        lastAppliedAuscultationRef.current = { focusId: activeFocus.id, hr: rates.hr, rr: rates.rr };
+        stethoscopeEngine.startAuscultation(activeFocus.soundType, rates.hr, rates.rr);
+      }
+    };
+    syncRates();
+    const timer = setInterval(syncRates, 1000);
+    return () => clearInterval(timer);
+  }, [activeFocus, stethoscopeActive, readAuscultationRates]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -465,4 +489,4 @@ export function ClinicalStage({
       </form>
     </div>
   );
-}
+});

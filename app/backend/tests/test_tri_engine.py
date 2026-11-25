@@ -148,3 +148,15 @@ def test_estimate_theta_eap_ignores_discursive_and_annulled_items():
     assert se == 1.0
     assert coherence == 100.0
 
+
+def test_calibrate_item_parameters_handles_over_1000_ids(app):
+    """Garante chunking acima de SQLITE_MAX_VARIABLE_NUMBER (999) sem OperationalError."""
+    from api.db import get_db
+    from api.tri_engine import calibrate_item_parameters
+
+    with app.app_context():
+        db = get_db()
+        many_ids = list(range(1, 1251))
+        params = calibrate_item_parameters(db, many_ids)
+        assert 1 in params and 2 in params and 3 in params
+

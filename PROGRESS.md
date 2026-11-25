@@ -40,7 +40,7 @@
 
 ## ✅ Última Tarefa Concluída
 
-- [x] **Acerto Assistido (`assisted`), Sessão por Linguagem Natural, Treino Direto (10q), Toggle Anti-Viés em Alternativas e Auditoria Clinical Calm (2026-11-17)**: Implementado rastreamento completo de tentativas assistidas por `/dica` (calibração FSRS para `Rating.Hard`, migração `018_attempts_assisted.sql`, diferenciação `Correto` vs `Correto com ajuda` em `/analise` e no resumo de sessão), construtor de bateria em linguagem natural PT-BR (`naturalSessionParser.ts` + `QuizFilters.tsx`), ação direta `Treinar (10q)` em todas as abas de `/analise`, toggle persistido em `localStorage` para ocultar estatísticas/histórico das alternativas em `AlternativeList.tsx`, e normalização de tokens semânticos Clinical Calm em `globals.css`.
+- [x] **Revisão Geral e Ondas 1–4 — Segurança, Performance, Concorrência e Refatoração Incremental (2026-11-24)**: Modularização completa de backend (`requirements-web.txt`, `taxonomy.py`, `simulados.py`, `search.py`, `attempts.py`, `stats_rollup.py`, `coverage_service.py`, `institution_analytics.py`, fatiamento de OSCE/Aulas/Planner), frontend (`GlobalModalHost`, `institutions.ts`, blocos compartilhados de questão, fatiamento com `React.memo` de Aulas/OSCE/Planner), correção de races/cache em `QuizClient.tsx`, `AnalysisClient.tsx` e `SimuladoClient.tsx`, correção de `snippet()` FTS5 em `api/search.py` para schema *external-content* do Turso, remoção de recriação de índices legados em `api/db.py`/`sync_db_turso.py`, migrações `025`/`026` + `rebuild` FTS5 (43.042 questões no Turso), validação de backend (`pytest` + `ruff`) e frontend (`tsc`, `eslint`, `next build` e 53/53 E2E Playwright).
 
 > 📁 Histórico completo arquivado em [CHANGELOG.md](CHANGELOG.md)
 

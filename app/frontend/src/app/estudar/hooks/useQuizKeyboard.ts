@@ -73,16 +73,19 @@ export function useQuizKeyboard({
             e.preventDefault();
             handleDiscursiveReveal();
           }
-        } else {
-          // Alternatives 1-5 or A-E
+        } else if (!e.ctrlKey && !e.metaKey) {
+          // Alternatives 1-5 or A-E (ignora Ctrl/Cmd+C/A/F e garante Shift apenas em A-E)
           const altIndexMap: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
           if (key in altIndexMap) {
             const idx = altIndexMap[key];
             if (idx < (currentDetail.alternatives || []).length) {
               const letter = currentDetail.alternatives[idx].letter;
+              const isLetterKey = key >= "A" && key <= "E";
               if ((e.shiftKey || e.altKey) && toggleEliminate) {
-                e.preventDefault();
-                toggleEliminate(letter);
+                if (!e.shiftKey || isLetterKey) {
+                  e.preventDefault();
+                  toggleEliminate(letter);
+                }
               } else if (!e.shiftKey && !e.altKey) {
                 selectAlternative(letter);
               }
@@ -94,7 +97,7 @@ export function useQuizKeyboard({
             }
           }
         }
-      } else {
+      } else if (!e.ctrlKey && !e.metaKey) {
         if (attemptResult.is_correct === null) {
           if (key === "3" || key === "A") { e.preventDefault(); handleReviewFSRS("certeza", true); }
           else if (key === "2" || key === "ENTER" || key === " ") { e.preventDefault(); handleReviewFSRS("duvida", true); }

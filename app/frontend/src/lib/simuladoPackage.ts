@@ -3,14 +3,21 @@
  * Orquestra download determinístico, integridade, expiração e gestão de pacotes no IndexedDB (Dexie).
  */
 
-import { localDb, getLocalOwnerId, SimuladoPackage, isPackageValid, isQuotaExceededError } from "./db";
+import {
+  localDb,
+  getLocalOwnerId,
+  SimuladoPackage,
+  isPackageValid,
+  isQuotaExceededError,
+  OFFLINE_IMAGE_CACHE,
+  normalizeImageForOfflineCache,
+} from "./db";
 import { api } from "./api";
 import { QuestionDetail, QuestionListItem } from "@/types/api";
 
 export const SIMULADO_PACKAGE_VERSION = 2;
 export const SIMULADO_PACKAGE_VALIDITY_DAYS = 30;
 const OFFLINE_STUDY_SHELL_CACHE = "medquest-study-shell";
-const OFFLINE_IMAGE_CACHE = "medquest-image-cache";
 const IMAGE_DOWNLOAD_CONCURRENCY = 4;
 const IMAGE_DOWNLOAD_ATTEMPTS = 3;
 
@@ -268,10 +275,10 @@ export async function downloadSimuladoPackage(
       for (const d of details) {
         totalBytesEstimated += JSON.stringify(d).length;
         if (d.images && Array.isArray(d.images)) {
-          allImageUrls.push(...d.images.map(normalizeImageForCache));
+          allImageUrls.push(...d.images.map(normalizeImageForOfflineCache));
         }
         if (d.clinical_case?.images && Array.isArray(d.clinical_case.images)) {
-          allImageUrls.push(...d.clinical_case.images.map(normalizeImageForCache));
+          allImageUrls.push(...d.clinical_case.images.map(normalizeImageForOfflineCache));
         }
       }
       loadedCount += details.length;
@@ -377,25 +384,6 @@ export async function downloadSimuladoPackage(
   }
 }
 
-
-function normalizeImageForCache(img: string): string {
-  // Keep this normalization aligned with the question renderer. Previously
-  // `images/foo.png` became `/api/images/images/foo.png` here while the screen
-  // correctly rendered `/api/images/foo.png`, making otherwise valid downloads
-  // fail during image prefetch.
-  const trimmed = (img || "")
-    .trim()
-    .replace(/^\/api\/images\/images\//, "/api/images/")
-    .replace(/MedQuest-assets\.s3\.sa-east-1\.amazonaws\.com/gi, "medcof-assets.s3.sa-east-1.amazonaws.com")
-    .replace(/MedQuest-assets\.s3\.amazonaws\.com/gi, "medcof-assets.s3.amazonaws.com")
-    .replace(/cdn\.MedQuest\.com\.br/gi, "cdn.medway.com.br")
-    .replace(/www\.MedQuest\.com\.br/gi, "www.medway.com.br");
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/api/")) {
-    return trimmed;
-  }
-  return `/api/images/${trimmed}`;
-}
-
 /**
  * Retorna o pacote pronto e válido mais recente para o usuário atual.
  */
@@ -438,14 +426,13 @@ export async function listSimuladoPackages(ownerId?: string): Promise<SimuladoPa
 }
 
 /**
- * Remove um pacote específico do IndexedDB.
+ * Remove um pacote específico do IndexedDB junto com questões e imagens órfãs.
  */
 export async function deleteSimuladoPackage(packageId: string, ownerId?: string): Promise<void> {
   if (typeof window === "undefined" || !localDb) return;
   const uid = ownerId || getLocalOwnerId();
-  const pkg = await localDb.simuladoPackages.get(packageId);
-  if (!pkg || pkg.owner_id !== uid) return;
-
-  await localDb.simuladoPackages.delete(packageId);
-  window.dispatchEvent(new CustomEvent("simulado-package-updated", { detail: { deletedId: packageId } }));
+  const deleted = await localDb.deleteSimuladoPackages([packageId], uid);
+  if (deleted > 0) {
+    window.dispatchEvent(new CustomEvent("simulado-package-updated", { detail: { deletedId: packageId } }));
+  }
 }

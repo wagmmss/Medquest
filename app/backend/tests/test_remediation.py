@@ -92,3 +92,19 @@ def test_remediation_user_isolation(client):
     res_user2 = client.get("/api/stats/blindspots", headers=headers_user2).get_json()
     assert res_user2["summary"]["unresolved_errors_count"] == 0
     assert len(res_user2["blindspots"]) == 0
+
+
+def test_blindspots_no_cartesian_inflation_on_repeated_errors(client):
+    """Errar a mesma questão múltiplas vezes não pode multiplicar contagens em O(K²)."""
+    for _ in range(3):
+        res = client.post(
+            "/api/questions/1/attempt",
+            json={"selected_letter": "A", "confidence": "certeza", "time_spent_ms": 1000},
+        )
+        assert res.status_code == 200
+
+    data = client.get("/api/stats/blindspots").get_json()
+    assert data["summary"]["total_unique_answered"] == 1
+    assert data["summary"]["unresolved_errors_count"] == 1
+    assert data["blindspots"][0]["attempts"] == 3
+    assert data["blindspots"][0]["wrong_count"] == 3

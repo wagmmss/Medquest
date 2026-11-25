@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, HighlightColor } from "@/types/api";
 import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
 import { invalidateStudyCaches, useQuestionMetaQuery } from "@/lib/queries/useStudyQueries";
-import { Clock, CheckCircle2, BookOpen, ArrowRight, ImageOff, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2, PlayCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, AlertTriangle, CloudOff, RotateCcw, Pencil, Eye, EyeOff, Target, Lightbulb, Loader2, PlayCircle } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { isLocalIdentityReady } from "@/lib/db";
@@ -25,13 +25,6 @@ const ImageViewer = dynamic(
   () => import("@/components/ImageViewer").then((mod) => mod.ImageViewer),
   { ssr: false }
 );
-const ExplanationViewer = dynamic(
-  () => import("@/components/ExplanationViewer").then((mod) => mod.ExplanationViewer),
-  {
-    ssr: false,
-    loading: () => <div className="h-32 w-full rounded-xl bg-surface-subtle animate-pulse" />,
-  }
-);
 const QuestionClassificationModal = dynamic(
   () => import("@/components/QuestionClassificationModal").then((mod) => mod.QuestionClassificationModal),
   { ssr: false }
@@ -40,12 +33,15 @@ import { useZenMode } from "@/hooks/useZenMode";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useCurator } from "@/hooks/useCurator";
 import type { QuizTimerHandle } from "@/components/QuizTimer";
-import Image from "next/image";
 import { QuizFilters } from "./components/QuizFilters";
 import { AlternativeList } from "./components/AlternativeList";
-import { AlternativeContent } from "@/components/AlternativeContent";
-import { PreceptorSection, ChatMessage } from "./components/PreceptorSection";
+import type { ChatMessage } from "./components/PreceptorSection";
 import { QuizHeader, StemFontSize } from "./components/QuizHeader";
+import { QuestionClinicalCaseBlock } from "@/components/questions/QuestionClinicalCaseBlock";
+import { QuestionExtraImages } from "@/components/questions/QuestionExtraImages";
+import { DiscursiveAnswerBox } from "./components/DiscursiveAnswerBox";
+import { PostAttemptPanel } from "./components/PostAttemptPanel";
+import { FinishSessionModal } from "./components/FinishSessionModal";
 
 const LabValuesModal = dynamic(
   () => import("@/components/LabValuesModal").then((mod) => mod.LabValuesModal),
@@ -56,9 +52,7 @@ const QuizSummaryView = dynamic(
   () => import("./components/QuizSummaryView").then((mod) => mod.QuizSummaryView),
   { loading: () => <QuizLoadingView /> }
 );
-import { DiscursiveAssessmentSection } from "./components/DiscursiveAssessmentSection";
 import { QuestionNotePanel } from "@/components/QuestionNotePanel";
-import { buildAnkiCardFromQuestion, sendCardToAnki } from "@/lib/ankiExport";
 import { SessionAnswer as _SessionAnswer, QuizState } from "./quizSessionReducer";
 export type SessionAnswer = _SessionAnswer;
 import {
@@ -89,13 +83,6 @@ function warmQuestionImages(detail?: QuestionDetail | null): void {
       // Ignora falha de preload de imagem em segundo plano
     }
   }
-}
-
-function formatReviewDatePtBr(dateStr?: string | null): string {
-  if (!dateStr) return "Em breve";
-  const parsed = new Date(dateStr);
-  if (Number.isNaN(parsed.getTime())) return "Em breve";
-  return parsed.toLocaleDateString("pt-BR");
 }
 
 export interface SavedQuizState {
@@ -343,6 +330,7 @@ export function QuizClient({
     const targetTime = timeSpentByQidRef.current[id] ?? 0;
 
     setDetailError(null);
+    setLoadingDetail(true);
     setAttemptResult(savedAns?.result || null);
     setSelectedLetter(savedLetter);
     setUserWrittenAnswer(savedWritten);
@@ -366,6 +354,8 @@ export function QuizClient({
       return;
     }
 
+    currentDetailRef.current = null;
+    setCurrentDetail(null);
     // 2. Verifica se já foi pré-carregada no Dexie em segundo plano antes de disparar HTTP individual
     const dexieMap = await getCachedQuestionsMap([id]);
     const dexieCached = dexieMap[id];
@@ -381,9 +371,6 @@ export function QuizClient({
       return;
     }
 
-    setLoadingDetail(true);
-    currentDetailRef.current = null;
-    setCurrentDetail(null);
     try {
       const detail = await api.questions.getDetail(id);
       const queueItem = queueRef.current.find(q => q.id === id);
@@ -479,6 +466,7 @@ export function QuizClient({
         sessionAnswersRef.current = {};
         pendingSubmitsRef.current = {};
         setPendingSubmits({});
+        queueRef.current = qList;
         setQueue(qList);
         currentIndexRef.current = 0;
         setCurrentIndex(0);
@@ -654,6 +642,7 @@ export function QuizClient({
 
     if (saved && shouldAutoResume) {
       setTimeout(() => {
+        queueRef.current = saved.queue;
         setQueue(saved.queue);
         currentIndexRef.current = saved.currentIndex;
         setCurrentIndex(saved.currentIndex);
@@ -728,6 +717,7 @@ export function QuizClient({
   const resumeSavedQuiz = useCallback(() => {
     const saved = savedSessionData || readLearningSession("quiz", isSavedQuizState);
     if (saved) {
+      queueRef.current = saved.queue;
       setQueue(saved.queue);
       currentIndexRef.current = saved.currentIndex;
       setCurrentIndex(saved.currentIndex);
@@ -1055,17 +1045,20 @@ export function QuizClient({
   }, [storageReady, state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, hasSavedState, getCurrentTime]);
 
   useEffect(() => {
-    persistSession();
+    const timer = setTimeout(() => {
+      persistSession();
+    }, 400);
+    return () => clearTimeout(timer);
   }, [persistSession]);
 
-  // Persist session before unmounting to prevent losing progress if user navigates away
+  // Persist session before unmounting or pagehide to prevent losing progress if user navigates away
   const stateRef = useRef({ state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady });
   useEffect(() => {
     stateRef.current = { state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady };
   }, [state, queue, currentIndex, filters, currentDetail, sessionAnswers, selectedLetter, userWrittenAnswer, attendingTip, eliminatedAlternatives, storageReady]);
 
   useEffect(() => {
-    return () => {
+    const flushSessionSync = () => {
       const s = stateRef.current;
       if (s.storageReady && (s.state === "PLAYING" || s.state === "FINISHED")) {
         writeLearningSession("quiz", {
@@ -1085,6 +1078,11 @@ export function QuizClient({
           pendingSubmits: pendingSubmitsRef.current,
         } satisfies SavedQuizState);
       }
+    };
+    window.addEventListener("pagehide", flushSessionSync);
+    return () => {
+      window.removeEventListener("pagehide", flushSessionSync);
+      flushSessionSync();
     };
   }, [getCurrentTime]);
 
@@ -1457,11 +1455,15 @@ export function QuizClient({
     const isAssisted = Boolean(currentAttemptResult?.assisted || sessionAnswersRef.current[questionId]?.assisted || targetTip);
 
     // Optimistic UI updates - Update session answers synchronously before advancing
+    const prevRecordedResult = sessionAnswersRef.current[questionId]?.result;
     const isCorr = explicitIsCorrect !== undefined ? explicitIsCorrect : (currentAttemptResult?.is_correct ?? false);
+    const isUnchangedGrade =
+      prevRecordedResult?.next_review_date != null &&
+      prevRecordedResult?.is_correct === isCorr;
     const optimisticDays = !isCorr ? 7 : isAssisted ? 15 : conf === "chutei" ? 15 : conf === "certeza" ? 76 : 34;
-    const optimisticDueIso =
-      currentAttemptResult?.next_review_date ??
-      new Date(Date.now() + optimisticDays * 86400_000).toISOString();
+    const optimisticDueIso = isUnchangedGrade
+      ? prevRecordedResult.next_review_date!
+      : new Date(Date.now() + optimisticDays * 86400_000).toISOString();
 
     const optimisticResult: AttemptResult = {
       ...(currentAttemptResult || {
@@ -1475,16 +1477,18 @@ export function QuizClient({
     attemptResultRef.current = optimisticResult;
     reviewedQuestionsRef.current.add(questionId);
 
+    const optimisticAnswerEntry: SessionAnswer = {
+      letter: currentSelectedLetter || "A",
+      result: optimisticResult,
+      writtenAnswer: currentWrittenAnswer,
+      isDiscursive: isDiscursive,
+      assisted: isAssisted,
+      attendingTip: targetTip,
+    };
+    sessionAnswersRef.current = { ...sessionAnswersRef.current, [questionId]: optimisticAnswerEntry };
     setSessionAnswers(prev => ({
       ...prev,
-      [questionId]: {
-        letter: currentSelectedLetter || "A",
-        result: optimisticResult,
-        writtenAnswer: currentWrittenAnswer,
-        isDiscursive: isDiscursive,
-        assisted: isAssisted,
-        attendingTip: targetTip,
-      }
+      [questionId]: optimisticAnswerEntry,
     }));
 
     const idx = currentIndexRef.current;
@@ -1514,18 +1518,20 @@ export function QuizClient({
         ...optimisticResult,
         next_review_date: res.next_review_date,
       };
+      const reconciledEntry: SessionAnswer = {
+        ...optimisticAnswerEntry,
+        result: updatedResult,
+      };
+      sessionAnswersRef.current = { ...sessionAnswersRef.current, [questionId]: reconciledEntry };
 
       // Reconcile next_review_date from API response
+      if (currentDetailRef.current?.id === questionId) {
+        attemptResultRef.current = updatedResult;
+        setAttemptResult(updatedResult);
+      }
       setSessionAnswers(prev => ({
         ...prev,
-        [questionId]: {
-          letter: currentSelectedLetter || "A",
-          result: updatedResult,
-          writtenAnswer: currentWrittenAnswer,
-          isDiscursive: isDiscursive,
-          assisted: isAssisted,
-          attendingTip: targetTip,
-        }
+        [questionId]: reconciledEntry,
       }));
     } catch {
       reviewedQuestionsRef.current.delete(questionId);
@@ -1768,54 +1774,28 @@ export function QuizClient({
             : "lg:grid-cols-12"
         )}>
           {q.clinical_case && (
-            <div className={clsx(
-              "bg-surface border border-accent/35 shadow-2xs rounded-md p-5 md:p-6 flex flex-col gap-4",
-              !zenMode && "lg:col-span-6 lg:sticky lg:top-20 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto"
-            )}>
-              <h4 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-2 font-mono-lab">
-                <BookOpen size={16} /> Caso Clínico Associado
-              </h4>
-              <HighlightableContent 
-                content={q.clinical_case.stem} 
-                onImageClick={setEnlargedImage} 
-                className="text-ink text-base md:text-lg leading-relaxed font-normal" 
-                highlights={caseHighlightsByQid[q.id] ?? EMPTY_HIGHLIGHTS}
-                activeColor={highlightColor}
-                enabled={highlightEnabled}
-                onAddHighlight={(range) =>
-                  setCaseHighlightsByQid((prev) => ({
-                    ...prev,
-                    [q.id]: addOrMergeHighlight(prev[q.id] ?? EMPTY_HIGHLIGHTS, range),
-                  }))
-                }
-                onRemoveHighlight={(id) =>
-                  setCaseHighlightsByQid((prev) => ({
-                    ...prev,
-                    [q.id]: (prev[q.id] ?? EMPTY_HIGHLIGHTS).filter((h) => h.id !== id),
-                  }))
-                }
-              />
-              {extraCaseImages.length > 0 && (
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-1">
-                  {extraCaseImages.map((img, i) => (
-                    <div 
-                      key={i} 
-                      className="relative group rounded-sm overflow-hidden border border-line-subtle bg-canvas cursor-zoom-in hover:border-line-strong transition-all sm:max-w-xs"
-                      onClick={() => setEnlargedImage(img)}
-                    >
-                      <Image
-                        src={normalizeImageSrc(img)} 
-                        alt={`Imagem do Caso ${i+1}`} 
-                        width={800}
-                        height={600}
-                        unoptimized
-                        className="max-w-full h-auto object-cover hover:scale-[1.01] transition-transform duration-200" 
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <QuestionClinicalCaseBlock
+              stem={q.clinical_case.stem}
+              extraImages={extraCaseImages}
+              highlights={caseHighlightsByQid[q.id] ?? EMPTY_HIGHLIGHTS}
+              highlightColor={highlightColor}
+              highlightEnabled={highlightEnabled}
+              onAddHighlight={(range) =>
+                setCaseHighlightsByQid((prev) => ({
+                  ...prev,
+                  [q.id]: addOrMergeHighlight(prev[q.id] ?? EMPTY_HIGHLIGHTS, range),
+                }))
+              }
+              onRemoveHighlight={(id) =>
+                setCaseHighlightsByQid((prev) => ({
+                  ...prev,
+                  [q.id]: (prev[q.id] ?? EMPTY_HIGHLIGHTS).filter((h) => h.id !== id),
+                }))
+              }
+              onImageClick={setEnlargedImage}
+              variant="study"
+              zenMode={zenMode}
+            />
           )}
 
           {/* Question Stem: quando não há caso clínico, ocupa coluna 7 no desktop */}
@@ -1967,39 +1947,7 @@ export function QuizClient({
                 }
               />
 
-              {extraStemImages.length > 0 && (
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-2">
-                  {extraStemImages.map((img, i) => (
-                    <div 
-                      key={i} 
-                      className="relative group rounded-sm overflow-hidden border border-line-subtle bg-canvas cursor-zoom-in hover:border-line-strong transition-all sm:max-w-sm"
-                      onClick={() => setEnlargedImage(img)}
-                    >
-                      <Image
-                        src={normalizeImageSrc(img)} 
-                        alt={`Imagem ${i+1}`} 
-                        width={800}
-                        height={600}
-                        unoptimized
-                        className="max-w-full h-auto object-cover hover:scale-[1.01] transition-transform duration-200" 
-                        onError={(e) => { 
-                          e.currentTarget.style.display = 'none'; 
-                          if (e.currentTarget.nextElementSibling) {
-                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
-                          }
-                        }} 
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-                        <ClinicalIcon name="maximize" size={18} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
-                      </div>
-                      <div className="hidden flex-col items-center justify-center p-6 text-ink-muted gap-2">
-                        <ImageOff size={24} />
-                        <span className="text-xs font-mono-lab">Imagem indisponível</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <QuestionExtraImages images={extraStemImages} onImageClick={setEnlargedImage} variant="study" />
               {(!attemptResult || attendingTip) && (
                 <div className="pt-2">
                   {!attendingTip ? (
@@ -2045,55 +1993,19 @@ export function QuizClient({
             {/* Alternatives or Discursive Response */}
             {Boolean(q.is_discursive || (q.alternatives || []).length <= 1) ? (
               !attemptResult && (
-                <div className="bg-surface border border-line-subtle shadow-xs rounded-sm p-5 md:p-6 flex flex-col gap-3.5 animate-in fade-in duration-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-accent font-bold text-sm">
-                      <ClinicalIcon name="notes" size={16} />
-                      <span>Questão Discursiva (Resposta Aberta)</span>
-                    </div>
-                    <span className="text-[11px] font-mono-lab text-ink-muted">
-                      Atalho: <kbd className="bg-canvas px-1 py-0.5 rounded-xs border border-line-subtle text-[10px] text-ink">Ctrl+Enter</kbd>
-                    </span>
-                  </div>
-                  <p className="text-xs text-ink-muted leading-relaxed">
-                    Anote seus achados clínicos, hipótese diagnóstica ou conduta antes de revelar o gabarito e padrão oficial da banca:
-                  </p>
-                  <textarea
-                    value={userWrittenAnswer}
-                    readOnly={hasPendingSubmit}
-                    onChange={(e) => {
-                      if (hasPendingSubmit) return;
-                      const val = e.target.value;
-                      if (q) {
-                        draftWrittenByQidRef.current[q.id] = val;
-                      }
-                      setUserWrittenAnswer(val);
-                    }}
-                    placeholder="Escreva sua hipótese diagnóstica ou conduta aqui..."
-                    rows={4}
-                    className="w-full bg-canvas border border-line-subtle focus:border-accent focus:bg-surface rounded-sm p-3.5 text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-1 focus:ring-accent transition-all resize-y text-sm font-normal leading-relaxed min-h-[100px]"
-                    onKeyDown={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                        e.preventDefault();
-                        handleDiscursiveReveal();
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={handleDiscursiveReveal}
-                    disabled={submitting}
-                    className="w-full bg-accent hover:opacity-90 text-white font-bold py-3 rounded-sm transition-opacity flex items-center justify-center gap-2 shadow-xs cursor-pointer text-xs uppercase tracking-wider font-mono-lab disabled:opacity-50"
-                  >
-                    {submitting ? (
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <ClinicalIcon name="checkCircle" size={14} />
-                        {hasPendingSubmit ? "Tentar de novo" : "Confirmar Resposta & Ver Padrão da Banca"}
-                      </>
-                    )}
-                  </button>
-                </div>
+                <DiscursiveAnswerBox
+                  value={userWrittenAnswer}
+                  readOnly={hasPendingSubmit}
+                  submitting={submitting}
+                  hasPendingSubmit={hasPendingSubmit}
+                  onChange={(val) => {
+                    if (q) {
+                      draftWrittenByQidRef.current[q.id] = val;
+                    }
+                    setUserWrittenAnswer(val);
+                  }}
+                  onSubmit={handleDiscursiveReveal}
+                />
               )
             ) : (
               <div className="flex flex-col gap-2.5">
@@ -2183,243 +2095,32 @@ export function QuizClient({
 
           {/* BLOCO PÓS-TENTATIVA (Abaixo da Questão em Largura Total) */}
           {attemptResult && (
-            <div className={clsx(
-              "w-full flex flex-col gap-5 animate-in slide-in-from-bottom-2 fade-in duration-200",
-              !zenMode && "lg:col-span-12"
-            )}>
-              {/* If question is discursive, show user's written answer and the board's short expected answer */}
-              {Boolean(q.is_discursive || (q.alternatives || []).length <= 1) && (
-                <div className="bg-surface border border-line-subtle shadow-xs rounded-sm p-4 md:p-5 flex flex-col gap-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {userWrittenAnswer ? (
-                      <div className="flex flex-col gap-1.5 bg-canvas p-3 rounded-xs border border-line-subtle">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-ink-muted uppercase tracking-wider font-mono-lab">
-                          <ClinicalIcon name="notes" size={13} />
-                          <span>Sua Resposta Anotada</span>
-                        </div>
-                        <div className="text-ink text-sm leading-relaxed whitespace-pre-wrap font-normal">
-                          {userWrittenAnswer}
-                        </div>
-                      </div>
-                    ) : null}
-                    {q.alternatives?.[0]?.text && !/^(?:anote sua|questão dissertativa|ver padrão)/i.test(q.alternatives[0].text) && (
-                      <div className={clsx(
-                        "flex flex-col gap-1.5 bg-normal/10 p-3 rounded-xs border border-normal/25",
-                        !userWrittenAnswer && "md:col-span-2"
-                      )}>
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-normal uppercase tracking-wider font-mono-lab">
-                          <ClinicalIcon name="checkCircle" size={13} />
-                          <span>Resposta Curta Esperada pela Banca</span>
-                        </div>
-                        <div className="text-ink text-sm leading-relaxed font-bold">
-                          <AlternativeContent content={q.alternatives[0].text} onImageClick={setEnlargedImage} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className={clsx(
-                "rounded-sm border shadow-xs overflow-hidden",
-                attemptResult.is_correct === true ? "bg-normal/5 border-normal/25" :
-                attemptResult.is_correct === false ? "bg-critical/5 border-critical/25" :
-                "bg-surface border-line-subtle"
-              )}>
-                <div className={clsx(
-                  "px-4 py-3 border-b flex items-center justify-between",
-                  attemptResult.is_correct === true ? "border-normal/20 bg-normal/10" :
-                  attemptResult.is_correct === false ? "border-critical/20 bg-critical/10" :
-                  "border-line-subtle bg-canvas"
-                )}>
-                  <div className="flex flex-wrap items-center gap-2 font-bold text-sm">
-                    {attemptResult.is_correct === true ? (
-                      <>
-                        <ClinicalIcon name="checkCircle" size={16} className="text-normal" />
-                        <span className="text-normal font-mono-lab uppercase tracking-wide">
-                          {attemptResult.assisted || Boolean(attendingTip)
-                            ? "Resposta Correta (com ajuda)"
-                            : "Resposta Correta"}
-                        </span>
-                        {(attemptResult.assisted || Boolean(attendingTip)) && (
-                          <span className="text-[10px] font-mono-lab px-2 py-0.5 rounded-xs bg-warning/15 text-warning border border-warning/30">
-                            Dica do Preceptor usada • FSRS calibrado
-                          </span>
-                        )}
-                      </>
-                    ) : attemptResult.is_correct === false ? (
-                      <><ClinicalIcon name="crossCircle" size={16} className="text-critical" /> <span className="text-critical font-mono-lab uppercase tracking-wide">Resposta Incorreta</span></>
-                    ) : (
-                      <><ClinicalIcon name="checkCircle" size={16} className="text-accent" /> <span className="text-ink font-mono-lab uppercase tracking-wide">Padrão Oficial da Banca</span></>
-                    )}
-                  </div>
-                  {attemptResult.is_correct !== null && (
-                    <div className="flex items-center gap-2">
-                      {currentIndex < queue.length - 1 && (
-                        <button
-                          type="button"
-                          onClick={handleRequestFinish}
-                          className="flex items-center gap-1 bg-surface border border-line-subtle hover:bg-elevated font-mono-lab text-ink-muted hover:text-ink px-2.5 py-1 rounded-xs transition-colors text-[11px] cursor-pointer"
-                          title="Finalizar sessão agora"
-                        >
-                          <CheckCircle2 size={12} /> Finalizar
-                        </button>
-                      )}
-                      <button
-                        onClick={nextQuestion}
-                        className="flex items-center gap-1.5 bg-surface border border-line-subtle hover:bg-elevated font-mono-lab font-bold text-ink px-3 py-1 rounded-xs transition-colors text-xs cursor-pointer"
-                      >
-                        {currentIndex === queue.length - 1 ? (
-                          <>Finalizar <CheckCircle2 size={14} className="text-normal" /></>
-                        ) : (
-                          <>Próxima <ArrowRight size={14} /></>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="p-4 md:p-6 flex flex-col gap-5">
-                  <h3 className="text-sm font-bold text-ink flex items-center gap-2 uppercase tracking-wider font-mono-lab">
-                    <ClinicalIcon name="notes" size={16} className="text-accent" />
-                    {Boolean(q.is_discursive || (q.alternatives || []).length <= 1) ? "Padrão de Resposta da Banca & Comentário" : "Comentário do Professor"}
-                  </h3>
-                  <ExplanationViewer 
-                    explanation={attemptResult.explanation} 
-                    correctLetter={Boolean(q.is_discursive || (q.alternatives || []).length <= 1) ? null : attemptResult.correct_letter}
-                    questionId={currentDetail?.id}
-                    userLetter={selectedLetter || attemptResult.correct_letter || undefined}
-                    isDiscursive={Boolean(q.is_discursive || (q.alternatives || []).length <= 1)}
-                  />
-
-                  {currentDetail?.times_wrong && currentDetail.times_wrong > 0 ? (
-                    <div className="flex items-center gap-1.5 text-xs text-critical font-mono-lab font-semibold bg-critical/10 border border-critical/20 px-2.5 py-1 rounded-xs w-fit">
-                      Você já errou esta questão {currentDetail.times_wrong} {currentDetail.times_wrong === 1 ? 'vez' : 'vezes'} no passado.
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!q || !attemptResult) return;
-                        const card = buildAnkiCardFromQuestion(q, attemptResult);
-                        const mode = await sendCardToAnki(card);
-                        toast.success(
-                          mode === "ankiconnect"
-                            ? "Card enviado para o Anki Desktop!"
-                            : "AnkiConnect offline: arquivo .tsv baixado para importar no Anki!"
-                        );
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs border border-line-subtle bg-elevated hover:bg-canvas hover:border-accent text-xs font-semibold text-ink-primary transition-colors cursor-pointer"
-                    >
-                      <BookOpen size={13} className="text-accent" />
-                      Enviar para o Anki (.tsv / AnkiConnect)
-                    </button>
-                  </div>
-                  
-                  {/* Ferramenta de Estudo Ativo: Preceptor AI */}
-                  <div className="w-full">
-                    <PreceptorSection
-                      messages={chatMessages}
-                      preceptorInput={preceptorInput}
-                      askingPreceptor={askingPreceptor}
-                      onSendMessage={handleSendMessage}
-                      onClearChat={handleClearChat}
-                    />
-                  </div>
-
-                  {/* Self-Assessment / FSRS Block */}
-                  {attemptResult.is_correct === null ? (
-                    <DiscursiveAssessmentSection onReviewFSRS={handleReviewFSRS} />
-                  ) : attemptResult.next_review_date ? (
-                    <div className="pt-3 border-t border-line-subtle flex items-center justify-between flex-wrap gap-2 text-xs font-mono-lab text-ink-muted">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={14} />
-                        Próxima revisão FSRS: {formatReviewDatePtBr(attemptResult.next_review_date)}
-                      </div>
-                      {Boolean(q.is_discursive || (q.alternatives || []).length <= 1) && (
-                        <button
-                          onClick={() => setAttemptResult(prev => prev ? { ...prev, is_correct: null } : null)}
-                          className="text-xs text-accent hover:underline font-semibold cursor-pointer"
-                        >
-                          Alterar autoavaliação
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="pt-3 border-t border-line-subtle flex flex-col gap-2.5">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-bold text-ink uppercase tracking-wider font-mono-lab">
-                          {attemptResult.is_correct 
-                            ? "Como foi resolver essa questão?" 
-                            : "Revisão agendada (FSRS v6):"}
-                        </span>
-                        <span className="text-[11px] text-ink-muted">
-                          {attemptResult.is_correct
-                            ? "Classifique seu nível de domínio para calibrar a repetição espaçada."
-                            : "Questões erradas retornam na próxima semana (D+7) para consolidação clínica."}
-                        </span>
-                      </div>
-                      
-                      {attemptResult.is_correct ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <button
-                            title="Acertei no chute ou com grande insegurança. Intervalo FSRS: ~15 dias."
-                            onClick={() => handleReviewFSRS("chutei")}
-                            className="bg-warning/10 hover:bg-warning/20 text-ink border border-warning/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
-                          >
-                            <span className="flex items-center gap-1 font-semibold">Chutei</span>
-                            <span className="text-[10px] text-ink-muted font-normal">+15 dias • [1]</span>
-                          </button>
-                          <button
-                            title="Raciocínio correto, mas exigiu esforço ou dica. Intervalo FSRS calibrado."
-                            onClick={() => handleReviewFSRS("duvida")}
-                            className="bg-accent/10 hover:bg-accent/20 text-ink border border-accent/40 shadow-xs font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab ring-1 ring-accent/20"
-                          >
-                            <span className="flex items-center gap-1 font-semibold">Com Esforço</span>
-                            <span className="text-[10px] text-accent font-normal">
-                              {attemptResult.assisted || Boolean(attendingTip) ? "+15 dias (c/ dica) • [2]" : "+34 dias • [2]"}
-                            </span>
-                          </button>
-                          {attemptResult.assisted || Boolean(attendingTip) ? (
-                            <button
-                              title="Como a Dica do Preceptor (/dica) foi consultada antes da resposta, o intervalo máximo é calibrado como Hard (~15 dias)."
-                              onClick={() => handleReviewFSRS("certeza")}
-                              className="bg-surface-subtle hover:bg-elevated text-ink-secondary border border-line-subtle font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
-                            >
-                              <span className="flex items-center gap-1 font-semibold">Com Ajuda (Máx. Hard)</span>
-                              <span className="text-[10px] text-warning font-normal">+15 dias • [3]</span>
-                            </button>
-                          ) : (
-                            <button
-                              title="Questão dominada com total convicção. Intervalo FSRS: ~76 dias."
-                              onClick={() => handleReviewFSRS("certeza")}
-                              className="bg-normal/10 hover:bg-normal/20 text-ink border border-normal/30 font-bold py-2.5 px-2 rounded-xs transition-colors text-xs flex flex-col items-center justify-center gap-0.5 cursor-pointer font-mono-lab"
-                            >
-                              <span className="flex items-center gap-1 font-semibold">Domino</span>
-                              <span className="text-[10px] text-normal font-normal">+76 dias • [3]</span>
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <button
-                            title="Agendada para 7 dias no FSRS v6."
-                            onClick={() => handleReviewFSRS("duvida")}
-                            className="flex-1 bg-critical/10 hover:bg-critical/20 text-critical border border-critical/30 font-bold py-2.5 px-3 rounded-xs transition-colors text-xs flex items-center justify-center gap-2 cursor-pointer font-mono-lab shadow-xs"
-                          >
-                            <RotateCcw size={14} />
-                            <span>Revisar na Próxima Semana</span>
-                            <span className="text-[10px] font-normal py-0.5 px-1.5 bg-critical/15 rounded-xs">D+7 • [Enter]</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <PostAttemptPanel
+              question={q}
+              attemptResult={attemptResult}
+              zenMode={zenMode}
+              userWrittenAnswer={userWrittenAnswer}
+              selectedLetter={selectedLetter}
+              attendingTip={attendingTip}
+              currentIndex={currentIndex}
+              queueLength={queue.length}
+              chatMessages={chatMessages}
+              preceptorInput={preceptorInput}
+              askingPreceptor={askingPreceptor}
+              onImageClick={setEnlargedImage}
+              onRequestFinish={handleRequestFinish}
+              onNextQuestion={nextQuestion}
+              onSendMessage={handleSendMessage}
+              onClearChat={handleClearChat}
+              onReviewFSRS={handleReviewFSRS}
+              onReopenDiscursiveAssessment={() => {
+                setAttemptResult((prev) => {
+                  const next = prev ? { ...prev, is_correct: null } : null;
+                  attemptResultRef.current = next;
+                  return next;
+                });
+              }}
+            />
           )}
         </div>
       )}
@@ -2466,55 +2167,13 @@ export function QuizClient({
         />
       )}
 
-      {showFinishModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => setShowFinishModal(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="finish-modal-title"
-        >
-          <div 
-            className="bg-surface border border-line-subtle shadow-2xl rounded-lg p-6 max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-md bg-accent/10 border border-accent/25 text-accent flex items-center justify-center shrink-0">
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <h3 id="finish-modal-title" className="text-base font-bold text-ink-primary">Finalizar Sessão de Estudos?</h3>
-                <p className="text-xs text-ink-secondary">Você pode encerrar a sessão a qualquer momento.</p>
-              </div>
-            </div>
-
-            <div className="bg-elevated/40 rounded-md p-3.5 border border-line-subtle text-xs sm:text-sm text-ink-primary leading-relaxed">
-              Você respondeu <strong className="font-mono-lab tabular-nums">{completedCount}</strong> de <strong className="font-mono-lab tabular-nums">{queue.length}</strong> questões. Restam <span className="font-mono-lab tabular-nums">{queue.length - completedCount}</span> não respondidas.
-              <p className="mt-2 text-xs text-ink-secondary">
-                Todas as questões já respondidas terão suas revisões (FSRS) preservadas. Ao finalizar, você verá seu relatório de acertos e o diagnóstico da sessão.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowFinishModal(false)}
-                className="px-4 py-2 rounded-md text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:bg-elevated transition-colors cursor-pointer"
-              >
-                Continuar Respondendo
-              </button>
-              <button
-                type="button"
-                onClick={confirmFinish}
-                className="px-4 py-2 rounded-md text-xs font-semibold bg-accent hover:bg-accent/90 text-white shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <CheckCircle2 size={15} />
-                Sim, Finalizar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <FinishSessionModal
+        isOpen={showFinishModal}
+        completedCount={completedCount}
+        totalCount={queue.length}
+        onClose={() => setShowFinishModal(false)}
+        onConfirm={confirmFinish}
+      />
     </div>
   );
 }

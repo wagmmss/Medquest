@@ -199,6 +199,7 @@ test.describe('Offline Sync e Resiliência', () => {
     await page.reload();
 
     // 2. Inicia o simulado offline
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await expect(page.locator('button:has-text("Iniciar Simulado")')).toBeVisible({ timeout: 10000 });
     await page.click('button:has-text("Iniciar Simulado")');
 

@@ -18,13 +18,9 @@ const AnalysisClient = dynamic(
   }
 );
 
-const ALLOWED_INSTITUTIONS = [
-  { key: "USP-SP", label: "USP - São Paulo" },
-  { key: "USP-RP", label: "USP - Ribeirão Preto" },
-  { key: "UNICAMP", label: "Unicamp" },
-  { key: "UNIFESP", label: "Unifesp / EPM" },
-  { key: "SUS-SP", label: "SUS-SP" },
-];
+import { DEFAULT_INSTITUTION_OPTIONS } from "@/lib/institutions";
+
+const ALLOWED_INSTITUTIONS = DEFAULT_INSTITUTION_OPTIONS;
 
 const EMPTY_SUMMARY: AnalysisSummaryResponse = {
   overview: {

@@ -58,8 +58,9 @@ def temp_knowledge_db(tmp_path):
 
 
 def test_sanitize_fts_query():
-    """Garante que a query FTS5 seja limpa de caracteres especiais proibidos."""
-    assert _sanitize_fts_query("perfil B (quente & úmido)?") == "perfil OR quente OR úmido"
+    """Garante que a query FTS5 seja limpa de caracteres especiais e operadores reservados."""
+    assert _sanitize_fts_query("perfil B (quente & úmido)?") == '"perfil" OR "quente" OR "úmido"'
+    assert _sanitize_fts_query("HAS AND DM NOT NEAR OR IAM") == '"HAS" OR "IAM"'
     assert _sanitize_fts_query("a b c") == ""  # ignora palavras com menos de 3 letras
 
 
@@ -87,7 +88,7 @@ def test_format_grounding_block():
         "content": "Diurético de alça é a primeira linha."
     }]
     block = format_grounding_block(sample_chunks)
-    assert "### CONTEXTO CLÍNICO OFICIAL ANCORADO (DATA STORE):" in block
+    assert "### FICHAS DE APOIO LOCAL (DATA STORE — PODEM CONTER VERSÕES 2023–2025):" in block
     assert "[Fonte: Ficha Resumo - IC.pdf - Cardiologia | Perfil B]" in block
     assert "Diurético de alça é a primeira linha." in block
 

@@ -220,3 +220,142 @@ def test_knowledge_sanitize_strips_slash_commands_and_caches_results(tmp_path):
         )
         assert len(r2) == 1
         mock_conn.assert_not_called()
+
+
+class _QuerySpyDB:
+    """Wrapper leve em torno de sqlite3.Connection que registra SQLs executadas."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.executed_sqls: list[str] = []
+
+    def execute(self, sql, params=()):
+        self.executed_sqls.append(sql)
+        return self._inner.execute(sql, params)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+def test_question_catalog_cache_avoids_repeated_questions_scans(app, monkeypatch):
+    """Garante que /api/meta, /api/questions/count, domain-summary e adaptive evitam rescan de questions."""
+    from werkzeug.datastructures import MultiDict
+
+    from api.adaptive import _profile_cache, get_adaptive_signals_by_topic
+    from api.questions import count_cache, invalidate_global_question_caches, meta_cache
+    from api.services.focus_radar import build_focus_radar
+    from api.services.questions_service import compute_meta_from_catalog, count_questions_from_catalog
+    from api.stats import _fetch_all_priority_topics, _get_domain_summary_data, overview_cache
+
+    monkeypatch.setattr("api.services.questions_service.catalog_cache_enabled", lambda: True)
+    monkeypatch.setattr("api.stats.catalog_cache_enabled", lambda: True)
+    monkeypatch.setattr("api.adaptive.catalog_cache_enabled", lambda: True)
+    monkeypatch.setattr("api.services.focus_radar.catalog_cache_enabled", lambda: True)
+
+    with app.app_context():
+        db = get_db()
+        spy = _QuerySpyDB(db)
+
+        # 1a chamada aquece os caches globais de catalogo
+        meta_u1 = compute_meta_from_catalog(spy, "user-1", MultiDict(), set())
+        assert meta_u1["total_questions"] == 3
+        domain_u1 = _get_domain_summary_data(spy, "user-1")
+        assert domain_u1["total_subtemas"] == 3
+        signals_u1 = get_adaptive_signals_by_topic(spy, "user-1")
+        assert len(signals_u1) == 3
+        radar_u1 = build_focus_radar(spy, "user-1")
+        assert radar_u1["summary"]["total_focuses"] == 3
+        prio_u1 = _fetch_all_priority_topics(spy, "user-1", None, "")
+        assert len(prio_u1) >= 2
+
+        # Limpa caches por usuario e verifica que outro usuario/filtro NAO reescaneia `questions` sozinha
+        meta_cache.clear()
+        count_cache.clear()
+        overview_cache.clear()
+        _profile_cache.clear()
+        spy.executed_sqls.clear()
+
+        args_unanswered = MultiDict([("status", "unanswered"), ("year", "2025")])
+        meta_u2 = compute_meta_from_catalog(spy, "user-2", args_unanswered, set())
+        assert meta_u2["total_questions"] == 2
+        assert count_questions_from_catalog(spy, "user-2", args_unanswered) == 2
+        _get_domain_summary_data(spy, "user-2")
+        get_adaptive_signals_by_topic(spy, "user-2")
+        build_focus_radar(spy, "user-2")
+        _fetch_all_priority_topics(spy, "user-2", None, "")
+
+        full_question_scans = [
+            sql for sql in spy.executed_sqls
+            if "FROM questions" in sql and "JOIN questions" not in sql
+        ]
+        assert full_question_scans == []
+
+        # Invalida caches globais (simulando curadoria) e confirma que nova questao aparece
+        db.execute(
+            """INSERT INTO questions(id, area, subtema, stem, correct_letter, missing_alts, year, institution_code, institution_label)
+               VALUES (99, 'Cirurgia', 'Apendicite', 'Nova Q?', 'A', 0, 2024, 'ENARE', 'ENARE')"""
+        )
+        db.commit()
+        invalidate_global_question_caches()
+
+        meta_after = compute_meta_from_catalog(spy, "user-2", MultiDict(), set())
+        assert meta_after["total_questions"] == 4
+
+
+def test_catalog_meta_and_count_match_sql_across_filters(app):
+    """Confirma paridade exata entre o motor em memoria e question_filter_clauses."""
+    from werkzeug.datastructures import MultiDict
+
+    from api.filters import question_filter_clauses
+    from api.services.questions_service import compute_meta_from_catalog, count_questions_from_catalog
+
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            """INSERT INTO questions(id, area, subtema, topic, stem, correct_letter, missing_alts, year, institution_code, institution_label)
+               VALUES (4, 'Medicina Preventiva e Social', 'Vigilância', 'Notificação', 'Q4?', 'ANULADA', 0, 2024, 'USP', 'USP')"""
+        )
+        db.execute("INSERT INTO question_images(id, question_id, file_path, order_index) VALUES (1, 2, 'img.png', 0)")
+        db.execute(
+            """INSERT INTO attempts(question_id, selected_letter, is_correct, answered_at, user_id)
+               VALUES (1, 'A', 0, '2026-01-01T00:00:00Z', 'u-parity'),
+                      (2, 'A', 1, '2026-01-01T00:00:00Z', 'u-parity')"""
+        )
+        db.execute("INSERT INTO favorites(question_id, user_id) VALUES (2, 'u-parity')")
+        db.execute(
+            "INSERT INTO spaced_repetition(question_id, next_review_date, user_id) VALUES (1, '2020-01-01T00:00:00Z', 'u-parity')"
+        )
+        db.commit()
+
+        from flask import g
+
+        filter_cases = [
+            MultiDict(),
+            MultiDict([("status", "unanswered")]),
+            MultiDict([("status", "wrong")]),
+            MultiDict([("status", "wrong,srs_due")]),
+            MultiDict([("status", "favorite")]),
+            MultiDict([("favorite", "1")]),
+            MultiDict([("institution", "USP-SP"), ("year", "2025,2024")]),
+            MultiDict([("area", "Medicina Preventiva")]),
+            MultiDict([("has_images", "1")]),
+            MultiDict([("exclude_annulled", "1")]),
+            MultiDict([("subtema", "Imunização (PNI)")]),
+        ]
+
+        g.user_id = "u-parity"
+        for args in filter_cases:
+            clauses, params = question_filter_clauses(args)
+            where = " AND ".join(clauses)
+            sql_total = db.execute(f"SELECT COUNT(*) AS n FROM questions q WHERE {where}", params).fetchone()["n"]
+            sql_answered = db.execute(
+                f"SELECT COUNT(DISTINCT q.id) AS n FROM questions q WHERE {where} AND q.id IN (SELECT question_id FROM attempts WHERE user_id = ?)",
+                [*params, "u-parity"],
+            ).fetchone()["n"]
+
+            cat_meta = compute_meta_from_catalog(db, "u-parity", args, set())
+            cat_count = count_questions_from_catalog(db, "u-parity", args)
+
+            assert cat_meta["total_questions"] == sql_total, f"Mismatch total for {args}"
+            assert cat_meta["answered_questions"] == sql_answered, f"Mismatch answered for {args}"
+            assert cat_count == sql_total, f"Mismatch count for {args}"

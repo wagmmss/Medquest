@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { QuestionMeta, QuestionListItem, QuestionDetail, AttemptResult, BatchAttemptItem, BatchAttemptResultItem, HighlightColor } from "@/types/api";
+import { QuestionMeta, QuestionListItem, QuestionDetail, BatchAttemptItem, BatchAttemptResultItem, HighlightColor } from "@/types/api";
 import { api, AttemptPayload, OfflineQueuedError } from "@/lib/api";
+import { DEFAULT_SIMULADO_INSTITUTION_CODES, groupInstitutions } from "@/lib/institutions";
 import { localDb, getLocalOwnerId, isLocalIdentityReady, SimuladoPackage, isPackageValid, isDeviceOffline } from "@/lib/db";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { getReadySimuladoPackage, downloadSimuladoPackage } from "@/lib/simuladoPackage";
@@ -33,10 +34,17 @@ import { normalizeImageSrc, filterExtraImages } from "@/components/FormattedCont
 import { HighlightableContent, HighlightToolbar } from "@/components/HighlightableContent";
 import { addOrMergeHighlight, type TextHighlight } from "@/lib/textHighlights";
 import { AlternativeContent, getAlternativePlainText } from "@/components/AlternativeContent";
-import Image from "next/image";
 import { SimuladoStartScreen } from "./components/SimuladoStartScreen";
 import { SimuladoNavGrid } from "./components/SimuladoNavGrid";
 import { SimuladoHeader } from "./components/SimuladoHeader";
+import { QuestionClinicalCaseBlock } from "@/components/questions/QuestionClinicalCaseBlock";
+import { QuestionExtraImages } from "@/components/questions/QuestionExtraImages";
+import {
+  useSimuladoSync,
+  type PendingSimuladoBatch,
+  type PracticeAttemptEntry,
+  type SyncResolutionState,
+} from "./hooks/useSimuladoSync";
 
 const ImageViewer = dynamic(
   () => import("@/components/ImageViewer").then((mod) => mod.ImageViewer),
@@ -66,16 +74,6 @@ const SimuladoResultsView = dynamic(
 );
 
 type SimuladoState = "START" | "LOADING" | "PLAYING" | "AWAITING_PRACTICE_SYNC" | "SUBMITTING" | "RESULTS" | "OFFLINE_SUBMITTED";
-interface PendingSimuladoBatch {
-  key: string;
-  attempts: BatchAttemptItem[];
-}
-interface PracticeAttemptEntry {
-  status: "inflight" | "queued" | "failed";
-  key: string;
-  body: AttemptPayload;
-  queueItemId?: string;
-}
 interface SavedSimuladoState {
   version: number;
   state: SimuladoState;
@@ -132,6 +130,22 @@ export function SimuladoClient({
   // Quiz State
   const [currentIndex, setCurrentIndex] = useState(0);
   const [detailsCache, setDetailsCache] = useState<Record<number, QuestionDetail>>({});
+  const detailsCacheRef = useRef<Record<number, QuestionDetail>>({});
+  const updateDetailsCache = useCallback(
+    (
+      nextOrUpdater:
+        | Record<number, QuestionDetail>
+        | ((prev: Record<number, QuestionDetail>) => Record<number, QuestionDetail>)
+    ) => {
+      const next =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(detailsCacheRef.current)
+          : nextOrUpdater;
+      detailsCacheRef.current = next;
+      setDetailsCache(next);
+    },
+    []
+  );
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState(false);
   const [showAreaSummary, setShowAreaSummary] = useState(false);
@@ -170,7 +184,6 @@ export function SimuladoClient({
   const [queueId, setQueueId] = useState<string | undefined>(undefined);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [plannedDurationSeconds, setPlannedDurationSeconds] = useState(0);
-  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const [pendingBatch, setPendingBatch] = useState<PendingSimuladoBatch | null>(null);
   const pendingBatchRef = useRef<PendingSimuladoBatch | null>(null);
   const [practiceByQid, setPracticeByQid] = useState<Record<number, PracticeAttemptEntry>>({});
@@ -217,6 +230,7 @@ export function SimuladoClient({
   const [clientReady, setClientReady] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [force4Options, setForce4Options] = useState(false);
+  const [startTab, setStartTab] = useState<"official" | "builder" | "history">("official");
   const [feedbackMode, setFeedbackMode] = useState<"exam" | "practice">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("medquest_simulado_mode");
@@ -237,7 +251,7 @@ export function SimuladoClient({
   const detailRequestRef = useRef(0);
   const dialogInitialFocusRef = useRef<HTMLButtonElement>(null);
   const customConfigLoadedRef = useRef(false);
-  const syncResolutionRef = useRef<"idle" | "pending" | "confirmed_results" | "synced_without_results" | "terminal_failed">("idle");
+  const syncResolutionRef = useRef<SyncResolutionState>("idle");
   const hasAutoSubmittedRef = useRef(false);
   const activeConfigRef = useRef(customConfig);
   const questionShownAtRef = useRef<number>(0);
@@ -256,32 +270,10 @@ export function SimuladoClient({
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState("");
 
-  const groupedInstitutions = useMemo(() => {
-    const map = new Map<string, { codes: string[], n: number }>();
-    const defaultInsts = ['SCMSP', 'USP-SP', 'SUS-SP', 'USP-RP', 'UNIFESP', 'HSL', 'EINSTEIN', 'UNICAMP', 'HRAC-USP'];
-    
-    if (meta?.institutions) {
-        for (const i of meta.institutions) {
-            let base = i.institution_code.replace(/\s+\d{4}$/, '').replace(/\s+\d$/, '').trim();
-            if (base === 'FAMEMA SP') base = 'FAMEMA';
-            if (base === 'SCMRP') base = 'SCM-RP';
-            if (base === 'SCM') base = 'SCM-SP';
-            
-            const existing = map.get(base);
-            if (existing) {
-                existing.codes.push(i.institution_code);
-                existing.n += i.n;
-            } else {
-                map.set(base, { codes: [i.institution_code], n: i.n });
-            }
-        }
-        return Array.from(map.entries())
-            .map(([base, data]) => ({ base, codes: data.codes, n: data.n }))
-            .sort((a, b) => b.n - a.n);
-    } else {
-        return defaultInsts.map(code => ({ base: code, codes: [code], n: 0 }));
-    }
-  }, [meta]);
+  const groupedInstitutions = useMemo(
+    () => groupInstitutions(meta?.institutions, DEFAULT_SIMULADO_INSTITUTION_CODES),
+    [meta?.institutions]
+  );
 
   const refreshOfflinePackage = useCallback(async () => {
     if (typeof window === "undefined" || !localDb) return;
@@ -408,7 +400,7 @@ export function SimuladoClient({
       api.questions.getBatch(ids, saved.force4Options).then(batchRes => {
         const cache: Record<number, QuestionDetail> = {};
         for (const q of batchRes.questions) cache[q.id] = q;
-        setDetailsCache(cache);
+        updateDetailsCache(cache);
       }).catch(() => {
         toast.error("Erro ao carregar detalhes do simulado retomado.");
       });
@@ -535,7 +527,7 @@ export function SimuladoClient({
         for (const q of cachedQuestions) {
           cache[q.id] = q;
         }
-        setDetailsCache(cache);
+        updateDetailsCache(cache);
 
         const durationMinutes = readyPkg.config.duration_minutes || Math.round((qList.length / 20) * 60);
         const calcTime = Math.round(durationMinutes * 60);
@@ -614,10 +606,10 @@ export function SimuladoClient({
         for (const q of batchRes.questions) {
           cache[q.id] = q;
         }
-        setDetailsCache(cache);
+        updateDetailsCache(cache);
       } catch {
         // Fallback: load first question individually
-        loadDetail(qList[0].id);
+        void loadDetail(qList[0].id);
       }
     } catch {
       toast.error("Erro ao gerar simulado.");
@@ -627,14 +619,14 @@ export function SimuladoClient({
     }
   };
 
-  const loadDetail = async (id: number) => {
-    if (detailsCache[id]) return; // Already cached
+  const loadDetail = useCallback(async (id: number) => {
+    if (detailsCacheRef.current[id]) return; // Already cached
     const requestId = ++detailRequestRef.current;
     setLoadingDetail(true);
     setDetailError(false);
     try {
       const detail = await api.questions.getDetail(id);
-      setDetailsCache(prev => ({ ...prev, [id]: detail }));
+      updateDetailsCache(prev => ({ ...prev, [id]: detail }));
     } catch {
       if (typeof window !== "undefined" && localDb) {
         const uid = getLocalOwnerId();
@@ -646,7 +638,7 @@ export function SimuladoClient({
 
 
         if (localQuestion) {
-          setDetailsCache(prev => ({ ...prev, [id]: localQuestion }));
+          updateDetailsCache(prev => ({ ...prev, [id]: localQuestion }));
           setLoadingDetail(false);
           return;
         }
@@ -656,7 +648,7 @@ export function SimuladoClient({
     } finally {
       if (detailRequestRef.current === requestId) setLoadingDetail(false);
     }
-  };
+  }, [updateDetailsCache]);
 
 
   const sendPracticeAttempt = useCallback(
@@ -833,293 +825,32 @@ export function SimuladoClient({
     }
   }, []);
 
-  const handleManualSyncSimulado = useCallback(async () => {
-    if (isSyncingOffline) return;
-    setIsSyncingOffline(true);
-    try {
-      const attempts: BatchAttemptItem[] = Object.keys(answers).map(qIdStr => {
-        const qId = parseInt(qIdStr, 10);
-        return {
-          question_id: qId,
-          selected_letter: answers[qId],
-          confidence: "duvida"
-        };
-      });
-
-      if (attempts.length === 0) {
-        removeLearningSession("simulado");
-        setHasSavedState(false);
-        setState("START");
-        return;
-      }
-
-      const { syncManager } = await import("@/lib/sync");
-      await syncManager.sync(true);
-      // Reuse the queued request and its idempotency key. Reposting the batch
-      // here would record every answer twice after connectivity returns.
-      toast.success("Sincronização solicitada.");
-    } catch (err) {
-      if (err instanceof OfflineQueuedError) {
-        toast("Ainda sem conexão com a internet. Suas respostas permanecem salvas com segurança.");
-      } else {
-        toast.error("Erro ao sincronizar. Verifique sua conexão e tente novamente.");
-      }
-    } finally {
-      setIsSyncingOffline(false);
-    }
-  }, [answers, isSyncingOffline]);
-
-  // Ouvinte de sync para tentativas avulsas do modo treino (casa por queueItemId ou idempotencyKey)
-  useEffect(() => {
-    if (state !== "PLAYING" && state !== "AWAITING_PRACTICE_SYNC" && state !== "SUBMITTING") return;
-
-    const handlePracticeSyncSuccess = (e: Event) => {
-      const customEvent = e as CustomEvent<{
-        id: string;
-        endpoint: string;
-        method: string;
-        data: unknown;
-        idempotencyKey?: string;
-      }>;
-      const detail = customEvent.detail;
-      if (!detail) return;
-
-      const matchedEntry = Object.entries(practiceByQidRef.current).find(
-        ([, entry]) =>
-          (entry.queueItemId && entry.queueItemId === detail.id) ||
-          (detail.idempotencyKey && entry.key === detail.idempotencyKey)
-      );
-      if (!matchedEntry) return;
-
-      const [qidStr, entry] = matchedEntry;
-      const qid = Number(qidStr);
-      const attemptRes = detail.data as AttemptResult | null;
-      if (attemptRes && (typeof attemptRes.is_correct === "boolean" || attemptRes.is_correct === null)) {
-        const mappedResult: BatchAttemptResultItem = {
-          question_id: qid,
-          is_correct: Boolean(attemptRes.is_correct),
-          correct_letter: attemptRes.correct_letter || "",
-          explanation: attemptRes.explanation || null,
-          next_review_date: attemptRes.next_review_date || new Date().toISOString(),
-          is_discursive: Boolean(attemptRes.is_discursive),
-        };
-        resultsMapRef.current = { ...resultsMapRef.current, [qid]: mappedResult };
-        setResultsMap((prev) => ({ ...prev, [qid]: mappedResult }));
-      }
-      updatePracticeByQid((prev) => {
-        const next = { ...prev };
-        delete next[qid];
-        return next;
-      });
-      if (entry.queueItemId) {
-        setFailedPracticeQueueIds((prev) => {
-          if (!(entry.queueItemId! in prev)) return prev;
-          const next = { ...prev };
-          delete next[entry.queueItemId!];
-          return next;
-        });
-      }
-    };
-
-    window.addEventListener("sync-item-success", handlePracticeSyncSuccess);
-    return () => {
-      window.removeEventListener("sync-item-success", handlePracticeSyncSuccess);
-    };
-  }, [state, updatePracticeByQid]);
-
-  // Monitoramento do estado AWAITING_PRACTICE_SYNC: avança automaticamente quando todas forem confirmadas
-  // e detecta falhas terminais na fila via syncManager.getFailedItems().
-  useEffect(() => {
-    if (state !== "AWAITING_PRACTICE_SYNC") return;
-
-    if (Object.keys(practiceByQid).length === 0) {
-      const timer = setTimeout(() => {
-        void submitSimuladoRef.current();
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-
-    let cancelled = false;
-    const checkFailedPracticeItems = async () => {
-      try {
-        const { syncManager } = await import("@/lib/sync");
-        const failedItems = await syncManager.getFailedItems();
-        if (cancelled) return;
-        const queuedIds = new Set(
-          Object.values(practiceByQidRef.current)
-            .map((entry) => entry.queueItemId)
-            .filter((id): id is string => Boolean(id))
-        );
-        const nextFailed: Record<string, string> = {};
-        for (const item of failedItems) {
-          if (queuedIds.has(item.id)) {
-            nextFailed[item.id] = item.last_error || "Falha ao sincronizar resposta.";
-          }
-        }
-        setFailedPracticeQueueIds(nextFailed);
-      } catch (err) {
-        console.error("Erro ao verificar falhas da fila do modo treino:", err);
-      }
-    };
-
-    void checkFailedPracticeItems();
-    const handleQueueUpdate = () => {
-      void checkFailedPracticeItems();
-    };
-    window.addEventListener("sync-queue-updated", handleQueueUpdate);
-    const interval = setInterval(() => {
-      void checkFailedPracticeItems();
-    }, 3000);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("sync-queue-updated", handleQueueUpdate);
-      clearInterval(interval);
-    };
-  }, [state, practiceByQid]);
-
-  const handleSyncPracticeNow = useCallback(async () => {
-    if (isSyncingOffline) return;
-    setIsSyncingOffline(true);
-    try {
-      const { syncManager } = await import("@/lib/sync");
-      await syncManager.sync(true);
-      const failedItems = await syncManager.getFailedItems();
-      const queuedIds = new Set(
-        Object.values(practiceByQidRef.current)
-          .map((entry) => entry.queueItemId)
-          .filter((id): id is string => Boolean(id))
-      );
-      const nextFailed: Record<string, string> = {};
-      for (const item of failedItems) {
-        if (queuedIds.has(item.id)) {
-          nextFailed[item.id] = item.last_error || "Falha ao sincronizar resposta.";
-        }
-      }
-      setFailedPracticeQueueIds(nextFailed);
-    } catch {
-      toast.error("Não foi possível sincronizar agora. Verifique sua conexão.");
-    } finally {
-      setIsSyncingOffline(false);
-    }
-  }, [isSyncingOffline]);
-
-  const handleResendFailedPractice = useCallback(async () => {
-    if (isSyncingOffline) return;
-    setIsSyncingOffline(true);
-    try {
-      const { syncManager } = await import("@/lib/sync");
-      const toResend = Object.entries(practiceByQidRef.current).filter(
-        ([, entry]) =>
-          entry.status === "failed" ||
-          (entry.queueItemId ? entry.queueItemId in failedPracticeQueueIds : false)
-      );
-      for (const [qidStr, entry] of toResend) {
-        if (entry.queueItemId && entry.queueItemId in failedPracticeQueueIds) {
-          await syncManager.discardItem(entry.queueItemId);
-        }
-        await sendPracticeAttempt(Number(qidStr), entry.key, entry.body);
-      }
-      setFailedPracticeQueueIds({});
-    } finally {
-      setIsSyncingOffline(false);
-    }
-  }, [isSyncingOffline, failedPracticeQueueIds, sendPracticeAttempt]);
-
-  // Sincronização offline e ouvinte de sucesso do LOTE
-  useEffect(() => {
-    if (state !== "OFFLINE_SUBMITTED") return;
-
-    const handleSyncSuccess = (e: Event) => {
-      const customEvent = e as CustomEvent<{
-        id: string;
-        endpoint: string;
-        method: string;
-        data: unknown;
-        idempotencyKey?: string;
-      }>;
-      const detail = customEvent.detail;
-      if (!detail) return;
-
-      const isOwnBatch = Boolean(
-        (queueId && detail.id === queueId) ||
-        (pendingBatchRef.current?.key && detail.idempotencyKey === pendingBatchRef.current.key)
-      );
-
-      if (!isOwnBatch) return;
-
-      const res = detail.data as { results?: BatchAttemptResultItem[] } | null;
-
-      if (res && Array.isArray(res.results) && res.results.length > 0) {
-        // a) Sucesso confirmado com resultados do servidor
-        syncResolutionRef.current = "confirmed_results";
-        setResultsMap(prev => {
-          const next = { ...prev };
-          res.results!.forEach(r => {
-            next[r.question_id] = r;
-          });
-          resultsMapRef.current = next;
-          return next;
-        });
-        removeLearningSession("simulado");
-        setHasSavedState(false);
-        setState("RESULTS");
-        setShowResultsSummary(true);
-        setCurrentIndex(0);
-        toast.success("Simulado sincronizado e corrigido com sucesso!");
-      } else {
-        // b) Evento do próprio lote chegou sem results: nunca fabricar nota
-        syncResolutionRef.current = "synced_without_results";
-        removeLearningSession("simulado");
-        setHasSavedState(false);
-        setQueueId(undefined);
-        toast("Simulado sincronizado — confira no histórico");
-        setState("START");
-      }
-    };
-
-
-    window.addEventListener("sync-item-success", handleSyncSuccess);
-
-    const checkAndSync = async () => {
-      // Se já resolvido com resultados ou em RESULTS, nunca resetar ou alterar estado
-      if (syncResolutionRef.current === "confirmed_results" || syncResolutionRef.current === "synced_without_results") {
-        return;
-      }
-
-      try {
-        const { syncManager } = await import('@/lib/sync');
-        if (navigator.onLine) {
-          await syncManager.sync();
-        }
-        if (queueId) {
-          const failed = await syncManager.getFailedItems();
-          if (failed.find(i => i.id === queueId)) {
-            // c) Falha terminal
-            syncResolutionRef.current = "terminal_failed";
-            toast.error("A sincronização encontrou uma falha terminal. Você pode tentar reenviar as respostas salvas.");
-            setState("PLAYING");
-            setQueueId(undefined);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    const handleOnline = () => {
-      void checkAndSync();
-    };
-    window.addEventListener("online", handleOnline);
-    const interval = setInterval(checkAndSync, 5000);
-
-    return () => {
-      window.removeEventListener("sync-item-success", handleSyncSuccess);
-      window.removeEventListener("online", handleOnline);
-      clearInterval(interval);
-    };
-  }, [state, queueId]);
+  const {
+    isSyncingOffline,
+    handleManualSyncSimulado,
+    handleSyncPracticeNow,
+    handleResendFailedPractice,
+  } = useSimuladoSync({
+    state,
+    answers,
+    queueId,
+    practiceByQid,
+    failedPracticeQueueIds,
+    practiceByQidRef,
+    pendingBatchRef,
+    resultsMapRef,
+    syncResolutionRef,
+    submitSimuladoRef,
+    updatePracticeByQid,
+    setResultsMap,
+    setFailedPracticeQueueIds,
+    setHasSavedState,
+    setState,
+    setShowResultsSummary,
+    setCurrentIndex,
+    setQueueId,
+    sendPracticeAttempt,
+  });
 
 
   const toggleEliminate = useCallback((letter: string) => {
@@ -1184,10 +915,9 @@ export function SimuladoClient({
   const navigateTo = useCallback((index: number) => {
     if (index >= 0 && index < queue.length) {
       setCurrentIndex(index);
-      loadDetail(queue[index].id);
+      void loadDetail(queue[index].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queue]);
+  }, [queue, loadDetail]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1214,21 +944,22 @@ export function SimuladoClient({
       }
 
       if (state !== "PLAYING" && state !== "RESULTS") return;
+      if (e.ctrlKey || e.metaKey) return;
 
       const key = e.key.toLowerCase();
 
       // Navigate
-      if (key === 'arrowleft') {
+      if (key === 'arrowleft' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         navigateTo(Math.max(0, currentIndex - 1));
-      } else if (key === 'arrowright') {
+      } else if (key === 'arrowright' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         navigateTo(Math.min(queue.length - 1, currentIndex + 1));
       }
 
       if (state === "PLAYING") {
         // Toggle flag
-        if (key === 'f') {
+        if (key === 'f' && !e.shiftKey && !e.altKey) {
           e.preventDefault();
           toggleFlag();
         }
@@ -1242,9 +973,12 @@ export function SimuladoClient({
             const idx = idxMap[key];
             if (idx < (detail.alternatives || []).length) {
               const letter = detail.alternatives[idx].letter;
+              const isLetterKey = key >= 'a' && key <= 'e';
               if (e.shiftKey || e.altKey) {
-                e.preventDefault();
-                toggleEliminate(letter);
+                if (!e.shiftKey || isLetterKey) {
+                  e.preventDefault();
+                  toggleEliminate(letter);
+                }
               } else {
                 handleSelect(letter);
               }
@@ -1333,6 +1067,8 @@ export function SimuladoClient({
         onStartSimulado={startSimulado}
         feedbackMode={feedbackMode}
         setFeedbackMode={handleSetFeedbackMode}
+        activeTab={startTab}
+        onChangeTab={setStartTab}
       />
     );
   }
@@ -1619,49 +1355,27 @@ export function SimuladoClient({
 
               {/* Clinical Case */}
               {qDetail.clinical_case && (
-                <div className="bg-elevated/30 border-l-4 border-primary rounded-r-xl p-5 mb-6">
-                  <h4 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Caso Clínico</h4>
-                  <HighlightableContent
-                    content={qDetail.clinical_case.stem}
-                    onImageClick={setEnlargedImage}
-                    className="text-ink-primary text-lg leading-relaxed"
-                    highlights={caseHighlightsByQid[qDetail.id] ?? []}
-                    activeColor={highlightColor}
-                    enabled={highlightEnabled}
-                    onAddHighlight={(range) =>
-                      setCaseHighlightsByQid((prev) => ({
-                        ...prev,
-                        [qDetail.id]: addOrMergeHighlight(prev[qDetail.id] ?? [], range),
-                      }))
-                    }
-                    onRemoveHighlight={(id) =>
-                      setCaseHighlightsByQid((prev) => ({
-                        ...prev,
-                        [qDetail.id]: (prev[qDetail.id] ?? []).filter((h) => h.id !== id),
-                      }))
-                    }
-                  />
-                  {extraCaseImages.length > 0 && (
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-4 mt-4">
-                      {extraCaseImages.map((img, i) => (
-                        <div
-                          key={i}
-                          className="relative group rounded-lg overflow-hidden border border-line-subtle bg-elevated/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-xs"
-                          onClick={() => setEnlargedImage(img)}
-                        >
-                          <Image
-                            src={normalizeImageSrc(img)}
-                            alt={`Imagem do Caso ${i+1}`}
-                            width={800}
-                            height={600}
-                            unoptimized
-                            className="max-w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-300"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <QuestionClinicalCaseBlock
+                  stem={qDetail.clinical_case.stem}
+                  extraImages={extraCaseImages}
+                  highlights={caseHighlightsByQid[qDetail.id] ?? []}
+                  highlightColor={highlightColor}
+                  highlightEnabled={highlightEnabled}
+                  onAddHighlight={(range) =>
+                    setCaseHighlightsByQid((prev) => ({
+                      ...prev,
+                      [qDetail.id]: addOrMergeHighlight(prev[qDetail.id] ?? [], range),
+                    }))
+                  }
+                  onRemoveHighlight={(id) =>
+                    setCaseHighlightsByQid((prev) => ({
+                      ...prev,
+                      [qDetail.id]: (prev[qDetail.id] ?? []).filter((h) => h.id !== id),
+                    }))
+                  }
+                  onImageClick={setEnlargedImage}
+                  variant="exam"
+                />
               )}
 
               <HighlightableContent
@@ -1685,26 +1399,7 @@ export function SimuladoClient({
                 }
               />
 
-              {extraStemImages.length > 0 && (
-                <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-8">
-                  {extraStemImages.map((img, i) => (
-                    <div
-                      key={i}
-                      className="relative group rounded-lg overflow-hidden border border-line-subtle bg-elevated/20 cursor-zoom-in hover:shadow-md transition-all sm:max-w-sm"
-                      onClick={() => setEnlargedImage(img)}
-                    >
-                      <Image
-                        src={normalizeImageSrc(img)}
-                        alt={`Imagem ${i+1}`}
-                        width={800}
-                        height={600}
-                        unoptimized
-                        className="max-w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-300"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <QuestionExtraImages images={extraStemImages} onImageClick={setEnlargedImage} variant="exam" />
 
               <div className="flex flex-col gap-3">
                 {(qDetail.alternatives || []).map((alt) => {
@@ -1930,7 +1625,7 @@ export function SimuladoClient({
           currentSubtema={qDetail.subtema}
           currentTopic={qDetail.topic}
           onSuccess={(updated) => {
-            setDetailsCache((prev) => ({
+            updateDetailsCache((prev) => ({
               ...prev,
               [qDetail.id]: {
                 ...prev[qDetail.id],
@@ -1950,7 +1645,7 @@ export function SimuladoClient({
           }}
           onDelete={(deletedId) => {
             setIsClassificationModalOpen(false);
-            setDetailsCache((prev) => {
+            updateDetailsCache((prev) => {
               const copy = { ...prev };
               delete copy[deletedId];
               return copy;

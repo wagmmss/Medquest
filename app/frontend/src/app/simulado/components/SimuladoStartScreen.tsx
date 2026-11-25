@@ -14,6 +14,7 @@ import {
 import { SimuladoPackage, isPackageValid } from "@/lib/db";
 import { OfficialExam, SimuladoSessionItem } from "@/types/api";
 import { api } from "@/lib/api";
+import { CANONICAL_SP_INSTITUTIONS } from "@/lib/institutions";
 import clsx from "clsx";
 import { SimuladoCockpitHero } from "./SimuladoCockpitHero";
 import { SimuladoOfficialExams } from "./SimuladoOfficialExams";
@@ -57,6 +58,8 @@ export interface SimuladoStartScreenProps {
   onStartSimulado: (overrideConfig?: CustomConfig) => void;
   feedbackMode?: "exam" | "practice";
   setFeedbackMode?: (mode: "exam" | "practice") => void;
+  activeTab?: TabKey;
+  onChangeTab?: (tab: TabKey) => void;
 }
 
 type TabKey = "official" | "builder" | "history";
@@ -79,8 +82,12 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
   onStartSimulado,
   feedbackMode = "exam",
   setFeedbackMode = () => {},
+  activeTab: controlledTab,
+  onChangeTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>("official");
+  const [localTab, setLocalTab] = useState<TabKey>("official");
+  const activeTab = controlledTab ?? localTab;
+  const setActiveTab = onChangeTab ?? setLocalTab;
   const [includeSimilar, setIncludeSimilar] = useState(false);
   const [officialExams, setOfficialExams] = useState<OfficialExam[]>([]);
   const [loadingExams, setLoadingExams] = useState(true);
@@ -163,7 +170,7 @@ export const SimuladoStartScreen: React.FC<SimuladoStartScreenProps> = ({
     durationMinutes: number
   ) => {
     const nextConfig: CustomConfig = {
-      institutions: ["USP-SP", "USP-RP", "UNICAMP", "UNIFESP", "SUS-SP"],
+      institutions: [...CANONICAL_SP_INSTITUTIONS],
       years: [],
       questions_per_area: questionsPerArea,
       duration_minutes: durationMinutes,

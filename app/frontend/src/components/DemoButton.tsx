@@ -6,7 +6,8 @@ export function DemoButton() {
   const router = useRouter();
 
   const handleDemo = () => {
-    document.cookie = "medquest_demo=1; path=/; max-age=86400"; // 1 day
+    const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `medquest_demo=1; path=/; max-age=86400; SameSite=Lax${secureFlag}`; // 1 day
     router.refresh();
   };
 

@@ -157,6 +157,7 @@ test.describe('Fluxo Completo de Simulado', () => {
 
     // 2. Navegar para a tela de Simulado
     await page.goto('/simulado', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await expect(page.locator('button:has-text("Iniciar Simulado")')).toBeVisible({ timeout: 10000 });
 
     // 3. Iniciar o simulado
@@ -188,6 +189,7 @@ test.describe('Fluxo Completo de Simulado', () => {
   test('retoma respostas e posição após recarregar a página', async ({ page }) => {
     await mockSimuladoApi(page);
     await page.goto('/simulado', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await page.getByRole('button', { name: /Iniciar Simulado/ }).click();
 
     await expect(page.getByText('Paciente com dor torácica')).toBeVisible();
@@ -197,7 +199,7 @@ test.describe('Fluxo Completo de Simulado', () => {
     await expect(page.getByRole('button', { name: /Drenagem torácica em selo/ })).toHaveAttribute('aria-pressed', 'true');
 
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: 'Continuar Simulado em Andamento' }).click();
+    await page.getByRole('button', { name: /Retomar Simulado/i }).click();
 
     await expect(page.getByText('Vítima de trauma')).toBeVisible();
     await expect(page.getByRole('button', { name: /Drenagem torácica em selo/ })).toHaveAttribute('aria-pressed', 'true');
@@ -211,6 +213,7 @@ test.describe('Fluxo Completo de Simulado', () => {
     });
 
     await page.goto('/simulado', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await page.getByRole('button', { name: /Iniciar Simulado/ }).click();
     await expect(page.getByText('Paciente com dor torácica')).toBeVisible();
     await page.getByRole('button', { name: /ECG em até 10 minutos/ }).click();
@@ -229,6 +232,7 @@ test.describe('Fluxo Completo de Simulado', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockSimuladoApi(page);
     await page.goto('/simulado', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await page.getByRole('button', { name: /Iniciar Simulado/ }).click();
 
     await expect(page.getByText('Paciente com dor torácica')).toBeVisible();

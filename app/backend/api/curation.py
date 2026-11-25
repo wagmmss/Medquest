@@ -1,25 +1,26 @@
 """Rotas de Curadoria e Taxonomia: taxonomia oficial, reclassificação e exclusão administrativa."""
-import json
-import os
 from datetime import datetime, timezone
 
 from flask import Blueprint, g, jsonify, request
 
 from .auth import require_curator
 from .db import db_transaction, get_db
+from .services.taxonomy import get_canonical_taxonomy_tree
 
 bp = Blueprint("curation", __name__)
+
+
+def _get_canonical_taxonomy() -> dict | None:
+    """Lê canonical_taxonomy.json em memória com invalidação automática por mtime."""
+    return get_canonical_taxonomy_tree()
 
 
 @bp.route("/taxonomy", methods=["GET"])
 def get_taxonomy():
     """Retorna a taxonomia canônica oficial dos 170 módulos estruturados por grande área."""
-    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    tax_path = os.path.join(backend_dir, "data", "canonical_taxonomy.json")
-    if os.path.exists(tax_path):
-        with open(tax_path, "r", encoding="utf-8") as f:
-            tax = json.load(f)
-            return jsonify(tax)
+    tax = _get_canonical_taxonomy()
+    if tax is not None:
+        return jsonify(tax)
 
     # Fallback construído diretamente do banco
     db = get_db()
@@ -56,17 +57,14 @@ def update_question_classification(qid):
     if not q:
         return jsonify({"error": "Questão não encontrada"}), 404
 
-    # Resolve subtema_id correspondente a partir da taxonomia canônica
+    # Resolve subtema_id correspondente a partir da taxonomia canônica em cache
     subtema_id = None
-    tax_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "canonical_taxonomy.json")
-    if os.path.exists(tax_path):
-        try:
-            with open(tax_path, "r", encoding="utf-8") as f:
-                tax_data = json.load(f)
-                if area in tax_data and subtema in tax_data[area]:
-                    subtema_id = tax_data[area][subtema]
-        except Exception:
-            pass
+    try:
+        tax_data = _get_canonical_taxonomy()
+        if isinstance(tax_data, dict) and area in tax_data and subtema in tax_data[area]:
+            subtema_id = tax_data[area][subtema]
+    except Exception:
+        pass
 
     cols = {r["name"] for r in db.execute("PRAGMA table_info(questions)").fetchall()}
     has_subtema_id = "subtema_id" in cols
@@ -139,12 +137,19 @@ def delete_question(qid):
             db.execute("DELETE FROM explanations WHERE question_id = ?", (qid,))
         if "question_images" in tables:
             db.execute("DELETE FROM question_images WHERE question_id = ?", (qid,))
+        if "question_user_notes" in tables:
+            db.execute("DELETE FROM question_user_notes WHERE question_id = ?", (qid,))
         if "attempts" in tables:
             db.execute("DELETE FROM attempts WHERE question_id = ?", (qid,))
         if "favorites" in tables:
             db.execute("DELETE FROM favorites WHERE question_id = ?", (qid,))
         if "spaced_repetition" in tables:
             db.execute("DELETE FROM spaced_repetition WHERE question_id = ?", (qid,))
+        if "classification_reviews" in tables and "classification_proposals" in tables:
+            db.execute(
+                "DELETE FROM classification_reviews WHERE proposal_id IN (SELECT id FROM classification_proposals WHERE question_id = ?)",
+                (qid,),
+            )
         if "classification_proposals" in tables:
             db.execute("DELETE FROM classification_proposals WHERE question_id = ?", (qid,))
         if "reclassification_audit" in tables:

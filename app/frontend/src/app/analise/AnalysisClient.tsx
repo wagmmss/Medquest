@@ -41,6 +41,8 @@ const FocusRadarTab = dynamic(
   { loading: () => <AnalysisTabSkeleton /> }
 );
 
+import { DEFAULT_INSTITUTION_OPTIONS } from "@/lib/institutions";
+
 export type AnalysisTabKey = "desempenho" | "cobertura" | "prontidao" | "sniper";
 
 interface AnalysisClientProps {
@@ -53,13 +55,7 @@ interface AnalysisClientProps {
   initialError?: string | null;
 }
 
-const DEFAULT_INSTITUTIONS = [
-  { key: "USP-SP", label: "USP - São Paulo" },
-  { key: "USP-RP", label: "USP - Ribeirão Preto" },
-  { key: "UNICAMP", label: "Unicamp" },
-  { key: "UNIFESP", label: "Unifesp / EPM" },
-  { key: "SUS-SP", label: "SUS-SP" },
-];
+const DEFAULT_INSTITUTIONS = DEFAULT_INSTITUTION_OPTIONS;
 
 function mergeSummary(
   prev: AnalysisSummaryResponse,
@@ -97,9 +93,14 @@ export function AnalysisClient({
   const [selectedSubtema, setSelectedSubtema] = useState<string | null>(initialSubtema);
   const [manualSummaryError, setManualSummaryError] = useState<string | null>(null);
 
-  const [selectedInstitution, setSelectedInstitution] = useState<string>(
-    initialInstitution || initialSummary.exam_readiness?.institution || "USP-SP"
-  );
+  const defaultInstitution = initialInstitution || initialSummary.exam_readiness?.institution || "USP-SP";
+  const [selectedInstitution, setSelectedInstitution] = useState<string>(defaultInstitution);
+  const [initialSummaryUpdatedAt] = useState<number>(() => Date.now());
+  const hasRealInitialSummary = Boolean(initialSummary.learning_profile?.generated_at);
+  const isInitialSummaryFilter =
+    hasRealInitialSummary &&
+    (selectedInstitution || "USP-SP") === defaultInstitution &&
+    !initialError;
 
   const syncUrlParams = useCallback(
     (tab: AnalysisTabKey, subtema: string | null) => {
@@ -135,6 +136,7 @@ export function AnalysisClient({
   const {
     data: cachedSummary,
     isError: isSummaryQueryError,
+    isFetching: isSummaryFetching,
     refetch: refetchSummary,
   } = useQuery({
     queryKey: ["analysis-summary", selectedInstitution || "USP-SP", initialCompare || ""],
@@ -143,13 +145,29 @@ export function AnalysisClient({
         selectedInstitution || undefined,
         initialCompare || undefined
       ),
+    initialData: isInitialSummaryFilter ? initialSummary : undefined,
+    initialDataUpdatedAt: isInitialSummaryFilter ? initialSummaryUpdatedAt : undefined,
     staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const summary = useMemo(
     () => (cachedSummary ? mergeSummary(initialSummary, cachedSummary) : initialSummary),
     [initialSummary, cachedSummary]
   );
+
+  const hasSummaryReadinessPayload = Boolean(
+    cachedSummary && "exam_readiness" in cachedSummary && cachedSummary.exam_readiness
+  );
+  const hasSummaryRadarPayload = Boolean(
+    isInitialSummaryFilter ||
+      (cachedSummary && "institution_radar" in cachedSummary && cachedSummary.institution_radar)
+  );
+
+  const hasMatchingSummaryReadiness =
+    (hasSummaryReadinessPayload || isInitialSummaryFilter) &&
+    Boolean(summary.exam_readiness) &&
+    (summary.exam_readiness?.institution || "USP-SP") === (selectedInstitution || "USP-SP");
 
   const {
     data: cachedReadiness,
@@ -159,7 +177,9 @@ export function AnalysisClient({
   } = useQuery({
     queryKey: ["exam-readiness", selectedInstitution || "USP-SP"],
     queryFn: () => api.stats.getExamReadiness(selectedInstitution || undefined),
-    enabled: activeTab === "prontidao",
+    enabled: activeTab === "prontidao" && !isSummaryFetching && !hasMatchingSummaryReadiness,
+    initialData: hasMatchingSummaryReadiness ? summary.exam_readiness : undefined,
+    initialDataUpdatedAt: hasMatchingSummaryReadiness ? initialSummaryUpdatedAt : undefined,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -177,10 +197,7 @@ export function AnalysisClient({
     refetchOnWindowFocus: false,
   });
 
-  const localReadiness =
-    cachedReadiness?.institution === selectedInstitution
-      ? cachedReadiness
-      : summary.exam_readiness;
+  const localReadiness = cachedReadiness ?? summary.exam_readiness;
   const readinessError = isReadinessQueryError
     ? "Falha ao atualizar dados de prontidão deste edital."
     : null;
@@ -341,7 +358,7 @@ export function AnalysisClient({
           learningProfile={summary.learning_profile}
           selectedInstitution={selectedInstitution}
           institutionOptions={availableInstitutions}
-          institutionRadar={initialError ? undefined : summary.institution_radar}
+          institutionRadar={!initialError && hasSummaryRadarPayload ? summary.institution_radar : undefined}
           blindspots={initialError ? undefined : summary.blindspots}
           timeline180={timeline180}
           atRiskTopics={summary.at_risk || []}

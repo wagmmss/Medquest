@@ -11,11 +11,24 @@ from .observability import trace_db
 bp = Blueprint("sessions", __name__)
 logger = logging.getLogger(__name__)
 
+ALLOWED_SESSION_TYPES = frozenset({"quiz", "simulado", "estudar", "revisao"})
+MAX_SESSION_BYTES = 256 * 1024
+
+
+def _require_user_id() -> str | None:
+    uid = str(getattr(g, "user_id", "") or "").strip()
+    return uid or None
+
+
 @bp.route("/sessions/<session_type>", methods=["GET"])
 @require_auth
 def get_session(session_type: str):
     """Retorna a sessão salva para o usuário e tipo (ex: quiz, simulado)."""
-    user_id = getattr(g, "user_id", "1")
+    if session_type not in ALLOWED_SESSION_TYPES:
+        return jsonify({"error": "Invalid session type"}), 400
+    user_id = _require_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
     db = get_db()
     with trace_db("select_learning_session"):
         row = db.execute(
@@ -37,13 +50,19 @@ def get_session(session_type: str):
 @require_auth
 def save_session(session_type: str):
     """Salva a sessão para o usuário e tipo."""
-    user_id = getattr(g, "user_id", "1")
-    data = request.get_json()
-    if not data:
+    if session_type not in ALLOWED_SESSION_TYPES:
+        return jsonify({"error": "Invalid session type"}), 400
+    user_id = _require_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
         return jsonify({"error": "Invalid body"}), 400
     
     now = datetime.datetime.now(datetime.UTC).isoformat()
-    state_json = json.dumps(data)
+    state_json = json.dumps(data, ensure_ascii=False)
+    if len(state_json.encode("utf-8")) > MAX_SESSION_BYTES:
+        return jsonify({"error": "Session payload exceeds limit (256 KB)"}), 413
     
     db = get_db()
     with trace_db("upsert_learning_session"), db_transaction(db):
@@ -61,7 +80,11 @@ def save_session(session_type: str):
 @require_auth
 def delete_session(session_type: str):
     """Deleta a sessão para o usuário e tipo."""
-    user_id = getattr(g, "user_id", "1")
+    if session_type not in ALLOWED_SESSION_TYPES:
+        return jsonify({"error": "Invalid session type"}), 400
+    user_id = _require_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
     db = get_db()
     with trace_db("delete_learning_session"), db_transaction(db):
         db.execute(

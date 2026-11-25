@@ -7,6 +7,7 @@ from pathlib import Path
 from api import gemini_pool, osce, osce_judge
 from api.db import get_db
 from api.osce_data import CANONICAL_STATIONS
+from tests.helpers.osce_judge_stub import simulate_llm_judge_json
 
 GOLDEN_PATH = Path(__file__).resolve().parent.parent / "data" / "osce" / "grading_golden.json"
 
@@ -184,7 +185,7 @@ def test_judge_golden_set_accuracy_and_zero_negated_false_positives(monkeypatch)
 
     def simulated_judge(prompt, **kwargs):
         payload = json.loads(prompt)
-        text = osce_judge.simulate_llm_judge_json(
+        text = simulate_llm_judge_json(
             station_meta=payload["station"],
             candidate_log=payload["candidate_timeline"],
             checklist_items=payload["checklist_items"],

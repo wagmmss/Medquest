@@ -142,26 +142,42 @@ def _resolve_tri_institution(institution_code: Optional[str]) -> Tuple[str, Dict
 
 def calibrate_item_parameters(db, question_ids: List[int]) -> Dict[int, Dict[str, float]]:
     """Calibra os parâmetros de discriminação (a), dificuldade (b) e chute (c) para cada questão."""
-    if not question_ids:
+    unique_ids = list(dict.fromkeys(int(qid) for qid in question_ids if qid is not None))
+    if not unique_ids:
         return {}
 
-    placeholders = ",".join("?" * len(question_ids))
-    # Obter estatísticas empíricas das questões no banco
-    rows = db.execute(
-        f"""
-        SELECT
-            q.id,
-            q.institution_code,
-            COUNT(a.id) AS total_attempts,
-            COALESCE(SUM(a.is_correct), 0) AS correct_attempts,
-            LENGTH(COALESCE(q.stem, '')) AS stem_len
-        FROM questions q
-        LEFT JOIN attempts a ON a.question_id = q.id
-        WHERE q.id IN ({placeholders})
-        GROUP BY q.id
-        """,
-        question_ids,
-    ).fetchall()
+    # Chunking para evitar SQLITE_MAX_VARIABLE_NUMBER (999) em históricos longos.
+    rows = []
+    chunk_size = 400
+    for idx in range(0, len(unique_ids), chunk_size):
+        chunk = unique_ids[idx:idx + chunk_size]
+        placeholders = ",".join("?" * len(chunk))
+        chunk_rows = db.execute(
+            f"""
+            SELECT
+                q.id,
+                q.institution_code,
+                COUNT(fa.user_id) AS total_attempts,
+                COALESCE(SUM(fa.is_correct), 0) AS correct_attempts,
+                LENGTH(COALESCE(q.stem, '')) AS stem_len
+            FROM questions q
+            LEFT JOIN (
+                SELECT
+                    a.question_id,
+                    a.user_id,
+                    a.is_correct,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY a.question_id, a.user_id ORDER BY a.id ASC
+                    ) AS rn
+                FROM attempts a
+                WHERE a.question_id IN ({placeholders})
+            ) fa ON fa.question_id = q.id AND fa.rn = 1
+            WHERE q.id IN ({placeholders})
+            GROUP BY q.id
+            """,
+            [*chunk, *chunk],
+        ).fetchall()
+        rows.extend(chunk_rows)
 
     params_map = {}
     for r in rows:
@@ -175,12 +191,9 @@ def calibrate_item_parameters(db, question_ids: List[int]) -> Dict[int, Dict[str
 
         if total_att >= 4:
             acc = correct_att / total_att
-            # Mapeamento logístico inverso para b (dificuldade)
-            # acerto alto (0.80) -> b negativo (-1.2)
-            # acerto baixo (0.30) -> b positivo (+1.4)
+            # Mapeamento logístico inverso para b (dificuldade) em escala D=1.7
             safe_p = max(0.22, min(0.95, acc))
-            # Escala centrada
-            b_i = -1.0 * math.log((safe_p - 0.20) / (1.0 - safe_p + 0.05))
+            b_i = (-1.0 * math.log((safe_p - 0.20) / (1.0 - safe_p + 0.05))) / 1.7
             b_i = max(-2.5, min(2.5, b_i))
             # Discriminação calibrada
             a_i = 1.25 + min(0.4, (total_att / 50.0) * 0.2)

@@ -39,16 +39,28 @@ def _connect_turso(turso_url, turso_token):
     return client
 
 
-def _is_stale_turso_stream(error):
-    """Whether Turso rejected a request before it could run on an expired stream."""
+def _is_pre_execution_stale_stream(error):
+    """Whether Turso rejected the request before execution (expired stream / 404 baton)."""
     err_str = str(error).lower()
-    stale_patterns = (
+    pre_exec_patterns = (
         "stream not found",
         "stream expired",
         "expired stream",
+        "baton",
+        "status=404",
+        "status code 404",
+    )
+    return any(p in err_str for p in pre_exec_patterns)
+
+
+def _is_stale_turso_stream(error):
+    """Whether a Turso stream/transport failure justifies reconnecting and (for reads) retrying."""
+    if _is_pre_execution_stale_stream(error):
+        return True
+    err_str = str(error).lower()
+    stale_patterns = (
         "stream closed",
         "closed stream",
-        "baton",
         "connection reset",
         "connection closed",
         "broken pipe",
@@ -58,8 +70,6 @@ def _is_stale_turso_stream(error):
         "status 408",
         "status 502",
         "status 503",
-        "status=404",
-        "status code 404",
         "timeout",
     )
     return any(p in err_str for p in stale_patterns)
@@ -182,11 +192,12 @@ class TursoConnection:
         try:
             return self.client.execute(sql, args)
         except Exception as error:
-            # A 404 "stream not found" or broken stream is produced by Turso before the SQL is
-            # evaluated. It is therefore safe to recreate the client and replay
-            # a single statement, but never while a transaction is in progress:
-            # replaying part of a transaction could duplicate a mutation.
-            if not (retry_stale_stream and self.persistent and self._reconnect and _is_stale_turso_stream(error)):
+            # Never replay non-read-only statements on timeout/502/503/connection reset
+            # because Turso may have committed the mutation before the socket dropped.
+            # Only pre-execution 404/baton stream expirations are safe to replay for writes.
+            is_read = _is_read_only_query(sql)
+            can_retry = _is_stale_turso_stream(error) if is_read else _is_pre_execution_stale_stream(error)
+            if not (retry_stale_stream and self.persistent and self._reconnect and can_retry):
                 raise
             logger.warning("Turso stream expired; reconnecting and retrying one statement")
             self.client = self._reconnect(self.client)
@@ -204,7 +215,13 @@ class TursoConnection:
         try:
             return _dispatch(self.client)
         except Exception as error:
-            if not (retry_stale_stream and self.persistent and self._reconnect and _is_stale_turso_stream(error)):
+            is_read = _is_read_only_query(sql)
+            can_retry = (
+                _is_stale_turso_stream(error)
+                if is_read
+                else (_is_pre_execution_stale_stream(error) and hasattr(self.client, "executemany"))
+            )
+            if not (retry_stale_stream and self.persistent and self._reconnect and can_retry):
                 raise
             logger.warning("Turso stream expired; reconnecting and retrying executemany")
             self.client = self._reconnect(self.client)
@@ -319,14 +336,25 @@ def db_transaction(db, immediate=False):
         owns_tx = not db.tx
         if owns_tx:
             db.begin(immediate=immediate)
-        try:
-            yield db
-            if owns_tx:
+            try:
+                yield db
                 db.commit()
-        except Exception:
-            if owns_tx:
+            except Exception:
                 db.rollback()
-            raise
+                raise
+        else:
+            sp_name = f"sp_{os.urandom(4).hex()}"
+            db.execute(f"SAVEPOINT {sp_name}")
+            try:
+                yield db
+                db.execute(f"RELEASE SAVEPOINT {sp_name}")
+            except Exception:
+                try:
+                    db.execute(f"ROLLBACK TO SAVEPOINT {sp_name}")
+                    db.execute(f"RELEASE SAVEPOINT {sp_name}")
+                except Exception:
+                    pass
+                raise
     else:
         if not getattr(db, "in_transaction", False):
             db.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
@@ -566,21 +594,12 @@ def _create_indexes(db):
     db.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_notification_dispatches_user_date ON notification_dispatches(user_id, dispatch_date)")
 
-    db.execute("CREATE INDEX IF NOT EXISTS idx_attempts_user_question ON attempts (user_id, question_id)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_attempts_user_question_latest ON attempts (user_id, question_id, id DESC)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_attempts_correct ON attempts (user_id, is_correct)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_questions_area_subtema ON questions (area, subtema)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_questions_missing_alts ON questions (missing_alts)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_spaced_repetition_review ON spaced_repetition (user_id, next_review_date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_simulado_sessions_user_completed ON simulado_sessions (user_id, completed_at DESC)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_questions_area ON questions (area)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_questions_institution ON questions (institution_code)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_questions_inst_code_label ON questions (institution_code, institution_label)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_questions_year ON questions (year)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_questions_source ON questions (source_file)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_attempts_answered_at ON attempts (answered_at)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_attempts_user_answered_at ON attempts (user_id, answered_at)")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_alternatives_question_id ON alternatives (question_id)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images (question_id)")
 
 

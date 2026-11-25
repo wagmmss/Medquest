@@ -40,9 +40,11 @@ def app(tmp_path):
     con.close()
     os.environ["MEDQUEST_DB"] = str(dbfile)
     try:
-        from api.adaptive import _last_known_profile, _profile_cache
+        from api.adaptive import _last_known_profile, _profile_cache, _question_topics_cache
         from api.filters import target_institutions_cache
         from api.questions import count_cache, meta_cache
+        from api.services.focus_radar import _focus_radar_catalog_cache
+        from api.services.questions_service import invalidate_service_caches
         from api.stats import (
             _area_totals_cache,
             _institution_area_totals_cache,
@@ -51,13 +53,16 @@ def app(tmp_path):
         )
         meta_cache.clear()
         count_cache.clear()
+        invalidate_service_caches()
         overview_cache.clear()
         _profile_cache.clear()
+        _question_topics_cache.clear()
         _last_known_profile.clear()
         target_institutions_cache.clear()
         _q_totals_cache.clear()
         _area_totals_cache.clear()
         _institution_area_totals_cache.clear()
+        _focus_radar_catalog_cache.clear()
         app = create_app(testing=True)
         yield app
     finally:
@@ -76,7 +81,8 @@ def mock_ai_providers_hermetic(monkeypatch):
     if os.environ.get("RUN_LIVE_AI") == "1":
         return
 
-    from api import ai, gemini_pool, osce, osce_judge
+    from api import ai, gemini_pool, osce
+    from tests.helpers.osce_judge_stub import simulate_llm_judge_json
 
     def fake_generate_content_with_fallback(prompt, system_instruction=None, json_mode=False, **kwargs):
         if gemini_pool.gemini_pool.total_keys == 0:
@@ -88,7 +94,7 @@ def mock_ai_providers_hermetic(monkeypatch):
             except (TypeError, json.JSONDecodeError):
                 payload = None
             if isinstance(payload, dict) and "candidate_timeline" in payload and "checklist_items" in payload:
-                sim_text = osce_judge.simulate_llm_judge_json(
+                sim_text = simulate_llm_judge_json(
                     station_meta=payload.get("station", {}),
                     candidate_log=payload.get("candidate_timeline", []),
                     checklist_items=payload.get("checklist_items", []),

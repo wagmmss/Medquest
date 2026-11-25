@@ -98,16 +98,23 @@ _knowledge_cache = SimpleTTLCache(300, max_size=500)
 _jurisprudence_cache = SimpleTTLCache(300, max_size=500)
 
 
+_FTS5_RESERVED_OPERATORS = frozenset({"AND", "OR", "NOT", "NEAR"})
+
+
 def _sanitize_fts_query(raw_query: str) -> str:
-    """Sanitiza strings de busca para operadores válidos do SQLite FTS5."""
+    """Sanitiza strings de busca para operadores válidos e seguros no SQLite FTS5."""
     without_commands = re.sub(r'(?:^|\s)/[a-zA-ZÀ-ÿ0-9_-]+', ' ', raw_query or "")
     cleaned = re.sub(r'[^\w\s]', ' ', without_commands, flags=re.UNICODE)
-    tokens = [t.strip() for t in cleaned.split() if len(t.strip()) >= 3]
+    tokens = [
+        t.strip()
+        for t in cleaned.split()
+        if len(t.strip()) >= 3 and t.strip().upper() not in _FTS5_RESERVED_OPERATORS
+    ]
     if not tokens:
         return ""
-    # Junta com OR para cobrir combinações de termos médicos relevantes
-    # Prioriza os primeiros 8 termos para não sobrecarregar a árvore de busca
-    return " OR ".join(tokens[:8])
+    # Envolve cada termo em aspas duplas para impedir erro de sintaxe no FTS5.
+    # Prioriza os primeiros 8 termos para não sobrecarregar a árvore de busca.
+    return " OR ".join(f'"{t}"' for t in tokens[:8])
 
 
 def retrieve_medical_context(

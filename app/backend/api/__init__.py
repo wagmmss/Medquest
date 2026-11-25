@@ -1,16 +1,17 @@
 """Application factory do MedQuest (Flask + blueprints)."""
 import logging
 import os
-import platform
 
 import click
 
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv() # Carrega as variáveis de ambiente do arquivo .env
 
+from .attempts import bp as attempts_bp
 from .config import Config
 from .db import close_db, init_db
 from .logs import bp as logs_bp
@@ -18,15 +19,19 @@ from .notifications import bp as notifications_bp
 from .observability import configure_logging, emit, finish_request, start_request
 from .plan import bp as plan_bp
 from .questions import bp as questions_bp
+from .search import bp as search_bp
+from .simulados import bp as simulados_bp
 from .stats import bp as stats_bp
 
 
 def create_app(testing=False, initialize_db=None):
     app = Flask(__name__)
     app.config.from_object(Config)
-    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
     if testing:
         app.config["TESTING"] = True
+    else:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     if initialize_db is None:
         # Testes e o servidor local devem continuar autocontidos. Em produção,
         # a migração é uma etapa única do entrypoint antes do Gunicorn.
@@ -51,7 +56,6 @@ def create_app(testing=False, initialize_db=None):
             "status": "ok",
             "app": "MedQuest API",
             "docs": "/api",
-            "python": platform.python_version(),
         })
 
     from .auth import require_auth
@@ -97,7 +101,24 @@ def create_app(testing=False, initialize_db=None):
     from .osce_routes import bp as osce_routes_bp
     from .notes_presets import bp as notes_presets_bp
     from .lessons import bp as lessons_bp
-    for bp in (questions_bp, stats_bp, plan_bp, logs_bp, sessions_bp, notifications_bp, themes_bp, auth_bp, ai_routes_bp, curation_bp, osce_routes_bp, notes_presets_bp, lessons_bp):
+    for bp in (
+        questions_bp,
+        attempts_bp,
+        simulados_bp,
+        search_bp,
+        stats_bp,
+        plan_bp,
+        logs_bp,
+        sessions_bp,
+        notifications_bp,
+        themes_bp,
+        auth_bp,
+        ai_routes_bp,
+        curation_bp,
+        osce_routes_bp,
+        notes_presets_bp,
+        lessons_bp,
+    ):
         app.register_blueprint(bp, url_prefix="/api")
         app.register_blueprint(bp, url_prefix="/api/v1", name=f"{bp.name}_v1")
 
@@ -113,4 +134,9 @@ def create_app(testing=False, initialize_db=None):
     app.teardown_appcontext(close_db)
     if initialize_db:
         init_db(app)
+        if not testing:
+            from .db import get_db
+            from .osce import seed_osce_stations
+            with app.app_context():
+                seed_osce_stations(get_db())
     return app

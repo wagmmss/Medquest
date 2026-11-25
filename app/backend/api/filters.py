@@ -61,10 +61,11 @@ def question_filter_clauses(args):
         clauses.append(f"q.area IN ({','.join('?' * len(areas))})")
         params.extend(areas)
 
-    specialties = args.getlist("specialty")
+    specialties = [s.strip() for s in args.getlist("specialty") if s and s.strip()]
     if specialties:
-        clauses.append(f"q.specialty IN ({','.join('?' * len(specialties))})")
-        params.extend(specialties)
+        spec_ph = ",".join("?" * len(specialties))
+        clauses.append(f"(q.subtema IN ({spec_ph}) OR q.topic IN ({spec_ph}) OR q.area IN ({spec_ph}))")
+        params.extend(specialties * 3)
 
     subtemas = args.getlist("subtema")
     if subtemas:

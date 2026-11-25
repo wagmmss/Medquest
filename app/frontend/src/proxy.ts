@@ -1,18 +1,19 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from "next/server";
 import { isClerkServerEnabled } from "@/lib/auth-server";
+import { signGuestCookieValue, verifyGuestCookieValue } from "@/lib/guest-cookie";
 
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+async function applyGuestSession(req: NextRequest): Promise<NextResponse> {
+  const verified = await verifyGuestCookieValue(req.cookies.get("medquest_guest_session")?.value);
+  let guestId: string;
+  let mustSetCookie = false;
 
-function applyGuestSession(req: NextRequest): NextResponse {
-  let guestId = req.cookies.get("medquest_guest_session")?.value;
-  let isNew = false;
-
-  if (!guestId || !UUID_V4_REGEX.test(guestId) || guestId === "00000000-0000-0000-0000-000000000000") {
-    guestId = crypto.randomUUID();
-    isNew = true;
+  if (!verified) {
+    guestId = crypto.randomUUID().toLowerCase();
+    mustSetCookie = true;
   } else {
-    guestId = guestId.toLowerCase();
+    guestId = verified.guestId;
+    mustSetCookie = verified.needsResign || !req.cookies.has("medquest_guest_session");
   }
 
   // Clone request headers and overwrite the internal identity header.
@@ -26,9 +27,10 @@ function applyGuestSession(req: NextRequest): NextResponse {
     },
   });
 
-  // Persist the cookie on the response if newly created or if not set with exact options
-  if (isNew || !req.cookies.has("medquest_guest_session")) {
-    response.cookies.set("medquest_guest_session", guestId, {
+  // Persist signed cookie on the response if newly created or needs rotation
+  if (mustSetCookie) {
+    const signedValue = await signGuestCookieValue(guestId);
+    response.cookies.set("medquest_guest_session", signedValue, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

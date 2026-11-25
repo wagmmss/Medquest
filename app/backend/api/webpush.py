@@ -59,7 +59,7 @@ def get_allowed_hosts() -> list[str]:
         return [h.strip().lower() for h in raw.split(",") if h.strip()]
 
     # Em produção, se a variável não estiver definida, falha fechado
-    is_prod = os.environ.get("FLASK_ENV") == "production"
+    is_prod = os.environ.get("FLASK_ENV") == "production" or bool(os.environ.get("RENDER"))
     if is_prod:
         return []
 
@@ -92,6 +92,8 @@ def is_safe_push_endpoint(endpoint: str) -> bool:
     try:
         parsed = urlparse(endpoint)
         if parsed.scheme != "https":
+            return False
+        if parsed.port not in (None, 443):
             return False
         hostname = parsed.hostname
         if not hostname:

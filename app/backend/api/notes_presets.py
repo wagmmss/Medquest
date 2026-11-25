@@ -8,12 +8,15 @@ from datetime import datetime, timezone
 from flask import Blueprint, g, jsonify, request
 
 from .db import db_transaction, get_db
+from .services.taxonomy import (
+    CIRURGIA_AREA_ALIASES as _CIRURGIA_AREA_ALIASES,
+    PREVENTIVA_AREA_ALIASES as _PREVENTIVA_AREA_ALIASES,
+    area_filter_values,
+)
 
 bp = Blueprint("notes_presets", __name__)
 
 ALLOWED_HIGHLIGHT_COLORS = {"yellow", "green", "pink", "blue"}
-_PREVENTIVA_AREA_ALIASES = ("Preventiva", "Medicina Preventiva", "Medicina Preventiva e Social")
-_CIRURGIA_AREA_ALIASES = ("Cirurgia", "Cirurgia Geral")
 
 
 def _norm_note_search(value: str | None) -> str:
@@ -75,9 +78,15 @@ def list_presets():
     return jsonify({"presets": items})
 
 
+MAX_PRESET_FILTERS_BYTES = 16 * 1024
+MAX_PRESETS_PER_USER = 50
+
+
 @bp.route("/presets", methods=["POST"])
 def create_preset():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "validation_error", "message": "Payload JSON inválido."}), 400
     name = str(payload.get("name") or "").strip()[:80]
     filters = payload.get("filters")
     if not name:
@@ -87,7 +96,17 @@ def create_preset():
 
     now = _now_iso()
     filters_json = json.dumps(filters, ensure_ascii=False)
+    if len(filters_json.encode("utf-8")) > MAX_PRESET_FILTERS_BYTES:
+        return jsonify({"error": "validation_error", "message": "Filtros excedem o limite máximo de 16 KB."}), 413
+
     db = get_db()
+    count_row = db.execute(
+        "SELECT COUNT(*) AS n FROM study_presets WHERE user_id = ?",
+        (str(g.user_id),),
+    ).fetchone()
+    if count_row and int(count_row["n"] or 0) >= MAX_PRESETS_PER_USER:
+        return jsonify({"error": "limit_exceeded", "message": f"Limite máximo de {MAX_PRESETS_PER_USER} presets atingido."}), 400
+
     with db_transaction(db):
         cur = db.execute(
             """INSERT INTO study_presets (user_id, name, filters_json, created_at, updated_at)
@@ -133,15 +152,13 @@ def list_notes():
     """
     params: list[object] = [str(g.user_id)]
     if area:
-        if area in _PREVENTIVA_AREA_ALIASES:
-            query += " AND q.area IN (?, ?, ?)"
-            params.extend(_PREVENTIVA_AREA_ALIASES)
-        elif area in _CIRURGIA_AREA_ALIASES:
-            query += " AND q.area IN (?, ?)"
-            params.extend(_CIRURGIA_AREA_ALIASES)
-        else:
+        vals = area_filter_values(area)
+        if len(vals) > 1:
+            query += f" AND q.area IN ({','.join('?' * len(vals))})"
+            params.extend(vals)
+        elif vals:
             query += " AND q.area = ?"
-            params.append(area)
+            params.append(vals[0])
     query += " ORDER BY n.updated_at DESC"
 
     rows = db.execute(query, params).fetchall()

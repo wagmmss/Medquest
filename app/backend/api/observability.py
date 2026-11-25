@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import os
+import threading
 import time
 import uuid
 from collections import defaultdict, deque
@@ -13,6 +14,7 @@ import contextlib
 from flask import g, request
 
 logger = logging.getLogger("medquest.telemetry")
+_metrics_lock = threading.Lock()
 _latencies = defaultdict(lambda: deque(maxlen=500))
 _status_counts = defaultdict(int)
 
@@ -48,7 +50,7 @@ def emit(event, level=logging.INFO, **fields):
 
 
 def _route_name():
-    return request.url_rule.rule if request.url_rule else request.path
+    return request.url_rule.rule if request.url_rule else "<unmatched>"
 
 
 def start_request():
@@ -66,8 +68,9 @@ def finish_request(response):
     duration_ms = round((time.perf_counter() - started) * 1000, 2) if started else 0.0
     route = _route_name()
     metric_key = (request.method, route)
-    _latencies[metric_key].append(duration_ms)
-    _status_counts[(request.method, route, response.status_code)] += 1
+    with _metrics_lock:
+        _latencies[metric_key].append(duration_ms)
+        _status_counts[(request.method, route, response.status_code)] += 1
 
     request_id = getattr(g, "request_id", str(uuid.uuid4()))
     response.headers["X-Request-ID"] = request_id
@@ -122,11 +125,15 @@ def _percentile(values, quantile):
 
 
 def performance_snapshot():
+    with _metrics_lock:
+        lat_snapshot = [(k, list(v)) for k, v in sorted(_latencies.items())]
+        status_snapshot = dict(_status_counts)
+
     routes = []
-    for (method, route), values in sorted(_latencies.items()):
+    for (method, route), values in lat_snapshot:
         statuses = {
             str(status): count
-            for (status_method, status_route, status), count in _status_counts.items()
+            for (status_method, status_route, status), count in status_snapshot.items()
             if status_method == method and status_route == route
         }
         total_reqs = sum(statuses.values()) if statuses else len(values)
@@ -136,7 +143,7 @@ def performance_snapshot():
         routes.append({
             "method": method,
             "route": route,
-            "requests": len(values),
+            "requests": total_reqs,
             "p50_ms": _percentile(values, 0.5),
             "p95_ms": _percentile(values, 0.95),
             "p99_ms": _percentile(values, 0.99),

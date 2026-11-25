@@ -3,6 +3,7 @@
 import React from "react";
 import { Sliders, Building2, Calendar, Download, RefreshCw, CheckCircle2, Play, Target, Lightbulb } from "lucide-react";
 import clsx from "clsx";
+import { CANONICAL_SP_INSTITUTIONS } from "@/lib/institutions";
 import { CustomConfig } from "./SimuladoStartScreen";
 
 interface SimuladoCustomBuilderProps {
@@ -19,8 +20,6 @@ interface SimuladoCustomBuilderProps {
   downloadProgress: number;
   isOffline: boolean;
 }
-
-const CANONICAL_SP_INSTITUTIONS = ["USP-SP", "USP-RP", "UNICAMP", "UNIFESP", "SUS-SP"];
 
 export const SimuladoCustomBuilder: React.FC<SimuladoCustomBuilderProps> = ({
   customConfig,

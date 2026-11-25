@@ -70,7 +70,7 @@ export function initCrossTabListener(): () => void {
   const handleStorage = (e: StorageEvent) => {
     if (!e.key) return;
 
-    if (e.key === "medquest_forced_offline") {
+    if (e.key === "medquest_force_offline") {
       window.dispatchEvent(new CustomEvent("forced-offline-changed", {
         detail: { forced: e.newValue === "true" }
       }));

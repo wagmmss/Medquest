@@ -154,15 +154,15 @@ test('clicar em voltar limpa a sessão e reload mantém na tela de filtros', asy
   await page.goto('/estudar?area=Cl%C3%ADnica+M%C3%A9dica', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Qual o tratamento inicial')).toBeVisible();
 
-  // Clica em Voltar
-  await page.getByRole('button', { name: '← Voltar' }).click();
-  await expect(page.getByText('Filtros de Estudo')).toBeVisible();
+  // Clica em Filtros para retornar à tela inicial
+  await page.getByRole('button', { name: 'Filtros' }).click();
+  await expect(page.getByText('Montar Bateria de Questões')).toBeVisible();
 
   // Recarrega a página
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   // Deve permanecer na tela de filtros sem carregar automaticamente a questão anterior
-  await expect(page.getByText('Filtros de Estudo')).toBeVisible();
+  await expect(page.getByText('Montar Bateria de Questões')).toBeVisible();
   await expect(page.getByText('Qual o tratamento inicial')).not.toBeVisible();
 });
 
@@ -183,13 +183,13 @@ test('navegar para /estudar com sessão salva exibe banner de retomada na tela d
   // Navega intencionalmente para /estudar
   await page.goto('/estudar', { waitUntil: 'domcontentloaded' });
 
-  // Deve estar na tela de Filtros de Estudo exibindo o banner de retomada
-  await expect(page.getByText('Filtros de Estudo')).toBeVisible();
-  await expect(page.getByText('Sessão de Estudos em Andamento')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continuar Sessão' })).toBeVisible();
+  // Deve estar na tela de Filtros exibindo o banner de retomada
+  await expect(page.getByText('Montar Bateria de Questões')).toBeVisible();
+  await expect(page.getByText('Sessão em andamento')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continuar sessão' })).toBeVisible();
 
   // Clica para continuar a sessão anterior
-  await page.getByRole('button', { name: 'Continuar Sessão' }).click();
+  await page.getByRole('button', { name: 'Continuar sessão' }).click();
 
   // Deve retornar para a questão com a alternativa selecionada
   await expect(page.getByText('Qual o tratamento inicial')).toBeVisible();

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useCallback, useContext, useEffect } from "react";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { clearClientSessionCaches, syncActiveAuthOwner } from "@/lib/db";
 
 type UserResult = ReturnType<typeof useUser>;
 type AuthResult = ReturnType<typeof useAuth>;
@@ -47,7 +48,21 @@ const AppAuthContext = createContext<AppAuthContextValue>(FALLBACK_CONTEXT_VALUE
 function ClerkAuthBridge({ children }: { children: React.ReactNode }) {
   const userState = useUser();
   const authState = useAuth();
-  const { signOut } = useClerk();
+  const { signOut: clerkSignOut } = useClerk();
+
+  useEffect(() => {
+    const resolvedUserId = userState.user?.id ?? authState.userId ?? null;
+    syncActiveAuthOwner(Boolean(userState.isLoaded && authState.isLoaded), resolvedUserId);
+  }, [userState.isLoaded, authState.isLoaded, userState.user?.id, authState.userId]);
+
+  const signOut: ClerkResult["signOut"] = useCallback(
+    async (...args: Parameters<ClerkResult["signOut"]>) => {
+      syncActiveAuthOwner(true, null);
+      clearClientSessionCaches();
+      return clerkSignOut(...(args as [Parameters<ClerkResult["signOut"]>[0]]));
+    },
+    [clerkSignOut]
+  ) as ClerkResult["signOut"];
 
   return (
     <AppAuthContext.Provider

@@ -67,7 +67,7 @@ export function prefetchRouteIntent(
   } else if (href === "/planner") {
     prefetchedQueries.set(href, now);
     void queryClient.prefetchQuery({
-      queryKey: ["planner-bundle", false],
+      queryKey: ["planner-bundle", false, "default"],
       queryFn: () => fetchPlannerBundle(false),
       staleTime: 60_000,
     });

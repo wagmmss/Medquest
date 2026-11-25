@@ -123,16 +123,17 @@ test.describe('Simulado 100% Offline com Pré-download e Sincronização Posteri
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
     });
 
-    // 2. Acessar a página de simulado online
+    // 2. Acessar a página de simulado online e selecionar o construtor personalizado
     await page.goto('/simulado');
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
     await expect(page.locator('button:has-text("Iniciar Simulado")')).toBeVisible({ timeout: 10000 });
 
     // 3. Executar pré-download explícito do simulado para uso offline
-    await expect(page.locator('button:has-text("Baixar este Simulado para Uso Offline")')).toBeVisible();
-    await page.click('button:has-text("Baixar este Simulado para Uso Offline")');
+    await expect(page.locator('button:has-text("Baixar Offline")')).toBeVisible();
+    await page.click('button:has-text("Baixar Offline")');
 
-    // 4. Aguardar o download concluir e validar exibição do badge "Pronto Offline"
-    await expect(page.locator('text=Pronto Offline')).toBeVisible({ timeout: 15000 });
+    // 4. Aguardar o download concluir e validar exibição do badge "Pacote Offline Pronto"
+    await expect(page.locator('text=Pacote Offline Pronto')).toBeVisible({ timeout: 15000 });
     const studyShellCached = await page.evaluate(async () => {
       const cache = await caches.open('medquest-study-shell');
       return Boolean(await cache.match('/estudar', { ignoreVary: true }));
@@ -156,8 +157,8 @@ test.describe('Simulado 100% Offline com Pré-download e Sincronização Posteri
 
     // 9. RECARREGAR A PÁGINA e verificar retomada offline a partir do IndexedDB
     await page.reload();
-    await expect(page.locator('button:has-text("Continuar Andamento")')).toBeVisible({ timeout: 10000 });
-    await page.click('button:has-text("Continuar Andamento")');
+    await expect(page.locator('button:has-text("Retomar Simulado")')).toBeVisible({ timeout: 10000 });
+    await page.click('button:has-text("Retomar Simulado")');
 
     // 10. Confirmar que a resposta da 2ª questão e a 1ª questão foram preservadas
     await expect(page.locator('text=Paciente politraumatizado')).toBeVisible();
@@ -208,9 +209,10 @@ test.describe('Simulado 100% Offline com Pré-download e Sincronização Posteri
     });
 
     await page.goto('/simulado');
-    await expect(page.locator('button:has-text("Baixar este Simulado para Uso Offline")')).toBeVisible();
-    await page.click('button:has-text("Baixar este Simulado para Uso Offline")');
-    await expect(page.locator('text=Pronto Offline')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Personalizado & Sprints' }).click();
+    await expect(page.locator('button:has-text("Baixar Offline")')).toBeVisible();
+    await page.click('button:has-text("Baixar Offline")');
+    await expect(page.locator('text=Pacote Offline Pronto')).toBeVisible({ timeout: 15000 });
 
     await page.waitForFunction(async () => {
       const registration = await navigator.serviceWorker.ready;

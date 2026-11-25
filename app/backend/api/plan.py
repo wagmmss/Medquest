@@ -1,16 +1,13 @@
+"""Blueprint HTTP do Planejador de Estudos, Blocos do Internato e Calendário ICS."""
+from __future__ import annotations
+
 import json
-import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from flask import Blueprint, Response, g, jsonify, request
 
 from .adaptive import get_adaptive_signals_by_topic
-from .internato_config import RODIZIOS_TURMA_J
-# planner service — geração do plano anual por pesos históricos USP
-from .services.planner import generate_annual_plan, build_plan_from_schedule
-
 from .db import db_transaction, get_db
-from .filters import get_user_target_institutions
 from .observability import record_domain_event
 from .questions import invalidate_user_caches
 from .schemas import (
@@ -25,39 +22,21 @@ from .schemas import (
     ValidationError,
     validation_errors,
 )
+from .services.planner_ics import _generate_calendar_ics_content
+from .services.planner_scheduler import build_plan_from_schedule, generate_annual_plan
+from .services.planner_store import (
+    _fetch_plan_data,
+    _get_completed_subtemas,
+    _get_planner_config,
+    _get_user_internato_blocks,
+    _parse_mode_parts,
+    _resolve_schedule_mode,
+    get_planner_config_data,
+    get_planner_progress_data,
+    get_planner_topic_progress_data,
+)
 
 bp = Blueprint("plan", __name__)
-
-
-def _resolve_schedule_mode(organization: str, intensive: bool) -> str:
-    org = "internato" if organization == "internato" else "geral"
-    return f"{org}_{'intensive' if intensive else 'standard'}"
-
-
-def _parse_mode_parts(mode: str) -> tuple[str, bool]:
-    if mode in ("internato_standard", "internato_intensive"):
-        return "internato", mode.endswith("_intensive")
-    return "geral", mode.endswith("intensive")
-
-
-def _get_completed_subtemas(db, user_id: str) -> set[str]:
-    rows = db.execute(
-        "SELECT DISTINCT subtema FROM planner_topic_progress WHERE user_id = ? AND completed = 1",
-        (user_id,),
-    ).fetchall()
-    return {r["subtema"] for r in rows}
-
-
-def _get_user_internato_blocks(db, user_id: str) -> list[dict]:
-    row = db.execute("SELECT internato_blocks FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
-    if row and row["internato_blocks"]:
-        try:
-            parsed = json.loads(row["internato_blocks"])
-            if isinstance(parsed, list) and parsed:
-                return parsed
-        except (ValueError, TypeError):
-            pass
-    return [dict(b) for b in RODIZIOS_TURMA_J]
 
 
 @bp.route("/planner/config/reset", methods=["POST"])
@@ -191,60 +170,6 @@ def planner_config():
 
     return jsonify(get_planner_config_data(db, g.user_id) or {})
 
-
-def get_planner_config_data(db, user_id: str) -> dict | None:
-    row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
-    if not row:
-        return None
-    row_keys = row.keys() if hasattr(row, 'keys') else []
-    inst_str = row["target_institution"] if "target_institution" in row_keys else None
-    inst_list = [i.strip() for i in inst_str.split(",") if i.strip()] if inst_str else []
-    primary_inst = None
-    if inst_list and inst_list[0] not in ("Todas as Bancas", "TODAS"):
-        primary_inst = inst_list[0]
-
-    org_mode = row["organization_mode"] if "organization_mode" in row_keys and row["organization_mode"] else "geral"
-    internato_blocks = [dict(b) for b in RODIZIOS_TURMA_J]
-    if "internato_blocks" in row_keys and row["internato_blocks"]:
-        try:
-            parsed = json.loads(row["internato_blocks"])
-            if isinstance(parsed, list) and parsed:
-                internato_blocks = parsed
-        except (ValueError, TypeError):
-            pass
-
-    return {
-        "exam_date": row["exam_date"],
-        "start_date": row["start_date"],
-        "days_per_week": row["days_per_week"],
-        "hours_per_day": row["hours_per_day"] if "hours_per_day" in row_keys else row["questions_per_day"],
-        "target_score": row["target_score"] if "target_score" in row_keys else None,
-        "target_institution": inst_str,
-        "target_institutions": inst_list,
-        "primary_institution": primary_inst,
-        "target_specialty": row["target_specialty"] if "target_specialty" in row_keys else None,
-        "organization_mode": org_mode,
-        "internato_blocks": internato_blocks,
-    }
-
-
-def get_planner_progress_data(db, user_id: str) -> dict:
-    rows = db.execute("SELECT * FROM planner_progress WHERE user_id = ?", (user_id,)).fetchall()
-    return {str(r["week"]): {
-        "studied": bool(r["studied"]), "studied_at": r["studied_at"],
-        "rev24h": bool(r["rev24h"]), "rev7d": bool(r["rev7d"]), "rev30d": bool(r["rev30d"]),
-    } for r in rows}
-
-
-def get_planner_topic_progress_data(db, user_id: str) -> dict:
-    rows = db.execute("SELECT week, subtema, completed FROM planner_topic_progress WHERE user_id = ?", (user_id,)).fetchall()
-    res = {}
-    for r in rows:
-        val = bool(r["completed"])
-        res[f"{r['week']}:{r['subtema']}"] = val
-        if val:
-            res[r["subtema"]] = True
-    return res
 
 
 @bp.route("/planner")
@@ -386,13 +311,21 @@ def planner_move_topic():
                 VALUES (?, ?, ?, ?, ?, ?)
             """, insert_records)
 
-        # Atualizar planner_topic_progress para a nova semana se moveu de semana
+        # Atualizar planner_topic_progress para a nova semana evitando IntegrityError em conflito de PK
         if source_week != target_week:
             db.execute("""
-                UPDATE planner_topic_progress
-                SET week = ?
+                INSERT INTO planner_topic_progress (week, subtema, completed, completed_at, user_id)
+                SELECT ?, subtema, completed, completed_at, user_id
+                FROM planner_topic_progress
                 WHERE user_id = ? AND subtema = ? AND week = ?
+                ON CONFLICT(week, subtema, user_id) DO UPDATE SET
+                    completed = MAX(planner_topic_progress.completed, excluded.completed),
+                    completed_at = COALESCE(planner_topic_progress.completed_at, excluded.completed_at)
             """, (target_week, g.user_id, subtema, source_week))
+            db.execute("""
+                DELETE FROM planner_topic_progress
+                WHERE user_id = ? AND subtema = ? AND week = ?
+            """, (g.user_id, subtema, source_week))
 
     invalidate_user_caches(g.user_id)
     record_domain_event(
@@ -526,228 +459,6 @@ def generate_plan():
     return jsonify(plan)
 
 
-def _get_planner_config(db, user_id):
-    row = db.execute("SELECT * FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
-    
-    if not row or not row["exam_date"]:
-        start_date = datetime.now(timezone.utc).isoformat()
-        exam_date = (datetime.now(timezone.utc) + timedelta(days=120)).isoformat()
-        hours_per_week = 24
-        days = 6
-    else:
-        start_date = row["start_date"] or datetime.now(timezone.utc).isoformat()
-        exam_date = row["exam_date"]
-        days = row["days_per_week"] or 6
-        row_keys = row.keys() if hasattr(row, "keys") else []
-        hours = (row["hours_per_day"] if "hours_per_day" in row_keys else row["questions_per_day"]) or 4
-        hours_per_week = min(168, days * hours)
-
-    return start_date, exam_date, days, hours_per_week
-
-
-def _fetch_plan_data(db, user_id):
-    target_insts = get_user_target_institutions(db, user_id)
-    use_bank_incidence = bool(target_insts)
-
-    if target_insts:
-        sorted_insts = sorted(target_insts)
-        placeholders = ",".join("?" * len(sorted_insts))
-        q_query = f"""
-            SELECT area, subtema, GROUP_CONCAT(DISTINCT topic) as topics,
-                   COUNT(id) as q_count,
-                   SUM(CASE WHEN institution_code IN ({placeholders}) OR UPPER(institution_code) IN ({placeholders}) THEN 1 ELSE 0 END) as target_q_count
-            FROM questions
-            WHERE area IS NOT NULL AND subtema IS NOT NULL AND missing_alts = 0
-            GROUP BY area, subtema
-        """
-        q_params = tuple(sorted_insts) + tuple(sorted_insts)
-    else:
-        q_query = """
-            SELECT area, subtema, GROUP_CONCAT(DISTINCT topic) as topics,
-                   COUNT(id) as q_count,
-                   0 as target_q_count
-            FROM questions
-            WHERE area IS NOT NULL AND subtema IS NOT NULL AND missing_alts = 0
-            GROUP BY area, subtema
-        """
-        q_params = ()
-
-    a_query = """
-        SELECT q.subtema, COUNT(DISTINCT a.question_id) as ans_count, SUM(a.is_correct) as correct_count, COUNT(a.id) as attempts
-        FROM attempts a
-        JOIN questions q ON q.id = a.question_id
-        WHERE a.user_id = ? AND q.subtema IS NOT NULL
-        GROUP BY q.subtema
-    """
-    if hasattr(db, "batch"):
-        res = db.batch([
-            (q_query, q_params),
-            (a_query, (user_id,))
-        ])
-        rows = [dict(r) for r in res[0].fetchall()]
-        answered = [dict(r) for r in res[1].fetchall()]
-    else:
-        rows = [dict(r) for r in db.execute(q_query, q_params).fetchall()]
-        answered = [dict(r) for r in db.execute(a_query, (user_id,)).fetchall()]
-
-    answered_map = {r["subtema"]: r for r in answered}
-    return rows, answered_map, use_bank_incidence
-
-
-def _get_base_url():
-    base_url = ""
-    try:
-        req_origin = request.headers.get("Origin") or request.headers.get("Referer")
-        if req_origin:
-            parsed = urllib.parse.urlparse(req_origin)
-            base_url = f"{parsed.scheme}://{parsed.netloc}"
-        elif request.host_url:
-            base_url = request.host_url.rstrip("/")
-            if ":5050" in base_url:
-                base_url = "http://localhost:3000"
-    except Exception:
-        base_url = ""
-    return base_url
-
-
-def _generate_calendar_ics_content(db, user_id):
-    start_date, exam_date, days, hours_per_week = _get_planner_config(db, user_id)
-    rows, answered_map, use_bank_incidence = _fetch_plan_data(db, user_id)
-    adaptive_signals = get_adaptive_signals_by_topic(db, user_id)
-    completed_subtemas = _get_completed_subtemas(db, user_id)
-    internato_blocks = _get_user_internato_blocks(db, user_id)
-    cfg_data = get_planner_config_data(db, user_id) or {}
-    org_mode = cfg_data.get("organization_mode") or "geral"
-    schedule_mode = _resolve_schedule_mode(org_mode, intensive=False)
-
-    schedule_rows = db.execute(
-        "SELECT week, subtema, display_order FROM planner_schedule WHERE user_id = ? AND mode = ? ORDER BY week ASC, display_order ASC",
-        (user_id, schedule_mode)
-    ).fetchall()
-    if schedule_rows:
-        plan_result = build_plan_from_schedule(
-            schedule_rows, start_date, hours_per_week,
-            exam_date_str=exam_date,
-            rows=rows, user_progress=answered_map,
-            adaptive_signals=adaptive_signals, intensive=False,
-            completed_subtemas=completed_subtemas,
-            organization=org_mode,
-            internato_blocks=internato_blocks,
-            use_bank_incidence=use_bank_incidence,
-        ) or {}
-    else:
-        plan_result = generate_annual_plan(
-            rows, start_date, exam_date, hours_per_week,
-            intensive=False, user_progress=answered_map,
-            adaptive_signals=adaptive_signals,
-            organization=org_mode,
-            internato_blocks=internato_blocks,
-            completed_subtemas=completed_subtemas,
-            use_bank_incidence=use_bank_incidence,
-        )
-
-    plan_weeks = plan_result.get("plan", [])
-    now_dt = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-    ics_lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//MedQuest//Cronograma de Estudos//PT-BR",
-        "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH",
-        "X-WR-CALNAME:MedQuest - Cronograma de Residência Médica",
-        "X-WR-TIMEZONE:America/Sao_Paulo",
-    ]
-
-    study_days_count = max(1, min(7, days))
-    base_url = _get_base_url()
-
-    _generate_ics_events(ics_lines, plan_weeks, now_dt, study_days_count, base_url, user_id)
-
-    ics_lines.append("END:VCALENDAR")
-    return "\r\n".join(ics_lines)
-
-
-def _build_consolidation_event(ics_lines, w_num, week_start_dt, w_date_str, now_dt, user_id, base_url):
-    start_str = week_start_dt.strftime("%Y%m%dT080000")
-    end_str = (week_start_dt + timedelta(hours=3)).strftime("%Y%m%dT110000")
-    uid = f"medquest-week-consolidation-{w_num}-{user_id}-{w_date_str}@medquest"
-    footer_link = f"\\n\\n🔗 {base_url}/planner" if base_url else ""
-    ics_lines.extend([
-        "BEGIN:VEVENT",
-        f"UID:{uid}",
-        f"DTSTAMP:{now_dt}",
-        f"DTSTART:{start_str}",
-        f"DTEND:{end_str}",
-        f"SUMMARY:[MedQuest] Semana {w_num}: Revisão Geral & Consolidação",
-        f"DESCRIPTION:Semana reservada para consolidação de metas e simulados.{footer_link}",
-        "STATUS:CONFIRMED",
-        "END:VEVENT",
-    ])
-
-
-def _build_topic_events(ics_lines, topics, w_num, week_start_dt, study_days_count, now_dt, user_id, base_url):
-    day_slot_minutes = [0] * study_days_count
-    for t_idx, topic in enumerate(topics):
-        subtema = topic.get("subtema", "Aula")
-        area = topic.get("area", "Geral")
-        theory_h = topic.get("estimated_theory_hours", 1.0)
-        practice_h = topic.get("estimated_practice_hours", 2.0)
-        total_h = topic.get("estimated_hours", theory_h + practice_h)
-
-        day_offset = t_idx % study_days_count
-        topic_date = week_start_dt + timedelta(days=day_offset)
-        date_str = topic_date.strftime("%Y%m%d")
-        topic_id_clean = urllib.parse.quote(subtema[:30]).replace("%", "")
-
-        # Duração REAL da aula (minutos calculados com precisão)
-        duration_minutes = max(30, int(round(total_h * 60)))
-        start_minutes = (8 * 60) + day_slot_minutes[day_offset]
-        dt_start = topic_date.replace(hour=start_minutes // 60, minute=start_minutes % 60, second=0)
-        dt_end = dt_start + timedelta(minutes=duration_minutes)
-        day_slot_minutes[day_offset] += duration_minutes + 15
-
-        start_str = dt_start.strftime("%Y%m%dT%H%M%S")
-        end_str = dt_end.strftime("%Y%m%dT%H%M%S")
-        uid_lecture = f"medquest-lec-{w_num}-{t_idx}-{topic_id_clean}-{user_id}-{date_str}@medquest"
-
-        encoded_sub = urllib.parse.quote(subtema)
-        # O subtema canônico é a chave de associação estável. Não inclua
-        # a área aqui: nomes de área de bases antigas podem divergir da
-        # normalização exibida no planner e zerar indevidamente a fila.
-        study_url_text = f"\\n\\n🔗 Questões: {base_url}/estudar?subtema={encoded_sub}&limit=25" if base_url else ""
-
-        ics_lines.extend([
-            "BEGIN:VEVENT",
-            f"UID:{uid_lecture}",
-            f"DTSTAMP:{now_dt}",
-            f"DTSTART:{start_str}",
-            f"DTEND:{end_str}",
-            f"SUMMARY:[MedQuest] 📖 {subtema} ({area})",
-            f"DESCRIPTION:📚 Carga: {total_h}h (Teoria: {theory_h}h + Questões: {practice_h}h)\\nSemana {w_num} • {area}{study_url_text}",
-            "STATUS:CONFIRMED",
-            "END:VEVENT",
-        ])
-
-
-def _generate_ics_events(ics_lines, plan_weeks, now_dt, study_days_count, base_url, user_id):
-    for w in plan_weeks:
-        w_num = w.get("week")
-        w_date_str = w.get("date", "")[:10]
-        if not w_date_str:
-            continue
-        
-        try:
-            week_start_dt = datetime.strptime(w_date_str, "%Y-%m-%d")
-        except Exception:
-            continue
-
-        topics = w.get("topics", [])
-        if not topics:
-            _build_consolidation_event(ics_lines, w_num, week_start_dt, w_date_str, now_dt, user_id, base_url)
-        else:
-            _build_topic_events(ics_lines, topics, w_num, week_start_dt, study_days_count, now_dt, user_id, base_url)
-
 
 @bp.route("/planner/export/ics", methods=["GET"])
 def export_ics():
@@ -777,3 +488,11 @@ def calendar_feed():
             "Content-Disposition": "inline; filename=medquest_feed.ics"
         }
     )
+
+
+__all__ = [
+    "bp",
+    "get_planner_config_data",
+    "get_planner_progress_data",
+    "get_planner_topic_progress_data",
+]

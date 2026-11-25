@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X, FileText, StickyNote, ArrowRight, Compass, PlayCircle, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { buildLessonReturnUrl } from "@/lib/themeJourney";
 
@@ -67,6 +68,7 @@ export function CommandPalette() {
   }, [isOpen]);
 
   const trimmed = query.trim();
+  const debouncedQuery = useDebouncedValue(trimmed, 250);
 
   const { data: examsData } = useQuery({
     queryKey: ["command-palette-exams"],
@@ -76,30 +78,30 @@ export function CommandPalette() {
   });
 
   const { data: notesData } = useQuery({
-    queryKey: ["command-palette-notes", trimmed],
-    queryFn: ({ signal }) => api.notes.list({ q: trimmed }, signal),
-    enabled: isOpen && trimmed.length >= 2,
+    queryKey: ["command-palette-notes", debouncedQuery],
+    queryFn: ({ signal }) => api.notes.list({ q: debouncedQuery }, signal),
+    enabled: isOpen && debouncedQuery.length >= 2,
     staleTime: 30_000,
   });
 
   const { data: lessonNotesData } = useQuery({
-    queryKey: ["command-palette-lesson-notes", trimmed],
-    queryFn: ({ signal }) => api.lessons.listNotes({ q: trimmed }, signal),
-    enabled: isOpen && canAccessLessons && trimmed.length >= 2,
+    queryKey: ["command-palette-lesson-notes", debouncedQuery],
+    queryFn: ({ signal }) => api.lessons.listNotes({ q: debouncedQuery }, signal),
+    enabled: isOpen && canAccessLessons && debouncedQuery.length >= 2,
     staleTime: 30_000,
   });
 
   const { data: lessonsData, isFetching: searchingLessons } = useQuery({
-    queryKey: ["command-palette-lessons", trimmed],
-    queryFn: ({ signal }) => api.lessons.list({ q: trimmed, limit: 5 }, signal),
-    enabled: isOpen && canAccessLessons && trimmed.length >= 2,
+    queryKey: ["command-palette-lessons", debouncedQuery],
+    queryFn: ({ signal }) => api.lessons.list({ q: debouncedQuery, limit: 5 }, signal),
+    enabled: isOpen && canAccessLessons && debouncedQuery.length >= 2,
     staleTime: 30_000,
   });
 
   const { data: searchData, isFetching: searchingQuestions } = useQuery({
-    queryKey: ["command-palette-questions", trimmed],
-    queryFn: ({ signal }) => api.questions.search(trimmed, { limit: 6 }, signal),
-    enabled: isOpen && trimmed.length >= 3,
+    queryKey: ["command-palette-questions", debouncedQuery],
+    queryFn: ({ signal }) => api.questions.search(debouncedQuery, { limit: 6 }, signal),
+    enabled: isOpen && debouncedQuery.length >= 3,
     staleTime: 30_000,
   });
 

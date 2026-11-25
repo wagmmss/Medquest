@@ -1,19 +1,22 @@
 FROM python:3.12-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt gunicorn
+RUN groupadd --system appuser && useradd --system --gid appuser --no-create-home appuser \
+    && chown appuser:appuser /app
+
+COPY requirements-web.txt .
+RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir -r requirements-web.txt
 
 # Keep the large, rarely-changing image corpus in its own layer. A backend code
 # change can then publish and download only the small source layers below.
-COPY static ./static
-COPY data ./data
-COPY scripts ./scripts
-COPY api ./api
-COPY migrations ./migrations
-COPY *.py ./
-COPY *.json ./
-COPY *.txt ./
+COPY --chown=appuser:appuser static ./static
+COPY --chown=appuser:appuser data ./data
+COPY --chown=appuser:appuser scripts ./scripts
+COPY --chown=appuser:appuser api ./api
+COPY --chown=appuser:appuser migrations ./migrations
+COPY --chown=appuser:appuser *.py ./
+COPY --chown=appuser:appuser *.json ./
+COPY --chown=appuser:appuser *.txt ./
 
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
@@ -22,4 +25,6 @@ ENV PYTHONUNBUFFERED=1
 ENV MEDQUEST_AUTO_MIGRATE=0
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -m scripts.migrate_db && exec gunicorn -w 4 -b 0.0.0.0:8000 --timeout 120 'api:create_app()'"]
+USER appuser
+
+CMD ["sh", "-c", "python -m scripts.migrate_db && exec gunicorn -w 2 --worker-class gthread --threads 8 --timeout 120 'api:create_app()'"]

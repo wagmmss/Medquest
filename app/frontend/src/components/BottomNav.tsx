@@ -16,8 +16,7 @@ import {
 } from "lucide-react";
 import { useZenMode } from "@/hooks/useZenMode";
 import { ThemeToggle } from "./ThemeToggle";
-import { OfflineModal } from "./OfflineModal";
-import { AccountModal } from "./AccountModal";
+import { openOfflineModal } from "@/lib/globalModals";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import {
@@ -31,8 +30,6 @@ export function BottomNav() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isOfflineOpen, setIsOfflineOpen] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const { isZenMode, toggleZenMode } = useZenMode();
   const { isOffline, forcedOffline } = useOfflineStatus();
   const { canAccessLessons } = useLessonsAccess();
@@ -122,7 +119,7 @@ export function BottomNav() {
               type="button"
               onClick={() => {
                 setIsMoreOpen(false);
-                setIsOfflineOpen(true);
+                openOfflineModal();
               }}
               className={clsx(
                 "flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-xs border text-[11px] font-mono-lab font-semibold cursor-pointer",
@@ -185,9 +182,6 @@ export function BottomNav() {
           </button>
         </div>
       </nav>
-
-      <OfflineModal isOpen={isOfflineOpen} onClose={() => setIsOfflineOpen(false)} />
-      <AccountModal isOpen={isAccountOpen} onClose={() => setIsAccountOpen(false)} />
     </>
   );
 }

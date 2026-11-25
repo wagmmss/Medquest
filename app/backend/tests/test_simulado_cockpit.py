@@ -16,6 +16,31 @@ def test_official_exams_retorna_bancas_sp(client):
     assert "SUS-SP" in inst_codes
 
 
+def test_official_exams_similar_institutions_include_scmsp_hsl_einstein_famema_famerp(client, app):
+    with app.app_context():
+        from api.db import get_db
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO questions(id, area, subtema, stem, correct_letter, missing_alts, year, institution_code, institution_label)
+            VALUES
+              (9101, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2024, 'SCMSP', 'SCMSP'),
+              (9102, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2024, 'HSL', 'HSL'),
+              (9103, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2024, 'EINSTEIN', 'EINSTEIN'),
+              (9104, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2024, 'FAMEMA', 'FAMEMA'),
+              (9105, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2024, 'FAMERP', 'FAMERP'),
+              (9106, 'Clínica Médica', 'Cardio', 'Q', 'A', 0, 2023, 'USP', 'USP')
+            """
+        )
+        db.commit()
+
+    r = client.get("/api/simulado/official-exams?similar_institutions=true")
+    assert r.status_code == 200
+    by_code = {exam["institution_code"]: exam["editions"] for exam in r.get_json()["exams"]}
+    for code in ("USP-SP", "SCMSP", "HSL", "EINSTEIN", "FAMEMA", "FAMERP"):
+        assert len(by_code[code]) >= 1, f"{code} deveria retornar ao menos 1 edição"
+
+
 def test_simulado_sessions_crud(client):
     # Inicialmente lista vazia
     r = client.get("/api/simulado/sessions")

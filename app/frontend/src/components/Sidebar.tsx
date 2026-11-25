@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchRouteIntent } from "@/lib/queries/prefetchRouteData";
 import clsx from "clsx";
 import { useAppUser } from "@/lib/auth-client";
-import { AccountModal } from "./AccountModal";
-import { OfflineModal } from "./OfflineModal";
+import { openAccountModal, openOfflineModal } from "@/lib/globalModals";
 import { ThemeToggle } from "./ThemeToggle";
 import { useZenMode } from "@/hooks/useZenMode";
 import { useOfflineStatus } from "@/lib/useOfflineStatus";
@@ -41,8 +40,6 @@ export function Sidebar() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoaded } = useAppUser();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isOfflineOpen, setIsOfflineOpen] = useState(false);
   const isCollapsed = useSyncExternalStore(
     subscribeSidebarCollapsed,
     getSidebarCollapsedSnapshot,
@@ -146,7 +143,7 @@ export function Sidebar() {
         <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-line-subtle/80">
           <div className={clsx("flex items-center gap-1 px-0.5", isCollapsed ? "flex-col" : "justify-between")}>
             <button
-              onClick={() => setIsOfflineOpen(true)}
+              onClick={() => openOfflineModal()}
               className={clsx(
                 "flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xs border transition-colors text-left cursor-pointer",
                 !isCollapsed && "flex-1 justify-start",
@@ -181,7 +178,7 @@ export function Sidebar() {
           </div>
           
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => openAccountModal()}
             title={isCollapsed ? (isLoaded ? (user?.firstName || "Conta") : "Conta") : undefined}
             className={clsx(
               "flex items-center gap-2 py-2 rounded-xs border border-line-subtle hover:bg-elevated transition-colors w-full text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent",
@@ -209,9 +206,6 @@ export function Sidebar() {
           </button>
         </div>
       </aside>
-      
-      <AccountModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <OfflineModal isOpen={isOfflineOpen} onClose={() => setIsOfflineOpen(false)} />
     </>
   );
 }

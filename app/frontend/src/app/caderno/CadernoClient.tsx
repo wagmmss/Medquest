@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { buildLessonReturnUrl } from "@/lib/themeJourney";
 import { LessonUserNote, QuestionUserNote } from "@/types/api";
@@ -63,6 +64,7 @@ export function CadernoClient() {
   const [editingDraft, setEditingDraft] = useState("");
 
   const effectiveTab: NotebookTab = canAccessLessons ? activeTab : "questions";
+  const debouncedSearch = useDebouncedValue(searchTerm.trim(), 250);
   const areaOptions = useMemo(
     () => (canAccessLessons ? [...BASE_AREAS, ...LESSON_EXTRA_AREAS] : BASE_AREAS),
     [canAccessLessons]
@@ -73,9 +75,9 @@ export function CadernoClient() {
     isLoading: loadingQuestionNotes,
     isError: isQuestionNotesError,
   } = useQuery({
-    queryKey: ["smart-notebook", areaFilter, searchTerm],
+    queryKey: ["smart-notebook", areaFilter, debouncedSearch],
     queryFn: ({ signal }) =>
-      api.notes.list({ area: areaFilter || undefined, q: searchTerm || undefined }, signal),
+      api.notes.list({ area: areaFilter || undefined, q: debouncedSearch || undefined }, signal),
     staleTime: 60_000,
   });
 
@@ -84,9 +86,9 @@ export function CadernoClient() {
     isLoading: loadingLessonNotes,
     isError: isLessonNotesError,
   } = useQuery({
-    queryKey: ["smart-notebook-lessons", areaFilter, searchTerm],
+    queryKey: ["smart-notebook-lessons", areaFilter, debouncedSearch],
     queryFn: ({ signal }) =>
-      api.lessons.listNotes({ area: areaFilter || undefined, q: searchTerm || undefined }, signal),
+      api.lessons.listNotes({ area: areaFilter || undefined, q: debouncedSearch || undefined }, signal),
     enabled: canAccessLessons,
     staleTime: 60_000,
   });
