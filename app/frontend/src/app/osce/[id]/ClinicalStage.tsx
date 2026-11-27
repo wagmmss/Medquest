@@ -181,7 +181,7 @@ export const ClinicalStage = React.memo(function ClinicalStage({
     <div className="relative w-full h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-slate-950 text-slate-100 shadow-2xl select-none">
       
       {/* 1. BARRA SUPERIOR DO PALCO CLÍNICO */}
-      <div className="z-20 flex items-center justify-between px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+      <div className="shrink-0 z-20 flex items-center justify-between px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <div>
@@ -234,7 +234,7 @@ export const ClinicalStage = React.memo(function ClinicalStage({
 
       {/* 2. ÁREA CENTRAL: CONSULTA COMUNICACIONAL OU SILHUETA ANATÔMICA */}
       <div
-        className={`relative flex-1 flex items-center justify-center p-4 min-h-[260px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 ${
+        className={`relative flex-1 min-h-[240px] overflow-y-auto flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 ${
           !isCommunicationStation && stethoscopeActive ? "cursor-crosshair" : "cursor-default"
         }`}
       >
@@ -337,7 +337,7 @@ export const ClinicalStage = React.memo(function ClinicalStage({
       </div>
 
       {/* 3. HUD DE LEGENDAS CINEMATOGRÁFICAS (Apenas as 2 últimas falas, Zero Scroll) */}
-      <div className="z-20 px-4 md:px-6 pb-2 pointer-events-none flex flex-col justify-end min-h-[90px] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
+      <div className="shrink-0 z-20 px-4 md:px-6 pb-2 pointer-events-none flex flex-col justify-end min-h-[90px] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
         <div className="w-full space-y-2">
           {recentUtterances.length === 0 && (
             <div className="text-center text-xs font-mono text-slate-500 italic py-2">
@@ -396,7 +396,7 @@ export const ClinicalStage = React.memo(function ClinicalStage({
       {/* 4. BARRA TÁTICA DE ENTRADA & SELETOR DE CANAL */}
       <form
         onSubmit={handleFormSubmit}
-        className="z-20 bg-slate-950 border-t border-slate-800 p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5"
+        className="shrink-0 z-20 bg-slate-950 border-t border-slate-800 p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5"
       >
         {/* Seletor Tático de Canal (Paciente vs Examinador) com atalho Tab */}
         <div className="flex rounded-xl bg-slate-900 p-1 border border-slate-800 shrink-0">

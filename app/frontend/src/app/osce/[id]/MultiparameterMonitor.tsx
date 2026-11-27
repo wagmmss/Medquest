@@ -388,7 +388,7 @@ export const MultiparameterMonitor = React.memo(function MultiparameterMonitor({
   const hasCriticalAlarm = activeAlarms.some((a) => a.level === "red");
 
   return (
-    <div className="rounded-2xl border-2 border-border/80 bg-[#070b12] text-white shadow-2xl overflow-hidden flex flex-col font-mono select-none">
+    <div className="shrink-0 rounded-2xl border-2 border-border/80 bg-[#070b12] text-white shadow-2xl overflow-hidden flex flex-col font-mono select-none">
       {/* Barra de Status Superior do Monitor */}
       <div className="px-3 py-2 bg-[#0d1424] border-b border-border/40 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">

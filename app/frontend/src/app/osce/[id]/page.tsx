@@ -34,7 +34,7 @@ export default async function OsceRoomPage({
   const step = typeof rawQuery.step === "string" ? parseInt(rawQuery.step, 10) : 1;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-full overflow-y-auto bg-background">
+    <div className="flex-1 flex flex-col w-full bg-background">
       <OsceRoomClient station={station} circuitId={circuitId} step={step} />
     </div>
   );

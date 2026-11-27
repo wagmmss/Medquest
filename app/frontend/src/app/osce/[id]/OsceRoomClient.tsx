@@ -787,7 +787,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
   }, [phase, sessionMode, sessionId, getElapsedSeconds]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-full w-full max-w-7xl mx-auto p-3 md:p-6">
+    <div className="shrink-0 flex flex-col min-h-full w-full max-w-7xl mx-auto p-3 md:p-6">
       {/* ========================================================================= */}
       {/* FASE 1: PORTA DA ESTAÇÃO */}
       {/* ========================================================================= */}
@@ -809,7 +809,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
       {/* FASE 2: SALA DE EXAME BEIRA-LEITO */}
       {/* ========================================================================= */}
       {phase === "exam" && (
-        <div className="flex-1 flex flex-col min-h-0 w-full gap-4 pb-12">
+        <div className="flex flex-col w-full gap-4 pb-12">
           {/* Topbar da Estação */}
           <div className="flex items-center justify-between p-3 md:p-4 rounded-2xl border border-border bg-card shadow-sm shrink-0">
             <div className="flex items-center gap-3">
@@ -863,7 +863,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
 
           {/* Tarefas Sequenciais da Estação */}
           {taskProgress.visible_tasks.length > 0 && (
-            <div className="rounded-lg border border-line-subtle bg-surface p-3.5 space-y-2.5">
+            <div className="shrink-0 rounded-xl border border-line-subtle bg-surface p-3.5 space-y-2.5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Tarefas Sequenciais ({taskProgress.completed_steps.length}/{taskProgress.total_steps} concluídas)
@@ -920,7 +920,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           )}
 
           {/* Banner de Sala Real Hands-Free (Viva-Voz Beira-Leito) */}
-          <div className="rounded-lg border border-line-subtle bg-surface p-3.5 md:p-4 space-y-2.5">
+          <div className="shrink-0 rounded-xl border border-line-subtle bg-surface p-3.5 md:p-4 space-y-2.5 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
@@ -1038,9 +1038,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
           {showMonitor && <LiveMultiparameterMonitor store={vitalStore} />}
 
           {/* Grid Principal: Chat com Paciente (Esq) + Painel de Ações Clínicas (Dir) */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+          <div className="shrink-0 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
             {/* Coluna Esquerda: Palco Clínico Triplo & Semiotécnica Bruta (7 cols) */}
-            <div className="lg:col-span-7 flex flex-col min-h-[440px] lg:min-h-0">
+            <div className="lg:col-span-7 flex flex-col min-h-[540px] lg:h-[640px]">
               <ClinicalStage
                 station={station}
                 getAuscultationVitals={getAuscultationVitals}
@@ -1056,9 +1056,9 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
             </div>
 
             {/* Coluna Direita: Ações Médicas & Exame Físico (5 cols) */}
-            <div className="lg:col-span-5 flex flex-col rounded-2xl border border-border bg-card overflow-hidden min-h-0">
+            <div className="lg:col-span-5 flex flex-col rounded-2xl border border-border bg-card overflow-hidden min-h-[460px] lg:h-[640px]">
               {/* Abas Laterais */}
-              <div className="flex border-b border-border bg-muted/30">
+              <div className="shrink-0 flex border-b border-border bg-muted/30">
                 <button
                   onClick={() => setActiveTab("physical")}
                   className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors flex items-center justify-center gap-1 ${
@@ -1112,7 +1112,7 @@ export function OsceRoomClient({ station, circuitId, step = 1 }: OsceRoomClientP
               </div>
 
               {/* Conteúdo da Aba */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+              <div className="flex-1 min-h-0 p-4 overflow-y-auto space-y-4 text-xs">
                 {/* ABA 1: EXAME FÍSICO */}
                 {activeTab === "physical" && (
                   <div className="space-y-4">
