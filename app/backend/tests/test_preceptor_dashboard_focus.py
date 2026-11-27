@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from api.ai import generate_preceptor_dashboard_focus
 
@@ -90,7 +89,7 @@ def test_preceptor_focus_route_api(client, monkeypatch):
     )
 
     # 1. Teste com generate_ai=True (padrão)
-    resp = client.post("/api/ai/preceptor_focus", json={"generate_ai": True}, headers={"X-Guest-ID": "guest-123"})
+    resp = client.post("/api/ai/preceptor_focus", json={"generate_ai": True}, headers={"X-User-ID": "user-focus-123"})
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["source"] == "mock"
@@ -106,7 +105,7 @@ def test_preceptor_focus_route_api(client, monkeypatch):
             "weak_topics": [{"topic": "Trauma", "area": "Cirurgia", "attempts": 5, "accuracy_pct": 20.0}]
         }
     )
-    resp_fast = client.get("/api/ai/preceptor_focus?ai=0", headers={"X-Guest-ID": "guest-123"})
+    resp_fast = client.get("/api/ai/preceptor_focus?ai=0", headers={"X-User-ID": "user-focus-123"})
     assert resp_fast.status_code == 200
     data_fast = resp_fast.get_json()
     assert data_fast["source"] == "database_snapshot"

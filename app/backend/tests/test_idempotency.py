@@ -31,8 +31,7 @@ def idemp_app(tmp_path, monkeypatch):
     monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
     monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
 
-    app = create_app()
-    app.config["TESTING"] = False
+    app = create_app(testing=True)
     return app
 
 
@@ -45,7 +44,7 @@ def test_idempotency_invalid_uuid_returns_400(idemp_client):
     guest_id = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": "not-a-uuid-v4",
     }
     r = idemp_client.post(
@@ -62,7 +61,7 @@ def test_idempotency_single_attempt_repeated_does_not_duplicate(idemp_client):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     payload = {"selected_letter": "B", "time_spent_ms": 2000, "confidence": "certeza"}
@@ -80,7 +79,7 @@ def test_idempotency_single_attempt_repeated_does_not_duplicate(idemp_client):
     assert data1 == data2
 
     # Verificar que foi gravada exatamente 1 tentativa no banco
-    stats = idemp_client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": guest_id})
+    stats = idemp_client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": guest_id})
     assert stats.get_json()["total_attempts"] == 1
 
 
@@ -89,7 +88,7 @@ def test_idempotency_batch_repeated_does_not_advance_fsrs_twice(idemp_client):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     payload = {
@@ -114,7 +113,7 @@ def test_idempotency_batch_repeated_does_not_advance_fsrs_twice(idemp_client):
     assert res2[0]["next_review_date"] == date_q1
 
     # Total de tentativas registradas deve ser exatamente 2
-    stats = idemp_client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": guest_id})
+    stats = idemp_client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": guest_id})
     assert stats.get_json()["total_attempts"] == 2
 
 
@@ -123,7 +122,7 @@ def test_idempotency_mismatched_payload_returns_409(idemp_client):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
 
@@ -153,7 +152,7 @@ def test_idempotency_different_users_same_key_are_isolated(idemp_client):
     # Usuário A responde B
     r_a = idemp_client.post(
         "/api/questions/1/attempt",
-        headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": user_a, "X-Idempotency-Key": shared_key},
+        headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": user_a, "X-Idempotency-Key": shared_key},
         json={"selected_letter": "B", "time_spent_ms": 1000, "confidence": "certeza"},
     )
     assert r_a.status_code == 200
@@ -162,7 +161,7 @@ def test_idempotency_different_users_same_key_are_isolated(idemp_client):
     # Usuário B responde C com a mesma chave (mas escopo de usuário diferente)
     r_b = idemp_client.post(
         "/api/questions/1/attempt",
-        headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": user_b, "X-Idempotency-Key": shared_key},
+        headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": user_b, "X-Idempotency-Key": shared_key},
         json={"selected_letter": "C", "time_spent_ms": 1000, "confidence": "certeza"},
     )
     assert r_b.status_code == 200
@@ -179,7 +178,7 @@ def test_concurrent_identical_requests_single_attempt(idemp_app):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     payload = {"selected_letter": "B", "time_spent_ms": 2000, "confidence": "certeza"}
@@ -210,7 +209,7 @@ def test_concurrent_identical_requests_single_attempt(idemp_app):
 
     # Verificar que o DB tem exatamente 1 tentativa para o usuário
     client = idemp_app.test_client()
-    stats = client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": guest_id})
+    stats = client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": guest_id})
     assert stats.get_json()["total_attempts"] == 1
 
 
@@ -223,7 +222,7 @@ def test_concurrent_conflicting_payloads_same_key(idemp_app):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
 
@@ -253,7 +252,7 @@ def test_concurrent_conflicting_payloads_same_key(idemp_app):
 
     # Verificar total de tentativas no banco
     client = idemp_app.test_client()
-    stats = client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-Guest-ID": guest_id})
+    stats = client.get("/api/stats/overview", headers={"X-Internal-Proxy-Token": PROXY_SECRET, "X-User-ID": guest_id})
     assert stats.get_json()["total_attempts"] == 1
 
 
@@ -266,7 +265,7 @@ def test_lease_expiration_and_recovery(idemp_app):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     payload = {"selected_letter": "B", "time_spent_ms": 1500, "confidence": "certeza"}
@@ -281,7 +280,7 @@ def test_lease_expiration_and_recovery(idemp_app):
         db.execute(
             """INSERT INTO idempotency_keys (user_id, key, method, path, payload_hash, status, lease_expires_at, created_at)
                VALUES (?, ?, 'POST', '/api/questions/1/attempt', ?, 'processing', ?, '2026-01-01T00:00:00')""",
-            (f"guest:{guest_id}", key.lower(), payload_hash, expired_ts)
+            (guest_id, key.lower(), payload_hash, expired_ts)
         )
         db.commit()
 
@@ -295,7 +294,7 @@ def test_lease_expiration_and_recovery(idemp_app):
     with idemp_app.app_context():
         from api.db import get_db
         db = get_db()
-        row = db.execute("SELECT status, status_code FROM idempotency_keys WHERE user_id = ? AND key = ?", (f"guest:{guest_id}", key.lower())).fetchone()
+        row = db.execute("SELECT status, status_code FROM idempotency_keys WHERE user_id = ? AND key = ?", (guest_id, key.lower())).fetchone()
         assert row["status"] == "completed"
         assert row["status_code"] == 200
 
@@ -349,7 +348,7 @@ def test_failed_reservation_can_be_recovered(idemp_app):
                (user_id, key, method, path, payload_hash, status, lease_expires_at, created_at)
                VALUES (?, ?, 'POST', '/api/questions/1/attempt', ?, 'failed', 0, ?)""",
             (
-                f"guest:{guest_id}",
+                guest_id,
                 key,
                 hashlib.sha256(raw_body).hexdigest(),
                 "2026-01-01T00:00:00+00:00",
@@ -361,7 +360,7 @@ def test_failed_reservation_can_be_recovered(idemp_app):
         "/api/questions/1/attempt",
         headers={
             "X-Internal-Proxy-Token": PROXY_SECRET,
-            "X-Guest-ID": guest_id,
+            "X-User-ID": guest_id,
             "X-Idempotency-Key": key,
         },
         data=raw_body,
@@ -374,13 +373,13 @@ def test_failed_reservation_can_be_recovered(idemp_app):
         db = get_db()
         assert db.execute(
             "SELECT COUNT(*) AS total FROM attempts WHERE user_id = ?",
-            (f"guest:{guest_id}",),
+            (guest_id,),
         ).fetchone()["total"] == 1
 
 
 def test_lost_lease_rolls_back_protected_effect(idemp_app):
     guest_id = str(uuid.uuid4())
-    user_id = f"guest:{guest_id}"
+    user_id = guest_id
     key = str(uuid.uuid4())
     old_token = str(uuid.uuid4())
     new_token = str(uuid.uuid4())
@@ -431,7 +430,7 @@ def test_empty_batch_response_is_cached(idemp_client):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     first = idemp_client.post("/api/attempt/batch", headers=headers, json={"attempts": []})
@@ -445,7 +444,7 @@ def test_favorite_toggle_replay_does_not_toggle_back(idemp_client):
     key = str(uuid.uuid4())
     headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
         "X-Idempotency-Key": key,
     }
     first = idemp_client.post("/api/questions/1/favorite", headers=headers, json={})
@@ -478,7 +477,7 @@ def test_review_replay_advances_fsrs_only_once(idemp_client):
     guest_id = str(uuid.uuid4())
     base_headers = {
         "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_id,
+        "X-User-ID": guest_id,
     }
     attempt_headers = {**base_headers, "X-Idempotency-Key": str(uuid.uuid4())}
     attempt = idemp_client.post(

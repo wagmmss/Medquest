@@ -37,7 +37,7 @@ def log_error():
         "frontend_error",
         level=logging.ERROR,
         request_id=getattr(g, "request_id", None),
-        owner_scope="guest" if str(g.user_id).startswith("guest:") else "account",
+        owner_scope="account",
         path=_safe_path(data.get("url") or data.get("path")),
         message=message.strip()[:1000],
         digest=str(info.get("digest", ""))[:128],

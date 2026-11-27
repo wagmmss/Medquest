@@ -117,7 +117,8 @@ def test_auth_rejects_malformed_string(auth_client):
     assert response.get_json() == {"error": "Unauthorized"}
 
 
-def test_auth_accepts_valid_uuid_v4_returns_exact_200(auth_client):
+def test_auth_rejects_guest_id_even_with_valid_uuid_v4_and_proxy_secret(auth_client, monkeypatch):
+    monkeypatch.setenv("ALLOWED_USER_IDS", "user_a")
     valid_uuid = str(uuid.uuid4())
     response = auth_client.get(
         "/api/meta",
@@ -126,26 +127,30 @@ def test_auth_accepts_valid_uuid_v4_returns_exact_200(auth_client):
             "X-Guest-ID": valid_uuid,
         },
     )
-    assert response.status_code == 200
-    data = response.get_json()
-    assert "institutions" in data
-    assert "areas" in data
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "Unauthorized"}
 
 
-def test_auth_guest_data_isolation(auth_client):
-    guest_a = str(uuid.uuid4())
-    guest_b = str(uuid.uuid4())
+def test_auth_jwt_user_data_isolation(auth_client, monkeypatch):
+    from api import auth
 
-    headers_a = {
-        "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_a,
-    }
-    headers_b = {
-        "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": guest_b,
-    }
+    monkeypatch.setenv("ALLOWED_USER_IDS", "user_alpha,user_beta")
 
-    # Guest A responde à questão 1
+    class FakeJwksClient:
+        def get_signing_key_from_jwt(self, token):
+            return SimpleNamespace(key="public-key")
+
+    def fake_decode(token, key, **kwargs):
+        return {"sub": "user_alpha" if token == "token-a" else "user_beta"}
+
+    monkeypatch.setattr(auth, "jwks_client", FakeJwksClient())
+    monkeypatch.setattr(auth, "CLERK_ISSUER", "https://issuer.example")
+    monkeypatch.setattr(auth, "CLERK_AUDIENCE", None)
+    monkeypatch.setattr(auth.jwt, "decode", fake_decode)
+
+    headers_a = {"Authorization": "Bearer token-a"}
+    headers_b = {"Authorization": "Bearer token-b"}
+
     resp_a = auth_client.post(
         "/api/questions/1/attempt",
         headers=headers_a,
@@ -154,12 +159,10 @@ def test_auth_guest_data_isolation(auth_client):
     assert resp_a.status_code == 200
     assert resp_a.get_json()["is_correct"] is True
 
-    # Guest A consulta overview stats e vê 1 tentativa
     stats_a = auth_client.get("/api/stats/overview", headers=headers_a)
     assert stats_a.status_code == 200
     assert stats_a.get_json()["total_attempts"] == 1
 
-    # Guest B consulta overview stats e DEVE ver 0 tentativas (isolamento completo)
     stats_b = auth_client.get("/api/stats/overview", headers=headers_b)
     assert stats_b.status_code == 200
     assert stats_b.get_json()["total_attempts"] == 0
@@ -184,6 +187,7 @@ def test_jwt_requires_issuer_expiration_and_subject(auth_client, monkeypatch):
         captured.update(kwargs)
         return {"sub": "user-123"}
 
+    monkeypatch.setenv("ALLOWED_USER_IDS", "user-123")
     monkeypatch.setattr(auth, "jwks_client", FakeJwksClient())
     monkeypatch.setattr(auth, "CLERK_ISSUER", "https://issuer.example")
     monkeypatch.setattr(auth, "CLERK_AUDIENCE", None)
@@ -201,10 +205,19 @@ def test_jwt_requires_issuer_expiration_and_subject(auth_client, monkeypatch):
 
 
 def test_performance_metrics_require_separate_operational_token(auth_client, monkeypatch):
-    auth_headers = {
-        "X-Internal-Proxy-Token": PROXY_SECRET,
-        "X-Guest-ID": str(uuid.uuid4()),
-    }
+    from api import auth
+
+    class FakeJwksClient:
+        def get_signing_key_from_jwt(self, token):
+            return SimpleNamespace(key="public-key")
+
+    monkeypatch.setenv("ALLOWED_USER_IDS", "user_ops")
+    monkeypatch.setattr(auth, "jwks_client", FakeJwksClient())
+    monkeypatch.setattr(auth, "CLERK_ISSUER", "https://issuer.example")
+    monkeypatch.setattr(auth, "CLERK_AUDIENCE", None)
+    monkeypatch.setattr(auth.jwt, "decode", lambda *_a, **_kw: {"sub": "user_ops"})
+
+    auth_headers = {"Authorization": "Bearer ops-token"}
     disabled = auth_client.get("/api/metrics/performance", headers=auth_headers)
     assert disabled.status_code == 404
 

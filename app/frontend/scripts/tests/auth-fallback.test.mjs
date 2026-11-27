@@ -28,6 +28,13 @@ function loadAuthServer({ env = {}, cwd }) {
       auth: async () => ({ userId: 'clerk_user_1', getToken: async () => 'tok_1' }),
       currentUser: async () => ({ id: 'clerk_user_1', firstName: 'Dr.' }),
     },
+    './e2e-auth': {
+      E2E_USER_ID: 'user_e2e_test',
+      isE2EAuthBypassEnabled: () =>
+        fakeProcess.env.MEDQUEST_E2E_BUILD === '1' &&
+        fakeProcess.env.PLAYWRIGHT_TEST === 'true' &&
+        !String(fakeProcess.env.CLERK_SECRET_KEY || '').startsWith('sk_live_'),
+    },
   };
   const transpiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },

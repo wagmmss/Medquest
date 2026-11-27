@@ -1,4 +1,3 @@
-import pytest
 from api.stats import calculate_wilson_ci, get_sample_status
 from api.db import get_db
 
@@ -63,7 +62,7 @@ def test_institution_radar_endpoint_user_isolation(app, client):
         db.commit()
 
     # Request for user_alpha
-    headers_alpha = {"X-Guest-ID": "user_alpha"}
+    headers_alpha = {"X-User-ID": "user_alpha"}
     res_alpha = client.get("/api/stats/institution-radar?institution=USP-SP", headers=headers_alpha)
     assert res_alpha.status_code == 200
     data_alpha = res_alpha.get_json()
@@ -75,7 +74,7 @@ def test_institution_radar_endpoint_user_isolation(app, client):
     assert data_alpha["institution"]["sample_status"] == "insufficient"
 
     # Request for user_beta (must have 0 attempts, perfectly isolated)
-    headers_beta = {"X-Guest-ID": "user_beta"}
+    headers_beta = {"X-User-ID": "user_beta"}
     res_beta = client.get("/api/stats/institution-radar?institution=USP-SP", headers=headers_beta)
     assert res_beta.status_code == 200
     data_beta = res_beta.get_json()
@@ -104,7 +103,7 @@ def test_institution_radar_comparison_and_actions(app, client):
             """)
         db.commit()
 
-    headers = {"X-Guest-ID": "user_radar"}
+    headers = {"X-User-ID": "user_radar"}
     res = client.get("/api/stats/institution-radar?institution=USP-SP&compare_institution=UNICAMP", headers=headers)
     assert res.status_code == 200
     data = res.get_json()
@@ -157,7 +156,7 @@ def test_institution_radar_viewed_telemetry_is_private(app, client, monkeypatch)
 
     monkeypatch.setattr("api.stats.emit", mock_emit)
 
-    headers = {"X-Guest-ID": "user_telemetry"}
+    headers = {"X-User-ID": "user_telemetry"}
     res = client.get("/api/stats/institution-radar?institution=USP-SP&compare_institution=UNICAMP", headers=headers)
     assert res.status_code == 200
 
@@ -186,7 +185,7 @@ def test_institution_radar_action_endpoint(app, client, monkeypatch):
 
     monkeypatch.setattr("api.stats.emit", mock_emit)
 
-    headers = {"X-Guest-ID": "user_actions"}
+    headers = {"X-User-ID": "user_actions"}
 
     # 1. Ações válidas
     for action in ["study", "simulado", "review"]:
@@ -222,7 +221,7 @@ def test_institution_radar_action_endpoint(app, client, monkeypatch):
 
 
 def test_institution_radar_candidates_comparison(app, client):
-    headers = {"X-Guest-ID": "user_cand_test"}
+    headers = {"X-User-ID": "user_cand_test"}
     res = client.get("/api/stats/institution-radar?institution=USP-SP&compare_institution=CANDIDATES", headers=headers)
     assert res.status_code == 200
     data = res.get_json()

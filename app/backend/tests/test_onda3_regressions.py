@@ -82,7 +82,7 @@ def test_curation_delete_cleans_fk_dependents(client, app):
         db.commit()
 
     res = client.delete(
-        "/api/questions/1", headers={"X-User-Email": "moraes.wagg@gmail.com"}
+        "/api/questions/1", headers={"X-User-Email": "curator@example.com"}
     )
     assert res.status_code == 200
     assert res.get_json()["success"] is True

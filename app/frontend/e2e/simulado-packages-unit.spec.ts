@@ -375,7 +375,7 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
 
     // 1. Simula estado OFFLINE_SUBMITTED diretamente no localStorage com a chave v2 correta
     await page.evaluate(() => {
-      const owner = localStorage.getItem('medquest_local_owner') || 'default';
+      const owner = localStorage.getItem('medquest_last_user_id') || 'user_e2e_test';
       const key = `medquest_simulado_state_v2:${owner}`;
       const state = {
         version: 2,
@@ -451,7 +451,7 @@ test.describe('Validações Unitárias e de Integridade de Pacotes Offline', () 
     await page.waitForFunction(() => typeof (window as unknown as { localDb?: unknown }).localDb !== 'undefined');
 
     await page.evaluate(() => {
-      const owner = localStorage.getItem('medquest_local_owner') || 'default';
+      const owner = localStorage.getItem('medquest_last_user_id') || 'user_e2e_test';
       const key = `medquest_simulado_state_v2:${owner}`;
       const state = {
         version: 2,

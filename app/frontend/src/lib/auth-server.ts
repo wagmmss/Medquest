@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { E2E_USER_ID, isE2EAuthBypassEnabled } from "./e2e-auth";
 
 /**
  * Indica se o Clerk está ativo no servidor.
  * Em produção, é sempre obrigatório. Em desenvolvimento, exige chaves explícitas
- * ou o arquivo local de modo keyless (.clerk/.tmp/keyless.json); caso contrário,
- * ativa o fallback automático para Modo Preview/Demo (ex.: Google AI Studio sem .env).
+ * ou o arquivo local de modo keyless (.clerk/.tmp/keyless.json).
  */
 export function isClerkServerEnabled(): boolean {
   if (process.env.NODE_ENV === "production") {
@@ -38,14 +38,18 @@ export function isClerkServerEnabled(): boolean {
 }
 
 /**
- * Retorna o estado de autenticação no servidor com fallback seguro quando
- * o Clerk está desativado em ambiente de desenvolvimento/preview.
+ * Retorna o estado de autenticação no servidor.
+ * No modo E2E explicitamente compilado e ativado, devolve a identidade sintética de teste.
  */
 export async function getServerAuthState(): Promise<{
   userId: string | null;
   sessionClaims: Record<string, unknown> | null;
   getToken: () => Promise<string | null>;
 }> {
+  if (isE2EAuthBypassEnabled()) {
+    return { userId: E2E_USER_ID, sessionClaims: null, getToken: async () => null };
+  }
+
   if (!isClerkServerEnabled()) {
     return { userId: null, sessionClaims: null, getToken: async () => null };
   }
@@ -59,10 +63,10 @@ export async function getServerAuthState(): Promise<{
 }
 
 /**
- * Retorna o usuário atual do Clerk no servidor ou null quando em fallback demo.
+ * Retorna o usuário atual do Clerk no servidor ou null quando indisponível.
  */
 export async function getServerCurrentUser() {
-  if (!isClerkServerEnabled()) {
+  if (isE2EAuthBypassEnabled() || !isClerkServerEnabled()) {
     return null;
   }
   return currentUser();

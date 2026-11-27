@@ -58,6 +58,15 @@ def is_valid_uuid_v4(val: str | None) -> bool:
 # Global PyJWKClient instance to cache keys and avoid rate limits/timeouts
 jwks_client = jwt.PyJWKClient(JWKS_URL, cache_keys=True, timeout=5) if JWKS_URL else None
 
+def configured_allowed_user_ids() -> frozenset[str]:
+    """Read allowlisted Clerk user IDs (`sub`) permitted to access the application (fail-closed)."""
+    return frozenset(
+        uid.strip()
+        for uid in os.environ.get("ALLOWED_USER_IDS", "").split(",")
+        if uid.strip()
+    )
+
+
 def configured_curator_emails() -> frozenset[str]:
     """Read allowlisted curator identities from deployment configuration.
 
@@ -92,7 +101,7 @@ def configured_lessons_allowed_emails() -> frozenset[str]:
 def can_access_lessons_request() -> bool:
     """Restrict private video lessons strictly to allowlisted authenticated accounts (fail-closed)."""
     user_id = str(getattr(g, "user_id", "") or "").strip()
-    if not user_id or user_id.startswith("guest:"):
+    if not user_id:
         return False
 
     if _is_testing_env(current_app) and hasattr(g, "can_access_lessons"):
@@ -147,7 +156,7 @@ def create_lesson_stream_token(
     """Gera token HMAC-SHA256 de curta duração vinculado a lesson_id e user_id para tag <video>."""
     secret = _get_stream_signing_secret()
     uid = (user_id or "").strip()
-    if not secret or not uid or uid.startswith("guest:") or lesson_id <= 0:
+    if not secret or not uid or lesson_id <= 0:
         return None
     exp = int(time.time()) + max(60, int(ttl_seconds))
     uid_b64 = base64.urlsafe_b64encode(uid.encode("utf-8")).decode("ascii").rstrip("=")
@@ -190,9 +199,21 @@ def verify_lesson_stream_token(token: str, expected_lesson_id: int) -> tuple[str
             user_email = ""
     except Exception:
         return None
-    if not user_id or user_id.startswith("guest:"):
+    if not user_id:
         return None
     return user_id, user_email
+
+
+def _enforce_allowed_user(user_id: str):
+    """Fail-closed allowlist check for authenticated users outside TESTING."""
+    allowed_ids = configured_allowed_user_ids()
+    if not allowed_ids or user_id not in allowed_ids:
+        logger.warning(
+            "Access denied by allowlist: reason=%s",
+            "empty_allowlist" if not allowed_ids else "user_not_allowed",
+        )
+        return jsonify({"error": "Forbidden", "code": "ACCESS_RESTRICTED"}), 403
+    return None
 
 
 def require_auth(f):
@@ -206,22 +227,24 @@ def require_auth(f):
             )
             if not verified:
                 return jsonify({"error": "Unauthorized"}), 401
-            g.user_id, g.user_email = verified
+            user_id, user_email = verified
+            if not _is_testing_env(current_app):
+                denied = _enforce_allowed_user(user_id)
+                if denied:
+                    return denied
+            g.user_id, g.user_email = user_id, user_email
             return f(*args, **kwargs)
 
         if _is_testing_env(current_app):
             if "X-User-ID" in request.headers:
                 g.user_id = request.headers["X-User-ID"]
-            elif "X-Guest-ID" in request.headers:
-                g.user_id = request.headers["X-Guest-ID"]
             else:
                 g.user_id = getattr(g, "user_id", "1")
             if "X-User-Email" in request.headers:
                 g.user_email = request.headers["X-User-Email"].strip().lower()
             else:
-                g.user_email = getattr(g, "user_email", "moraes.wagg@gmail.com")
+                g.user_email = getattr(g, "user_email", "test@example.com")
             return f(*args, **kwargs)
-
 
         if request.method == "OPTIONS" or request.path == "/":
             return f(*args, **kwargs)
@@ -235,19 +258,7 @@ def require_auth(f):
 
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer ") or auth_header == "Bearer null":
-            if not proxy_secret or not proxy_token:
-                return jsonify({"error": "Unauthorized"}), 401
-
-            if not hmac.compare_digest(proxy_secret, proxy_token):
-                return jsonify({"error": "Unauthorized"}), 401
-
-            guest_id = request.headers.get("X-Guest-ID")
-            if not is_valid_uuid_v4(guest_id):
-                return jsonify({"error": "Unauthorized"}), 401
-
-            g.user_id = f"guest:{guest_id.lower()}"
-            g.user_email = ""
-            return f(*args, **kwargs)
+            return jsonify({"error": "Unauthorized"}), 401
 
         token = auth_header.removeprefix("Bearer ").strip()
         if not token:
@@ -275,7 +286,7 @@ def require_auth(f):
             if not isinstance(sub, str) or not sub.strip():
                 return jsonify({"error": "Unauthorized"}), 401
             g.user_id = sub.strip()
-            
+
             # Extract email from verified JWT claims (takes precedence over proxy header)
             jwt_email = ""
             if "email" in data and isinstance(data["email"], str):
@@ -288,6 +299,10 @@ def require_auth(f):
             logger.info("JWT validation failed: %s", type(exc).__name__)
             return jsonify({"error": "Unauthorized"}), 401
 
+        denied = _enforce_allowed_user(g.user_id)
+        if denied:
+            return denied
+
         return f(*args, **kwargs)
     return decorated
 
@@ -299,11 +314,10 @@ bp = Blueprint("auth", __name__)
 @require_auth
 def auth_me():
     user_id = str(getattr(g, "user_id", "") or "").strip()
-    is_guest = not user_id or user_id.startswith("guest:")
-    user_email = "" if is_guest else (getattr(g, "user_email", None) or "").strip().lower()
+    user_email = (getattr(g, "user_email", None) or "").strip().lower() if user_id else ""
     curator_emails = configured_curator_emails()
-    is_curator = bool(not is_guest and user_email and user_email in curator_emails)
-    if _is_testing_env(current_app) and hasattr(g, "is_curator") and not is_guest:
+    is_curator = bool(user_id and user_email and user_email in curator_emails)
+    if _is_testing_env(current_app) and hasattr(g, "is_curator") and user_id:
         is_curator = bool(g.is_curator)
     resp = jsonify({
         "user_id": g.user_id,
@@ -330,7 +344,7 @@ def require_curator(f):
     @require_auth
     def decorated(*args, **kwargs):
         user_id = str(getattr(g, "user_id", "") or "").strip()
-        if not user_id or user_id.startswith("guest:"):
+        if not user_id:
             return jsonify({"error": "Forbidden: Acesso restrito para curadoria de conteúdo"}), 403
 
         user_email = (getattr(g, "user_email", None) or "").strip().lower()

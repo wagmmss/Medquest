@@ -18,6 +18,29 @@ let pushedAuthState: { known: boolean; isLoaded: boolean; userId: string | null 
   userId: null,
 };
 
+let legacyCleanupTriggered = false;
+
+async function purgeLegacyAnonymousLocalData(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("medquest_local_owner");
+  } catch {
+    // Storage unavailable
+  }
+  const isAccountOwner = (ownerId: unknown): boolean =>
+    typeof ownerId === "string" && ownerId.startsWith("user_");
+
+  try {
+    await localDb.transaction("rw", localDb.questions, localDb.syncQueue, localDb.simuladoPackages, async () => {
+      await localDb.questions.filter((q) => !isAccountOwner(q._owner_id)).delete();
+      await localDb.syncQueue.filter((item) => !isAccountOwner(item.owner_id)).delete();
+      await localDb.simuladoPackages.filter((pkg) => !isAccountOwner(pkg.owner_id)).delete();
+    });
+  } catch {
+    // IndexedDB unavailable or not yet initialized
+  }
+}
+
 /**
  * Sincroniza a identidade ativa vinda do AppAuthProvider para evitar
  * leituras ad-hoc do objeto global window.Clerk fora da árvore React.
@@ -33,6 +56,10 @@ export function syncActiveAuthOwner(isLoaded: boolean, userId: string | null | u
   try {
     if (normalized) {
       localStorage.setItem("medquest_last_user_id", normalized);
+      if (!legacyCleanupTriggered) {
+        legacyCleanupTriggered = true;
+        void purgeLegacyAnonymousLocalData();
+      }
     } else if (isLoaded) {
       localStorage.removeItem("medquest_last_user_id");
     }
@@ -48,6 +75,7 @@ export function clearClientSessionCaches(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem("medquest_last_user_id");
+    localStorage.removeItem("medquest_local_owner");
     localStorage.removeItem("medquest_dashboard_cache_v1");
   } catch {
     // Storage unavailable
@@ -59,8 +87,7 @@ export function clearClientSessionCaches(): void {
 
 /**
  * Retorna o identificador de proprietário dos dados locais (IndexedDB).
- * Prioriza o estado empurrado pelo AppAuthProvider, com fallback seguro para
- * hidratação inicial (medquest_last_user_id) ou UUID persistente de visitante.
+ * Exige identidade autenticada (AppAuthProvider, window.Clerk ou último user_id em hidratação).
  */
 export function getLocalOwnerId(): string {
   if (typeof window === "undefined") {
@@ -72,8 +99,7 @@ export function getLocalOwnerId(): string {
       return pushedAuthState.userId;
     }
     if (pushedAuthState.isLoaded) {
-      // Usuário deslogado confirmado pelo provider React -> usa somente UUID local
-      return getOrCreateGuestLocalOwner();
+      return "unauthenticated";
     }
   }
 
@@ -87,30 +113,16 @@ export function getLocalOwnerId(): string {
     return clerkUser;
   }
 
-  // During early hydration before Clerk SDK loads, check if we have a known logged-in user
+  // During early hydration before Clerk SDK loads, reuse the last authenticated account ID
   try {
     const lastUser = localStorage.getItem("medquest_last_user_id");
-    if (lastUser && !window.Clerk?.loaded) return lastUser;
+    if (lastUser && lastUser.startsWith("user_") && !window.Clerk?.loaded) return lastUser;
     if (window.Clerk?.loaded) localStorage.removeItem("medquest_last_user_id");
   } catch {
     // Storage unavailable
   }
 
-  return getOrCreateGuestLocalOwner();
-}
-
-function getOrCreateGuestLocalOwner(): string {
-  let ownerId: string | null = null;
-  try {
-    ownerId = localStorage.getItem("medquest_local_owner");
-    if (!ownerId || ownerId === "guest" || ownerId === "server") {
-      ownerId = crypto.randomUUID();
-      localStorage.setItem("medquest_local_owner", ownerId);
-    }
-  } catch {
-    ownerId = "fallback_local_owner";
-  }
-  return ownerId;
+  return "unauthenticated";
 }
 
 export const OFFLINE_IMAGE_CACHE = "medquest-image-cache";
@@ -141,9 +153,9 @@ function collectQuestionImageUrls(q: QuestionDetail | null | undefined): string[
   return urls.filter(Boolean);
 }
 
-/** Wait for Clerk before restoring signed-in data; demo and offline sessions work without it. */
+/** Aguarda o carregamento da sessão autenticada (ou modo offline já sincronizado). */
 export function isLocalIdentityReady(authLoaded: boolean): boolean {
-  return authLoaded || isDeviceOffline() || document.cookie.split(";").some(cookie => cookie.trim() === "medquest_demo=1");
+  return authLoaded || isDeviceOffline();
 }
 
 export interface SyncItem {
@@ -268,7 +280,7 @@ export class MedQuestDB extends Dexie {
         syncQueue: "id, owner_id, status, next_retry_at, created_at",
       })
       .upgrade((trans) => {
-        const currentGuestOwner = getLocalOwnerId();
+        const legacyAnonymousOwner = "legacy_anonymous";
 
         return Promise.all([
           trans
@@ -279,7 +291,7 @@ export class MedQuestDB extends Dexie {
               if (oldUserId.startsWith("user_")) {
                 q._owner_id = oldUserId;
               } else {
-                q._owner_id = currentGuestOwner;
+                q._owner_id = legacyAnonymousOwner;
               }
               delete q._user_id;
             }),
@@ -291,7 +303,7 @@ export class MedQuestDB extends Dexie {
               if (oldUserId.startsWith("user_")) {
                 f._owner_id = oldUserId;
               } else {
-                f._owner_id = currentGuestOwner;
+                f._owner_id = legacyAnonymousOwner;
               }
               delete f._user_id;
             }),
@@ -300,7 +312,7 @@ export class MedQuestDB extends Dexie {
             .toCollection()
             .modify((s: Record<string, unknown>) => {
               const oldUserId = (s.user_id as string) || "1";
-              s.owner_id = oldUserId.startsWith("user_") ? oldUserId : currentGuestOwner;
+              s.owner_id = oldUserId.startsWith("user_") ? oldUserId : legacyAnonymousOwner;
               delete s.user_id;
               s.status = s.status || "pending";
               s.retry_count = s.retry_count || 0;

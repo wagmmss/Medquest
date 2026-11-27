@@ -20,7 +20,7 @@ def ask_question_ai(question_id):
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    rl_resp = check_rate_limit("ask_ai", auth_limit=25, guest_limit=5, window_seconds=60)
+    rl_resp = check_rate_limit("ask_ai", auth_limit=25, window_seconds=60)
     if rl_resp is not None:
         return rl_resp
 
@@ -171,7 +171,7 @@ def preceptor_dashboard_focus():
         overview_cache.set(cache_key, payload)
         return jsonify(payload)
 
-    rl_resp = check_rate_limit("preceptor_focus", auth_limit=15, guest_limit=3, window_seconds=60)
+    rl_resp = check_rate_limit("preceptor_focus", auth_limit=15, window_seconds=60)
     if rl_resp is not None:
         return rl_resp
 

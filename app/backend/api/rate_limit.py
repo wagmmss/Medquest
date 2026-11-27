@@ -50,17 +50,15 @@ def check_rate_limit(
     bucket: str,
     *,
     auth_limit: int,
-    guest_limit: int,
     window_seconds: int = 60,
     ip_limit: int | None = None,
 ):
-    """Retorna resposta 429 caso o limite por usuário/guest ou IP tenha sido excedido, senão None."""
+    """Retorna resposta 429 caso o limite por usuário ou IP tenha sido excedido, senão None."""
     if current_app.config.get("TESTING") and not current_app.config.get("RATE_LIMIT_ENABLED"):
         return None
 
     user_id = str(getattr(g, "user_id", "") or "").strip()
-    is_guest = not user_id or user_id.startswith("guest:")
-    limit = guest_limit if is_guest else auth_limit
+    limit = auth_limit
     now = time.monotonic()
 
     if user_id:
@@ -74,7 +72,7 @@ def check_rate_limit(
             resp.headers["Retry-After"] = str(retry_u)
             return resp
 
-    effective_ip_limit = ip_limit if ip_limit is not None else max(guest_limit * 2, limit)
+    effective_ip_limit = ip_limit if ip_limit is not None else limit * 2
     ok_ip, retry_ip = _consume(f"ip:{bucket}:{_client_ip()}", effective_ip_limit, window_seconds, now)
     if not ok_ip:
         resp = jsonify({

@@ -2,7 +2,6 @@ import pytest
 from api.edital_profiles import (
     get_edital_profile,
     normalize_weights,
-    EditalProfile,
     CANONICAL_AREAS,
 )
 from api.stats import calculate_bayesian_readiness, beta_credible_interval, weighted_beta_credible_interval
@@ -181,7 +180,7 @@ def test_exam_readiness_endpoint_integration_and_isolation(app, client):
         db.commit()
 
     # Request for user_bayes_a
-    headers_a = {"X-Guest-ID": "user_bayes_a"}
+    headers_a = {"X-User-ID": "user_bayes_a"}
     res_a = client.get("/api/stats/exam-readiness?institution=USP-SP", headers=headers_a)
     assert res_a.status_code == 200
     data_a = res_a.get_json()
@@ -196,7 +195,7 @@ def test_exam_readiness_endpoint_integration_and_isolation(app, client):
     assert len(data_a["limitations"]) > 0
 
     # Request for user_bayes_b (isolated)
-    headers_b = {"X-Guest-ID": "user_bayes_b"}
+    headers_b = {"X-User-ID": "user_bayes_b"}
     res_b = client.get("/api/stats/exam-readiness?institution=USP-SP", headers=headers_b)
     assert res_b.status_code == 200
     data_b = res_b.get_json()
@@ -214,7 +213,7 @@ def test_exam_readiness_viewed_telemetry_is_private(app, client, monkeypatch):
 
     monkeypatch.setattr("api.stats.emit", mock_emit)
 
-    headers = {"X-Guest-ID": "user_telemetry_bayes"}
+    headers = {"X-User-ID": "user_telemetry_bayes"}
     res = client.get("/api/stats/exam-readiness?institution=USP-SP", headers=headers)
     assert res.status_code == 200
 

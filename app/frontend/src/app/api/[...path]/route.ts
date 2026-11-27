@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAuthState, getServerCurrentUser } from "@/lib/auth-server";
-import { getGuestSession } from "@/lib/session";
 
 const BACKEND_URL = process.env.FLASK_API_URL || process.env.NEXT_PUBLIC_FLASK_API_URL ||
   (process.env.NODE_ENV === "development" ? "http://127.0.0.1:5050" : "");
@@ -38,6 +37,22 @@ function routeNeedsVerifiedEmail(method: string, pathSegments: string[]): boolea
   if (rel[0] === "auth" && rel[1] === "me") return true;
   if (rel[0] === "lessons" || rel[0] === "curation") return true;
   if (rel[0] === "questions" && (rel[2] === "classification" || method.toUpperCase() === "DELETE")) {
+    return true;
+  }
+  return false;
+}
+
+function isUpstreamSelfAuthenticated(pathSegments: string[], req: NextRequest): boolean {
+  const rel = pathSegments[0] === "v1" ? pathSegments.slice(1) : pathSegments;
+  if (rel.length === 0) return false;
+  if (rel[0] === "images") return true;
+  if (rel[0] === "notifications" && rel[1] === "cron" && rel[2] === "dispatch") return true;
+  if (
+    rel[0] === "lessons" &&
+    rel.length === 3 &&
+    rel[2] === "stream" &&
+    Boolean(req.nextUrl.searchParams.get("st"))
+  ) {
     return true;
   }
   return false;
@@ -171,9 +186,13 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
 
   const targetUrl = `${BACKEND_URL}/api/${path.join("/")}${req.nextUrl.search}`;
 
+  const selfAuth = isUpstreamSelfAuthenticated(path, req);
   const { getToken, sessionClaims } = await getServerAuthState();
   const token = await getToken();
-  const guestId = await getGuestSession();
+
+  if (!token && !selfAuth && req.method.toUpperCase() !== "OPTIONS") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const headers = new Headers(req.headers);
   headers.delete("host");
@@ -185,9 +204,7 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
 
   // Remove untrusted or spoofable client-supplied auth headers
   headers.delete("authorization");
-  headers.delete("x-guest-id");
   headers.delete("x-internal-proxy-token");
-  headers.delete("x-internal-guest-id");
   headers.delete("x-request-id");
   headers.delete("x-user-email");
 
@@ -214,8 +231,6 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
         // Non-blocking if currentUser fails
       }
     }
-  } else if (guestId) {
-    headers.set("X-Guest-ID", guestId);
   }
 
   headers.set("X-Internal-Proxy-Token", proxySecret);

@@ -16,7 +16,7 @@ O MedQuest é uma plataforma médica de aprendizado adaptativo e questões comen
 * **Frontend (`app/frontend/`)**:
   * **Framework**: Next.js 16+ (App Router) com React 19 e TypeScript.
   * **Estilização**: Tailwind CSS v4 (`@tailwindcss/postcss`).
-  * **Autenticação**: Clerk (`@clerk/nextjs`) com suporte a modo visitante via proxy interno.
+  * **Autenticação**: Exclusiva via Clerk (`@clerk/nextjs`) com acesso fechado por `ALLOWED_USER_IDS` (sem modo visitante).
   * **Offline/PWA**: Dexie (IndexedDB) e `@ducanh2912/next-pwa`.
   * **Testes E2E**: Playwright (`npm run test:e2e`).
 * **Automação & Deploy (Raiz)**:
@@ -63,9 +63,9 @@ O MedQuest é uma plataforma médica de aprendizado adaptativo e questões comen
 
 ## 4. Regras de Frontend & Autenticação
 
-1. **Middleware & Sessão de Visitante (`app/frontend/src/proxy.ts`)**:
-   * O Clerk gerencia autenticação oficial. Usuários não autenticados recebem uma sessão de convidado via cookie `medquest_guest_session` (UUIDv4).
-   * **Nunca confie** em cabeçalhos de identidade vindos diretamente do navegador. O middleware injeta `x-internal-guest-id` garantindo sanitização.
+1. **Autenticação Fechada & Proxy (`app/frontend/src/proxy.ts`)**:
+   * Autenticação exclusiva via Clerk; acesso restrito a `ALLOWED_USER_IDS` (fail-closed); não há sessão de visitante.
+   * A identidade vem exclusivamente do JWT validado no backend. O header `X-Internal-Proxy-Token` autentica o proxy do Next, nunca um usuário.
 
 2. **Tailwind CSS v4 & React 19**:
    * O projeto usa Tailwind v4. Não adicione arquivos legados `tailwind.config.js` nem dependências do Tailwind v3.

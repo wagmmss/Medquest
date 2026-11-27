@@ -9,12 +9,12 @@ import { CloudOff } from "lucide-react";
 
 import { initCrossTabListener } from "@/lib/crossTab";
 
-export function SyncProvider({ guestMode = false }: { guestMode?: boolean }) {
+export function SyncProvider() {
   const { isLoaded, userId } = useAppAuth();
   const [queueCount, setQueueCount] = useState(0);
 
   useEffect(() => {
-    if (!isLoaded && !guestMode) return;
+    if (!isLoaded || !userId) return;
     let isActive = true;
     const cleanupCrossTab = initCrossTabListener();
 
@@ -30,7 +30,6 @@ export function SyncProvider({ guestMode = false }: { guestMode?: boolean }) {
     }
     syncManager.init();
 
-    
     // Sync UI with queue length
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<number>;
@@ -49,7 +48,7 @@ export function SyncProvider({ guestMode = false }: { guestMode?: boolean }) {
       window.removeEventListener('sync-queue-updated', handleUpdate);
       syncManager.cleanup();
     };
-  }, [isLoaded, userId, guestMode]);
+  }, [isLoaded, userId]);
 
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 

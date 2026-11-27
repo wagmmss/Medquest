@@ -128,6 +128,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  env: {
+    MEDQUEST_E2E_BUILD: process.env.MEDQUEST_E2E_BUILD === "1" ? "1" : "",
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
   },
