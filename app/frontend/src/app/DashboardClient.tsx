@@ -20,6 +20,7 @@ import { useDashboardSummaryQuery } from "@/lib/queries/useStudyQueries";
 import { useLessonsAccess } from "@/hooks/useLessonsAccess";
 import { openOfflineModal } from "@/lib/globalModals";
 import { ClinicalIcon } from "@/components/ui/ClinicalIcon";
+import { SixYearStatusCard } from "@/components/SixYearStatusCard";
 import clsx from "clsx";
 
 const DASHBOARD_CACHE_KEY = "medquest_dashboard_cache_v1";
@@ -214,9 +215,10 @@ export function DashboardClient({
   const [isUsingCache, setIsUsingCache] = useState<boolean>(false);
 
   useEffect(() => {
-    const target = stats.daily_target || 20;
+    const target = stats.daily_target ?? 30;
     const todayDoneCount = stats.today_answered || 0;
     const isDailyGoalMet =
+      target > 0 &&
       stats.srs_due_count === 0 &&
       stats.distinct_answered > 0 &&
       todayDoneCount >= target;
@@ -504,10 +506,11 @@ export function DashboardClient({
 
   // Métricas de Decisão Diária
   const pendentesRevisao = stats.srs_due_count || 0;
-  const dailyTarget = stats.daily_target || 20;
+  const dailyTarget = stats.daily_target ?? 30;
   const todayDone = stats.today_answered || 0;
   const dailyRemaining = Math.max(0, dailyTarget - todayDone);
-  const dailyProgressPct = Math.min(100, Math.round((todayDone / dailyTarget) * 100));
+  const dailyProgressPct =
+    dailyTarget === 0 ? 100 : Math.min(100, Math.round((todayDone / dailyTarget) * 100));
 
   const sugestaoTema = suggestedPlannerTopic
     ? suggestedPlannerTopic.subtema 
@@ -695,6 +698,9 @@ export function DashboardClient({
           </div>
         </div>
       </motion.section>
+
+      {/* CARD COMPACTO DO 6º ANO & R1 (falha silenciosa) */}
+      <SixYearStatusCard onRoutineUpdated={() => void fetchDashboardData(0)} />
 
       {/* ESTADO DE ERRO / RESILIÊNCIA CONTRA FALHAS DE REDE */}
       {hasOverviewError ? (
