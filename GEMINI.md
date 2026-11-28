@@ -16,7 +16,7 @@ O MedQuest é uma plataforma médica de aprendizado adaptativo e questões comen
 * **Frontend (`app/frontend/`)**:
   * **Framework**: Next.js 16+ (App Router) com React 19 e TypeScript.
   * **Estilização**: Tailwind CSS v4 (`@tailwindcss/postcss`).
-  * **Autenticação**: Exclusiva via Clerk (`@clerk/nextjs`) com acesso fechado por `ALLOWED_USER_IDS` (sem modo visitante).
+  * **Autenticação**: Exclusiva via Clerk (`@clerk/nextjs`, sem modo visitante); acesso à aba de aulas restrito por `LESSONS_ALLOWED_EMAILS` (padrão `moraes.wagg@gmail.com`).
   * **Offline/PWA**: Dexie (IndexedDB) e `@ducanh2912/next-pwa`.
   * **Testes E2E**: Playwright (`npm run test:e2e`).
 * **Automação & Deploy (Raiz)**:
@@ -63,8 +63,8 @@ O MedQuest é uma plataforma médica de aprendizado adaptativo e questões comen
 
 ## 4. Regras de Frontend & Autenticação
 
-1. **Autenticação Fechada & Proxy (`app/frontend/src/proxy.ts`)**:
-   * Autenticação exclusiva via Clerk; acesso restrito a `ALLOWED_USER_IDS` (fail-closed); não há sessão de visitante.
+1. **Autenticação & Proxy (`app/frontend/src/proxy.ts`)**:
+   * Autenticação exclusiva via Clerk (sem sessão de visitante); qualquer usuário autenticado pode usar o app, mantendo a restrição de aulas para `moraes.wagg@gmail.com` (`LESSONS_ALLOWED_EMAILS`).
    * A identidade vem exclusivamente do JWT validado no backend. O header `X-Internal-Proxy-Token` autentica o proxy do Next, nunca um usuário.
 
 2. **Tailwind CSS v4 & React 19**:

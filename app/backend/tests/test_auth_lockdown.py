@@ -1,4 +1,4 @@
-"""Testes de lockdown de autenticação (PR 0: acesso fechado e remoção do modo visitante)."""
+"""Testes de autenticação Clerk (sem modo visitante, acesso livre a contas autenticadas e aulas restritas)."""
 from __future__ import annotations
 
 import sqlite3
@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 
 from api import create_app
-from api.auth import configured_allowed_user_ids, create_lesson_stream_token
 from tests.conftest import SCHEMA_AND_SEED
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -34,6 +33,8 @@ def lockdown_app(tmp_path, monkeypatch):
     monkeypatch.setenv("FLASK_API_PROXY_SECRET", PROXY_SECRET)
     monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
     monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("LESSONS_ALLOWED_USER_IDS", raising=False)
+    monkeypatch.delenv("LESSONS_ALLOWED_EMAILS", raising=False)
 
     app = create_app()
     app.config["TESTING"] = False
@@ -45,7 +46,7 @@ def lockdown_client(lockdown_app):
     return lockdown_app.test_client()
 
 
-def _install_fake_jwt(monkeypatch, sub: str, email: str = "owner@example.com"):
+def _install_fake_jwt(monkeypatch, sub: str, email: str = "other@example.com"):
     from api import auth
 
     class FakeJwksClient:
@@ -57,13 +58,6 @@ def _install_fake_jwt(monkeypatch, sub: str, email: str = "owner@example.com"):
     monkeypatch.setattr(auth, "CLERK_ISSUER", "https://clerk.example.test")
     monkeypatch.setattr(auth, "CLERK_AUDIENCE", None)
     monkeypatch.setattr(auth.jwt, "decode", lambda *_a, **_kw: {"sub": sub, "email": email})
-
-
-def test_configured_allowed_user_ids_parsing(monkeypatch):
-    monkeypatch.setenv("ALLOWED_USER_IDS", " user_abc , user_xyz ,, ")
-    assert configured_allowed_user_ids() == frozenset({"user_abc", "user_xyz"})
-    monkeypatch.delenv("ALLOWED_USER_IDS", raising=False)
-    assert configured_allowed_user_ids() == frozenset()
 
 
 def test_health_root_is_public(lockdown_client):
@@ -78,8 +72,7 @@ def test_unauthenticated_requests_return_401(lockdown_client):
     assert lockdown_client.get("/api/auth/me").status_code == 401
 
 
-def test_proxy_secret_with_guest_id_and_no_bearer_returns_401(lockdown_client, monkeypatch):
-    monkeypatch.setenv("ALLOWED_USER_IDS", "user_owner")
+def test_proxy_secret_with_guest_id_and_no_bearer_returns_401(lockdown_client):
     resp = lockdown_client.get(
         "/api/stats/overview",
         headers={
@@ -91,49 +84,51 @@ def test_proxy_secret_with_guest_id_and_no_bearer_returns_401(lockdown_client, m
     assert resp.get_json() == {"error": "Unauthorized"}
 
 
-def test_valid_jwt_outside_allowlist_returns_403(lockdown_client, monkeypatch):
-    _install_fake_jwt(monkeypatch, sub="user_intruder")
-    monkeypatch.setenv("ALLOWED_USER_IDS", "user_owner")
+def test_any_authenticated_clerk_user_can_access_app_but_lessons_stay_restricted(
+    lockdown_client, monkeypatch
+):
+    _install_fake_jwt(monkeypatch, sub="user_any_student", email="student@example.com")
 
-    resp = lockdown_client.get(
-        "/api/stats/overview",
-        headers={"Authorization": "Bearer valid-clerk-jwt"},
-    )
-    assert resp.status_code == 403
-    assert resp.get_json() == {"error": "Forbidden", "code": "ACCESS_RESTRICTED"}
-
-
-def test_empty_allowlist_outside_testing_fails_closed_403(lockdown_client, monkeypatch):
-    _install_fake_jwt(monkeypatch, sub="user_owner")
-    monkeypatch.delenv("ALLOWED_USER_IDS", raising=False)
-
-    resp = lockdown_client.get(
-        "/api/planner/config",
-        headers={"Authorization": "Bearer valid-clerk-jwt"},
-    )
-    assert resp.status_code == 403
-    assert resp.get_json()["code"] == "ACCESS_RESTRICTED"
-
-
-def test_valid_jwt_in_allowlist_returns_200(lockdown_client, monkeypatch):
-    _install_fake_jwt(monkeypatch, sub="user_owner")
-    monkeypatch.setenv("ALLOWED_USER_IDS", "user_owner")
-
-    resp = lockdown_client.get(
+    me = lockdown_client.get(
         "/api/auth/me",
         headers={"Authorization": "Bearer valid-clerk-jwt"},
     )
-    assert resp.status_code == 200
-    assert resp.get_json()["user_id"] == "user_owner"
+    assert me.status_code == 200
+    assert me.get_json()["user_id"] == "user_any_student"
+    assert me.get_json()["can_access_lessons"] is False
+
+    assert (
+        lockdown_client.get(
+            "/api/planner/config",
+            headers={"Authorization": "Bearer valid-clerk-jwt"},
+        ).status_code
+        == 200
+    )
+    assert (
+        lockdown_client.get(
+            "/api/lessons",
+            headers={"Authorization": "Bearer valid-clerk-jwt"},
+        ).status_code
+        == 403
+    )
 
 
-def test_lesson_stream_token_also_enforces_allowlist(lockdown_app, lockdown_client, monkeypatch):
-    monkeypatch.setenv("ALLOWED_USER_IDS", "user_owner")
-    with lockdown_app.app_context():
-        token_intruder = create_lesson_stream_token(1, "user_intruder", "intruder@example.com")
-    assert token_intruder is not None
-    resp = lockdown_client.get(f"/api/lessons/1/stream?st={token_intruder}")
-    assert resp.status_code == 403
+def test_lessons_default_email_grants_access_to_owner(lockdown_client, monkeypatch):
+    _install_fake_jwt(monkeypatch, sub="user_owner", email="moraes.wagg@gmail.com")
+
+    me = lockdown_client.get(
+        "/api/auth/me",
+        headers={"Authorization": "Bearer valid-clerk-jwt"},
+    )
+    assert me.status_code == 200
+    assert me.get_json()["can_access_lessons"] is True
+    assert (
+        lockdown_client.get(
+            "/api/lessons",
+            headers={"Authorization": "Bearer valid-clerk-jwt"},
+        ).status_code
+        == 200
+    )
 
 
 def test_purge_guest_data_dry_run_and_apply_preserves_accounts_and_explanations(app):
@@ -155,13 +150,11 @@ def test_purge_guest_data_dry_run_and_apply_preserves_accounts_and_explanations(
             )
             db.execute("INSERT INTO favorites (question_id, user_id) VALUES (1, 'user_owner')")
 
-        # Dry-run não apaga nada
         before, after_dry = purge_guest_rows(db, apply=False)
         assert before["attempts"] == 1
         assert before["favorites"] == 1
         assert after_dry == before
 
-        # Apply apaga apenas guest:* e preserva conta real e explanations
         before_apply, after_apply = purge_guest_rows(db, apply=True)
         assert before_apply["attempts"] == 1
         assert after_apply["attempts"] == 0

@@ -58,14 +58,6 @@ def is_valid_uuid_v4(val: str | None) -> bool:
 # Global PyJWKClient instance to cache keys and avoid rate limits/timeouts
 jwks_client = jwt.PyJWKClient(JWKS_URL, cache_keys=True, timeout=5) if JWKS_URL else None
 
-def configured_allowed_user_ids() -> frozenset[str]:
-    """Read allowlisted Clerk user IDs (`sub`) permitted to access the application (fail-closed)."""
-    return frozenset(
-        uid.strip()
-        for uid in os.environ.get("ALLOWED_USER_IDS", "").split(",")
-        if uid.strip()
-    )
-
 
 def configured_curator_emails() -> frozenset[str]:
     """Read allowlisted curator identities from deployment configuration.
@@ -90,10 +82,10 @@ def configured_lessons_allowed_user_ids() -> frozenset[str]:
 
 
 def configured_lessons_allowed_emails() -> frozenset[str]:
-    """Read allowlisted verified emails for private video lessons access (fail-closed when unset)."""
+    """Read allowlisted verified emails for private video lessons access (defaults to moraes.wagg@gmail.com)."""
     return frozenset(
         email.strip().lower()
-        for email in os.environ.get("LESSONS_ALLOWED_EMAILS", "").split(",")
+        for email in os.environ.get("LESSONS_ALLOWED_EMAILS", "moraes.wagg@gmail.com").split(",")
         if email.strip()
     )
 
@@ -204,18 +196,6 @@ def verify_lesson_stream_token(token: str, expected_lesson_id: int) -> tuple[str
     return user_id, user_email
 
 
-def _enforce_allowed_user(user_id: str):
-    """Fail-closed allowlist check for authenticated users outside TESTING."""
-    allowed_ids = configured_allowed_user_ids()
-    if not allowed_ids or user_id not in allowed_ids:
-        logger.warning(
-            "Access denied by allowlist: reason=%s",
-            "empty_allowlist" if not allowed_ids else "user_not_allowed",
-        )
-        return jsonify({"error": "Forbidden", "code": "ACCESS_RESTRICTED"}), 403
-    return None
-
-
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -227,12 +207,7 @@ def require_auth(f):
             )
             if not verified:
                 return jsonify({"error": "Unauthorized"}), 401
-            user_id, user_email = verified
-            if not _is_testing_env(current_app):
-                denied = _enforce_allowed_user(user_id)
-                if denied:
-                    return denied
-            g.user_id, g.user_email = user_id, user_email
+            g.user_id, g.user_email = verified
             return f(*args, **kwargs)
 
         if _is_testing_env(current_app):
@@ -298,10 +273,6 @@ def require_auth(f):
         except Exception as exc:
             logger.info("JWT validation failed: %s", type(exc).__name__)
             return jsonify({"error": "Unauthorized"}), 401
-
-        denied = _enforce_allowed_user(g.user_id)
-        if denied:
-            return denied
 
         return f(*args, **kwargs)
     return decorated
