@@ -70,7 +70,7 @@ def search_questions():
 
     semantic = request.args.get("semantic", "false").lower() == "true"
     if semantic and q:
-        rl_resp = check_rate_limit("search_semantic", auth_limit=30, guest_limit=10, window_seconds=60)
+        rl_resp = check_rate_limit("search_semantic", auth_limit=30, window_seconds=60)
         if rl_resp is not None:
             return rl_resp
 

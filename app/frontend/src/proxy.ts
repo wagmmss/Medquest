@@ -1,59 +1,54 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from "next/server";
 import { isClerkServerEnabled } from "@/lib/auth-server";
-import { signGuestCookieValue, verifyGuestCookieValue } from "@/lib/guest-cookie";
+import { isE2EAuthBypassEnabled } from "@/lib/e2e-auth";
 
-async function applyGuestSession(req: NextRequest): Promise<NextResponse> {
-  const verified = await verifyGuestCookieValue(req.cookies.get("medquest_guest_session")?.value);
-  let guestId: string;
-  let mustSetCookie = false;
-
-  if (!verified) {
-    guestId = crypto.randomUUID().toLowerCase();
-    mustSetCookie = true;
-  } else {
-    guestId = verified.guestId;
-    mustSetCookie = verified.needsResign || !req.cookies.has("medquest_guest_session");
-  }
-
-  // Clone request headers and overwrite the internal identity header.
-  // Never trust any identity header sent directly from the browser.
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-internal-guest-id", guestId);
-
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
-
-  // Persist signed cookie on the response if newly created or needs rotation
-  if (mustSetCookie) {
-    const signedValue = await signGuestCookieValue(guestId);
-    response.cookies.set("medquest_guest_session", signedValue, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-    });
-  }
-
-  return response;
-}
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/__clerk(.*)",
+  "/api/images(.*)",
+  "/api/v1/images(.*)",
+  "/api/notifications/cron/dispatch",
+  "/api/v1/notifications/cron/dispatch",
+  "/api/lessons/(.*)/stream",
+  "/api/v1/lessons/(.*)/stream",
+]);
 
 let cachedClerkHandler: NextMiddleware | null = null;
 
 function getClerkHandler(): NextMiddleware {
   if (!cachedClerkHandler) {
-    cachedClerkHandler = clerkMiddleware(async (_auth, req) => applyGuestSession(req));
+    cachedClerkHandler = clerkMiddleware(async (auth, req) => {
+      if (isPublicRoute(req)) {
+        return NextResponse.next();
+      }
+      const { userId } = await auth();
+      if (!userId) {
+        if (req.nextUrl.pathname.startsWith("/api/")) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const signInUrl = new URL("/sign-in", req.url);
+        const target = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+        if (target && target !== "/" && !target.startsWith("/sign-in")) {
+          signInUrl.searchParams.set("redirect_url", target);
+        }
+        return NextResponse.redirect(signInUrl);
+      }
+      return NextResponse.next();
+    });
   }
   return cachedClerkHandler;
 }
 
 export default async function proxy(req: NextRequest, event: NextFetchEvent) {
+  if (isE2EAuthBypassEnabled()) {
+    return NextResponse.next();
+  }
   if (!isClerkServerEnabled()) {
-    return applyGuestSession(req);
+    if (isPublicRoute(req)) {
+      return NextResponse.next();
+    }
+    return NextResponse.json({ error: "Clerk desabilitado neste ambiente." }, { status: 503 });
   }
   return getClerkHandler()(req, event);
 }

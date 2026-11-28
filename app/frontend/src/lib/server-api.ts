@@ -1,5 +1,4 @@
 import { getServerAuthState } from "./auth-server";
-import { getGuestSession } from "./session";
 import { 
   ThemeProgress, OverviewStats, CoverageResponse, QuestionMeta, PlannerConfig,
   TimelineStat, WeakTopic, Recommendation, BreakdownStat, DistractorStat,
@@ -34,16 +33,16 @@ async function serverFetch<T>(endpoint: string, options?: RequestInit): Promise<
   }
   const { getToken } = await getServerAuthState();
   const token = await getToken();
-  const guestId = await getGuestSession();
-  
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options?.headers as Record<string, string> || {}),
   };
-  
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  else if (guestId) headers["X-Guest-ID"] = guestId;
-  
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   headers["X-Internal-Proxy-Token"] = proxySecret;
 
   let response;

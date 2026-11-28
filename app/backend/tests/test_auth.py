@@ -1,5 +1,4 @@
 import uuid
-import pytest
 from api.auth import is_valid_uuid_v4
 
 def test_is_valid_uuid_v4_valid_lowercase():
@@ -54,14 +53,14 @@ def test_is_valid_uuid_v4_only_dashes():
 
 
 def test_auth_me_endpoint(client, monkeypatch):
-    monkeypatch.setenv("CURATOR_EMAILS", "moraes.wagg@gmail.com,admin@medquest.live")
-    
+    monkeypatch.setenv("CURATOR_EMAILS", "curator@example.com,admin@medquest.live")
+
     # Usuário curador
-    r = client.get("/api/auth/me", headers={"X-User-ID": "user_123", "X-User-Email": "moraes.wagg@gmail.com"})
+    r = client.get("/api/auth/me", headers={"X-User-ID": "user_123", "X-User-Email": "curator@example.com"})
     assert r.status_code == 200
     data = r.get_json()
     assert data["user_id"] == "user_123"
-    assert data["email"] == "moraes.wagg@gmail.com"
+    assert data["email"] == "curator@example.com"
     assert data["is_curator"] is True
 
     # Usuário comum

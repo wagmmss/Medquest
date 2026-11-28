@@ -136,6 +136,9 @@ async function executeApiFetch<T>(endpoint: string, options?: ApiFetchOptions): 
       } catch {
         // use status text
       }
+      if (typeof window !== "undefined" && response.status === 403 && code === "ACCESS_RESTRICTED") {
+        window.dispatchEvent(new CustomEvent("medquest-access-restricted"));
+      }
       throw new ApiHttpError(errMsg, response.status, code);
     }
 

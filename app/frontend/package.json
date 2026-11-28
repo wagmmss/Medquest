@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build --webpack",
+    "build:e2e": "MEDQUEST_E2E_BUILD=1 next build --webpack && npm run postbuild",
     "postbuild": "node scripts/validate-sw.mjs && node scripts/check-performance-budgets.mjs && node scripts/copy-standalone-assets.mjs",
     "start": "next start",
     "lint": "eslint",

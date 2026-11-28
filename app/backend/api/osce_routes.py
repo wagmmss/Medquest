@@ -114,7 +114,7 @@ def start_session():
 @require_auth
 def interact_session(session_id: str):
     user_id = _resolve_user_id()
-    rl_resp = check_rate_limit("osce_interact", auth_limit=45, guest_limit=15, window_seconds=60)
+    rl_resp = check_rate_limit("osce_interact", auth_limit=45, window_seconds=60)
     if rl_resp is not None:
         return rl_resp
 
@@ -155,7 +155,7 @@ def interact_session(session_id: str):
 def dispatch_speech(session_id: str):
     """Dispatcher unificado de voz para modo Hands-Free de alta fidelidade."""
     user_id = _resolve_user_id()
-    rl_resp = check_rate_limit("osce_dispatch", auth_limit=45, guest_limit=15, window_seconds=60)
+    rl_resp = check_rate_limit("osce_dispatch", auth_limit=45, window_seconds=60)
     if rl_resp is not None:
         return rl_resp
 
@@ -222,7 +222,7 @@ def execute_action(session_id: str):
 @idempotent(user_resolver=_resolve_user_id)
 def finish_session(session_id: str):
     user_id = _resolve_user_id()
-    rl_resp = check_rate_limit("osce_finish", auth_limit=20, guest_limit=6, window_seconds=60)
+    rl_resp = check_rate_limit("osce_finish", auth_limit=20, window_seconds=60)
     if rl_resp is not None:
         return rl_resp
 

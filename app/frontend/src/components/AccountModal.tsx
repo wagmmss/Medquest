@@ -38,7 +38,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
         localStorage.removeItem("mq_last_confetti");
         localStorage.removeItem("medquest_last_offline_download");
         for (const key of Object.keys(localStorage)) {
-          if (key.startsWith("medquest_planner_topics_") || (key.startsWith("medquest_") && key !== "medquest_local_owner" && key !== "theme")) {
+          if (key.startsWith("medquest_planner_topics_") || (key.startsWith("medquest_") && key !== "medquest_last_user_id" && key !== "theme")) {
             localStorage.removeItem(key);
           }
         }

@@ -115,6 +115,7 @@ jobs:
       - name: Build standalone application
         run: npm run build
         env:
+          MEDQUEST_E2E_BUILD: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k' }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_mock_clerk_secret_key' }}
           FLASK_API_PROXY_SECRET: ci-placeholder-not-used-during-build

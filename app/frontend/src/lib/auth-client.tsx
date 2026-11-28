@@ -78,18 +78,58 @@ function ClerkAuthBridge({ children }: { children: React.ReactNode }) {
   );
 }
 
+function E2EAuthBridge({ userId, children }: { userId: string; children: React.ReactNode }) {
+  useEffect(() => {
+    syncActiveAuthOwner(true, userId);
+  }, [userId]);
+
+  const e2eUserState = {
+    isLoaded: true,
+    isSignedIn: true,
+    user: {
+      id: userId,
+      fullName: "E2E Test User",
+      firstName: "E2E",
+      primaryEmailAddress: { emailAddress: "e2e@example.com" },
+    },
+  } as unknown as UserResult;
+
+  const e2eAuthState = {
+    ...FALLBACK_AUTH_STATE,
+    isLoaded: true,
+    isSignedIn: true,
+    userId,
+  } as unknown as AuthResult;
+
+  return (
+    <AppAuthContext.Provider
+      value={{
+        clerkEnabled: false,
+        userState: e2eUserState,
+        authState: e2eAuthState,
+        signOut: (async () => {}) as unknown as ClerkResult["signOut"],
+      }}
+    >
+      {children}
+    </AppAuthContext.Provider>
+  );
+}
+
 /**
  * Provedor unificado de estado de autenticação no cliente.
- * Quando `clerkEnabled` é false (modo preview/demo sem chaves), fornece estado
- * anônimo já carregado sem exigir <ClerkProvider> na árvore.
  */
 export function AppAuthProvider({
   clerkEnabled,
+  e2eUserId = null,
   children,
 }: {
   clerkEnabled: boolean;
+  e2eUserId?: string | null;
   children: React.ReactNode;
 }) {
+  if (e2eUserId) {
+    return <E2EAuthBridge userId={e2eUserId}>{children}</E2EAuthBridge>;
+  }
   if (!clerkEnabled) {
     return (
       <AppAuthContext.Provider value={FALLBACK_CONTEXT_VALUE}>
@@ -100,17 +140,17 @@ export function AppAuthProvider({
   return <ClerkAuthBridge>{children}</ClerkAuthBridge>;
 }
 
-/** Substituto seguro para `useUser()` compatível com modo preview sem Clerk. */
+/** Substituto seguro para `useUser()`. */
 export function useAppUser(): UserResult {
   return useContext(AppAuthContext).userState;
 }
 
-/** Substituto seguro para `useAuth()` compatível com modo preview sem Clerk. */
+/** Substituto seguro para `useAuth()`. */
 export function useAppAuth(): AuthResult {
   return useContext(AppAuthContext).authState;
 }
 
-/** Substituto seguro para `useClerk()` compatível com modo preview sem Clerk. */
+/** Substituto seguro para `useClerk()`. */
 export function useAppClerk(): { signOut: ClerkResult["signOut"]; clerkEnabled: boolean } {
   const ctx = useContext(AppAuthContext);
   return { signOut: ctx.signOut, clerkEnabled: ctx.clerkEnabled };

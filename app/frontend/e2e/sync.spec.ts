@@ -175,10 +175,7 @@ test.describe('Offline Sync e Resiliência', () => {
   });
 
   test('inicia e responde simulado 100% offline a partir de questões em cache local', async ({ page }) => {
-    const TEST_OWNER = 'test_owner_offline';
-    await page.addInitScript((owner) => {
-      localStorage.setItem('medquest_local_owner', owner);
-    }, TEST_OWNER);
+    const TEST_OWNER = 'user_e2e_test';
 
     // Mock de rotas abortadas para simular desconexão total durante o simulado
     await page.route('**/api/meta**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_META) }));

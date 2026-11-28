@@ -8,8 +8,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 THEME = "Hipertensão Arterial Sistêmica e Crises Hipertensivas"
 OTHER_THEME = "Calendário Vacinal do PNI e Imunizações Especiais"
-ALLOWED_EMAIL = "moraes.wagg@gmail.com"
-ALLOWED_SUB = "user_wagner"
+ALLOWED_EMAIL = "owner@example.com"
+ALLOWED_SUB = "user_owner"
 
 
 @pytest.fixture()
@@ -128,6 +128,7 @@ def test_lessons_real_jwt_chain_with_testing_false(app, client, seeded_lessons, 
     monkeypatch.setattr(auth_mod, "CLERK_AUDIENCE", None)
     monkeypatch.setattr(auth_mod, "jwks_client", _FakeJwksClient())
     monkeypatch.setenv("FLASK_API_PROXY_SECRET", "proxy-secret-test")
+    monkeypatch.setenv("ALLOWED_USER_IDS", f"{ALLOWED_SUB},user_attacker")
     monkeypatch.setenv("LESSONS_ALLOWED_USER_IDS", ALLOWED_SUB)
     monkeypatch.setenv("LESSONS_ALLOWED_EMAILS", ALLOWED_EMAIL)
 
@@ -148,8 +149,8 @@ def test_lessons_real_jwt_chain_with_testing_false(app, client, seeded_lessons, 
         # 1. Sem credenciais -> 401
         assert client.get("/api/lessons").status_code == 401
 
-        # 2. Guest via proxy secret -> 403
-        guest_resp = client.get(
+        # 2. Proxy secret + X-Guest-ID sem Bearer -> 401 (modo visitante removido)
+        unauth_resp = client.get(
             "/api/lessons",
             headers={
                 "X-Internal-Proxy-Token": "proxy-secret-test",
@@ -157,7 +158,7 @@ def test_lessons_real_jwt_chain_with_testing_false(app, client, seeded_lessons, 
                 "X-User-Email": ALLOWED_EMAIL,
             },
         )
-        assert guest_resp.status_code == 403
+        assert unauth_resp.status_code == 401
 
         # 3. JWT válido de outro sub tentando forjar X-User-Email -> 403
         attacker_jwt = make_jwt("user_attacker", email="attacker@example.com")
@@ -302,13 +303,13 @@ def test_lessons_continue_and_current_week(app, client, seeded_lessons, monkeypa
             db.execute(
                 """
                 INSERT INTO planner_config (user_id, exam_date, start_date, days_per_week, questions_per_day, hours_per_day, updated_at, organization_mode)
-                VALUES ('user_wagner', '2027-11-01', '2026-11-21', 5, 30, 3.0, '2026-11-21T00:00:00Z', 'geral')
+                VALUES ('user_owner', '2027-11-01', '2026-11-21', 5, 30, 3.0, '2026-11-21T00:00:00Z', 'geral')
                 """
             )
             db.execute(
                 """
                 INSERT INTO planner_schedule (user_id, mode, week, subtema, display_order, created_at)
-                VALUES ('user_wagner', 'geral_standard', 1, ?, 0, '2026-11-21T00:00:00Z')
+                VALUES ('user_owner', 'geral_standard', 1, ?, 0, '2026-11-21T00:00:00Z')
                 """,
                 (THEME,),
             )
@@ -334,7 +335,7 @@ def test_lessons_continue_and_current_week(app, client, seeded_lessons, monkeypa
         with db_transaction(db):
             db.execute("DROP TABLE planner_config")
             db.execute("CREATE TABLE planner_config (user_id TEXT PRIMARY KEY, exam_date TEXT, start_date TEXT)")
-            db.execute("INSERT INTO planner_config (user_id, exam_date, start_date) VALUES ('user_wagner', '2027-11-01', '2026-11-21')")
+            db.execute("INSERT INTO planner_config (user_id, exam_date, start_date) VALUES ('user_owner', '2027-11-01', '2026-11-21')")
     cw_legacy = client.get("/api/lessons/current-week", headers=headers)
     assert cw_legacy.status_code == 200
     assert cw_legacy.get_json()["subtemas"] == [THEME]

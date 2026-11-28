@@ -1,23 +1,27 @@
-"""Testes de exclusão de questões restrita ao administrador moraes.wagg@gmail.com."""
-import sqlite3
+"""Testes de exclusão de questões restrita ao curador configurado em CURATOR_EMAILS."""
 from api.db import get_db
 
+CURATOR_EMAIL = "curator@example.com"
 
-def test_delete_question_unauthorized_for_other_users(client):
+
+def test_delete_question_unauthorized_for_other_users(client, monkeypatch):
+    monkeypatch.setenv("CURATOR_EMAILS", CURATOR_EMAIL)
     r = client.delete("/api/questions/1", headers={"X-User-Email": "intruder@example.com"})
     assert r.status_code == 403
     data = r.get_json()
     assert "Forbidden" in data["error"]
 
 
-def test_delete_question_not_found(client):
-    r = client.delete("/api/questions/999999", headers={"X-User-Email": "moraes.wagg@gmail.com"})
+def test_delete_question_not_found(client, monkeypatch):
+    monkeypatch.setenv("CURATOR_EMAILS", CURATOR_EMAIL)
+    r = client.delete("/api/questions/999999", headers={"X-User-Email": CURATOR_EMAIL})
     assert r.status_code == 404
     data = r.get_json()
     assert data["error"] == "Questão não encontrada"
 
 
-def test_delete_question_cascading_success(client, app):
+def test_delete_question_cascading_success(client, app, monkeypatch):
+    monkeypatch.setenv("CURATOR_EMAILS", CURATOR_EMAIL)
     with app.app_context():
         db = get_db()
         # Seed related data for question 1
@@ -26,8 +30,7 @@ def test_delete_question_cascading_success(client, app):
         db.execute("INSERT OR REPLACE INTO favorites(question_id, user_id) VALUES (1, '1')")
         db.commit()
 
-    # Perform deletion as moraes.wagg@gmail.com
-    r = client.delete("/api/questions/1", headers={"X-User-Email": "moraes.wagg@gmail.com"})
+    r = client.delete("/api/questions/1", headers={"X-User-Email": CURATOR_EMAIL})
     assert r.status_code == 200
     res = r.get_json()
     assert res["success"] is True

@@ -15,14 +15,14 @@ def test_rate_limit_enforces_429_and_retry_after(app):
     reset_rate_limits()
     app.config["RATE_LIMIT_ENABLED"] = True
     try:
-        guest_id = f"guest:{uuid.uuid4()}"
+        user_id = f"user_{uuid.uuid4().hex[:8]}"
         with app.test_request_context("/api/questions/1/ask_ai", environ_base={"REMOTE_ADDR": "10.10.0.1"}):
             from flask import g
 
-            g.user_id = guest_id
-            assert check_rate_limit("onda2-test", auth_limit=5, guest_limit=2, window_seconds=60) is None
-            assert check_rate_limit("onda2-test", auth_limit=5, guest_limit=2, window_seconds=60) is None
-            blocked = check_rate_limit("onda2-test", auth_limit=5, guest_limit=2, window_seconds=60)
+            g.user_id = user_id
+            assert check_rate_limit("onda2-test", auth_limit=2, window_seconds=60) is None
+            assert check_rate_limit("onda2-test", auth_limit=2, window_seconds=60) is None
+            blocked = check_rate_limit("onda2-test", auth_limit=2, window_seconds=60)
             assert blocked is not None
             assert blocked.status_code == 429
             assert int(blocked.headers.get("Retry-After", "0")) >= 1
@@ -31,34 +31,26 @@ def test_rate_limit_enforces_429_and_retry_after(app):
         reset_rate_limits()
 
 
-def test_guest_cannot_spoof_email_or_access_curator_routes(app, client, monkeypatch):
-    """Impede que sessão guest forje email de curador ou acesse rotas administrativas."""
+def test_unauthenticated_proxy_headers_rejected_with_401(app, client, monkeypatch):
+    """Sem JWT Bearer válido, nem proxy secret + X-Guest-ID + X-User-Email concedem acesso."""
     monkeypatch.setenv("CURATOR_EMAILS", "curator@medquest.live")
     monkeypatch.setenv("FLASK_API_PROXY_SECRET", "test-onda2-proxy-secret")
-    guest_uuid = str(uuid.uuid4())
     spoofed_headers = {
         "X-Internal-Proxy-Token": "test-onda2-proxy-secret",
-        "X-Guest-ID": guest_uuid,
+        "X-Guest-ID": str(uuid.uuid4()),
         "X-User-Email": "curator@medquest.live",
     }
 
     prev_testing = app.config.get("TESTING", True)
     app.config["TESTING"] = False
     try:
-        me = client.get("/api/auth/me", headers=spoofed_headers)
-        assert me.status_code == 200
-        me_data = me.get_json()
-        assert me_data["user_id"] == f"guest:{guest_uuid}"
-        assert me_data["email"] == ""
-        assert me_data["is_curator"] is False
-        assert me_data["can_access_lessons"] is False
-
-        assert client.get("/api/ai/health", headers=spoofed_headers).status_code == 403
+        assert client.get("/api/auth/me", headers=spoofed_headers).status_code == 401
+        assert client.get("/api/ai/health", headers=spoofed_headers).status_code == 401
         assert client.patch(
             "/api/lessons/1/mapping",
             headers=spoofed_headers,
             json={"subtema": "Cardiologia"},
-        ).status_code == 403
+        ).status_code == 401
     finally:
         app.config["TESTING"] = prev_testing
 
