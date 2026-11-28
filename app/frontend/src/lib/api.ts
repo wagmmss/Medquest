@@ -997,6 +997,129 @@ export const api = {
         body: JSON.stringify(payload),
       }),
   },
+  sixYear: {
+    getSummary: () =>
+      apiFetch<import("@/types/api").SixYearSummaryResponse>("/api/six-year/summary", {
+        cache: "no-store",
+      }),
+    getPreview: (from: string, to: string) =>
+      apiFetch<import("@/types/api").SixYearPreviewResponse>(
+        `/api/six-year/preview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        { cache: "no-store" }
+      ),
+    patchPlan: (payload: {
+      routine_mode_enabled?: boolean;
+      enamed_concept?: 3 | 4 | 5;
+      foco_override?: Record<string, { ancora70?: string | null; trilha30?: string | null }>;
+      ritual_done?: Record<string, Record<string, boolean>>;
+    }) =>
+      apiFetch<{ plan: import("@/types/api").SixYearPlanState }>("/api/six-year/plan", {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    putMarcha: (
+      weekIso: string,
+      marchaId: "4_sprint" | "3_normal" | "2_pesada" | "1_sobrevivencia" | null
+    ) =>
+      apiFetch<{
+        week_iso: string;
+        marcha_id: "4_sprint" | "3_normal" | "2_pesada" | "1_sobrevivencia";
+        marcha_source: "confirmada" | "sugerida";
+      }>(`/api/six-year/marcha/${encodeURIComponent(weekIso)}`, {
+        method: "PUT",
+        body: JSON.stringify({ marcha_id: marchaId }),
+      }),
+    postShiftsBatch: (payload: {
+      add?: Array<{
+        date_iso: string;
+        kind: "plantao_12h_dia" | "plantao_noturno" | "plantao_24h";
+        note?: string;
+      }>;
+      remove?: Array<{
+        date_iso: string;
+        kind: "plantao_12h_dia" | "plantao_noturno" | "plantao_24h";
+      }>;
+    }) =>
+      apiFetch<{
+        added: number;
+        removed: number;
+        days: import("@/types/api").SixYearDayStatus[];
+      }>("/api/six-year/shifts/batch", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    putDayOverride: (
+      dateIso: string,
+      mode: "pos_plantao" | "folga" | "meio_periodo" | "integral"
+    ) =>
+      apiFetch<{ day: import("@/types/api").SixYearDayStatus }>(
+        `/api/six-year/day-override/${encodeURIComponent(dateIso)}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ mode }),
+        }
+      ),
+    deleteDayOverride: (dateIso: string) =>
+      apiFetch<{ day: import("@/types/api").SixYearDayStatus }>(
+        `/api/six-year/day-override/${encodeURIComponent(dateIso)}`,
+        { method: "DELETE" }
+      ),
+    putCurriculumEntry: (
+      itemId: string,
+      payload: {
+        value: number;
+        proof_status: "falta" | "em_andamento" | "pdf_pronto";
+        note?: string;
+      }
+    ) =>
+      apiFetch<{
+        entry: import("@/types/api").SixYearCurriculumEntryDTO & { item_id: string };
+      }>(`/api/six-year/curriculum/${encodeURIComponent(itemId)}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    createMilestone: (payload: {
+      id?: string;
+      titulo: string;
+      data_iso: string;
+      categoria?: "curriculo" | "estudo" | "graduacao" | "prova" | "ingresso";
+      done?: boolean;
+      note?: string;
+    }) =>
+      apiFetch<{ milestone: import("@/types/api").SixYearMilestoneDTO }>("/api/six-year/milestones", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    patchMilestone: (
+      milestoneId: string,
+      payload: {
+        titulo?: string;
+        data_iso?: string;
+        categoria?: "curriculo" | "estudo" | "graduacao" | "prova" | "ingresso";
+        done?: boolean;
+        note?: string;
+      }
+    ) =>
+      apiFetch<{ milestone: import("@/types/api").SixYearMilestoneDTO }>(
+        `/api/six-year/milestones/${encodeURIComponent(milestoneId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }
+      ),
+    deleteMilestone: (milestoneId: string) =>
+      apiFetch<null>(`/api/six-year/milestones/${encodeURIComponent(milestoneId)}`, {
+        method: "DELETE",
+      }),
+    createFeedToken: () =>
+      apiFetch<import("@/types/api").SixYearFeedTokenResponse>("/api/six-year/feed-token", {
+        method: "POST",
+      }),
+    revokeFeedToken: () =>
+      apiFetch<null>("/api/six-year/feed-token", {
+        method: "DELETE",
+      }),
+  },
 };
 
 

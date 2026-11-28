@@ -314,12 +314,22 @@ export type PlannerScheduleMode =
   | "internato_standard"
   | "internato_intensive";
 
+export type InternatoWeekPatternMode = "integral" | "meio_periodo" | "folga";
+export type InternatoWeekdayKey = "seg" | "ter" | "qua" | "qui" | "sex" | "sab" | "dom";
+
 export interface InternatoBlock {
+  id?: string;
   start: string;
   end: string;
   area: string;
   label?: string;
   hours_per_week?: number | null;
+  ancora70?: string;
+  trilha30?: string;
+  ancora_areas?: string[];
+  procedimentos_alvo?: string[];
+  micro_habito?: string;
+  week_pattern?: Partial<Record<InternatoWeekdayKey, InternatoWeekPatternMode>> | null;
 }
 
 export interface PlannerConfig {
@@ -1279,6 +1289,123 @@ export interface StudyPreset {
   filters: Record<string, string | string[]>;
   created_at: string;
   updated_at: string;
+}
+
+export interface SixYearDayStatus {
+  date_iso: string;
+  mode: string;
+  source: "override" | "shift" | "pos_plantao" | "pattern";
+  shifts: Array<"plantao_12h_dia" | "plantao_noturno" | "plantao_24h">;
+  is_pos_plantao: boolean;
+  goal_questions: number;
+  reviews_optional: boolean;
+  rodizio_id: string | null;
+  marcha_id: "4_sprint" | "3_normal" | "2_pesada" | "1_sobrevivencia";
+  marcha_source: "confirmada" | "sugerida";
+  guidance: string;
+}
+
+export interface SixYearWeekSummary {
+  week_iso: string;
+  marcha_id: "4_sprint" | "3_normal" | "2_pesada" | "1_sobrevivencia";
+  marcha_source: "confirmada" | "sugerida";
+  suggested_marcha_id: "4_sprint" | "3_normal" | "2_pesada" | "1_sobrevivencia";
+  shift_weight: number;
+  weekly_goal: number;
+  semana_pesada: boolean;
+}
+
+export interface SixYearPlanState {
+  routine_mode_enabled: boolean;
+  enamed_concept: 3 | 4 | 5;
+  foco_override: Record<string, { ancora70?: string; trilha30?: string }>;
+  ritual_done: Record<string, Record<string, boolean>>;
+  has_feed_token: boolean;
+  feed_token_created_at: string | null;
+}
+
+export interface SixYearNextBlockRef {
+  id?: string | null;
+  label?: string | null;
+  start?: string | null;
+  end?: string | null;
+}
+
+export interface SixYearActiveRodizio extends InternatoBlock {
+  foco_effective: {
+    ancora70: string;
+    trilha30: string;
+    is_override: boolean;
+  };
+  next: SixYearNextBlockRef | null;
+}
+
+export interface SixYearBalance7030 {
+  total: number;
+  anchor: number;
+  anchor_pct: number | null;
+  other: number;
+  other_pct: number | null;
+  target_anchor_pct: number;
+  anchor_areas: string[];
+  window_from: string;
+  window_to: string;
+}
+
+export interface SixYearCurriculumEntryDTO {
+  value: number;
+  proof_status: "falta" | "em_andamento" | "pdf_pronto";
+  note: string;
+  updated_at: string;
+}
+
+export interface SixYearMilestoneDTO {
+  id: string;
+  titulo: string;
+  data_iso: string;
+  categoria: "curriculo" | "estudo" | "graduacao" | "prova" | "ingresso";
+  done: boolean;
+  note: string;
+  updated_at: string;
+}
+
+export interface SixYearNextMilestoneDTO {
+  id: string;
+  titulo: string;
+  data_iso: string;
+  categoria: "curriculo" | "estudo" | "graduacao" | "prova" | "ingresso";
+  days_left: number | null;
+}
+
+export interface SixYearSummaryResponse {
+  today: SixYearDayStatus;
+  plan: SixYearPlanState;
+  rodizio: SixYearActiveRodizio | null;
+  next_rodizio: SixYearNextBlockRef | null;
+  week: SixYearWeekSummary;
+  days: SixYearDayStatus[];
+  balance_7030: SixYearBalance7030;
+  ritual: {
+    cycle_key: string;
+    done: Record<string, boolean>;
+  };
+  ferias: {
+    current_week_id: string | null;
+  };
+  curriculum_entries: Record<string, SixYearCurriculumEntryDTO>;
+  milestones: SixYearMilestoneDTO[];
+  next_milestone: SixYearNextMilestoneDTO | null;
+}
+
+export interface SixYearPreviewResponse {
+  days: SixYearDayStatus[];
+  weeks: SixYearWeekSummary[];
+}
+
+export interface SixYearFeedTokenResponse {
+  token: string;
+  feed_url: string;
+  ics_url: string;
 }
 
 export type HighlightColor = "yellow" | "green" | "pink" | "blue";
