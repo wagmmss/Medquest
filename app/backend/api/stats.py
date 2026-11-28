@@ -159,7 +159,9 @@ def overview():
 
     db = get_db()
     metrics = _get_overview_metrics(db, g.user_id, now_utc)
-    streak_info = _get_streak_and_target_info(db, g.user_id, now_utc, tz_offset)
+    streak_info = _get_streak_and_target_info(
+        db, g.user_id, now_utc, tz_offset, srs_due_count=metrics.get("srs_due_count")
+    )
     result = {**metrics, **streak_info}
 
     overview_cache.set(cache_key, result)
@@ -405,9 +407,17 @@ def analysis_summary():
         """,
         (user_id,),
     ).fetchall()
+    overview_metrics = _get_overview_metrics(db, user_id, now_utc, rollup=rollup)
     overview_data = {
-        **_get_overview_metrics(db, user_id, now_utc, rollup=rollup),
-        **_get_streak_and_target_info(db, user_id, now_utc, tz_offset, config=raw_config),
+        **overview_metrics,
+        **_get_streak_and_target_info(
+            db,
+            user_id,
+            now_utc,
+            tz_offset,
+            config=raw_config,
+            srs_due_count=overview_metrics.get("srs_due_count"),
+        ),
     }
 
     radar_data = _get_institution_radar_data(

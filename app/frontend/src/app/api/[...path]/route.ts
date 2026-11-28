@@ -55,6 +55,23 @@ function isUpstreamSelfAuthenticated(pathSegments: string[], req: NextRequest): 
   ) {
     return true;
   }
+  if (
+    rel[0] === "six-year" &&
+    rel.length === 2 &&
+    rel[1] === "feed.json" &&
+    (req.method.toUpperCase() === "OPTIONS" || Boolean(req.nextUrl.searchParams.get("token")))
+  ) {
+    return true;
+  }
+  if (
+    rel[0] === "planner" &&
+    rel.length === 3 &&
+    rel[1] === "calendar" &&
+    rel[2] === "feed" &&
+    Boolean(req.nextUrl.searchParams.get("token"))
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -187,8 +204,13 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   const targetUrl = `${BACKEND_URL}/api/${path.join("/")}${req.nextUrl.search}`;
 
   const selfAuth = isUpstreamSelfAuthenticated(path, req);
-  const { getToken, sessionClaims } = await getServerAuthState();
-  const token = await getToken();
+  let token: string | null = null;
+  let sessionClaims: Record<string, unknown> | null = null;
+  if (!selfAuth) {
+    const authState = await getServerAuthState();
+    sessionClaims = authState.sessionClaims;
+    token = await authState.getToken();
+  }
 
   if (!token && !selfAuth && req.method.toUpperCase() !== "OPTIONS") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

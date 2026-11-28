@@ -1,12 +1,9 @@
 """Deterministic adaptive-learning scoring for study queues and diagnostics."""
-import json
 import logging
 import math
 import threading
 import time
 from datetime import datetime, timezone
-
-from fsrs import Card
 
 from .cache import SimpleTTLCache, catalog_cache_enabled, db_cache_scope
 from .filters import get_user_target_institutions
@@ -522,11 +519,13 @@ def _build_fallback_profile(now: datetime, cache_key: tuple) -> dict:
             "configured_daily_questions": 30,
             "reviews_due": 0,
             "reviews_to_do_today": 0,
+            "reviews_optional_today": 0,
             "backlog_pending": 0,
             "hours_budget": 4,
             "max_capacity": 80,
             "target_score": None,
             "exam_date": None,
+            "routine_context": {"enabled": False},
         },
         "topics": [],
         "method": {
@@ -576,30 +575,46 @@ def build_learning_profile(db, user_id, now=None, subtema=None, limit=15, config
         logger.warning("Fallback de perfil adaptativo acionado para user_id=%s: %s", user_id, exc)
         return _build_fallback_profile(now, cache_key)
 
+    from .services.six_year_routine import effective_daily_goal, local_today
+
     cfg_dict = dict(config) if config else {}
-    daily_goal = int(cfg_dict.get("questions_per_day") or 30)
+    configured_daily_goal = int(cfg_dict.get("questions_per_day") or 30)
     hours_per_day = int(cfg_dict.get("hours_per_day") or 4)
     target_score = cfg_dict.get("target_score")
     exam_date = cfg_dict.get("exam_date")
-    
+
+    eg = effective_daily_goal(db, user_id, cfg_dict, local_today(now))
+    daily_goal = int(eg["goal"])
+    reviews_optional = bool(eg["reviews_optional"])
+    routine_context = eg["routine_context"]
+
     # Orçamento de tempo: 1 questão = 3 min (resolução + leitura comentada) -> 20 q/h
     max_capacity = hours_per_day * 20
-    reviews_to_do_today = min(due_total, max_capacity)
-    backlog_pending = max(0, due_total - max_capacity)
-    questions_today = max(daily_goal, reviews_to_do_today)
+    if reviews_optional:
+        reviews_to_do_today = 0
+        reviews_optional_today = min(due_total, max_capacity)
+        backlog_pending = max(0, due_total - max_capacity)
+        questions_today = 0
+    else:
+        reviews_to_do_today = min(due_total, max_capacity)
+        reviews_optional_today = 0
+        backlog_pending = max(0, due_total - max_capacity)
+        questions_today = max(daily_goal, reviews_to_do_today)
 
     result = {
         "generated_at": now.isoformat(),
         "goal": {
-            "questions_today": questions_today, 
-            "configured_daily_questions": daily_goal,
+            "questions_today": questions_today,
+            "configured_daily_questions": configured_daily_goal,
             "reviews_due": due_total,
             "reviews_to_do_today": reviews_to_do_today,
+            "reviews_optional_today": reviews_optional_today,
             "backlog_pending": backlog_pending,
             "hours_budget": hours_per_day,
             "max_capacity": max_capacity,
             "target_score": target_score,
             "exam_date": exam_date,
+            "routine_context": routine_context,
         },
         "topics": topics[:limit] if limit is not None else topics,
         "method": {

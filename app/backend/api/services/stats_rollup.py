@@ -141,12 +141,13 @@ def _get_cached_q_totals_map(db, *, catalog_cache_fn=None):
     return q_map
 
 
-def responsible_streak(days_studied, today, days_per_week=6):
-    """Count active days while honoring configured weekly rest days.
+def responsible_streak(days_studied, today, days_per_week=6, protected_dates=None):
+    """Count active days while honoring configured weekly rest days and protected shift dates.
 
-    Rest days preserve continuity but never inflate the displayed streak.
+    Rest days and protected dates preserve continuity without inflating the displayed streak.
     """
     active = {str(day) for day in days_studied if day}
+    protected = {str(day) for day in (protected_dates or ()) if day}
     target = max(1, min(7, int(days_per_week or 6)))
     rest_budget = 7 - target
     active_count = 0
@@ -154,8 +155,11 @@ def responsible_streak(days_studied, today, days_per_week=6):
     examined = 0
     rests_in_block = 0
     while examined < 366:
-        if str(cursor) in active:
+        key = str(cursor)
+        if key in active:
             active_count += 1
+        elif key in protected:
+            pass
         elif rests_in_block < rest_budget:
             rests_in_block += 1
         else:
@@ -164,13 +168,20 @@ def responsible_streak(days_studied, today, days_per_week=6):
         if examined % 7 == 0:
             rests_in_block = 0
         cursor -= timedelta(days=1)
-    current_week_active = sum(str(today - timedelta(days=offset)) in active for offset in range(7))
+
+    last_7_keys = {str(today - timedelta(days=offset)) for offset in range(7)}
+    current_week_active = len(last_7_keys & active)
+    rests_used_last_7 = len(last_7_keys - active - protected)
     return {
         "days": active_count,
         "weekly_target": target,
         "active_days_last_7": current_week_active,
-        "rest_days_available": max(0, rest_budget - (7 - current_week_active)),
-        "policy": "rest_days_preserve_continuity",
+        "rest_days_available": max(0, rest_budget - rests_used_last_7),
+        "policy": (
+            "rest_days_and_protected_shifts_preserve_continuity"
+            if protected
+            else "rest_days_preserve_continuity"
+        ),
     }
 
 
@@ -262,8 +273,16 @@ def _get_overview_metrics(db, user_id: str, now_utc: datetime, rollup=None, *, c
 
 
 def _get_streak_and_target_info(
-    db, user_id: str, now_utc: datetime, tz_offset: int, config: dict | None = None
+    db,
+    user_id: str,
+    now_utc: datetime,
+    tz_offset: int,
+    config: dict | None = None,
+    *,
+    srs_due_count: int | None = None,
 ) -> dict:
+    from .six_year_routine import effective_daily_goal, resolve_range
+
     sign = "+" if tz_offset >= 0 else "-"
     offset_str = f"{sign}{abs(tz_offset)} minutes"
 
@@ -295,9 +314,37 @@ def _get_streak_and_target_info(
     days_studied = {r["day"] for r in day_rows if r["day"]}
     today_answered_count = sum(int(r["today_q"] or 0) for r in day_rows)
 
-    streak = responsible_streak(days_studied, local_today, config.get("days_per_week") or 6)
+    eg = effective_daily_goal(db, user_id, config, local_today)
+    routine_context = eg["routine_context"]
+    protected_dates: set[str] | None = None
+    if routine_context.get("enabled"):
+        resolved_history = resolve_range(
+            db, user_id, local_today - timedelta(days=365), local_today
+        )
+        protected_dates = {
+            d.date_iso for d in resolved_history if d.goal_questions == 0
+        }
 
-    daily_target = config.get("questions_per_day") or 20
+    streak = responsible_streak(
+        days_studied,
+        local_today,
+        config.get("days_per_week") or 6,
+        protected_dates=protected_dates,
+    )
+
+    daily_target = int(eg["goal"])
+    reviews_optional_today = 0
+    if eg["reviews_optional"]:
+        due_count = srs_due_count
+        if due_count is None:
+            due_row = db.execute(
+                "SELECT COUNT(*) AS c FROM spaced_repetition WHERE next_review_date <= ? AND user_id = ?",
+                (now_utc.isoformat(), user_id),
+            ).fetchone()
+            due_count = int(due_row["c"] or 0) if due_row else 0
+        max_capacity = int(config.get("hours_per_day") or 4) * 20
+        reviews_optional_today = min(int(due_count), max_capacity)
+
     exam_date_str = config.get("exam_date")
     days_until_exam = None
     if exam_date_str:
@@ -317,6 +364,8 @@ def _get_streak_and_target_info(
         "streak": streak,
         "today_answered": today_answered_count,
         "daily_target": daily_target,
+        "daily_routine": routine_context,
+        "reviews_optional_today": reviews_optional_today,
         "days_until_exam": days_until_exam,
         "exam_date": exam_date_str,
         "target_score": config.get("target_score"),
@@ -1109,7 +1158,16 @@ def build_dashboard_summary_data(
     raw_config = dict(config_row) if config_row else {}
 
     overview = _get_overview_metrics(db, user_id, now_utc, rollup=rollup, catalog_cache_fn=catalog_cache_fn)
-    overview.update(_get_streak_and_target_info(db, user_id, now_utc, tz_offset, config=raw_config))
+    overview.update(
+        _get_streak_and_target_info(
+            db,
+            user_id,
+            now_utc,
+            tz_offset,
+            config=raw_config,
+            srs_due_count=overview.get("srs_due_count"),
+        )
+    )
 
     return {
         "stats": overview,

@@ -29,6 +29,66 @@ def _get_completed_subtemas(db, user_id: str) -> set[str]:
 _UNSET = object()
 
 
+_METADATA_FIELDS = (
+    "id",
+    "ancora70",
+    "trilha30",
+    "ancora_areas",
+    "procedimentos_alvo",
+    "micro_habito",
+)
+
+
+def _date_overlap_days(a_start: str, a_end: str, b_start: str, b_end: str) -> int:
+    try:
+        s1 = datetime.strptime(a_start[:10], "%Y-%m-%d").date()
+        e1 = datetime.strptime(a_end[:10], "%Y-%m-%d").date()
+        s2 = datetime.strptime(b_start[:10], "%Y-%m-%d").date()
+        e2 = datetime.strptime(b_end[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return 0
+    lo = max(s1, s2)
+    hi = min(e1, e2)
+    return max(0, (hi - lo).days + 1)
+
+
+def merge_with_default_metadata(user_blocks: list[dict]) -> list[dict]:
+    """Enriquece blocos salvos pelo usuário copiando apenas campos ausentes de RODIZIOS_TURMA_J."""
+    by_id = {b["id"]: b for b in RODIZIOS_TURMA_J if b.get("id")}
+    by_dates = {(b["start"], b["end"]): b for b in RODIZIOS_TURMA_J}
+
+    merged: list[dict] = []
+    for raw in user_blocks:
+        blk = dict(raw)
+        default_match = None
+        if blk.get("id") and blk["id"] in by_id:
+            default_match = by_id[blk["id"]]
+        elif (blk.get("start"), blk.get("end")) in by_dates:
+            default_match = by_dates[(blk.get("start"), blk.get("end"))]
+        else:
+            best_overlap = 0
+            for candidate in RODIZIOS_TURMA_J:
+                if candidate.get("area") != blk.get("area"):
+                    continue
+                overlap = _date_overlap_days(
+                    str(blk.get("start") or ""),
+                    str(blk.get("end") or ""),
+                    candidate["start"],
+                    candidate["end"],
+                )
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    default_match = candidate
+
+        if default_match:
+            for field in _METADATA_FIELDS:
+                if blk.get(field) is None and default_match.get(field) is not None:
+                    val = default_match[field]
+                    blk[field] = list(val) if isinstance(val, list) else val
+        merged.append(blk)
+    return merged
+
+
 def _get_user_internato_blocks(db, user_id: str, config_row=_UNSET) -> list[dict]:
     if config_row is _UNSET:
         row = db.execute("SELECT internato_blocks FROM planner_config WHERE user_id = ?", (user_id,)).fetchone()
@@ -38,11 +98,10 @@ def _get_user_internato_blocks(db, user_id: str, config_row=_UNSET) -> list[dict
         try:
             parsed = json.loads(row["internato_blocks"])
             if isinstance(parsed, list) and parsed:
-                return parsed
+                return merge_with_default_metadata(parsed)
         except (ValueError, TypeError):
             pass
     return [dict(b) for b in RODIZIOS_TURMA_J]
-
 
 
 def get_planner_config_data(db, user_id: str) -> dict | None:
@@ -57,14 +116,7 @@ def get_planner_config_data(db, user_id: str) -> dict | None:
         primary_inst = inst_list[0]
 
     org_mode = row["organization_mode"] if "organization_mode" in row_keys and row["organization_mode"] else "geral"
-    internato_blocks = [dict(b) for b in RODIZIOS_TURMA_J]
-    if "internato_blocks" in row_keys and row["internato_blocks"]:
-        try:
-            parsed = json.loads(row["internato_blocks"])
-            if isinstance(parsed, list) and parsed:
-                internato_blocks = parsed
-        except (ValueError, TypeError):
-            pass
+    internato_blocks = _get_user_internato_blocks(db, user_id, config_row=row)
 
     return {
         "exam_date": row["exam_date"],

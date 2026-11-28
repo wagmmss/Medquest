@@ -12,6 +12,10 @@ const isPublicRoute = createRouteMatcher([
   "/api/v1/notifications/cron/dispatch",
   "/api/lessons/(.*)/stream",
   "/api/v1/lessons/(.*)/stream",
+  "/api/six-year/feed.json",
+  "/api/v1/six-year/feed.json",
+  "/api/planner/calendar/feed",
+  "/api/v1/planner/calendar/feed",
 ]);
 
 let cachedClerkHandler: NextMiddleware | null = null;
