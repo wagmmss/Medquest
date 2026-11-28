@@ -67,6 +67,18 @@ def planner_config_reset():
     return jsonify({"success": True, "scope": data.scope})
 
 
+def _blocks_schedule_signature(blocks: list[dict]) -> list[tuple]:
+    return sorted(
+        (
+            str(b.get("start") or ""),
+            str(b.get("end") or ""),
+            str(b.get("area") or ""),
+            float(b["hours_per_week"]) if b.get("hours_per_week") is not None else None,
+        )
+        for b in blocks
+    )
+
+
 @bp.route("/planner/internato-blocks", methods=["PUT", "POST"])
 def planner_internato_blocks():
     try:
@@ -79,7 +91,13 @@ def planner_internato_blocks():
     now_iso = datetime.now(timezone.utc).isoformat()
     db = get_db()
     with db_transaction(db, immediate=True):
-        existing = db.execute("SELECT user_id FROM planner_config WHERE user_id = ?", (g.user_id,)).fetchone()
+        existing = db.execute(
+            "SELECT user_id, internato_blocks FROM planner_config WHERE user_id = ?",
+            (g.user_id,),
+        ).fetchone()
+        prev_blocks = _get_user_internato_blocks(db, g.user_id, config_row=existing) if existing else []
+        schedule_changed = _blocks_schedule_signature(prev_blocks) != _blocks_schedule_signature(blocks_payload)
+
         if existing:
             db.execute(
                 "UPDATE planner_config SET internato_blocks = ?, updated_at = ? WHERE user_id = ?",
@@ -90,10 +108,11 @@ def planner_internato_blocks():
                 "INSERT INTO planner_config (user_id, internato_blocks, updated_at) VALUES (?, ?, ?)",
                 (g.user_id, blocks_json, now_iso),
             )
-        db.execute(
-            "DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'",
-            (g.user_id,),
-        )
+        if schedule_changed:
+            db.execute(
+                "DELETE FROM planner_schedule WHERE user_id = ? AND mode LIKE 'internato_%'",
+                (g.user_id,),
+            )
     invalidate_user_caches(g.user_id)
     return jsonify({"success": True, "internato_blocks": blocks_payload})
 
@@ -475,11 +494,24 @@ def export_ics():
 
 @bp.route("/planner/calendar/feed", methods=["GET"])
 def calendar_feed():
+    from .rate_limit import check_rate_limit
+    from .services.six_year_routine import resolve_feed_token_user
+
     db = get_db()
-    # A identidade é definida exclusivamente pelo middleware de autenticação.
-    # Aceitar user_id na URL permitia que um usuário autenticado lesse o plano
-    # de qualquer outro usuário ao trocar o parâmetro.
-    content = _generate_calendar_ics_content(db, g.user_id)
+    raw_token = request.args.get("token")
+    if raw_token is not None:
+        rl_resp = check_rate_limit("six_year_ics_feed", auth_limit=30, window_seconds=60, ip_limit=30)
+        if rl_resp is not None:
+            return rl_resp
+        target_user_id = resolve_feed_token_user(db, raw_token)
+        if not target_user_id:
+            return jsonify({"error": "Not Found"}), 404
+    else:
+        target_user_id = getattr(g, "user_id", None)
+        if not target_user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+    content = _generate_calendar_ics_content(db, target_user_id)
     return Response(
         content,
         mimetype="text/calendar; charset=utf-8",

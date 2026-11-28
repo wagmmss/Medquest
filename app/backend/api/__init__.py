@@ -11,17 +11,17 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv() # Carrega as variáveis de ambiente do arquivo .env
 
-from .attempts import bp as attempts_bp
-from .config import Config
-from .db import close_db, init_db
-from .logs import bp as logs_bp
-from .notifications import bp as notifications_bp
-from .observability import configure_logging, emit, finish_request, start_request
-from .plan import bp as plan_bp
-from .questions import bp as questions_bp
-from .search import bp as search_bp
-from .simulados import bp as simulados_bp
-from .stats import bp as stats_bp
+from .attempts import bp as attempts_bp  # noqa: E402
+from .config import Config  # noqa: E402
+from .db import close_db, init_db  # noqa: E402
+from .logs import bp as logs_bp  # noqa: E402
+from .notifications import bp as notifications_bp  # noqa: E402
+from .observability import configure_logging, emit, finish_request, start_request  # noqa: E402
+from .plan import bp as plan_bp  # noqa: E402
+from .questions import bp as questions_bp  # noqa: E402
+from .search import bp as search_bp  # noqa: E402
+from .simulados import bp as simulados_bp  # noqa: E402
+from .stats import bp as stats_bp  # noqa: E402
 
 
 def create_app(testing=False, initialize_db=None):
@@ -45,7 +45,20 @@ def create_app(testing=False, initialize_db=None):
     )
     if not origins or "*" in origins:
         raise ValueError("FRONTEND_URL must contain explicit origins; wildcard CORS is forbidden")
-    CORS(app, origins=origins, supports_credentials=False)
+    CORS(
+        app,
+        resources={
+            r"/api/(?:v1/)?six-year/feed\.json": {
+                "origins": ["https://wagmmss.github.io"],
+                "methods": ["GET", "OPTIONS"],
+                "supports_credentials": False,
+            },
+            r"/api/.*": {
+                "origins": origins,
+                "supports_credentials": False,
+            },
+        },
+    )
 
     app.before_request(start_request)
     app.after_request(finish_request)
@@ -67,6 +80,13 @@ def create_app(testing=False, initialize_db=None):
         if request.path.startswith(("/api/images/", "/api/v1/images/")):
             return
         if request.path in ("/api/notifications/cron/dispatch", "/api/v1/notifications/cron/dispatch"):
+            return
+        if request.path in (
+            "/api/six-year/feed.json",
+            "/api/v1/six-year/feed.json",
+            "/api/planner/calendar/feed",
+            "/api/v1/planner/calendar/feed",
+        ) and "token" in request.args:
             return
         return require_auth(lambda: None)()
 
@@ -101,6 +121,7 @@ def create_app(testing=False, initialize_db=None):
     from .osce_routes import bp as osce_routes_bp
     from .notes_presets import bp as notes_presets_bp
     from .lessons import bp as lessons_bp
+    from .six_year import bp as six_year_bp
     for bp in (
         questions_bp,
         attempts_bp,
@@ -118,6 +139,7 @@ def create_app(testing=False, initialize_db=None):
         osce_routes_bp,
         notes_presets_bp,
         lessons_bp,
+        six_year_bp,
     ):
         app.register_blueprint(bp, url_prefix="/api")
         app.register_blueprint(bp, url_prefix="/api/v1", name=f"{bp.name}_v1")

@@ -1,4 +1,5 @@
 """Validação de entrada com Pydantic."""
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator, field_validator
@@ -8,24 +9,42 @@ __all__ = [
     "BatchAttemptIn",
     "BatchAttemptItem",
     "CronDispatchIn",
+    "CurriculumEntryIn",
+    "DayOverrideIn",
     "FavoriteIn",
     "GeneratePlanIn",
+    "InternatoBlockIn",
+    "InternatoBlocksUpdateIn",
+    "MarchaIn",
+    "MilestoneIn",
+    "MilestonePatchIn",
     "NotificationConfigIn",
     "PlannerConfigIn",
     "PlannerRevisionIn",
     "PlannerStudyIn",
-    "PrescribeStudyIn",
     "PushSubscriptionIn",
     "PushSubscriptionKeys",
     "PushUnsubscribeIn",
     "QuestionBatchIn",
     "ReviewIn",
+    "ShiftItemIn",
+    "ShiftsBatchIn",
     "SimuladoCustomIn",
     "SimuladoSessionIn",
-    "SynthesizeExplanationIn",
+    "SixYearPlanPatchIn",
     "ValidationError",
     "validation_errors",
 ]
+
+
+def _validate_iso_date_str(val: str) -> str:
+    try:
+        parsed = date.fromisoformat(val)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("must be a valid YYYY-MM-DD calendar date") from exc
+    if parsed.isoformat() != val:
+        raise ValueError("must be formatted as YYYY-MM-DD")
+    return val
 
 
 class APIInput(BaseModel):
@@ -75,12 +94,34 @@ class ReviewIn(APIInput):
     assisted: bool | None = None
 
 
+WeekPatternMode = Literal["integral", "meio_periodo", "folga"]
+WeekdayKey = Literal["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
+
+
 class InternatoBlockIn(APIInput):
+    id: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,40}$")
     start: str = Field(min_length=10, max_length=10)
     end: str = Field(min_length=10, max_length=10)
     area: str = Field(min_length=1, max_length=100)
     label: str | None = Field(default=None, max_length=100)
     hours_per_week: float | None = Field(default=None, ge=1, le=168)
+    ancora70: str | None = Field(default=None, max_length=500)
+    trilha30: str | None = Field(default=None, max_length=500)
+    ancora_areas: list[str] | None = Field(default=None, max_length=10)
+    procedimentos_alvo: list[str] | None = Field(default=None, max_length=20)
+    micro_habito: str | None = Field(default=None, max_length=300)
+    week_pattern: dict[WeekdayKey, WeekPatternMode] | None = None
+
+    @field_validator("start", "end")
+    @classmethod
+    def validate_dates(cls, v: str) -> str:
+        return _validate_iso_date_str(v)
+
+    @model_validator(mode="after")
+    def validate_date_order(self):
+        if self.start > self.end:
+            raise ValueError("start must be <= end")
+        return self
 
 
 class PlannerConfigIn(APIInput):
@@ -222,3 +263,69 @@ class PushUnsubscribeIn(APIInput):
 class CronDispatchIn(APIInput):
     force_user_id: str | None = Field(default=None, max_length=100)
     ignore_hour: bool = False
+
+
+class SixYearPlanPatchIn(APIInput):
+    routine_mode_enabled: bool | None = None
+    enamed_concept: Literal[3, 4, 5] | None = None
+    foco_override: dict[str, dict[Literal["ancora70", "trilha30"], str | None]] | None = None
+    ritual_done: dict[str, dict[str, bool]] | None = None
+
+
+class ShiftItemIn(APIInput):
+    date_iso: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    kind: Literal["plantao_12h_dia", "plantao_noturno", "plantao_24h"]
+    note: str = Field(default="", max_length=200)
+
+    @field_validator("date_iso")
+    @classmethod
+    def validate_date_iso(cls, v: str) -> str:
+        return _validate_iso_date_str(v)
+
+
+class ShiftsBatchIn(APIInput):
+    add: list[ShiftItemIn] = Field(default_factory=list, max_length=200)
+    remove: list[ShiftItemIn] = Field(default_factory=list, max_length=200)
+
+
+class DayOverrideIn(APIInput):
+    mode: Literal["pos_plantao", "folga", "meio_periodo", "integral"]
+
+
+class MarchaIn(APIInput):
+    marcha_id: Literal["4_sprint", "3_normal", "2_pesada", "1_sobrevivencia"] | None = None
+
+
+class CurriculumEntryIn(APIInput):
+    value: float = Field(ge=0, le=1000)
+    proof_status: Literal["falta", "em_andamento", "pdf_pronto"]
+    note: str = Field(default="", max_length=2000)
+
+
+class MilestoneIn(APIInput):
+    id: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_-]{1,64}$")
+    titulo: str = Field(min_length=1, max_length=200)
+    data_iso: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    categoria: Literal["curriculo", "estudo", "graduacao", "prova", "ingresso"] = "prova"
+    done: bool = False
+    note: str = Field(default="", max_length=2000)
+
+    @field_validator("data_iso")
+    @classmethod
+    def validate_data_iso(cls, v: str) -> str:
+        return _validate_iso_date_str(v)
+
+
+class MilestonePatchIn(APIInput):
+    titulo: str | None = Field(default=None, min_length=1, max_length=200)
+    data_iso: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    categoria: Literal["curriculo", "estudo", "graduacao", "prova", "ingresso"] | None = None
+    done: bool | None = None
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("data_iso")
+    @classmethod
+    def validate_data_iso(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return _validate_iso_date_str(v)

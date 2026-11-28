@@ -1,3 +1,15 @@
+export interface DailyRoutineContext {
+  enabled: boolean;
+  date_iso?: string;
+  day_mode?: string;
+  source?: "override" | "shift" | "pos_plantao" | "pattern";
+  is_pos_plantao?: boolean;
+  marcha_id?: string;
+  marcha_source?: "confirmada" | "sugerida";
+  rodizio_id?: string | null;
+  guidance?: string;
+}
+
 export interface OverviewStats {
   total_questions: number;
   distinct_answered: number;
@@ -14,10 +26,14 @@ export interface OverviewStats {
     weekly_target: number;
     active_days_last_7: number;
     rest_days_available: number;
-    policy: "rest_days_preserve_continuity";
+    policy:
+      | "rest_days_preserve_continuity"
+      | "rest_days_and_protected_shifts_preserve_continuity";
   };
   today_answered?: number;
   daily_target?: number;
+  daily_routine?: DailyRoutineContext;
+  reviews_optional_today?: number;
   days_until_exam?: number | null;
   exam_date?: string | null;
   target_score?: number | null;
@@ -163,11 +179,13 @@ export interface LearningProfile {
     configured_daily_questions: number;
     reviews_due: number;
     reviews_to_do_today: number;
+    reviews_optional_today?: number;
     backlog_pending: number;
     hours_budget: number;
     max_capacity: number;
     target_score: number | null;
     exam_date: string | null;
+    routine_context?: DailyRoutineContext;
   };
   topics: LearningProfileTopic[];
   method: { deterministic: boolean; signals: string[] };

@@ -95,9 +95,50 @@ def _generate_calendar_ics_content(db, user_id):
     base_url = _get_base_url()
 
     _generate_ics_events(ics_lines, plan_weeks, now_dt, study_days_count, base_url, user_id)
+    _append_shift_events(db, user_id, ics_lines, now_dt, base_url)
 
     ics_lines.append("END:VCALENDAR")
     return "\r\n".join(ics_lines)
+
+
+def _append_shift_events(db, user_id: str, ics_lines: list[str], now_dt: str, base_url: str) -> None:
+    """Inclui plantões cadastrados em user_shifts como eventos de dia inteiro (RFC 5545 DTEND exclusivo)."""
+    from ..internato_config import SHIFT_LABELS
+
+    try:
+        rows = db.execute(
+            "SELECT date_iso, kind, note FROM user_shifts WHERE user_id = ? ORDER BY date_iso ASC, kind ASC",
+            (user_id,),
+        ).fetchall()
+    except Exception:
+        return
+
+    footer_link = f"\\n\\n🔗 {base_url}/planner?tab=plano-6ano" if base_url else ""
+    for row in rows:
+        date_iso = str(row["date_iso"] or "")
+        kind = str(row["kind"] or "")
+        note = str(row["note"] or "").strip()
+        try:
+            start_day = datetime.strptime(date_iso[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        end_day = start_day + timedelta(days=1)
+        summary = _escape_ics_text(SHIFT_LABELS.get(kind, kind))
+        desc_parts = [f"Plantão registrado na rotina do 6º Ano ({summary})."]
+        if note:
+            desc_parts.append(f"Observação: {note}")
+        description = _escape_ics_text("\n".join(desc_parts)) + footer_link
+        ics_lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:shift-{start_day.isoformat()}-{kind}@medquest",
+            f"DTSTAMP:{now_dt}",
+            f"DTSTART;VALUE=DATE:{start_day.strftime('%Y%m%d')}",
+            f"DTEND;VALUE=DATE:{end_day.strftime('%Y%m%d')}",
+            f"SUMMARY:{summary}",
+            f"DESCRIPTION:{description}",
+            "STATUS:CONFIRMED",
+            "END:VEVENT",
+        ])
 
 
 def _build_consolidation_event(ics_lines, w_num, week_start_dt, w_date_str, now_dt, user_id, base_url):
